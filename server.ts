@@ -792,7 +792,7 @@ async function setupVite(app: any) {
 function serveStatic(app: any) {
   const distPath = path.resolve(process.cwd(), 'dist');
   app.use(express.static(distPath));
-  app.get('*', (req: any, res: any) => {
+  app.use((req: any, res: any) => {
     res.sendFile(path.resolve(distPath, 'index.html'));
   });
 }
