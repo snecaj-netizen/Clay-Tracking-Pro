@@ -344,7 +344,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     let params: any[] = [];
 
     if (req.user.role === 'society') {
-      query += " AND u.society = $1 ";
+      query += " AND u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' ";
       params.push(req.user.society);
     }
 
@@ -374,7 +374,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     let params: any[] = [];
 
     if (req.user.role === 'society') {
-      query += " WHERE u.society = $1 ";
+      query += " WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' ";
       params.push(req.user.society);
     }
 
@@ -554,7 +554,7 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
         SELECT c.*, u.name as "userName", u.surname as "userSurname"
         FROM competitions c
         JOIN users u ON c.user_id = u.id
-        WHERE u.society = $1
+        WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'
       `;
       params = [req.user.society];
     } else if (req.user.role === 'admin') {
