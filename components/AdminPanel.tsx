@@ -831,7 +831,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <>
                     <div>
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
-                      <select required value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                      <select required={!qualification} value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                         <option value="">Seleziona...</option>
                         <option value="Eccellenza">Eccellenza</option>
                         <option value="1*">1*</option>
@@ -841,7 +841,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
-                      <select required value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                      <select required={!category} value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                         <option value="">Seleziona...</option>
                         <option value="Veterani">Veterani</option>
                         <option value="Master">Master</option>
