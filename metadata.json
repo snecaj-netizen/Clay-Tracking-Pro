@@ -1,0 +1,7 @@
+{
+  "name": "Clay Tracker Pro",
+  "description": "Professional Clay Shooting Performance Tracker with AI Coaching and detailed analytics.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

@@ -1,0 +1,529 @@
+
+import React, { useState, useMemo } from 'react';
+import { Competition, CompetitionLevel, Discipline, getSeriesLayout } from '../types';
+
+interface HistoryListProps {
+  competitions: Competition[];
+  onDelete: (id: string) => void;
+  onEdit: (comp: Competition) => void;
+  triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  user?: any;
+}
+
+const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdit, triggerConfirm, user }) => {
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+
+  const toggleDetails = (id: string) => {
+    setExpandedDetails(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+  
+  // Stati filtri
+  const [filterDiscipline, setFilterDiscipline] = useState<string>('ALL');
+  const [filterLocation, setFilterLocation] = useState<string>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'CONCLUDED' | 'UPCOMING'>('ALL');
+  const [sortOrder, setSortOrder] = useState<'DESC' | 'ASC'>('ASC');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Estrazione opzioni filtri dai dati reali
+  const uniqueLocations = useMemo(() => {
+    return Array.from(new Set(competitions.map(c => c.location).filter(Boolean))).sort();
+  }, [competitions]);
+
+  // Applicazione filtri
+  const filteredCompetitions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return competitions.filter(c => {
+      const matchDisc = filterDiscipline === 'ALL' || c.discipline === filterDiscipline;
+      const matchLoc = filterLocation === 'ALL' || c.location === filterLocation;
+      
+      const compDate = new Date(c.date);
+      compDate.setHours(0, 0, 0, 0);
+      
+      let matchStatus = true;
+      if (filterStatus === 'CONCLUDED') {
+        matchStatus = compDate < today || (compDate.getTime() === today.getTime() && c.totalScore > 0);
+      } else if (filterStatus === 'UPCOMING') {
+        matchStatus = compDate > today || (compDate.getTime() === today.getTime() && c.totalScore === 0);
+      }
+
+      return matchDisc && matchLoc && matchStatus;
+    });
+  }, [competitions, filterDiscipline, filterLocation, filterStatus]);
+
+  const sortedCompetitions = useMemo(() => {
+    return [...filteredCompetitions].sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      return sortOrder === 'DESC' ? timeB - timeA : timeA - timeB;
+    });
+  }, [filteredCompetitions, sortOrder]);
+
+  // Helper per verificare se una data è compresa in un intervallo
+  const isDateInRange = (checkDate: string, comp: Competition) => {
+    if (!comp.endDate) return checkDate === comp.date;
+    const check = new Date(checkDate).getTime();
+    const start = new Date(comp.date).getTime();
+    const end = new Date(comp.endDate).getTime();
+    return check >= start && check <= end;
+  };
+
+  // Raggruppa competizioni filtrate per data per il calendario
+  const compsByDate = useMemo(() => {
+    const map: Record<string, Competition[]> = {};
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const days = new Date(year, month + 1, 0).getDate();
+    
+    for (let d = 1; d <= days; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      filteredCompetitions.forEach(c => {
+        if (isDateInRange(dateStr, c)) {
+          if (!map[dateStr]) map[dateStr] = [];
+          map[dateStr].push(c);
+        }
+      });
+    }
+    return map;
+  }, [filteredCompetitions, currentMonth]);
+
+  const getLevelColor = (level: CompetitionLevel, discipline: Discipline) => {
+    if (discipline === Discipline.TRAINING) return 'bg-slate-800 text-slate-400';
+    switch (level) {
+      case CompetitionLevel.REGIONAL: return 'bg-blue-900/30 text-blue-400';
+      case CompetitionLevel.NATIONAL: return 'bg-purple-900/30 text-purple-400';
+      case CompetitionLevel.INTERNATIONAL: return 'bg-yellow-900/30 text-yellow-500';
+      default: return 'bg-slate-800 text-slate-400';
+    }
+  };
+
+  const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = (year: number, month: number) => {
+    const day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1;
+  };
+
+  const calendarDays = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const days = daysInMonth(year, month);
+    const firstDay = firstDayOfMonth(year, month);
+    const totalSlots = Math.ceil((days + firstDay) / 7) * 7;
+    
+    const calendar = [];
+    for (let i = 0; i < totalSlots; i++) {
+      const dayNum = i - firstDay + 1;
+      if (dayNum > 0 && dayNum <= days) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        calendar.push({ day: dayNum, date: dateStr, isCurrentMonth: true });
+      } else {
+        calendar.push({ day: null, date: null, isCurrentMonth: false });
+      }
+    }
+    return calendar;
+  }, [currentMonth]);
+
+  const changeMonth = (offset: number) => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1));
+    setSelectedDay(null);
+  };
+
+  const renderListView = () => (
+    <div className="space-y-4 pt-4">
+      {sortedCompetitions.length === 0 ? (
+        <div className="bg-slate-900/50 border-2 border-dashed border-slate-800 rounded-3xl p-12 text-center">
+          <i className="fas fa-search text-slate-700 text-3xl mb-4"></i>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Nessun risultato con i filtri attuali</p>
+        </div>
+      ) : (
+        sortedCompetitions.map((comp) => {
+          const compDate = new Date(comp.date);
+          compDate.setHours(0, 0, 0, 0);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isPlanned = compDate >= today && comp.totalScore === 0;
+          return (
+            <div key={comp.id} className={`bg-slate-900 rounded-2xl p-5 border ${isPlanned ? 'border-emerald-500/30 bg-emerald-500/5' : comp.discipline === Discipline.TRAINING ? 'border-blue-900/20' : 'border-slate-800'} hover:border-slate-700 transition-all group relative`}>
+              <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {isPlanned && (
+                      <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border border-emerald-500/20">
+                        PIANIFICATA
+                      </span>
+                    )}
+                    <span className={`${comp.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-500'} text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter`}>
+                    {comp.discipline === Discipline.TRAINING ? 'PRATICA' : comp.discipline.split(' ')[0]}
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${getLevelColor(comp.level, comp.discipline)}`}>
+                    {comp.level}
+                  </span>
+                  {comp.position && (
+                    <span className="bg-green-900/30 text-green-500 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">
+                      Pos. {comp.position}°
+                    </span>
+                  )}
+                  {comp.weather && (
+                    <span className="bg-slate-800 text-white text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1.5 border border-slate-700 shadow-sm">
+                      <i className={`fas ${comp.weather.icon || 'fa-cloud'} text-orange-400`}></i>
+                      {comp.weather.temp}°C
+                    </span>
+                  )}
+                  <span className="text-slate-500 text-[10px] font-bold uppercase ml-auto sm:ml-0">
+                    {comp.endDate ? (
+                      `${new Date(comp.date).toLocaleDateString('it-IT', { day: '2-digit' })} - ${new Date(comp.endDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                    ) : (
+                      new Date(comp.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                    )}
+                  </span>
+                </div>
+                <h4 className="text-lg font-bold text-white leading-tight truncate">
+                  {comp.name}
+                </h4>
+                {user?.role === 'society' && comp.userName && (
+                  <div className="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1">
+                    Tiratore: {comp.userSurname} {comp.userName}
+                  </div>
+                )}
+                <div className="flex items-center gap-1 text-slate-400 text-sm font-medium mt-1">
+                  <i className={`fas fa-map-marker-alt ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-600'} text-xs`}></i>
+                  {comp.location}
+                </div>
+                
+                {comp.usedCartridges && comp.usedCartridges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {comp.usedCartridges.map((uc, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-slate-950/60 pl-1 pr-2.5 py-1 rounded-lg border border-slate-800 hover:border-orange-500/30 transition-colors">
+                        <div className="w-6 h-6 rounded-md bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-700">
+                           {uc.imageUrl ? <img src={uc.imageUrl} alt={uc.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[7px] text-orange-600 font-black">{uc.leadNumber}</div>}
+                        </div>
+                        <span className="text-[9px] text-slate-300 font-bold uppercase tracking-tight">{uc.producer} {uc.model}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-4 mt-3">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                    Target: <span className="text-slate-300">{comp.totalTargets}</span>
+                  </span>
+                  {comp.cost > 0 && (
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                      Spesa: <span className="text-slate-300">€{comp.cost.toFixed(2)}</span>
+                    </span>
+                  )}
+                  {comp.win > 0 && (
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                      Vincita: <span className="text-green-500">€{comp.win.toFixed(2)}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-800 pt-4 sm:pt-0 sm:pl-6">
+                <div className="flex gap-6">
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Punteggio</p>
+                    <div className="text-2xl font-black text-white">
+                      {comp.totalScore}<span className="text-slate-600 text-sm font-medium">/{comp.totalTargets}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Media</p>
+                    <div className={`text-2xl font-black ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-500'}`}>
+                      {comp.averagePerSeries.toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex sm:flex-col gap-2">
+                  {user?.role !== 'society' && (
+                    <>
+                      <button onClick={() => onEdit(comp)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-edit"></i></button>
+                      <button onClick={() => { console.log('Delete button clicked for comp:', comp.id); triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id)); }} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-trash-alt"></i></button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-800/50 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-wrap gap-2">
+                  {comp.scores.map((s, i) => {
+                    const hasDetails = comp.detailedScores && comp.detailedScores[i] && comp.detailedScores[i].length > 0;
+                    return (
+                      <button 
+                        key={i} 
+                        onClick={() => hasDetails ? toggleDetails(comp.id) : undefined}
+                        className={`flex flex-col items-center bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-800/50 min-w-[42px] ${hasDetails ? 'cursor-pointer hover:bg-slate-800/80 hover:border-orange-500/50 transition-all active:scale-95' : 'cursor-default'}`}
+                        title={hasDetails ? "Clicca per vedere i dettagli" : ""}
+                      >
+                        <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}</span>
+                        <span className={`text-sm font-black ${s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {comp.detailedScores && comp.detailedScores.some(s => s && s.length > 0) && (
+                  <button 
+                    onClick={() => toggleDetails(comp.id)}
+                    className="text-[10px] font-bold text-slate-400 hover:text-orange-500 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
+                  >
+                    <i className={`fas fa-chevron-${expandedDetails[comp.id] ? 'up' : 'down'}`}></i>
+                    {expandedDetails[comp.id] ? 'NASCONDI DETTAGLI' : 'MOSTRA DETTAGLI'}
+                  </button>
+                )}
+              </div>
+              
+              {expandedDetails[comp.id] && comp.detailedScores && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 animate-in fade-in slide-in-from-top-2">
+                  {comp.detailedScores.map((series, sIdx) => {
+                    if (!series || series.length === 0) return null;
+                    const seriesLayout = getSeriesLayout(comp.discipline);
+                    return (
+                      <div key={sIdx} className="bg-slate-950/50 rounded-xl p-3 border border-slate-800/50">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase mb-3">Serie {sIdx + 1}</div>
+                        <div className="flex flex-col gap-2">
+                          {seriesLayout.layout.map((targetCount, pedanaIdx) => {
+                            const startIndex = seriesLayout.layout.slice(0, pedanaIdx).reduce((a, b) => a + b, 0);
+                            return (
+                            <div key={pedanaIdx} className="flex items-center gap-2">
+                              <span className="text-[8px] font-bold text-slate-600 w-4">{pedanaIdx + 1}</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {Array.from({ length: targetCount }).map((_, targetOffset) => {
+                                  const targetIdx = startIndex + targetOffset;
+                                  const isHit = series[targetIdx];
+                                  return (
+                                    <div 
+                                      key={targetIdx} 
+                                      className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${isHit ? 'bg-[#a3e635]' : 'bg-[#ef4444]'}`}
+                                      title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )})}
+                        </div>
+                        {comp.seriesImages && comp.seriesImages[sIdx] && (
+                          <div className="mt-4 pt-3 border-t border-slate-800/50">
+                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Foto Lavagna</span>
+                            <div className="relative rounded-lg overflow-hidden border border-slate-700 bg-slate-900 aspect-video">
+                              <img src={comp.seriesImages[sIdx]} alt={`Lavagna Serie ${sIdx + 1}`} className="w-full h-full object-contain" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {comp.notes && (
+                <div className="w-full bg-slate-950/30 rounded-xl p-3 border border-slate-800/50 mt-2">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 flex items-center gap-1.5">
+                    <i className="fas fa-sticky-note text-orange-500/70"></i> Note
+                  </p>
+                  <p className="text-xs text-slate-300 leading-relaxed italic line-clamp-2">{comp.notes}</p>
+                </div>
+              )}
+            </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+
+  const renderCalendarView = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const monthName = currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    const weekDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+    return (
+      <div className="bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-2xl overflow-hidden mt-6 backdrop-blur-sm relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        
+        <div className="flex items-center justify-between mb-10 relative z-10">
+          <div>
+            <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">{monthName.split(' ')[0]}</h3>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">{monthName.split(' ')[1]}</p>
+          </div>
+          <div className="flex gap-1.5 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800">
+            <button onClick={() => changeMonth(-1)} className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"><i className="fas fa-chevron-left text-xs"></i></button>
+            <button onClick={() => changeMonth(1)} className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"><i className="fas fa-chevron-right text-xs"></i></button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 mb-6 relative z-10">
+          {weekDays.map(d => (
+            <div key={d} className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] py-2">
+              {d.slice(0, 1)}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 relative z-10">
+          {calendarDays.map((slot, idx) => {
+            const events = slot.date ? compsByDate[slot.date] : null;
+            const isToday = slot.date === today;
+            const isSelected = slot.date === selectedDay;
+            
+            let highlightClass = 'bg-slate-900/40 border-transparent hover:border-slate-700 hover:bg-slate-800/40';
+            let glowClass = '';
+            
+            if (events && events.length > 0) {
+              const hasComp = events.some(e => e.discipline !== Discipline.TRAINING);
+              highlightClass = hasComp 
+                ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
+                : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
+              glowClass = hasComp ? 'shadow-[0_0_20px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_20px_rgba(59,130,246,0.1)]';
+            }
+
+            return (
+              <div 
+                key={idx} 
+                onClick={() => slot.date && setSelectedDay(slot.date)} 
+                className={`aspect-square rounded-2xl flex flex-col items-center justify-center relative cursor-pointer transition-all border-2 ${!slot.isCurrentMonth ? 'opacity-0 pointer-events-none' : ''} ${isSelected ? 'border-orange-600 bg-orange-600/20 scale-105 z-10' : highlightClass} ${glowClass}`}
+              >
+                <span className={`font-black ${isToday ? 'text-white bg-orange-600 w-8 h-8 sm:w-10 sm:h-10 text-base sm:text-lg flex items-center justify-center rounded-full shadow-lg shadow-orange-600/20' : isSelected ? 'text-white text-lg' : 'text-slate-300 text-lg'}`}>
+                  {slot.day}
+                </span>
+                {events && events.length > 0 && !isToday && (
+                  <div className="absolute bottom-2 flex gap-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${events.some(c => c.discipline !== Discipline.TRAINING) ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {selectedDay && (
+          <div className="mt-8 pt-6 border-t border-slate-800 animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Eventi del {new Date(selectedDay).toLocaleDateString('it-IT', { day: '2-digit', month: 'long' })}</h4>
+              <button onClick={() => setSelectedDay(null)} className="text-slate-600 hover:text-white"><i className="fas fa-times"></i></button>
+            </div>
+            
+            {!compsByDate[selectedDay] || compsByDate[selectedDay].length === 0 ? (
+              <div className="bg-slate-950/30 p-4 rounded-2xl border border-dashed border-slate-800 text-center">
+                <p className="text-sm text-slate-600 italic">Nessun evento registrato.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {compsByDate[selectedDay].map(comp => (
+                  <div key={comp.id} className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className={`text-[10px] font-black uppercase tracking-tighter ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-600'}`}>
+                        {comp.discipline.split(' ')[0]} {comp.endDate && '(Evento Multigiorno)'}
+                        {comp.weather && <span className="ml-2 text-slate-500"><i className={`fas ${comp.weather.icon || 'fa-cloud'}`}></i> {comp.weather.temp}°C</span>}
+                      </p>
+                      <h5 className="text-sm font-bold text-white truncate">{comp.name}</h5>
+                      {user?.role === 'society' && comp.userName && (
+                        <p className="text-[10px] font-black text-orange-500 uppercase tracking-tighter">
+                          Tiratore: {comp.userSurname} {comp.userName}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-slate-500 truncate">{comp.location} • {comp.totalScore}/{comp.totalTargets}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {user?.role !== 'society' && (
+                        <>
+                          <button onClick={() => onEdit(comp)} className="w-9 h-9 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-xs"></i></button>
+                          <button onClick={() => { console.log('Delete button clicked for comp (calendar):', comp.id); triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id)); }} className="w-9 h-9 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash-alt text-xs"></i></button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const hasActiveFilters = filterDiscipline !== 'ALL' || filterLocation !== 'ALL';
+
+  return (
+    <div className="space-y-2">
+      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2"><i className="fas fa-list-ul text-orange-600"></i>Cronologia Attività</h2>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            <button 
+              onClick={() => setShowFilters(!showFilters)} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+            >
+              <i className="fas fa-filter"></i> Filtri
+              {(hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
+                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+              )}
+            </button>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-list"></i> Lista</button>
+              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-calendar-alt"></i> Calendario</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-800 flex flex-wrap items-end gap-3 mt-4 animate-in fade-in slide-in-from-top-2">
+          <div className="flex-1 min-w-[140px] space-y-1.5">
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+            <select value={filterDiscipline} onChange={(e) => setFilterDiscipline(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-orange-600 transition-all appearance-none">
+              <option value="ALL">TUTTE LE DISCIPLINE</option>
+              {Object.values(Discipline).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          
+          <div className="flex-1 min-w-[140px] space-y-1.5">
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo (TAV)</label>
+            <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-orange-600 transition-all appearance-none">
+              <option value="ALL">TUTTI I CAMPI</option>
+              {uniqueLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[140px] space-y-1.5">
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Stato</label>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-orange-600 transition-all appearance-none">
+              <option value="ALL">TUTTI GLI EVENTI</option>
+              <option value="CONCLUDED">CONCLUSI</option>
+              <option value="UPCOMING">PROSSIMI</option>
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Ordina Data</label>
+            <button 
+              onClick={() => setSortOrder(sortOrder === 'DESC' ? 'ASC' : 'DESC')}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs font-bold text-white hover:border-orange-600 transition-all flex items-center gap-2 h-[38px]"
+            >
+              <i className={`fas ${sortOrder === 'DESC' ? 'fa-sort-amount-down' : 'fa-sort-amount-up'} text-orange-500`}></i>
+              {sortOrder === 'DESC' ? 'RECENTI' : 'DATATI'}
+            </button>
+          </div>
+
+          {(hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
+            <button onClick={() => { setFilterDiscipline('ALL'); setFilterLocation('ALL'); setFilterStatus('ALL'); setSortOrder('ASC'); }} className="px-3 py-2.5 rounded-xl bg-red-950/30 text-red-500 text-[10px] font-black uppercase tracking-tighter hover:bg-red-600 hover:text-white transition-all h-[38px] flex items-center"><i className="fas fa-undo mr-1"></i> Reset</button>
+          )}
+        </div>
+      )}
+
+      <div className="pt-2">
+        {viewMode === 'list' ? renderListView() : renderCalendarView()}
+      </div>
+    </div>
+  );
+};
+
+export default HistoryList;
