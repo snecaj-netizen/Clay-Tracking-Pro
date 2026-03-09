@@ -40,7 +40,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamSize, setNewTeamSize] = useState<3 | 6>(3);
+  const [newTeamCompetitionName, setNewTeamCompetitionName] = useState('');
+  const [newTeamDiscipline, setNewTeamDiscipline] = useState('');
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
+  const [editingTeam, setEditingTeam] = useState<any>(null);
   
   // Results Filtering State
   const [showFilters, setShowFilters] = useState(false);
@@ -221,8 +224,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     try {
-      const res = await fetch('/api/teams', {
-        method: 'POST',
+      const endpoint = editingTeam ? `/api/teams/${editingTeam.id}` : '/api/teams';
+      const method = editingTeam ? 'PUT' : 'POST';
+      
+      const res = await fetch(endpoint, {
+        method,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` 
@@ -230,19 +236,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         body: JSON.stringify({
           name: newTeamName,
           size: newTeamSize,
+          competition_name: newTeamCompetitionName,
+          discipline: newTeamDiscipline,
           memberIds: selectedShooterIds
         }),
       });
 
-      if (!res.ok) throw new Error('Errore durante la creazione della squadra');
+      if (!res.ok) throw new Error(`Errore durante ${editingTeam ? 'la modifica' : 'la creazione'} della squadra`);
       
       setNewTeamName('');
+      setNewTeamCompetitionName('');
+      setNewTeamDiscipline('');
       setSelectedShooterIds([]);
       setShowTeamForm(false);
+      setEditingTeam(null);
       fetchTeams();
     } catch (err: any) {
       setError(err.message);
     }
+  };
+
+  const handleEditTeam = (team: any) => {
+    setEditingTeam(team);
+    setNewTeamName(team.name);
+    setNewTeamSize(team.size as 3 | 6);
+    setNewTeamCompetitionName(team.competition_name || '');
+    setNewTeamDiscipline(team.discipline || '');
+    setSelectedShooterIds(team.members ? team.members.map((m: any) => m.id) : []);
+    setShowTeamForm(true);
   };
 
   const handleDeleteTeam = (id: number) => {
@@ -518,6 +539,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                   </div>
                   <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo/Nome Gara</label>
+                    <input 
+                      type="text" 
+                      value={newTeamCompetitionName} 
+                      onChange={e => setNewTeamCompetitionName(e.target.value)} 
+                      placeholder="Es: Campionato Regionale"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+                    <select 
+                      value={newTeamDiscipline} 
+                      onChange={e => setNewTeamDiscipline(e.target.value)} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">Seleziona...</option>
+                      <option value="Compak Sporting (CK)">Compak Sporting (CK)</option>
+                      <option value="Sporting (SP)">Sporting (SP)</option>
+                      <option value="English Sporting (ES)">English Sporting (ES)</option>
+                      <option value="Club Cup (PC)">Club Cup (PC)</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Dimensione Squadra</label>
                     <div className="flex gap-2">
                       {[3, 6].map(size => (
@@ -558,13 +603,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                <button 
-                  type="submit" 
-                  disabled={selectedShooterIds.length !== newTeamSize}
-                  className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-orange-600/20"
-                >
-                  CREA SQUADRA
-                </button>
+                <div className="flex gap-4">
+                  <button 
+                    type="submit" 
+                    disabled={selectedShooterIds.length !== newTeamSize}
+                    className="flex-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-orange-600/20"
+                  >
+                    {editingTeam ? 'SALVA MODIFICHE' : 'CREA SQUADRA'}
+                  </button>
+                  {editingTeam && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setEditingTeam(null);
+                        setNewTeamName('');
+                        setNewTeamCompetitionName('');
+                        setNewTeamDiscipline('');
+                        setSelectedShooterIds([]);
+                        setShowTeamForm(false);
+                      }}
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition-all"
+                    >
+                      ANNULLA
+                    </button>
+                  )}
+                </div>
               </form>
             )}
 
@@ -572,25 +635,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {teams.map(team => (
                 <div key={team.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative group">
-                  <button 
-                    onClick={() => handleDeleteTeam(team.id)}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white"
-                  >
-                    <i className="fas fa-trash-alt text-xs"></i>
-                  </button>
+                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={() => handleEditTeam(team)}
+                      className="w-8 h-8 rounded-lg bg-orange-950/30 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white"
+                    >
+                      <i className="fas fa-edit text-xs"></i>
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTeam(team.id)}
+                      className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"
+                    >
+                      <i className="fas fa-trash-alt text-xs"></i>
+                    </button>
+                  </div>
                   <div className="mb-3">
                     <span className="text-[9px] font-black bg-orange-600/20 text-orange-500 px-2 py-0.5 rounded uppercase mr-2">
                       {team.size} Tiratori
                     </span>
+                    {(team.competition_name || team.discipline) && (
+                      <span className="text-[9px] font-black bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded uppercase">
+                        {team.discipline}
+                      </span>
+                    )}
                     <h4 className="text-lg font-black text-white mt-1">{team.name}</h4>
+                    {team.competition_name && (
+                      <p className="text-xs text-slate-400 font-medium">{team.competition_name}</p>
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    {team.members.map((m: any, idx: number) => (
-                      <div key={idx} className="text-xs text-slate-400 flex items-center gap-2">
-                        <span className="w-4 h-4 rounded-full bg-slate-800 text-[8px] flex items-center justify-center text-slate-500 font-bold">{idx + 1}</span>
-                        {m.surname} {m.name}
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    {team.members.map((m: any, idx: number) => {
+                      // Trova le statistiche del tiratore per la disciplina della squadra
+                      const shooterStats = teamStats.find(s => s.user_id === m.id && (!team.discipline || s.discipline === team.discipline));
+                      const catQual = shooterStats ? (shooterStats.category || shooterStats.qualification || '') : '';
+                      const avg = shooterStats ? Number(shooterStats.avg_score).toFixed(2) : '-';
+                      
+                      return (
+                        <div key={idx} className="text-xs text-slate-400 flex items-center justify-between bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="w-4 h-4 rounded-full bg-slate-800 text-[8px] flex items-center justify-center text-slate-500 font-bold shrink-0">{idx + 1}</span>
+                            <span className="font-bold text-slate-300 truncate">{m.surname} {m.name}</span>
+                            {catQual && (
+                              <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter shrink-0">({catQual})</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded shrink-0">
+                            Media: {avg}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

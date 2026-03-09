@@ -111,10 +111,20 @@ const initDB = async () => {
         name TEXT NOT NULL,
         size INTEGER NOT NULL,
         society TEXT,
+        competition_name TEXT,
+        discipline TEXT,
         created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Add columns if they don't exist (for existing databases)
+    try {
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS competition_name TEXT");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS discipline TEXT");
+    } catch (e) {
+      console.log("Columns might already exist or error adding them:", e);
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
@@ -497,14 +507,14 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
 });
 
 app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, size, memberIds } = req.body;
+  const { name, size, memberIds, competition_name, discipline } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const society = req.user.role === 'society' ? req.user.society : null;
     const { rows } = await client.query(
-      "INSERT INTO teams (name, size, society, created_by) VALUES ($1, $2, $3, $4) RETURNING id",
-      [name, size, society, req.user.id]
+      "INSERT INTO teams (name, size, society, competition_name, discipline, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+      [name, size, society, competition_name, discipline, req.user.id]
     );
     const teamId = rows[0].id;
 
@@ -517,6 +527,46 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
 
     await client.query('COMMIT');
     res.json({ success: true, id: teamId });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const { id } = req.params;
+  const { name, size, memberIds, competition_name, discipline } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Check authorization
+    if (req.user.role === 'society') {
+      const { rows } = await client.query("SELECT society FROM teams WHERE id = $1", [id]);
+      if (rows.length === 0 || rows[0].society !== req.user.society) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+    }
+
+    await client.query(
+      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4 WHERE id = $5",
+      [name, size, competition_name, discipline, id]
+    );
+
+    // Update members
+    await client.query("DELETE FROM team_members WHERE team_id = $1", [id]);
+    for (const userId of memberIds) {
+      await client.query(
+        "INSERT INTO team_members (team_id, user_id) VALUES ($1, $2)",
+        [id, userId]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true });
   } catch (err: any) {
     await client.query('ROLLBACK');
     res.status(400).json({ error: err.message });
