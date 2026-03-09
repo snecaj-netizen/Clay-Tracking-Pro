@@ -346,106 +346,156 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
     const weekDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
     return (
-      <div className="bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-2xl overflow-hidden mt-6 backdrop-blur-sm relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
-        
-        <div className="flex items-center justify-between mb-10 relative z-10">
-          <div>
-            <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">{monthName.split(' ')[0]}</h3>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">{monthName.split(' ')[1]}</p>
-          </div>
-          <div className="flex gap-1.5 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800">
-            <button onClick={() => changeMonth(-1)} className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"><i className="fas fa-chevron-left text-xs"></i></button>
-            <button onClick={() => changeMonth(1)} className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"><i className="fas fa-chevron-right text-xs"></i></button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2 mb-6 relative z-10">
-          {weekDays.map(d => (
-            <div key={d} className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] py-2">
-              {d.slice(0, 1)}
+      <div className="flex flex-col lg:flex-row gap-6 mt-6">
+        {/* Calendar Column */}
+        <div className="w-full lg:w-7/12 xl:w-1/2 bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-2xl overflow-hidden backdrop-blur-sm relative h-fit">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">{monthName.split(' ')[0]}</h3>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">{monthName.split(' ')[1]}</p>
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-2 relative z-10">
-          {calendarDays.map((slot, idx) => {
-            const events = slot.date ? compsByDate[slot.date] : null;
-            const isToday = slot.date === today;
-            const isSelected = slot.date === selectedDay;
-            
-            let highlightClass = 'bg-slate-900/40 border-transparent hover:border-slate-700 hover:bg-slate-800/40';
-            let glowClass = '';
-            
-            if (events && events.length > 0) {
-              const hasComp = events.some(e => e.discipline !== Discipline.TRAINING);
-              highlightClass = hasComp 
-                ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
-                : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
-              glowClass = hasComp ? 'shadow-[0_0_20px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_20px_rgba(59,130,246,0.1)]';
-            }
-
-            return (
-              <div 
-                key={idx} 
-                onClick={() => slot.date && setSelectedDay(slot.date)} 
-                className={`aspect-square rounded-2xl flex flex-col items-center justify-center relative cursor-pointer transition-all border-2 ${!slot.isCurrentMonth ? 'opacity-0 pointer-events-none' : ''} ${isSelected ? 'border-orange-600 bg-orange-600/20 scale-105 z-10' : highlightClass} ${glowClass}`}
-              >
-                <span className={`font-black ${isToday ? 'text-white bg-orange-600 w-8 h-8 sm:w-10 sm:h-10 text-base sm:text-lg flex items-center justify-center rounded-full shadow-lg shadow-orange-600/20' : isSelected ? 'text-white text-lg' : 'text-slate-300 text-lg'}`}>
-                  {slot.day}
-                </span>
-                {events && events.length > 0 && !isToday && (
-                  <div className="absolute bottom-2 flex gap-1">
-                    <div className={`w-1.5 h-1.5 rounded-full ${events.some(c => c.discipline !== Discipline.TRAINING) ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {selectedDay && (
-          <div className="mt-8 pt-6 border-t border-slate-800 animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Eventi del {new Date(selectedDay).toLocaleDateString('it-IT', { day: '2-digit', month: 'long' })}</h4>
-              <button onClick={() => setSelectedDay(null)} className="text-slate-600 hover:text-white"><i className="fas fa-times"></i></button>
+            <div className="flex gap-1.5 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800">
+              <button onClick={() => changeMonth(-1)} className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"><i className="fas fa-chevron-left text-xs"></i></button>
+              <button onClick={() => changeMonth(1)} className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"><i className="fas fa-chevron-right text-xs"></i></button>
             </div>
-            
-            {!compsByDate[selectedDay] || compsByDate[selectedDay].length === 0 ? (
-              <div className="bg-slate-950/30 p-4 rounded-2xl border border-dashed border-slate-800 text-center">
-                <p className="text-sm text-slate-600 italic">Nessun evento registrato.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {compsByDate[selectedDay].map(comp => (
-                  <div key={comp.id} className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className={`text-[10px] font-black uppercase tracking-tighter ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-600'}`}>
-                        {comp.discipline.split(' ')[0]} {comp.endDate && '(Evento Multigiorno)'}
-                        {comp.weather && <span className="ml-2 text-slate-500"><i className={`fas ${comp.weather.icon || 'fa-cloud'}`}></i> {comp.weather.temp}°C</span>}
-                      </p>
-                      <h5 className="text-sm font-bold text-white truncate">{comp.name}</h5>
-                      {user?.role === 'society' && comp.userName && (
-                        <p className="text-[10px] font-black text-orange-500 uppercase tracking-tighter">
-                          Tiratore: {comp.userSurname} {comp.userName}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-slate-500 truncate">{comp.location} • {comp.totalScore}/{comp.totalTargets}</p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      {user?.role !== 'society' && (
-                        <>
-                          <button onClick={() => onEdit(comp)} className="w-9 h-9 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-xs"></i></button>
-                          <button onClick={() => { console.log('Delete button clicked for comp (calendar):', comp.id); triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id)); }} className="w-9 h-9 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash-alt text-xs"></i></button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        )}
+
+          <div className="grid grid-cols-7 gap-2 mb-4 relative z-10">
+            {weekDays.map(d => (
+              <div key={d} className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] py-2">
+                {d.slice(0, 1)}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 relative z-10">
+            {calendarDays.map((slot, idx) => {
+              const events = slot.date ? compsByDate[slot.date] : null;
+              const isToday = slot.date === today;
+              const isSelected = slot.date === selectedDay;
+              
+              let highlightClass = 'bg-slate-900/40 border-slate-800/60 hover:border-slate-600 hover:bg-slate-800/60';
+              let glowClass = '';
+              
+              if (events && events.length > 0) {
+                const hasComp = events.some(e => e.discipline !== Discipline.TRAINING);
+                highlightClass = hasComp 
+                  ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
+                  : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
+                glowClass = hasComp ? 'shadow-[0_0_15px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_15px_rgba(59,130,246,0.1)]';
+              }
+
+              return (
+                <div 
+                  key={idx} 
+                  onClick={() => slot.date && setSelectedDay(slot.date)} 
+                  className={`aspect-square rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative cursor-pointer transition-all border ${!slot.isCurrentMonth ? 'opacity-0 pointer-events-none' : ''} ${isSelected ? 'border-orange-600 bg-orange-600/20 scale-105 z-10' : highlightClass} ${glowClass}`}
+                >
+                  <span className={`font-black ${isToday ? 'text-white bg-orange-600 w-7 h-7 sm:w-9 sm:h-9 text-sm sm:text-base flex items-center justify-center rounded-full shadow-lg shadow-orange-600/20' : isSelected ? 'text-white text-base sm:text-lg' : 'text-slate-300 text-sm sm:text-base'}`}>
+                    {slot.day}
+                  </span>
+                  {events && events.length > 0 && !isToday && (
+                    <div className="absolute bottom-1.5 sm:bottom-2 flex gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${events.some(c => c.discipline !== Discipline.TRAINING) ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Events Column */}
+        <div className="w-full lg:w-5/12 xl:w-1/2 flex flex-col">
+          {selectedDay ? (
+            <div className="bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-xl h-full animate-in fade-in slide-in-from-right-4">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/50">
+                <div>
+                  <h4 className="text-sm font-black text-white uppercase tracking-widest">
+                    Eventi del Giorno
+                  </h4>
+                  <p className="text-[10px] text-slate-500 font-bold mt-1">
+                    {new Date(selectedDay).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <button onClick={() => setSelectedDay(null)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"><i className="fas fa-times text-xs"></i></button>
+              </div>
+              
+              {!compsByDate[selectedDay] || compsByDate[selectedDay].length === 0 ? (
+                <div className="bg-slate-950/30 p-8 rounded-2xl border border-dashed border-slate-800 text-center flex flex-col items-center justify-center h-48">
+                  <i className="fas fa-calendar-times text-slate-700 text-3xl mb-3"></i>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nessun evento registrato</p>
+                </div>
+              ) : (
+                <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+                  {compsByDate[selectedDay].map(comp => (
+                    <div key={comp.id} className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl flex flex-col gap-3 hover:border-slate-700 transition-colors group">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${comp.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
+                              {comp.discipline.split(' ')[0]}
+                            </span>
+                            {comp.endDate && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-purple-900/30 text-purple-400 border border-purple-900/50">
+                                Multigiorno
+                              </span>
+                            )}
+                          </div>
+                          <h5 className="text-base font-bold text-white truncate leading-tight">{comp.name}</h5>
+                          {user?.role === 'society' && comp.userName && (
+                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-tighter mt-1">
+                              Tiratore: {comp.userSurname} {comp.userName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-lg font-black text-white leading-none">
+                            {comp.totalScore}<span className="text-xs text-slate-500">/{comp.totalTargets}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-800/50">
+                        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium truncate">
+                          <span className="flex items-center gap-1.5 truncate">
+                            <i className="fas fa-map-marker-alt text-slate-500"></i>
+                            <span className="truncate">{comp.location}</span>
+                          </span>
+                          {comp.weather && (
+                            <span className="flex items-center gap-1.5 shrink-0">
+                              <i className={`fas ${comp.weather.icon || 'fa-cloud'} text-slate-500`}></i>
+                              {comp.weather.temp}°C
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {user?.role !== 'society' && (
+                            <>
+                              <button onClick={() => onEdit(comp)} className="w-7 h-7 rounded-md bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
+                              <button onClick={() => triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id))} className="w-7 h-7 rounded-md bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash-alt text-[10px]"></i></button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-900/20 rounded-[2rem] p-6 border border-slate-800/30 h-full flex flex-col items-center justify-center text-center min-h-[300px] lg:min-h-0">
+              <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                <i className="fas fa-hand-pointer text-slate-600 text-2xl"></i>
+              </div>
+              <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Seleziona una data</h4>
+              <p className="text-xs text-slate-500 max-w-[200px]">Clicca su un giorno del calendario per visualizzare i dettagli degli eventi.</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   };

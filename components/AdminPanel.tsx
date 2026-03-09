@@ -49,6 +49,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
   const [filterYear, setFilterYear] = useState('');
+  const [resultsPage, setResultsPage] = useState(1);
+  const resultsPerPage = 50;
 
   const filterOptions = React.useMemo(() => {
     const societies = new Set<string>();
@@ -330,6 +332,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     userSurname: currentUser?.surname || '',
     userId: currentUser?.id || ''
   }));
+
+  const filteredResults = resultsToDisplay
+    .filter(r => r.totalScore > 0)
+    .filter(r => {
+      const shooterMatch = `${r.userName} ${r.userSurname}`.toLowerCase().includes(filterShooter.toLowerCase()) || 
+                           `${r.userSurname} ${r.userName}`.toLowerCase().includes(filterShooter.toLowerCase());
+      const societyMatch = !filterSociety || r.society === filterSociety;
+      const disciplineMatch = !filterDiscipline || r.discipline === filterDiscipline;
+      const locationMatch = !filterLocation || r.location === filterLocation;
+      
+      let yearMatch = true;
+      if (filterYear && r.date) {
+        const dateParts = r.date.split(/[-/]/);
+        const year = dateParts[0].length === 4 ? dateParts[0] : dateParts[2];
+        yearMatch = year === filterYear;
+      }
+
+      return shooterMatch && societyMatch && disciplineMatch && locationMatch && yearMatch;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(a.date).getTime();
+      const dateB = new Date(b.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(b.date).getTime();
+      return dateA - dateB;
+    });
+
+  const totalPages = Math.ceil(filteredResults.length / resultsPerPage);
+  const paginatedResults = filteredResults.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
+
+  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+    setter(e.target.value);
+    setResultsPage(1);
+  };
 
   return (
     <div className="space-y-6">
@@ -629,7 +663,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <input 
                   type="text" 
                   value={filterShooter} 
-                  onChange={e => setFilterShooter(e.target.value)} 
+                  onChange={handleFilterChange(setFilterShooter)} 
                   placeholder="Cerca nome..."
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
                 />
@@ -638,7 +672,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
                 <select 
                   value={filterSociety} 
-                  onChange={e => setFilterSociety(e.target.value)} 
+                  onChange={handleFilterChange(setFilterSociety)} 
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                 >
                   <option value="">Tutte</option>
@@ -649,7 +683,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
                 <select 
                   value={filterDiscipline} 
-                  onChange={e => setFilterDiscipline(e.target.value)} 
+                  onChange={handleFilterChange(setFilterDiscipline)} 
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                 >
                   <option value="">Tutte</option>
@@ -660,7 +694,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo</label>
                 <select 
                   value={filterLocation} 
-                  onChange={e => setFilterLocation(e.target.value)} 
+                  onChange={handleFilterChange(setFilterLocation)} 
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                 >
                   <option value="">Tutti</option>
@@ -671,7 +705,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Anno</label>
                 <select 
                   value={filterYear} 
-                  onChange={e => setFilterYear(e.target.value)} 
+                  onChange={handleFilterChange(setFilterYear)} 
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                 >
                   <option value="">Tutti</option>
@@ -680,7 +714,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="sm:col-span-5 flex justify-end">
                 <button 
-                  onClick={() => { setFilterShooter(''); setFilterSociety(''); setFilterDiscipline(''); setFilterLocation(''); setFilterYear(''); }}
+                  onClick={() => { setFilterShooter(''); setFilterSociety(''); setFilterDiscipline(''); setFilterLocation(''); setFilterYear(''); setResultsPage(1); }}
                   className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
                 >
                   Resetta Filtri
@@ -703,30 +737,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {resultsToDisplay
-                  .filter(r => r.totalScore > 0)
-                  .filter(r => {
-                    const shooterMatch = `${r.userName} ${r.userSurname}`.toLowerCase().includes(filterShooter.toLowerCase()) || 
-                                         `${r.userSurname} ${r.userName}`.toLowerCase().includes(filterShooter.toLowerCase());
-                    const societyMatch = !filterSociety || r.society === filterSociety;
-                    const disciplineMatch = !filterDiscipline || r.discipline === filterDiscipline;
-                    const locationMatch = !filterLocation || r.location === filterLocation;
-                    
-                    let yearMatch = true;
-                    if (filterYear && r.date) {
-                      const dateParts = r.date.split(/[-/]/);
-                      const year = dateParts[0].length === 4 ? dateParts[0] : dateParts[2];
-                      yearMatch = year === filterYear;
-                    }
-
-                    return shooterMatch && societyMatch && disciplineMatch && locationMatch && yearMatch;
-                  })
-                  .sort((a, b) => {
-                    const dateA = new Date(a.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(a.date).getTime();
-                    const dateB = new Date(b.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(b.date).getTime();
-                    return dateA - dateB;
-                  })
-                  .map((r, idx) => (
+                {paginatedResults.map((r, idx) => (
                   <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-3 px-4 text-[10px] text-slate-500 font-bold">{r.date}</td>
                     <td className="py-3 px-4 text-xs text-white font-bold">{r.userSurname} {r.userName}</td>
@@ -743,6 +754,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 ))}
               </tbody>
             </table>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t border-slate-800">
+                <span className="text-xs text-slate-500">
+                  Pagina <span className="text-white font-bold">{resultsPage}</span> di <span className="text-white font-bold">{totalPages}</span>
+                  <span className="ml-2">({filteredResults.length} risultati)</span>
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setResultsPage(p => Math.max(1, p - 1))}
+                    disabled={resultsPage === 1}
+                    className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                  >
+                    <i className="fas fa-chevron-left mr-1"></i> Precedente
+                  </button>
+                  <button 
+                    onClick={() => setResultsPage(p => Math.min(totalPages, p + 1))}
+                    disabled={resultsPage === totalPages}
+                    className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                  >
+                    Successiva <i className="fas fa-chevron-right ml-1"></i>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (

@@ -215,7 +215,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 pb-24 sm:pb-8">
+    <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col pb-24 sm:pb-8">
       <Header 
         currentView={view} 
         onNavigate={setView} 
@@ -223,7 +223,7 @@ const App: React.FC = () => {
         user={user}
       />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 pb-20 sm:pb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 pb-20 sm:pb-8 flex-1 w-full">
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Dashboard competitions={competitions} user={user} />
@@ -308,6 +308,15 @@ const App: React.FC = () => {
           <i className="fas fa-plus text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
         </button>
       )}
+
+      {/* Footer */}
+      <footer className="w-full py-6 mt-auto border-t border-slate-800/50 bg-slate-950/30">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            &copy; {new Date().getFullYear()} Stefano Necaj. Tutti i diritti riservati.
+          </p>
+        </div>
+      </footer>
 
       <ConfirmModal 
         isOpen={confirmConfig.isOpen}
