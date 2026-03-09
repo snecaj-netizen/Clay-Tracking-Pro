@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 import nodemailer from 'nodemailer';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3000', 10) || 3000;
+const PORT = process.env.PORT || 3000;
 
 // 1. IMMEDIATE HEALTH CHECK (Must be first)
 app.get('/ping', (req, res) => res.send('pong'));
@@ -803,7 +803,7 @@ async function startApp() {
   // Setup Vite or Static serving
   await setupVite(app);
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT as number, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
