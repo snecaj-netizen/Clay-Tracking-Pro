@@ -769,7 +769,10 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
 });
 
 async function setupVite(app: any) {
-  if (process.env.NODE_ENV !== "production") {
+  const distPath = path.resolve(process.cwd(), 'dist');
+  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(distPath);
+
+  if (!isProd) {
     try {
       const vite = await createViteServer({
         server: { middlewareMode: true },
@@ -777,9 +780,11 @@ async function setupVite(app: any) {
       });
       app.use(vite.middlewares);
     } catch (e) {
+      console.error('Vite initialization failed, falling back to static serving', e);
       serveStatic(app);
     }
   } else {
+    console.log('Serving static files from dist directory');
     serveStatic(app);
   }
 }
