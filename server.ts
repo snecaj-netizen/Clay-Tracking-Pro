@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 import nodemailer from 'nodemailer';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10) || 3000;
 
 // 1. IMMEDIATE HEALTH CHECK (Must be first)
 app.get('/ping', (req, res) => res.send('pong'));
