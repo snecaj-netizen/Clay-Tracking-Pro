@@ -26,14 +26,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies'>('results');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies'>(
+    currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile'
+  );
   const [showUserForm, setShowUserForm] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
-  const [loading, setLoading] = useState(currentUser?.role === 'admin' || currentUser?.role === 'society');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
   
@@ -50,6 +52,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socMobile, setSocMobile] = useState('');
   const [socWebsite, setSocWebsite] = useState('');
   const [socContactName, setSocContactName] = useState('');
+  const [societySearch, setSocietySearch] = useState('');
   
   // Team Creation State
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -203,12 +206,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   useEffect(() => {
+    setLoading(true);
+    const promises = [fetchSocieties()];
     if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
-      setLoading(true);
-      const promises = [fetchTeamStats(), fetchAllResults(), fetchTeams(), fetchSocieties()];
+      promises.push(fetchTeamStats(), fetchAllResults(), fetchTeams());
       if (currentUser?.role === 'admin') promises.push(fetchUsers());
-      Promise.all(promises).finally(() => setLoading(false));
     }
+    Promise.all(promises).finally(() => setLoading(false));
   }, [token]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -495,15 +499,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setResultsPage(1);
   };
 
+  const filteredSocieties = societies.filter(soc => 
+    soc.name.toLowerCase().includes(societySearch.toLowerCase()) ||
+    (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
+    (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
+  );
+
   return (
     <div className="space-y-6">
       {/* Tab Switcher */}
       <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
+        {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+          <button 
+            onClick={() => setActiveTab('results')}
+            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <i className="fas fa-history mr-2"></i> Risultati
+          </button>
+        )}
         <button 
-          onClick={() => setActiveTab('results')}
-          className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          onClick={() => setActiveTab('societies')}
+          className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'societies' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
         >
-          <i className="fas fa-history mr-2"></i> Risultati
+          <i className="fas fa-building mr-2"></i> Società
         </button>
         {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
           <>
@@ -514,20 +532,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <i className="fas fa-trophy mr-2"></i> Squadre
             </button>
             {currentUser?.role === 'admin' && (
-              <>
-                <button 
-                  onClick={() => setActiveTab('users')}
-                  className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <i className="fas fa-users mr-2"></i> Utenti
-                </button>
-                <button 
-                  onClick={() => setActiveTab('societies')}
-                  className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'societies' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <i className="fas fa-building mr-2"></i> Società
-                </button>
-              </>
+              <button 
+                onClick={() => setActiveTab('users')}
+                className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <i className="fas fa-users mr-2"></i> Utenti
+              </button>
             )}
           </>
         )}
@@ -902,13 +912,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-building text-orange-500"></i> Gestione Società (TAV)
             </h2>
-            <button 
-              onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); }}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
-            >
-              <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
-              {showSocietyForm ? 'Chiudi' : 'Nuova Società'}
-            </button>
+            {currentUser?.role === 'admin' && (
+              <button 
+                onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); }}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
+              >
+                <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
+                {showSocietyForm ? 'Chiudi' : 'Nuova Società'}
+              </button>
+            )}
           </div>
 
           {showSocietyForm && (
@@ -917,7 +929,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
-                  <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
@@ -969,12 +981,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </form>
           )}
 
+          {/* Society Search */}
+          <div className="mb-6">
+            <div className="relative">
+              <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+              <input 
+                type="text" 
+                placeholder="Cerca società per nome, città o regione..." 
+                value={societySearch}
+                onChange={(e) => setSocietySearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {societies.map(soc => (
+            {filteredSocieties.map(soc => (
               <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative group">
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                  <button onClick={() => handleEditSociety(soc)} className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><i className="fas fa-edit text-xs"></i></button>
-                  <button onClick={() => handleDeleteSociety(soc.id)} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"><i className="fas fa-trash-alt text-xs"></i></button>
+                  {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === soc.name)) && (
+                    <button onClick={() => handleEditSociety(soc)} className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><i className="fas fa-edit text-xs"></i></button>
+                  )}
+                  {currentUser?.role === 'admin' && (
+                    <button onClick={() => handleDeleteSociety(soc.id)} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"><i className="fas fa-trash-alt text-xs"></i></button>
+                  )}
                 </div>
                 <h3 className="text-lg font-black text-white mb-2">{soc.name}</h3>
                 <div className="space-y-1 text-xs text-slate-400">
@@ -987,9 +1017,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
             ))}
-            {societies.length === 0 && (
+            {filteredSocieties.length === 0 && (
               <div className="col-span-full py-12 text-center text-slate-600 italic text-sm">
-                Nessuna società inserita.
+                Nessuna società trovata.
               </div>
             )}
           </div>

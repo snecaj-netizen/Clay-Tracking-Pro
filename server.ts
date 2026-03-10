@@ -547,9 +547,19 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
   }
 });
 
-app.put('/api/admin/societies/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name } = req.body;
   try {
+    if (req.user.role === 'society') {
+      const { rows } = await pool.query("SELECT name FROM societies WHERE id = $1", [req.params.id]);
+      if (rows.length === 0 || rows[0].name !== req.user.society) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      if (name !== req.user.society) {
+        return res.status(403).json({ error: 'Cannot change society name' });
+      }
+    }
+
     await pool.query(
       "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10 WHERE id = $11",
       [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, req.params.id]
