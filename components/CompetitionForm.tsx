@@ -7,6 +7,7 @@ interface CompetitionFormProps {
   initialData?: Competition;
   knownLocations?: string[];
   availableCartridges: Cartridge[];
+  societies: any[];
   onSubmit: (comp: Competition) => void;
   onCancel: () => void;
 }
@@ -20,7 +21,7 @@ const WEATHER_OPTIONS = [
   { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
 ];
 
-const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLocations = [], availableCartridges = [], onSubmit, onCancel }) => {
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLocations = [], availableCartridges = [], societies = [], onSubmit, onCancel }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [location, setLocation] = useState(initialData?.location || '');
   const [discipline, setDiscipline] = useState<Discipline>(initialData?.discipline === Discipline.TRAINING ? Discipline.CK : (initialData?.discipline || Discipline.CK));
@@ -368,8 +369,20 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLoc
 
         <div className="space-y-2 md:col-span-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Campo / TAV</label>
-          <input type="text" list="location-suggestions" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-          <datalist id="location-suggestions">{knownLocations.map(loc => <option key={loc} value={loc} />)}</datalist>
+          <div className="relative">
+            <select 
+              value={location} 
+              onChange={(e) => setLocation(e.target.value)} 
+              className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none"
+            >
+              <option value="">Seleziona Campo / TAV...</option>
+              {societies.map(soc => <option key={soc.id} value={soc.name}>{soc.name}</option>)}
+              {knownLocations.filter(loc => !societies.some(s => s.name === loc)).map(loc => <option key={loc} value={loc}>{loc}</option>)}
+              {!societies.some(s => s.name === location) && !knownLocations.includes(location) && location && <option value={location}>{location}</option>}
+            </select>
+            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+          </div>
+          <p className="text-[10px] text-slate-500 italic">Se il campo non è in elenco, chiedi all'amministratore di aggiungerlo.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">

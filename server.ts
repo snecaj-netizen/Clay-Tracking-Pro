@@ -127,6 +127,22 @@ const initDB = async () => {
     }
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS societies (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        address TEXT,
+        city TEXT,
+        region TEXT,
+        zip_code TEXT,
+        phone TEXT,
+        mobile TEXT,
+        website TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
         team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -480,6 +496,51 @@ app.get('/api/admin/export-all', authenticateToken, requireAdmin, async (req, re
   }
 });
 
+// Societies Routes
+app.get('/api/societies', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM societies ORDER BY name ASC");
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, res) => {
+  const { name, email, address, city, region, zip_code, phone, mobile, website } = req.body;
+  try {
+    const { rows } = await pool.query(
+      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+      [name, email, address, city, region, zip_code, phone, mobile, website]
+    );
+    res.json(rows[0]);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/societies/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { name, email, address, city, region, zip_code, phone, mobile, website } = req.body;
+  try {
+    await pool.query(
+      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9 WHERE id = $10",
+      [name, email, address, city, region, zip_code, phone, mobile, website, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/societies/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM societies WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Teams Routes
 app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
@@ -507,11 +568,11 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
 });
 
 app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, size, memberIds, competition_name, discipline } = req.body;
+  const { name, size, memberIds, competition_name, discipline, society: bodySociety } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const society = req.user.role === 'society' ? req.user.society : null;
+    const society = req.user.role === 'society' ? req.user.society : bodySociety;
     const { rows } = await client.query(
       "INSERT INTO teams (name, size, society, competition_name, discipline, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
       [name, size, society, competition_name, discipline, req.user.id]
@@ -537,7 +598,7 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
 
 app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { id } = req.params;
-  const { name, size, memberIds, competition_name, discipline } = req.body;
+  const { name, size, memberIds, competition_name, discipline, society: bodySociety } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -551,9 +612,11 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
       }
     }
 
+    const society = req.user.role === 'society' ? req.user.society : bodySociety;
+
     await client.query(
-      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4 WHERE id = $5",
-      [name, size, competition_name, discipline, id]
+      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4, society = $5 WHERE id = $6",
+      [name, size, competition_name, discipline, society, id]
     );
 
     // Update members

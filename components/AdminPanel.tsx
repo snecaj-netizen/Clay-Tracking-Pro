@@ -26,15 +26,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results'>('results');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies'>('results');
   const [showUserForm, setShowUserForm] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
+  const [societies, setSocieties] = useState<any[]>([]);
   const [loading, setLoading] = useState(currentUser?.role === 'admin' || currentUser?.role === 'society');
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
+  
+  // Society Form State
+  const [showSocietyForm, setShowSocietyForm] = useState(false);
+  const [editingSociety, setEditingSociety] = useState<any>(null);
+  const [socName, setSocName] = useState('');
+  const [socEmail, setSocEmail] = useState('');
+  const [socAddress, setSocAddress] = useState('');
+  const [socCity, setSocCity] = useState('');
+  const [socRegion, setSocRegion] = useState('');
+  const [socZip, setSocZip] = useState('');
+  const [socPhone, setSocPhone] = useState('');
+  const [socMobile, setSocMobile] = useState('');
+  const [socWebsite, setSocWebsite] = useState('');
   
   // Team Creation State
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -42,6 +56,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newTeamSize, setNewTeamSize] = useState<3 | 6>(3);
   const [newTeamCompetitionName, setNewTeamCompetitionName] = useState('');
   const [newTeamDiscipline, setNewTeamDiscipline] = useState('');
+  const [newTeamSociety, setNewTeamSociety] = useState('');
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   
@@ -118,6 +133,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
+  const fetchSocieties = async () => {
+    try {
+      const res = await fetch('/api/societies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch societies');
+      const data = await res.json();
+      setSocieties(data);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const fetchUsers = async () => {
     if (currentUser?.role !== 'admin') return;
     try {
@@ -177,7 +205,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
       setLoading(true);
-      const promises = [fetchTeamStats(), fetchAllResults(), fetchTeams()];
+      const promises = [fetchTeamStats(), fetchAllResults(), fetchTeams(), fetchSocieties()];
       if (currentUser?.role === 'admin') promises.push(fetchUsers());
       Promise.all(promises).finally(() => setLoading(false));
     }
@@ -238,6 +266,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           size: newTeamSize,
           competition_name: newTeamCompetitionName,
           discipline: newTeamDiscipline,
+          society: newTeamSociety,
           memberIds: selectedShooterIds
         }),
       });
@@ -247,6 +276,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewTeamName('');
       setNewTeamCompetitionName('');
       setNewTeamDiscipline('');
+      setNewTeamSociety('');
       setSelectedShooterIds([]);
       setShowTeamForm(false);
       setEditingTeam(null);
@@ -262,6 +292,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewTeamSize(team.size as 3 | 6);
     setNewTeamCompetitionName(team.competition_name || '');
     setNewTeamDiscipline(team.discipline || '');
+    setNewTeamSociety(team.society || '');
     setSelectedShooterIds(team.members ? team.members.map((m: any) => m.id) : []);
     setShowTeamForm(true);
   };
@@ -278,6 +309,78 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           });
           if (res.ok) fetchTeams();
           else throw new Error('Errore durante l\'eliminazione');
+        } catch (err: any) {
+          setError(err.message);
+        }
+      }
+    );
+  };
+
+  const handleSocietySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const endpoint = editingSociety ? `/api/admin/societies/${editingSociety.id}` : '/api/admin/societies';
+    const method = editingSociety ? 'PUT' : 'POST';
+    const body = { 
+      name: socName, 
+      email: socEmail, 
+      address: socAddress, 
+      city: socCity, 
+      region: socRegion, 
+      zip_code: socZip, 
+      phone: socPhone, 
+      mobile: socMobile, 
+      website: socWebsite 
+    };
+
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error('Errore durante il salvataggio della società');
+      
+      setEditingSociety(null);
+      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite('');
+      setShowSocietyForm(false);
+      fetchSocieties();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleEditSociety = (soc: any) => {
+    setEditingSociety(soc);
+    setSocName(soc.name);
+    setSocEmail(soc.email);
+    setSocAddress(soc.address || '');
+    setSocCity(soc.city || '');
+    setSocRegion(soc.region || '');
+    setSocZip(soc.zip_code || '');
+    setSocPhone(soc.phone || '');
+    setSocMobile(soc.mobile || '');
+    setSocWebsite(soc.website || '');
+    setShowSocietyForm(true);
+  };
+
+  const handleDeleteSociety = async (id: number) => {
+    triggerConfirm(
+      'Elimina Società',
+      'Sei sicuro di voler eliminare questa società? L\'azione è irreversibile.',
+      async () => {
+        try {
+          const res = await fetch(`/api/admin/societies/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+          fetchSocieties();
         } catch (err: any) {
           setError(err.message);
         }
@@ -405,12 +508,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <i className="fas fa-trophy mr-2"></i> Squadre
             </button>
             {currentUser?.role === 'admin' && (
-              <button 
-                onClick={() => setActiveTab('users')}
-                className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                <i className="fas fa-users mr-2"></i> Utenti
-              </button>
+              <>
+                <button 
+                  onClick={() => setActiveTab('users')}
+                  className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <i className="fas fa-users mr-2"></i> Utenti
+                </button>
+                <button 
+                  onClick={() => setActiveTab('societies')}
+                  className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'societies' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <i className="fas fa-building mr-2"></i> Società
+                </button>
+              </>
             )}
           </>
         )}
@@ -476,7 +587,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                <input type="text" value={profileSociety} onChange={e => setProfileSociety(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <div className="relative">
+                  <select 
+                    value={profileSociety} 
+                    onChange={e => setProfileSociety(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Seleziona...</option>
+                    {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    {!societies.some(s => s.name === profileSociety) && profileSociety && <option value={profileSociety}>{profileSociety}</option>}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
@@ -560,6 +682,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <option value="Sporting (SP)">Sporting (SP)</option>
                       <option value="English Sporting (ES)">English Sporting (ES)</option>
                       <option value="Club Cup (PC)">Club Cup (PC)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
+                    <select 
+                      value={newTeamSociety} 
+                      onChange={e => setNewTeamSociety(e.target.value)} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">Seleziona...</option>
+                      {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -733,6 +866,99 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      ) : activeTab === 'societies' ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+              <i className="fas fa-building text-orange-500"></i> Gestione Società (TAV)
+            </h2>
+            <button 
+              onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); }}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
+            >
+              <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
+              {showSocietyForm ? 'Chiudi' : 'Nuova Società'}
+            </button>
+          </div>
+
+          {showSocietyForm && (
+            <form onSubmit={handleSocietySubmit} className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300 space-y-4">
+              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingSociety ? 'Modifica Società' : 'Nuova Società'}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
+                  <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail (Obbligatorio)</label>
+                  <input type="email" required value={socEmail} onChange={e => setSocEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
+                  <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
+                  <input type="text" value={socAddress} onChange={e => setSocAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Città</label>
+                    <input type="text" value={socCity} onChange={e => setSocCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Regione</label>
+                    <input type="text" value={socRegion} onChange={e => setSocRegion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CAP</label>
+                    <input type="text" value={socZip} onChange={e => setSocZip(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono Fisso</label>
+                  <input type="tel" value={socPhone} onChange={e => setSocPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
+                  <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
+                  {editingSociety ? 'Salva Modifiche' : 'Crea Società'}
+                </button>
+                <button type="button" onClick={() => setShowSocietyForm(false)} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
+                  Annulla
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {societies.map(soc => (
+              <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative group">
+                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button onClick={() => handleEditSociety(soc)} className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><i className="fas fa-edit text-xs"></i></button>
+                  <button onClick={() => handleDeleteSociety(soc.id)} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"><i className="fas fa-trash-alt text-xs"></i></button>
+                </div>
+                <h3 className="text-lg font-black text-white mb-2">{soc.name}</h3>
+                <div className="space-y-1 text-xs text-slate-400">
+                  <p><i className="fas fa-envelope mr-2 w-4"></i>{soc.email}</p>
+                  {soc.phone && <p><i className="fas fa-phone mr-2 w-4"></i>{soc.phone}</p>}
+                  {soc.mobile && <p><i className="fas fa-mobile-alt mr-2 w-4"></i>{soc.mobile}</p>}
+                  {soc.address && <p><i className="fas fa-map-marker-alt mr-2 w-4"></i>{soc.address}, {soc.city} ({soc.region})</p>}
+                  {soc.website && <p><i className="fas fa-globe mr-2 w-4"></i><a href={soc.website} target="_blank" rel="noreferrer" className="text-orange-500 hover:underline">{soc.website}</a></p>}
+                </div>
+              </div>
+            ))}
+            {societies.length === 0 && (
+              <div className="col-span-full py-12 text-center text-slate-600 italic text-sm">
+                Nessuna società inserita.
+              </div>
+            )}
           </div>
         </div>
       ) : activeTab === 'results' ? (
@@ -947,30 +1173,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                  {isNewSociety ? (
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        value={society} 
-                        onChange={e => setSociety(e.target.value)} 
-                        placeholder="Inserisci nuova società"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-                      />
-                      <button type="button" onClick={() => setIsNewSociety(false)} className="px-3 bg-slate-800 rounded-xl text-slate-400 hover:text-white"><i className="fas fa-times"></i></button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <select 
-                        value={society} 
-                        onChange={e => setSociety(e.target.value)} 
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                      >
-                        <option value="">Seleziona...</option>
-                        {filterOptions.societies.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <button type="button" onClick={() => setIsNewSociety(true)} className="px-3 bg-slate-800 rounded-xl text-slate-400 hover:text-white" title="Aggiungi nuova"><i className="fas fa-plus"></i></button>
-                    </div>
-                  )}
+                  <select 
+                    value={society} 
+                    onChange={e => setSociety(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Seleziona...</option>
+                    {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>

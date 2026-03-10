@@ -18,6 +18,7 @@ const App: React.FC = () => {
   
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
+  const [societies, setSocieties] = useState<any[]>([]);
   const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
@@ -47,13 +48,15 @@ const App: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
-      const [compsRes, cartsRes] = await Promise.all([
+      const [compsRes, cartsRes, socsRes] = await Promise.all([
         fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (compsRes.ok) setCompetitions(await compsRes.json());
       if (cartsRes.ok) setCartridges(await cartsRes.json());
+      if (socsRes.ok) setSocieties(await socsRes.json());
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
@@ -242,6 +245,7 @@ const App: React.FC = () => {
               }}
               initialData={editingCompetition || undefined}
               availableCartridges={cartridges}
+              societies={societies}
               knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
             />
           </div>
