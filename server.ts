@@ -13,6 +13,8 @@ const __dirname = path.dirname(__filename);
 
 import nodemailer from 'nodemailer';
 
+import { createServer as createViteServer } from 'vite';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -291,15 +293,6 @@ app.post('/api/auth/recover', async (req, res) => {
 
     // Always return success to prevent email enumeration
     res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/societies', async (req, res) => {
-  try {
-    const { rows } = await pool.query("SELECT DISTINCT society FROM users WHERE society IS NOT NULL AND society != ''");
-    res.json(rows.map(r => r.society));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -830,6 +823,41 @@ app.post('/api/cartridges', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.post('/api/cartridges/bulk', authenticateToken, async (req: any, res) => {
+  const cartridges = req.body;
+  if (!Array.isArray(cartridges)) {
+    return res.status(400).json({ error: 'Body must be an array of cartridges' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const c of cartridges) {
+      await client.query(
+        `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, quantity, initialquantity, cost, armory, imageurl) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (id) DO UPDATE SET 
+         purchasedate = EXCLUDED.purchasedate,
+         producer = EXCLUDED.producer,
+         model = EXCLUDED.model,
+         leadnumber = EXCLUDED.leadnumber,
+         quantity = EXCLUDED.quantity,
+         initialquantity = EXCLUDED.initialquantity,
+         cost = EXCLUDED.cost,
+         armory = EXCLUDED.armory,
+         imageurl = EXCLUDED.imageurl`,
+        [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.put('/api/cartridges/:id', authenticateToken, async (req: any, res) => {
   const c = req.body;
   try {
@@ -913,7 +941,6 @@ async function setupVite(app: any) {
 
   if (!isProd) {
     try {
-      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",

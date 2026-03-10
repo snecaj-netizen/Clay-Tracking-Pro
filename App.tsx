@@ -14,7 +14,14 @@ import ConfirmModal from './components/ConfirmModal';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
-  const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('auth_user') || 'null'));
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
@@ -177,6 +184,25 @@ const App: React.FC = () => {
     }
   };
 
+  const updateAllCartridges = async (carts: Cartridge[]) => {
+    try {
+      const res = await fetch('/api/cartridges/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(carts)
+      });
+      if (res.ok) {
+        setCartridges(carts);
+      } else {
+        const errorData = await res.json();
+        alert(`Errore nell'aggiornamento massivo: ${errorData.error || res.statusText}`);
+      }
+    } catch (err) {
+      console.error('Error bulk updating cartridges:', err);
+      alert('Errore di rete nell\'aggiornamento massivo.');
+    }
+  };
+
   const handleImport = async (data: any) => {
     triggerConfirm(
       'Importazione Dati',
@@ -272,9 +298,7 @@ const App: React.FC = () => {
               cartridges={cartridges}
               onSave={saveCartridge}
               onDelete={deleteCartridge}
-              onUpdateAll={(carts) => {
-                carts.forEach(c => saveCartridge(c));
-              }}
+              onUpdateAll={updateAllCartridges}
               triggerConfirm={triggerConfirm}
             />
           </div>

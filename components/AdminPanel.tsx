@@ -120,7 +120,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [qualification, setQualification] = useState('');
   const [society, setSociety] = useState('');
   const [fitavCard, setFitavCard] = useState('');
-  const [isNewSociety, setIsNewSociety] = useState(false);
 
   // Profile state for current user
   const [profileName, setProfileName] = useState(currentUser?.name || '');
