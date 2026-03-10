@@ -49,6 +49,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socPhone, setSocPhone] = useState('');
   const [socMobile, setSocMobile] = useState('');
   const [socWebsite, setSocWebsite] = useState('');
+  const [socContactName, setSocContactName] = useState('');
   
   // Team Creation State
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -330,7 +331,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       zip_code: socZip, 
       phone: socPhone, 
       mobile: socMobile, 
-      website: socWebsite 
+      website: socWebsite,
+      contact_name: socContactName
     };
 
     try {
@@ -365,6 +367,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSocPhone(soc.phone || '');
     setSocMobile(soc.mobile || '');
     setSocWebsite(soc.website || '');
+    setSocContactName(soc.contact_name || '');
     setShowSocietyForm(true);
   };
 
@@ -874,7 +877,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <i className="fas fa-building text-orange-500"></i> Gestione Società (TAV)
             </h2>
             <button 
-              onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); }}
+              onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); }}
               className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
             >
               <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
@@ -897,6 +900,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
                   <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
+                  <input type="text" value={socContactName} onChange={e => setSocContactName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
@@ -945,6 +952,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <h3 className="text-lg font-black text-white mb-2">{soc.name}</h3>
                 <div className="space-y-1 text-xs text-slate-400">
+                  {soc.contact_name && <p><i className="fas fa-user mr-2 w-4"></i>{soc.contact_name}</p>}
                   <p><i className="fas fa-envelope mr-2 w-4"></i>{soc.email}</p>
                   {soc.phone && <p><i className="fas fa-phone mr-2 w-4"></i>{soc.phone}</p>}
                   {soc.mobile && <p><i className="fas fa-mobile-alt mr-2 w-4"></i>{soc.mobile}</p>}

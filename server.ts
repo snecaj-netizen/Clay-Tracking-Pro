@@ -140,9 +140,17 @@ const initDB = async () => {
         phone TEXT,
         mobile TEXT,
         website TEXT,
+        contact_name TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Add columns if they don't exist (for existing databases)
+    try {
+      await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS contact_name TEXT");
+    } catch (e) {
+      console.log("Column contact_name might already exist or error adding it:", e);
+    }
 
     try {
       await pool.query("ALTER TABLE societies ALTER COLUMN email DROP NOT NULL");
@@ -527,11 +535,11 @@ app.get('/api/societies', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website } = req.body;
+  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name } = req.body;
   try {
     const { rows } = await pool.query(
-      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website]
+      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website, contact_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name]
     );
     res.json(rows[0]);
   } catch (err: any) {
@@ -540,11 +548,11 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
 });
 
 app.put('/api/admin/societies/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website } = req.body;
+  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name } = req.body;
   try {
     await pool.query(
-      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9 WHERE id = $10",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, req.params.id]
+      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10 WHERE id = $11",
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, req.params.id]
     );
     res.json({ success: true });
   } catch (err: any) {
