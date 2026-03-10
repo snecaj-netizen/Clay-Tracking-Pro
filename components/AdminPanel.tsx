@@ -276,7 +276,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewTeamName('');
       setNewTeamCompetitionName('');
       setNewTeamDiscipline('');
-      setNewTeamSociety('');
+      if (currentUser?.role === 'society' && currentUser?.society) {
+        setNewTeamSociety(currentUser.society);
+      } else {
+        setNewTeamSociety('');
+      }
       setSelectedShooterIds([]);
       setShowTeamForm(false);
       setEditingTeam(null);
@@ -640,7 +644,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <i className="fas fa-users text-orange-500"></i> Gestione Squadre
               </h2>
               <button 
-                onClick={() => setShowTeamForm(!showTeamForm)}
+                onClick={() => {
+                  setShowTeamForm(!showTeamForm);
+                  if (!showTeamForm && currentUser?.role === 'society' && currentUser?.society) {
+                    setNewTeamSociety(currentUser.society);
+                  } else if (!showTeamForm) {
+                    setNewTeamSociety('');
+                  }
+                }}
                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showTeamForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
               >
                 <i className={`fas ${showTeamForm ? 'fa-times' : 'fa-plus'}`}></i>
@@ -691,7 +702,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <select 
                       value={newTeamSociety} 
                       onChange={e => setNewTeamSociety(e.target.value)} 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                      disabled={currentUser?.role === 'society'}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <option value="">Seleziona...</option>
                       {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -754,6 +766,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         setNewTeamName('');
                         setNewTeamCompetitionName('');
                         setNewTeamDiscipline('');
+                        if (currentUser?.role === 'society' && currentUser?.society) {
+                          setNewTeamSociety(currentUser.society);
+                        } else {
+                          setNewTeamSociety('');
+                        }
                         setSelectedShooterIds([]);
                         setShowTeamForm(false);
                       }}
@@ -788,10 +805,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span className="text-[9px] font-black bg-orange-600/20 text-orange-500 px-2 py-0.5 rounded uppercase mr-2">
                       {team.size} Tiratori
                     </span>
-                    {(team.competition_name || team.discipline) && (
-                      <span className="text-[9px] font-black bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded uppercase">
-                        {team.discipline}
-                      </span>
+                    {(team.competition_name || team.discipline || team.society) && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {team.discipline && (
+                          <span className="text-[9px] font-black bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded uppercase">
+                            {team.discipline}
+                          </span>
+                        )}
+                        {team.society && (
+                          <span className="text-[9px] font-black bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded uppercase">
+                            <i className="fas fa-building mr-1"></i> {team.society}
+                          </span>
+                        )}
+                      </div>
                     )}
                     <h4 className="text-lg font-black text-white mt-1">{team.name}</h4>
                     {team.competition_name && (
