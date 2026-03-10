@@ -587,11 +587,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
@@ -607,7 +607,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select 
                     value={profileSociety} 
                     onChange={e => setProfileSociety(e.target.value)} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    disabled={currentUser?.role === 'society'}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value="">Seleziona...</option>
                     {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -616,29 +617,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
-                <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
-                <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                  <option value="">Seleziona...</option>
-                  <option value="Eccellenza">Eccellenza</option>
-                  <option value="1*">1*</option>
-                  <option value="2*">2*</option>
-                  <option value="3*">3*</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
-                <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                  <option value="">Seleziona...</option>
-                  <option value="Veterani">Veterani</option>
-                  <option value="Master">Master</option>
-                  <option value="Senior">Senior</option>
-                </select>
-              </div>
+              {currentUser?.role !== 'society' && (
+                <>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
+                    <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
+                    <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                      <option value="">Seleziona...</option>
+                      <option value="Eccellenza">Eccellenza</option>
+                      <option value="1*">1*</option>
+                      <option value="2*">2*</option>
+                      <option value="3*">3*</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
+                    <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                      <option value="">Seleziona...</option>
+                      <option value="Veterani">Veterani</option>
+                      <option value="Master">Master</option>
+                      <option value="Senior">Senior</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
             <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-8 rounded-xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-600/20">
               Aggiorna Profilo
