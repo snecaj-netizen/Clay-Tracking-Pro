@@ -129,8 +129,8 @@ const initDB = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS societies (
         id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
+        name TEXT NOT NULL UNIQUE,
+        email TEXT,
         address TEXT,
         city TEXT,
         region TEXT,
@@ -141,6 +141,33 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    try {
+      await pool.query("ALTER TABLE societies ALTER COLUMN email DROP NOT NULL");
+      await pool.query("ALTER TABLE societies ADD CONSTRAINT societies_name_key UNIQUE (name)");
+    } catch (e) {
+      // Ignore if constraint already exists
+    }
+
+    // Migrate existing societies from users and teams
+    try {
+      await pool.query(`
+        INSERT INTO societies (name, email)
+        SELECT DISTINCT society, ''
+        FROM users
+        WHERE society IS NOT NULL AND society != ''
+        ON CONFLICT (name) DO NOTHING;
+      `);
+      await pool.query(`
+        INSERT INTO societies (name, email)
+        SELECT DISTINCT society, ''
+        FROM teams
+        WHERE society IS NOT NULL AND society != ''
+        ON CONFLICT (name) DO NOTHING;
+      `);
+    } catch (e) {
+      console.log("Error migrating societies:", e);
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
@@ -511,7 +538,7 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
   try {
     const { rows } = await pool.query(
       "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
-      [name, email, address, city, region, zip_code, phone, mobile, website]
+      [name, email || null, address, city, region, zip_code, phone, mobile, website]
     );
     res.json(rows[0]);
   } catch (err: any) {
@@ -524,7 +551,7 @@ app.put('/api/admin/societies/:id', authenticateToken, requireAdmin, async (req,
   try {
     await pool.query(
       "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9 WHERE id = $10",
-      [name, email, address, city, region, zip_code, phone, mobile, website, req.params.id]
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, req.params.id]
     );
     res.json({ success: true });
   } catch (err: any) {
