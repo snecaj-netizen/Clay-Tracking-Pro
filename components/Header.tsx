@@ -95,12 +95,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             )}
 
             {/* Kebab Menu Button (Mobile Only) */}
-            <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="sm:hidden w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-orange-500 transition-all active:scale-95"
-            >
-              <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-ellipsis-v'}`}></i>
-            </button>
+            {user?.role !== 'society' && (
+              <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="sm:hidden w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-orange-500 transition-all active:scale-95"
+              >
+                <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-ellipsis-v'}`}></i>
+              </button>
+            )}
           </div>
         </div>
 
