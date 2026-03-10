@@ -38,6 +38,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
   
   // Society Form State
   const [showSocietyForm, setShowSocietyForm] = useState(false);
@@ -599,7 +600,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
-                <input type="password" value={profilePassword} onChange={e => setProfilePassword(e.target.value)} placeholder="Lascia vuoto per non cambiare" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <div className="relative">
+                  <input 
+                    type={showProfilePassword ? "text" : "password"} 
+                    value={profilePassword} 
+                    onChange={e => setProfilePassword(e.target.value)} 
+                    placeholder="Lascia vuoto per non cambiare" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowProfilePassword(!showProfilePassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <i className={`fas ${showProfilePassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>

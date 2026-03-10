@@ -5,9 +5,9 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
-  const [isRecovering, setIsRecovering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,25 +17,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     setError('');
     setSuccessMsg('');
     setLoading(true);
-
-    if (isRecovering) {
-      try {
-        const res = await fetch('/api/auth/recover', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Errore durante il recupero');
-        setSuccessMsg('Se l\'email è registrata, riceverai una nuova password a breve.');
-        setIsRecovering(false);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -55,6 +36,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     }
   };
 
+  const handleForgotPassword = () => {
+    setError("Contatta l'amministratore del sistema");
+    setSuccessMsg('');
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl">
@@ -63,7 +49,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <i className="fas fa-crosshairs text-3xl text-white"></i>
           </div>
           <h1 className="text-2xl font-black text-white uppercase tracking-tight">Clay Tracker Pro</h1>
-          <p className="text-slate-500 text-sm mt-2">{isRecovering ? 'Recupera la tua password' : 'Accedi al tuo account'}</p>
+          <p className="text-slate-500 text-sm mt-2">Accedi al tuo account</p>
         </div>
 
         {error && (
@@ -83,22 +69,35 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
           </div>
           
-          {!isRecovering && (
-            <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
             </div>
-          )}
+          </div>
 
           <button type="submit" disabled={loading} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 mt-4 flex items-center justify-center gap-2">
-            {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${isRecovering ? 'fa-envelope' : 'fa-sign-in-alt'}`}></i>}
-            {isRecovering ? 'INVIA PASSWORD' : 'ACCEDI'}
+            {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-in-alt"></i>}
+            ACCEDI
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <button type="button" onClick={() => { setIsRecovering(!isRecovering); setError(''); setSuccessMsg(''); }} className="text-slate-400 hover:text-white text-xs transition-colors">
-            {isRecovering ? 'Torna al Login' : 'Hai dimenticato la password? Recuperala'}
+          <button type="button" onClick={handleForgotPassword} className="text-slate-400 hover:text-white text-xs transition-colors">
+            Hai dimenticato la password?
           </button>
         </div>
       </div>

@@ -262,55 +262,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/recover', async (req, res) => {
-  const { email } = req.body;
-  try {
-    const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    const user = rows[0];
-    
-    if (user) {
-      // Generate a new random password
-      const newPassword = Math.random().toString(36).slice(-8);
-      const salt = bcrypt.genSaltSync(10);
-      const hash = bcrypt.hashSync(newPassword, salt);
-      
-      // Update password in DB
-      await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hash, user.id]);
-
-      // Send email (using a dummy configuration or logging for now)
-      // In a real scenario, configure SMTP settings here
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        auth: {
-          user: process.env.SMTP_USER || 'dummy',
-          pass: process.env.SMTP_PASS || 'dummy'
-        }
-      });
-
-      const mailOptions = {
-        from: '"Clay Tracker Pro" <noreply@claytracker.pro>',
-        to: email,
-        subject: 'Recupero Password - Clay Tracker Pro',
-        text: `Ciao ${user.name},\n\nLa tua nuova password temporanea è: ${newPassword}\n\nTi consigliamo di cambiarla al primo accesso.\n\nSaluti,\nIl team di Clay Tracker Pro`
-      };
-
-      try {
-        // Attempt to send email, but don't fail if SMTP is not configured
-        await transporter.sendMail(mailOptions);
-        console.log(`Password recovery email sent to ${email} with password: ${newPassword}`);
-      } catch (emailErr) {
-        console.log(`Failed to send email to ${email}. SMTP might not be configured. New password is: ${newPassword}`);
-      }
-    }
-
-    // Always return success to prevent email enumeration
-    res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // User Profile Routes
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { name, surname, email, password, category, qualification, society, fitav_card } = req.body;
