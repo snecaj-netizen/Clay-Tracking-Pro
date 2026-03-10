@@ -196,6 +196,11 @@ const initDB = async () => {
         "INSERT INTO users (name, surname, email, password, role) VALUES ($1, $2, $3, $4, $5)",
         ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin']
       );
+    } else {
+      // Force reset admin password to 'admin'
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync('admin', salt);
+      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
     }
     console.log('Connected to PostgreSQL database and initialized tables.');
   } catch (err) {
