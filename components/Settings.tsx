@@ -118,7 +118,7 @@ const Settings: React.FC<SettingsProps> = ({
         </p>
       </section>
 
-      {user?.role !== 'user' && (
+      {user?.role === 'admin' && (
         <>
           {!isUnlocked ? (
             <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl text-center animate-in fade-in slide-in-from-bottom-4 duration-500">

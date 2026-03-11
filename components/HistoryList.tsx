@@ -475,7 +475,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                         <div className="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                           {user?.role !== 'society' && (
                             <>
-                              <button onClick={() => onEdit(comp)} className="w-7 h-7 rounded-md bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
+                              <button onClick={() => onEdit(comp)} className="w-7 h-7 rounded-md bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
                               <button onClick={() => triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id))} className="w-7 h-7 rounded-md bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash-alt text-[10px]"></i></button>
                             </>
                           )}

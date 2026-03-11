@@ -821,7 +821,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <button 
                       onClick={() => handleEditTeam(team)}
-                      className="w-8 h-8 rounded-lg bg-orange-950/30 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white"
+                      className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
                     >
                       <i className="fas fa-edit text-xs"></i>
                     </button>
@@ -1018,16 +1018,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredSocieties.map(soc => (
-              <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative group">
-                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+              <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative">
+                <div className="absolute top-3 right-3 flex gap-2 transition-all">
                   {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === soc.name)) && (
-                    <button onClick={() => handleEditSociety(soc)} className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><i className="fas fa-edit text-xs"></i></button>
+                    <button onClick={() => handleEditSociety(soc)} className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white shadow-sm transition-all"><i className="fas fa-edit text-sm"></i></button>
                   )}
                   {currentUser?.role === 'admin' && (
-                    <button onClick={() => handleDeleteSociety(soc.id)} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"><i className="fas fa-trash-alt text-xs"></i></button>
+                    <button onClick={() => handleDeleteSociety(soc.id)} className="w-10 h-10 rounded-xl bg-red-950/40 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white shadow-sm"><i className="fas fa-trash-alt text-sm"></i></button>
                   )}
                 </div>
-                <h3 className="text-lg font-black text-white mb-2">{soc.name}</h3>
+                <h3 className="text-lg font-black text-white mb-2 pr-24">{soc.name}</h3>
                 <div className="space-y-1 text-xs text-slate-400">
                   {soc.contact_name && <p><i className="fas fa-user mr-2 w-4"></i>{soc.contact_name}</p>}
                   <p><i className="fas fa-envelope mr-2 w-4"></i>{soc.email}</p>
@@ -1309,7 +1309,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 flex justify-end gap-2">
-                      <button onClick={() => { editUser(u); setShowUserForm(true); }} className="w-8 h-8 rounded-lg bg-blue-900/30 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"><i className="fas fa-edit text-xs"></i></button>
+                      <button onClick={() => { editUser(u); setShowUserForm(true); }} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-xs"></i></button>
                       <button onClick={() => handleDelete(u.id)} disabled={u.email === 'snecaj@gmail.com'} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all disabled:opacity-30"><i className="fas fa-trash-alt text-xs"></i></button>
                     </td>
                   </tr>

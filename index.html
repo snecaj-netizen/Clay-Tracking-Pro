@@ -67,6 +67,9 @@
         html.light-theme .bg-emerald-600 .text-white,
         html.light-theme .bg-blue-600 .text-white { color: #ffffff !important; }
         
+        /* Ensure hover:text-white works even when text color is overridden */
+        html.light-theme .hover\:text-white:hover { color: #ffffff !important; }
+        
         /* Keep floating add button orange and white in light mode */
         html.light-theme .floating-add-btn { color: #ffffff !important; border-color: #f8fafc !important; }
         html.light-theme .floating-add-btn i { color: #ffffff !important; }
