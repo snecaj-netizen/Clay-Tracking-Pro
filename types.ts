@@ -91,6 +91,22 @@ export interface User {
   is_logged_in?: boolean;
 }
 
+export interface SocietyEvent {
+  id: string;
+  name: string;
+  type: string; // Regionale, Nazionale, Internazionale
+  visibility: string; // Gara di Società, Gara Pubblica
+  discipline: string;
+  location: string;
+  targets: number;
+  start_date: string;
+  end_date: string;
+  cost?: string;
+  notes?: string;
+  poster_url?: string;
+  created_by?: number;
+}
+
 export interface AppData {
   competitions: Competition[];
   cartridges: Cartridge[];

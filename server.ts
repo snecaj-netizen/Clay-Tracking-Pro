@@ -180,6 +180,25 @@ const initDB = async () => {
     }
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        visibility TEXT NOT NULL,
+        discipline TEXT NOT NULL,
+        location TEXT NOT NULL,
+        targets INTEGER NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        cost TEXT,
+        notes TEXT,
+        poster_url TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
         team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -652,6 +671,99 @@ app.delete('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (re
     }
     await pool.query("DELETE FROM teams WHERE id = $1", [id]);
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Events Routes
+app.get('/api/events', authenticateToken, async (req: any, res) => {
+  try {
+    let query = "SELECT * FROM events";
+    let params: any[] = [];
+
+    if (req.user.role === 'admin') {
+      // Admin sees all
+    } else if (req.user.role === 'society') {
+      // Society sees their own and public
+      query += " WHERE location = $1 OR visibility = 'Pubblica'";
+      params.push(req.user.society);
+    } else {
+      // User sees their society's and public
+      query += " WHERE location = $1 OR visibility = 'Pubblica'";
+      params.push(req.user.society || '');
+    }
+
+    query += " ORDER BY start_date DESC";
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/events', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'society') {
+    return res.status(403).json({ error: 'Non autorizzato' });
+  }
+
+  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url } = req.body;
+  
+  try {
+    await pool.query(
+      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, req.user.id]
+    );
+    res.status(201).json({ message: 'Evento creato' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'society') {
+    return res.status(403).json({ error: 'Non autorizzato' });
+  }
+
+  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url } = req.body;
+  
+  try {
+    // Check ownership if not admin
+    if (req.user.role === 'society') {
+      const { rows } = await pool.query("SELECT location FROM events WHERE id = $1", [req.params.id]);
+      if (rows.length === 0 || rows[0].location !== req.user.society) {
+        return res.status(403).json({ error: 'Non autorizzato a modificare questo evento' });
+      }
+    }
+
+    await pool.query(
+      `UPDATE events SET name = $1, type = $2, visibility = $3, discipline = $4, location = $5, targets = $6, start_date = $7, end_date = $8, cost = $9, notes = $10, poster_url = $11
+       WHERE id = $12`,
+      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, req.params.id]
+    );
+    res.json({ message: 'Evento aggiornato' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'society') {
+    return res.status(403).json({ error: 'Non autorizzato' });
+  }
+
+  try {
+    // Check ownership if not admin
+    if (req.user.role === 'society') {
+      const { rows } = await pool.query("SELECT location FROM events WHERE id = $1", [req.params.id]);
+      if (rows.length === 0 || rows[0].location !== req.user.society) {
+        return res.status(403).json({ error: 'Non autorizzato a eliminare questo evento' });
+      }
+    }
+
+    await pool.query("DELETE FROM events WHERE id = $1", [req.params.id]);
+    res.json({ message: 'Evento eliminato' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

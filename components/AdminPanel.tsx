@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Settings from './Settings';
+import EventsManager from './EventsManager';
 import { Competition, Cartridge, AppData } from '../types';
 
 interface AdminPanelProps {
@@ -28,7 +29,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm, onEditCompetition, onDeleteCompetition
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies'>(
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events'>(
     currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile'
   );
   const [showUserForm, setShowUserForm] = useState(false);
@@ -513,12 +514,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab Switcher */}
       <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
         {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-          <button 
-            onClick={() => setActiveTab('results')}
-            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            <i className="fas fa-history mr-2"></i> Risultati
-          </button>
+          <>
+            <button 
+              onClick={() => setActiveTab('results')}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-history mr-2"></i> Risultati
+            </button>
+            <button 
+              onClick={() => setActiveTab('events')}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-calendar-alt mr-2"></i> Eventi
+            </button>
+          </>
         )}
         <button 
           onClick={() => setActiveTab('societies')}
@@ -1046,6 +1055,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
           </div>
+        </div>
+      ) : activeTab === 'events' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <EventsManager 
+            user={currentUser} 
+            token={token} 
+            triggerConfirm={triggerConfirm} 
+            societies={societies} 
+          />
         </div>
       ) : activeTab === 'results' ? (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
