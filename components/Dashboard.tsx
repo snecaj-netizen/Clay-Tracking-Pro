@@ -31,9 +31,22 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
     const totalHits = gare.reduce((acc, c) => acc + c.totalScore, 0);
     const totalCompletedSeries = gare.reduce((acc, c) => acc + c.scores.filter(s => s > 0).length, 0);
     const avg = totalCompletedSeries > 0 ? (totalHits / totalCompletedSeries) : 0;
-    const best = Math.max(...gare.map(c => c.totalScore));
     
-    return { count: gare.length, avg, best };
+    const gareWithPosition = gare.filter(c => c.position && c.position > 0);
+    let bestPlacementComp = null;
+    
+    if (gareWithPosition.length > 0) {
+      bestPlacementComp = gareWithPosition.reduce((best, current) => {
+        if (!best) return current;
+        if (current.position! < best.position!) return current;
+        if (current.position === best.position) {
+          return current.totalScore > best.totalScore ? current : best;
+        }
+        return best;
+      }, null as Competition | null);
+    }
+    
+    return { count: gare.length, avg, bestPlacementComp };
   }, [competitions]);
 
   const trainingStats = React.useMemo(() => {
@@ -151,8 +164,25 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
             <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Gara</p>
-            <h3 className="text-3xl font-black text-white">{compStats?.best || 0}</h3>
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
+            {compStats?.bestPlacementComp ? (
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
+                  <span className="text-xs font-bold text-slate-400 uppercase">Posto</span>
+                </div>
+                <div className="mt-1">
+                  <p className="text-[10px] font-bold text-orange-500 uppercase truncate" title={compStats.bestPlacementComp.name}>
+                    {compStats.bestPlacementComp.name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Media: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <h3 className="text-3xl font-black text-slate-700">-</h3>
+            )}
           </div>
         </div>
       </div>

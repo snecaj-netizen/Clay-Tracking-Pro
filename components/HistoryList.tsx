@@ -56,12 +56,46 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
   }, [competitions, filterDiscipline, filterLocation, filterStatus]);
 
   const sortedCompetitions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return [...filteredCompetitions].sort((a, b) => {
+      const startA = new Date(a.date);
+      startA.setHours(0, 0, 0, 0);
+      const endA = a.endDate ? new Date(a.endDate) : startA;
+      endA.setHours(0, 0, 0, 0);
+      const isOngoingA = today >= startA && today <= endA;
+
+      const startB = new Date(b.date);
+      startB.setHours(0, 0, 0, 0);
+      const endB = b.endDate ? new Date(b.endDate) : startB;
+      endB.setHours(0, 0, 0, 0);
+      const isOngoingB = today >= startB && today <= endB;
+
+      if (isOngoingA && !isOngoingB) return -1;
+      if (!isOngoingA && isOngoingB) return 1;
+
       const timeA = new Date(a.date).getTime();
       const timeB = new Date(b.date).getTime();
       return sortOrder === 'DESC' ? timeB - timeA : timeA - timeB;
     });
   }, [filteredCompetitions, sortOrder]);
+
+  const nextUpcomingCompId = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const futureComps = competitions.filter(c => {
+      const start = new Date(c.date);
+      start.setHours(0, 0, 0, 0);
+      return start > today;
+    });
+    
+    if (futureComps.length === 0) return null;
+    
+    futureComps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return futureComps[0].id;
+  }, [competitions]);
 
   // Helper per verificare se una data è compresa in un intervallo
   const isDateInRange = (checkDate: string, comp: Competition) => {
@@ -95,7 +129,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
     if (discipline === Discipline.TRAINING) return 'bg-slate-800 text-slate-400';
     switch (level) {
       case CompetitionLevel.REGIONAL: return 'bg-blue-900/30 text-blue-400';
-      case CompetitionLevel.NATIONAL: return 'bg-purple-900/30 text-purple-400';
+      case CompetitionLevel.NATIONAL: return 'bg-fuchsia-900/30 text-fuchsia-400';
       case CompetitionLevel.INTERNATIONAL: return 'bg-yellow-900/30 text-yellow-500';
       default: return 'bg-slate-800 text-slate-400';
     }
@@ -143,15 +177,47 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
         sortedCompetitions.map((comp) => {
           const compDate = new Date(comp.date);
           compDate.setHours(0, 0, 0, 0);
+          const endDate = comp.endDate ? new Date(comp.endDate) : compDate;
+          endDate.setHours(0, 0, 0, 0);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const isPlanned = compDate >= today && comp.totalScore === 0;
+          
+          const isOngoing = today >= compDate && today <= endDate;
+          const isNextUpcoming = comp.id === nextUpcomingCompId;
+          const isPlanned = compDate > today && comp.totalScore === 0;
+
+          let borderClass = 'border-slate-800';
+          let bgClass = 'bg-slate-900';
+          
+          if (isOngoing) {
+            borderClass = 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]';
+            bgClass = 'bg-orange-950/20';
+          } else if (isNextUpcoming) {
+            borderClass = 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]';
+            bgClass = 'bg-emerald-950/20';
+          } else if (isPlanned) {
+            borderClass = 'border-emerald-500/30';
+            bgClass = 'bg-emerald-500/5';
+          } else if (comp.discipline === Discipline.TRAINING) {
+            borderClass = 'border-blue-900/20';
+          }
+
           return (
-            <div key={comp.id} className={`bg-slate-900 rounded-2xl p-5 border ${isPlanned ? 'border-emerald-500/30 bg-emerald-500/5' : comp.discipline === Discipline.TRAINING ? 'border-blue-900/20' : 'border-slate-800'} hover:border-slate-700 transition-all group relative`}>
+            <div key={comp.id} className={`${bgClass} rounded-2xl p-5 border ${borderClass} hover:border-slate-700 transition-all group relative`}>
               <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    {isPlanned && (
+                    {isOngoing && (
+                      <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm animate-pulse">
+                        IN CORSO
+                      </span>
+                    )}
+                    {isNextUpcoming && !isOngoing && (
+                      <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm">
+                        PROSSIMA GARA
+                      </span>
+                    )}
+                    {isPlanned && !isNextUpcoming && !isOngoing && (
                       <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border border-emerald-500/20">
                         PIANIFICATA
                       </span>
@@ -381,10 +447,28 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
               
               if (events && events.length > 0) {
                 const hasComp = events.some(e => e.discipline !== Discipline.TRAINING);
-                highlightClass = hasComp 
-                  ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
-                  : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
-                glowClass = hasComp ? 'shadow-[0_0_15px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_15px_rgba(59,130,246,0.1)]';
+                const hasOngoing = events.some(e => {
+                  const compDate = new Date(e.date);
+                  compDate.setHours(0, 0, 0, 0);
+                  const endDate = e.endDate ? new Date(e.endDate) : compDate;
+                  endDate.setHours(0, 0, 0, 0);
+                  const todayDate = new Date();
+                  todayDate.setHours(0, 0, 0, 0);
+                  return todayDate >= compDate && todayDate <= endDate;
+                });
+                const hasNextUpcoming = events.some(e => e.id === nextUpcomingCompId);
+
+                if (hasOngoing) {
+                  highlightClass = 'bg-orange-950/40 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.4)] text-orange-500 z-10';
+                  glowClass = 'animate-pulse';
+                } else if (hasNextUpcoming) {
+                  highlightClass = 'bg-emerald-950/40 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] text-emerald-500 z-10';
+                } else {
+                  highlightClass = hasComp 
+                    ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
+                    : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
+                  glowClass = hasComp ? 'shadow-[0_0_15px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_15px_rgba(59,130,246,0.1)]';
+                }
               }
 
               return (
