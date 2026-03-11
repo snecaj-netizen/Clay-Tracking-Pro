@@ -401,19 +401,19 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
               </div>
             </div>
 
-            <div className="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-2xl mb-4 flex items-center justify-between">
-              <div className="flex gap-8">
-                <div>
-                  <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Investimento {filterYear === 'ALL' ? 'Totale' : filterYear}</p>
-                  <p className="text-2xl font-black text-white">€{stats.totalCost.toFixed(2)}</p>
+            <div className="bg-emerald-950/20 border border-emerald-500/20 p-3 sm:p-4 rounded-2xl mb-4 flex items-center justify-between">
+              <div className="flex gap-2 sm:gap-8 flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[8px] sm:text-[10px] text-emerald-500 font-black uppercase tracking-widest leading-tight mb-1">Investimento {filterYear === 'ALL' ? 'Totale' : filterYear}</p>
+                  <p className="text-sm sm:text-2xl font-black text-white break-words">€{stats.totalCost.toFixed(2)}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Cartucce {filterYear === 'ALL' ? 'Acquistate' : filterYear}</p>
-                  <p className="text-2xl font-black text-white">{stats.totalPurchased} <span className="text-xs text-slate-500">Pz</span></p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[8px] sm:text-[10px] text-blue-500 font-black uppercase tracking-widest leading-tight mb-1">Cartucce {filterYear === 'ALL' ? 'Acquistate' : filterYear}</p>
+                  <p className="text-sm sm:text-2xl font-black text-white break-words">{stats.totalPurchased} <span className="text-[10px] sm:text-xs text-slate-500">Pz</span></p>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                <i className="fas fa-euro-sign text-xl"></i>
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0 ml-2">
+                <i className="fas fa-euro-sign text-base sm:text-xl"></i>
               </div>
             </div>
             {[...cartridges]

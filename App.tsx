@@ -255,7 +255,7 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 pb-20 sm:pb-8 flex-1 w-full">
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Dashboard competitions={competitions} user={user} />
+            <Dashboard competitions={competitions} user={user} onAddClick={() => setView('new')} />
             {competitions.length > 0 && <StatsCharts competitions={competitions} />}
             {competitions.length > 0 && <GeminiCoach competitions={competitions} />}
           </div>

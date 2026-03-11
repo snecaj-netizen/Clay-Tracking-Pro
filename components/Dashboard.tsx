@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Competition, Discipline } from '../types';
+import DashboardAIReport from './DashboardAIReport';
 
 interface DashboardProps {
   competitions: Competition[];
@@ -187,6 +188,9 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
         </div>
       </div>
 
+      {/* AI Report Section */}
+      <DashboardAIReport competitions={competitions} />
+
       {/* Sezione Allenamento */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 ml-2">
@@ -215,18 +219,18 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
           <i className="fas fa-wallet text-slate-500"></i>
           <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Bilancio Generale</h3>
         </div>
-        <div className="grid grid-cols-3 gap-4 sm:gap-6">
-          <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
-            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Costi Totali</p>
-            <p className="text-xl font-black text-red-500">€{financial.totalCost.toFixed(2)}</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-6">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Costi Totali</p>
+            <p className="text-xs sm:text-xl font-black text-red-500 break-words">€{financial.totalCost.toFixed(2)}</p>
           </div>
-          <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
-            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Vincite Gare</p>
-            <p className="text-xl font-black text-green-500">€{financial.totalWin.toFixed(2)}</p>
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Vincite Gare</p>
+            <p className="text-xs sm:text-xl font-black text-green-500 break-words">€{financial.totalWin.toFixed(2)}</p>
           </div>
-          <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
-            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Saldo Netto</p>
-            <p className={`text-xl font-black ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Saldo Netto</p>
+            <p className={`text-xs sm:text-xl font-black break-words ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
               {financial.balance >= 0 ? '+' : ''}€{financial.balance.toFixed(2)}
             </p>
           </div>
