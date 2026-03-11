@@ -87,6 +87,7 @@ export interface User {
   qualification?: string;
   society?: string;
   fitav_card?: string;
+  is_logged_in?: boolean;
 }
 
 export interface AppData {

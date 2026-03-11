@@ -1298,7 +1298,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <tbody>
                 {users.map(u => (
                   <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                    <td className="py-3 px-4 text-sm text-white font-bold">{u.name} {u.surname}</td>
+                    <td className="py-3 px-4 text-sm text-white font-bold">
+                      <div className="flex items-center gap-2">
+                        {u.is_logged_in && <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Online"></div>}
+                        <span>{u.name} {u.surname}</span>
+                      </div>
+                    </td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.fitav_card || '-'}</td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.society || '-'}</td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.category || '-'} / {u.qualification || '-'}</td>

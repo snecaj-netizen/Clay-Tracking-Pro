@@ -210,6 +210,8 @@ const initDB = async () => {
 
 initDB();
 
+const activeUsers = new Map<number, number>();
+
 // Authentication Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
@@ -220,6 +222,7 @@ const authenticateToken = (req: any, res: any, next: any) => {
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) return res.sendStatus(403);
     req.user = user;
+    activeUsers.set(user.id, Date.now());
     next();
   });
 };
@@ -289,7 +292,12 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query("SELECT id, name, surname, email, role, category, qualification, society, fitav_card, created_at FROM users");
-    res.json(rows);
+    const now = Date.now();
+    const usersWithStatus = rows.map(user => ({
+      ...user,
+      is_logged_in: activeUsers.has(user.id) && (now - activeUsers.get(user.id)!) < 5 * 60 * 1000
+    }));
+    res.json(usersWithStatus);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
