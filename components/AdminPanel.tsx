@@ -19,12 +19,14 @@ interface AdminPanelProps {
   onSaveDrive: () => void;
   onLoadDrive: () => void;
   triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  onEditCompetition?: (comp?: Competition) => void;
+  onDeleteCompetition?: (id: string) => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm
+  triggerConfirm, onEditCompetition, onDeleteCompetition
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies'>(
     currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile'
@@ -1051,13 +1053,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-list-ol text-orange-500"></i> Tutti i Risultati
             </h2>
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showFilters ? 'bg-slate-800 text-slate-400' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-            >
-              <i className="fas fa-filter"></i>
-              {showFilters ? 'Nascondi Filtri' : 'Filtra Risultati'}
-            </button>
+            <div className="flex gap-2">
+              {currentUser?.role === 'admin' && (
+                <button 
+                  onClick={() => onEditCompetition && onEditCompetition()}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-500"
+                >
+                  <i className="fas fa-plus"></i>
+                  Aggiungi Gara
+                </button>
+              )}
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showFilters ? 'bg-slate-800 text-slate-400' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+              >
+                <i className="fas fa-filter"></i>
+                {showFilters ? 'Nascondi Filtri' : 'Filtra Risultati'}
+              </button>
+            </div>
           </div>
 
           {showFilters && (
@@ -1138,6 +1151,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="py-3 px-4">Disciplina</th>
                   <th className="py-3 px-4">Campo</th>
                   <th className="py-3 px-4 text-right">Risultato</th>
+                  {currentUser?.role === 'admin' && <th className="py-3 px-4 text-right">Azioni</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1154,6 +1168,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         {r.totalScore}/{r.totalTargets}
                       </span>
                     </td>
+                    {currentUser?.role === 'admin' && (
+                      <td className="py-3 px-4 flex justify-end gap-2">
+                        <button 
+                          onClick={() => onEditCompetition && onEditCompetition(r)}
+                          className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
+                          title="Modifica"
+                        >
+                          <i className="fas fa-edit text-xs"></i>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            triggerConfirm(
+                              'Elimina Gara',
+                              `Sei sicuro di voler eliminare la gara "${r.name}" di ${r.userName} ${r.userSurname}?`,
+                              () => {
+                                if (onDeleteCompetition) {
+                                  onDeleteCompetition(r.id);
+                                  setAllResults(prev => prev.filter(res => res.id !== r.id));
+                                }
+                              }
+                            );
+                          }}
+                          className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"
+                          title="Elimina"
+                        >
+                          <i className="fas fa-trash-alt text-xs"></i>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

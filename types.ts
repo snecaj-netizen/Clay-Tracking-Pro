@@ -36,6 +36,7 @@ export interface WeatherInfo {
 
 export interface Competition {
   id: string;
+  userId?: number;
   name: string;
   location: string;
   date: string;

@@ -29,6 +29,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
+  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   
   const [loading, setLoading] = useState(true);
@@ -108,8 +109,14 @@ const App: React.FC = () => {
         body: JSON.stringify(comp)
       });
       if (res.ok) {
-        setCompetitions(prev => isNew ? [comp, ...prev] : prev.map(c => c.id === comp.id ? comp : c));
-        setView('history');
+        if (comp.userId && comp.userId !== user?.id) {
+          // If the admin created/edited a competition for another user, don't add it to their own list
+          setCompetitions(prev => prev.filter(c => c.id !== comp.id));
+        } else {
+          setCompetitions(prev => isNew ? [comp, ...prev] : prev.map(c => c.id === comp.id ? comp : c));
+        }
+        setView(previousView || 'history');
+        setPreviousView(null);
         setEditingCompetition(null);
       } else {
         const errorData = await res.json();
@@ -264,9 +271,11 @@ const App: React.FC = () => {
         {view === 'new' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CompetitionForm 
+              currentUser={user}
               onSubmit={saveCompetition} 
               onCancel={() => {
-                setView('history');
+                setView(previousView || 'history');
+                setPreviousView(null);
                 setEditingCompetition(null);
               }}
               initialData={editingCompetition || undefined}
@@ -283,6 +292,7 @@ const App: React.FC = () => {
               competitions={competitions} 
               onDelete={deleteCompetition}
               onEdit={(comp) => {
+                setPreviousView('history');
                 setEditingCompetition(comp);
                 setView('new');
               }}
@@ -322,6 +332,12 @@ const App: React.FC = () => {
               syncStatus="idle"
               lastSync={null}
               triggerConfirm={triggerConfirm}
+              onEditCompetition={(comp) => {
+                setPreviousView('admin');
+                setEditingCompetition(comp || null);
+                setView('new');
+              }}
+              onDeleteCompetition={deleteCompetition}
             />
           </div>
         )}

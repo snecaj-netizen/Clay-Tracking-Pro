@@ -8,6 +8,7 @@ interface CompetitionFormProps {
   knownLocations?: string[];
   availableCartridges: Cartridge[];
   societies: any[];
+  currentUser: any;
   onSubmit: (comp: Competition) => void;
   onCancel: () => void;
 }
@@ -21,7 +22,7 @@ const WEATHER_OPTIONS = [
   { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
 ];
 
-const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLocations = [], availableCartridges = [], societies = [], onSubmit, onCancel }) => {
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLocations = [], availableCartridges = [], societies = [], currentUser, onSubmit, onCancel }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [location, setLocation] = useState(initialData?.location || '');
   const [discipline, setDiscipline] = useState<Discipline>(initialData?.discipline === Discipline.TRAINING ? Discipline.CK : (initialData?.discipline || Discipline.CK));
@@ -32,6 +33,23 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLoc
   );
   const [scores, setScores] = useState<number[]>(initialData?.scores || [25, 25]);
   const [detailedScores, setDetailedScores] = useState<boolean[][]>(initialData?.detailedScores || []);
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number>(initialData?.userId || currentUser?.id);
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setUsers(data.filter(u => u.role !== 'society'));
+        }
+      })
+      .catch(err => console.error('Error fetching users:', err));
+    }
+  }, [currentUser]);
   const [seriesImages, setSeriesImages] = useState<string[]>(initialData?.seriesImages || []);
   const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
   const [position, setPosition] = useState<number | undefined>(initialData?.position);
@@ -289,6 +307,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLoc
     
     const newComp: Competition = {
       id: initialData?.id || crypto.randomUUID(),
+      userId: selectedUserId,
       name: name.trim() || (isTraining ? 'Allenamento' : 'Gara senza nome'),
       location: location.trim() || 'Luogo non specificato',
       date,
@@ -321,6 +340,23 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLoc
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {currentUser?.role === 'admin' && (
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tiratore</label>
+            <div className="relative">
+              <select 
+                value={selectedUserId || ''} 
+                onChange={(e) => setSelectedUserId(parseInt(e.target.value))} 
+                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none"
+              >
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.name} {u.surname} ({u.email})</option>
+                ))}
+              </select>
+              <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+            </div>
+          </div>
+        )}
         <div className="md:col-span-2 space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Titolo / Nome</label>
           <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
@@ -395,7 +431,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLoc
           <div className="md:col-span-2 space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Piattelli Gara</label>
             <div className="flex gap-4">
-              {[50, 100, 200].map(val => (
+              {[25, 50, 100, 200].map(val => (
                 <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border-2 border-slate-700'}`}>{val}</button>
               ))}
             </div>

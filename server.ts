@@ -713,12 +713,13 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
 app.post('/api/competitions', authenticateToken, async (req: any, res) => {
   if (req.user.role === 'society') return res.status(403).json({ error: 'Le società non possono inserire gare.' });
   const c = req.body;
+  const targetUserId = (req.user.role === 'admin' && c.userId) ? c.userId : req.user.id;
   try {
     await pool.query(
       `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
       [
-        c.id, req.user.id, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
+        c.id, targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
         c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
         c.weather ? JSON.stringify(c.weather) : null,
         JSON.stringify(c.scores),
@@ -736,20 +737,38 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
 app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
   if (req.user.role === 'society') return res.status(403).json({ error: 'Le società non possono modificare gare.' });
   const c = req.body;
+  
   try {
-    await pool.query(
-      `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18 WHERE id=$19 AND user_id=$20`,
-      [
-        c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
-        c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
-        c.weather ? JSON.stringify(c.weather) : null,
-        JSON.stringify(c.scores),
-        c.detailedScores ? JSON.stringify(c.detailedScores) : null,
-        c.seriesImages ? JSON.stringify(c.seriesImages) : null,
-        c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
-        req.params.id, req.user.id
-      ]
-    );
+    if (req.user.role === 'admin') {
+      const targetUserId = c.userId || req.user.id;
+      await pool.query(
+        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19 WHERE id=$20`,
+        [
+          targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
+          c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
+          c.weather ? JSON.stringify(c.weather) : null,
+          JSON.stringify(c.scores),
+          c.detailedScores ? JSON.stringify(c.detailedScores) : null,
+          c.seriesImages ? JSON.stringify(c.seriesImages) : null,
+          c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
+          req.params.id
+        ]
+      );
+    } else {
+      await pool.query(
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18 WHERE id=$19 AND user_id=$20`,
+        [
+          c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
+          c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
+          c.weather ? JSON.stringify(c.weather) : null,
+          JSON.stringify(c.scores),
+          c.detailedScores ? JSON.stringify(c.detailedScores) : null,
+          c.seriesImages ? JSON.stringify(c.seriesImages) : null,
+          c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
+          req.params.id, req.user.id
+        ]
+      );
+    }
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
