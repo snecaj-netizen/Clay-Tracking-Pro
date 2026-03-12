@@ -41,6 +41,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, [initialTab]);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [users, setUsers] = useState<any[]>([]);
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
@@ -594,6 +595,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
       (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
     );
+
+  const filteredUsers = users.filter(u => {
+    if (!userSearchTerm) return true;
+    const search = userSearchTerm.toLowerCase();
+    const fullName = `${u.name} ${u.surname}`.toLowerCase();
+    return fullName.includes(search) || 
+           (u.society && u.society.toLowerCase().includes(search)) || 
+           (u.fitav_card && u.fitav_card.toLowerCase().includes(search));
+  });
 
   return (
     <div className="space-y-6">
@@ -1461,17 +1471,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-users-cog text-orange-500"></i> Gestione Utenti
             </h2>
-            <button 
-              onClick={() => { setShowUserForm(!showUserForm); setEditingUser(null); }}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showUserForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
-            >
-              <i className={`fas ${showUserForm ? 'fa-times' : 'fa-user-plus'}`}></i>
-              {showUserForm ? 'Chiudi' : 'Nuovo Utente'}
-            </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input 
+                  type="text" 
+                  placeholder="Cerca per nome, società, tessera..." 
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
+                />
+              </div>
+              <button 
+                onClick={() => { setShowUserForm(!showUserForm); setEditingUser(null); }}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${showUserForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
+              >
+                <i className={`fas ${showUserForm ? 'fa-times' : 'fa-user-plus'}`}></i>
+                {showUserForm ? 'Chiudi' : 'Nuovo Utente'}
+              </button>
+            </div>
           </div>
 
           {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4">{error}</div>}
@@ -1588,7 +1610,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {filteredUsers.map(u => (
                   <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-3 px-4 text-sm text-white font-bold">
                       <div className="flex items-center gap-3">
@@ -1626,6 +1648,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </td>
                   </tr>
                 ))}
+                {filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-500 text-sm italic">
+                      Nessun utente trovato.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
