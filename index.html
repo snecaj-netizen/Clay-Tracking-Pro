@@ -61,6 +61,18 @@
         html.light-theme .border-emerald-900\/50 { border-color: #6ee7b7 !important; } /* emerald-300 */
         html.light-theme .text-emerald-500 { color: #059669 !important; } /* emerald-600 */
         
+        html.light-theme .bg-emerald-900\/30 { background-color: #d1fae5 !important; }
+        html.light-theme .bg-emerald-900\/40 { background-color: #d1fae5 !important; }
+        html.light-theme .text-emerald-400 { color: #059669 !important; }
+        
+        html.light-theme .bg-orange-900\/30 { background-color: #ffedd5 !important; }
+        html.light-theme .bg-orange-900\/40 { background-color: #ffedd5 !important; }
+        html.light-theme .text-orange-500 { color: #ea580c !important; }
+        html.light-theme .text-orange-400 { color: #f97316 !important; }
+        html.light-theme .border-orange-900\/50 { border-color: #fdba74 !important; }
+        
+        html.light-theme .bg-blue-900\/40 { background-color: #dbeafe !important; }
+        
         /* Competition Levels in Light Mode */
         html.light-theme .bg-blue-900\/30 { background-color: #dbeafe !important; } /* blue-100 */
         html.light-theme .text-blue-400 { color: #2563eb !important; } /* blue-600 */
@@ -80,10 +92,17 @@
         html.light-theme .text-blue-200 { color: #60a5fa !important; } /* blue-400 */
         
         /* Fix: Keep white text on colored backgrounds in light mode */
+        html.light-theme .bg-orange-600.text-white,
+        html.light-theme .bg-red-600.text-white,
+        html.light-theme .bg-emerald-600.text-white,
+        html.light-theme .bg-blue-600.text-white,
         html.light-theme .bg-orange-600 .text-white,
         html.light-theme .bg-red-600 .text-white,
         html.light-theme .bg-emerald-600 .text-white,
         html.light-theme .bg-blue-600 .text-white { color: #ffffff !important; }
+        
+        /* Button text contrast in light mode */
+        html.light-theme .bg-slate-800.text-slate-400 { color: #334155 !important; }
         
         /* Ensure hover:text-white works even when text color is overridden */
         html.light-theme .hover\:text-white:hover { color: #ffffff !important; }
