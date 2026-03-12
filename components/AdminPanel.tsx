@@ -1721,7 +1721,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             }
             setShowSocietyForm(!showSocietyForm);
           }}
-          className={`fixed bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-50 floating-add-btn group`}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showSocietyForm ? 'Chiudi' : 'Nuova Società'}
         >
           <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>

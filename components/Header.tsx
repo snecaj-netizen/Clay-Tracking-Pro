@@ -48,15 +48,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     { id: 'history', label: 'Gare/Allenamenti', icon: 'fa-list-ul' },
     { id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
+    { id: 'admin', label: 'Risultati', icon: 'fa-poll' },
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
   ].filter(item => {
     if (user?.role === 'society') {
-      return item.id === 'events' || item.id === 'societies';
+      return item.id === 'events' || item.id === 'societies' || item.id === 'admin';
     }
-    if (item.id === 'warehouse' && user?.role === 'user') {
-      return false;
-    }
+    if (item.id === 'admin') return false; // Only show in profile button for others
     return true;
   });
 
@@ -75,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
           <button 
-            onClick={() => onNavigate(user?.role === 'society' ? 'societies' : 'history')}
+            onClick={() => onNavigate(user?.role === 'society' ? 'admin' : 'history')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity active:scale-95"
           >
             <div className="bg-orange-600 p-2 rounded-lg shadow-inner">
