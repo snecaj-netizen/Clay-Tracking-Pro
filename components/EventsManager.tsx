@@ -17,6 +17,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<SocietyEvent | null>(null);
   
   const [showFilters, setShowFilters] = useState(false);
   const [filterSociety, setFilterSociety] = useState('');
@@ -357,11 +358,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nessun evento registrato</p>
                 </div>
               ) : (
-                <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+                <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                   {eventsByDate[selectedDay].map(ev => (
-                    <div key={ev.id} className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl flex flex-col gap-3 hover:border-slate-700 transition-colors group">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
+                    <div 
+                      key={ev.id} 
+                      onClick={() => setSelectedEvent(ev)}
+                      className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md overflow-hidden"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
                               {ev.discipline.split(' ')[0]}
@@ -375,76 +380,27 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                               {ev.visibility}
                             </span>
                           </div>
-                          <h5 className="text-base font-bold text-white leading-tight mb-1">{ev.name}</h5>
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <i className="fas fa-map-marker-alt"></i> {ev.location}
-                          </div>
+                          <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
+                          <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className="text-xl font-black text-white">{ev.targets}</div>
-                          <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Piattelli</div>
+                          <div className="text-lg font-black text-white leading-none">{ev.targets}</div>
+                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Piattelli</div>
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-800/50">
-                        <div className="bg-slate-900/50 rounded-xl p-2.5 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400">
-                            <i className="fas fa-tag text-xs"></i>
-                          </div>
-                          <div>
-                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Tipo</div>
-                            <div className="text-xs font-bold text-white">{ev.type}</div>
-                          </div>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-calendar-alt text-slate-600"></i>
+                          <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
                         </div>
-                        <div className="bg-slate-900/50 rounded-xl p-2.5 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400">
-                            <i className="fas fa-euro-sign text-xs"></i>
-                          </div>
-                          <div>
-                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Costo</div>
-                            <div className="text-xs font-bold text-white">{ev.cost ? `€ ${parseFloat(ev.cost).toFixed(2)}` : '-'}</div>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-tag text-slate-600"></i>
+                          <span>{ev.type}</span>
                         </div>
                       </div>
 
-                      {ev.notes && (
-                        <div className="mt-2 text-xs text-slate-400 bg-slate-900/30 p-3 rounded-xl border border-slate-800/50">
-                          <i className="fas fa-info-circle mr-1.5 text-slate-500"></i>
-                          {ev.notes}
-                        </div>
-                      )}
-
-                      <div className="flex justify-end gap-2 mt-2">
-                        {onParticipate && (
-                          <button 
-                            onClick={() => onParticipate(ev)}
-                            className="px-3 py-1.5 rounded-lg bg-orange-600/20 text-orange-500 flex items-center gap-2 hover:bg-orange-600 hover:text-white transition-all text-xs font-bold"
-                            title="Aggiungi alle mie gare"
-                          >
-                            <i className="fas fa-plus"></i> Aggiungi
-                          </button>
-                        )}
-                        {ev.poster_url && (
-                          <a 
-                            href={ev.poster_url} 
-                            download={`Locandina_${ev.name.replace(/\s+/g, '_')}`}
-                            className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 flex items-center gap-2 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold"
-                            title="Scarica Locandina"
-                          >
-                            <i className="fas fa-download"></i> Locandina
-                          </a>
-                        )}
-                        {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user.society)) && (
-                          <>
-                            <button onClick={() => { handleEdit(ev); setViewMode('list'); }} className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all">
-                              <i className="fas fa-edit text-xs"></i>
-                            </button>
-                            <button onClick={() => handleDelete(ev.id)} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
-                              <i className="fas fa-trash-alt text-xs"></i>
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
                   ))}
                 </div>
@@ -470,28 +426,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
           <i className="fas fa-calendar-alt text-orange-500"></i> Gestione Eventi
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-start sm:justify-end">
           {!showForm && (
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-list"></i> Lista</button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-calendar-alt"></i> Calendario</button>
+            <div className="flex bg-slate-900 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0">
+              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-list text-sm sm:text-base"></i> <span className="hidden xs:inline">Lista</span></button>
+              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-calendar-alt text-sm sm:text-base"></i> <span className="hidden xs:inline">Calendario</span></button>
             </div>
           )}
           {!showForm && (
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
             >
-              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i>
-              {showFilters ? 'Nascondi Filtri' : 'Filtra Eventi'}
+              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm sm:text-base`}></i>
+              <span className="hidden xs:inline">{showFilters ? 'Nascondi Filtri' : 'Filtra Eventi'}</span>
+              <span className="xs:hidden">Filtri</span>
             </button>
           )}
           {!showForm && (user?.role === 'admin' || user?.role === 'society') && (
             <button 
               onClick={() => setShowForm(true)}
-              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-500"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
             >
-              <i className="fas fa-plus"></i> Nuovo Evento
+              <i className="fas fa-plus text-sm sm:text-base"></i>
+              <span>Nuovo <span className="hidden xs:inline">Evento</span></span>
             </button>
           )}
         </div>
@@ -654,84 +612,180 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       ) : viewMode === 'calendar' ? (
         renderCalendarView()
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Gara</th>
-                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Tipo/Visibilità</th>
-                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Luogo</th>
-                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Date</th>
-                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Costo</th>
-                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEvents.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 italic text-sm">
-                    Nessun evento trovato.
-                  </td>
-                </tr>
-              ) : (
-                filteredEvents.map(ev => (
-                  <tr key={ev.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                    <td className="py-4 px-4">
-                      <div className="font-bold text-white">{ev.name}</div>
-                      <div className="text-xs text-slate-400">{ev.discipline} - {ev.targets} piattelli</div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm text-white">{ev.type}</div>
-                      <div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full inline-block mt-1 ${ev.visibility === 'Pubblica' ? 'bg-emerald-950 text-emerald-400' : 'bg-blue-950 text-blue-400'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredEvents.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-slate-600 italic text-sm bg-slate-950/30 rounded-2xl border border-dashed border-slate-800">
+              Nessun evento trovato.
+            </div>
+          ) : (
+            filteredEvents.map(ev => (
+              <div 
+                key={ev.id} 
+                onClick={() => setSelectedEvent(ev)}
+                className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md overflow-hidden"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
+                        {ev.discipline.split(' ')[0]}
+                      </span>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                         {ev.visibility}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-slate-300">{ev.location}</td>
-                    <td className="py-4 px-4 text-sm text-slate-300">
-                      {new Date(ev.start_date).toLocaleDateString('it-IT')}
-                      {ev.start_date !== ev.end_date && ` - ${new Date(ev.end_date).toLocaleDateString('it-IT')}`}
-                    </td>
-                    <td className="py-4 px-4 text-sm text-slate-300">
-                      {ev.cost ? `€ ${parseFloat(ev.cost).toFixed(2)}` : '-'}
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        {onParticipate && (
-                          <button 
-                            onClick={() => onParticipate(ev)}
-                            className="w-8 h-8 rounded-lg bg-orange-600/20 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
-                            title="Aggiungi alle mie gare"
-                          >
-                            <i className="fas fa-plus text-xs"></i>
-                          </button>
-                        )}
-                        {ev.poster_url && (
-                          <a 
-                            href={ev.poster_url} 
-                            download={`Locandina_${ev.name.replace(/\s+/g, '_')}`}
-                            className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all"
-                            title="Scarica Locandina"
-                          >
-                            <i className="fas fa-download text-xs"></i>
-                          </a>
-                        )}
-                        {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user.society)) && (
-                          <>
-                            <button onClick={() => handleEdit(ev)} className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all">
-                              <i className="fas fa-edit text-xs"></i>
-                            </button>
-                            <button onClick={() => handleDelete(ev.id)} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
-                              <i className="fas fa-trash-alt text-xs"></i>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
+                    <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-lg font-black text-white leading-none">{ev.targets}</div>
+                    <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Piattelli</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-calendar-alt text-slate-600"></i>
+                    <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-tag text-slate-600"></i>
+                    <span>{ev.type}</span>
+                  </div>
+                </div>
+
+                <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedEvent(null)}>
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="relative h-40 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-6 overflow-hidden">
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
+              
+              <button onClick={() => setSelectedEvent(null)} className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-slate-800/80 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all z-10 border border-slate-700/50 backdrop-blur-sm shadow-lg">
+                <i className="fas fa-times"></i>
+              </button>
+              
+              <div className="relative z-10 w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${selectedEvent.discipline === Discipline.TRAINING ? 'bg-blue-900/40 text-blue-400 border border-blue-900/50' : 'bg-orange-900/40 text-orange-500 border border-orange-900/50'}`}>
+                    {selectedEvent.discipline}
+                  </span>
+                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${selectedEvent.visibility === 'Pubblica' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                    {selectedEvent.visibility}
+                  </span>
+                </div>
+                <h2 className="text-2xl font-black text-white leading-tight uppercase italic tracking-tighter">{selectedEvent.name}</h2>
+                <p className="text-sm text-slate-400 mt-1 flex items-center gap-2">
+                  <i className="fas fa-map-marker-alt text-orange-500"></i> {selectedEvent.location}
+                </p>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Data Inizio</p>
+                  <p className="text-sm font-bold text-white">{new Date(selectedEvent.start_date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Data Fine</p>
+                  <p className="text-sm font-bold text-white">{new Date(selectedEvent.end_date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tipologia</p>
+                  <p className="text-sm font-bold text-white">{selectedEvent.type}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Piattelli</p>
+                  <p className="text-sm font-bold text-white">{selectedEvent.targets} Bersagli</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Costo Iscrizione</p>
+                  <p className="text-sm font-bold text-white">{selectedEvent.cost ? `€ ${parseFloat(selectedEvent.cost).toFixed(2)}` : 'Non specificato'}</p>
+                </div>
+              </div>
+
+              {selectedEvent.notes && (
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Note e Informazioni</p>
+                  <p className="text-sm text-slate-300 leading-relaxed italic">{selectedEvent.notes}</p>
+                </div>
               )}
-            </tbody>
-          </table>
+
+              {selectedEvent.poster_url && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Locandina / Programma</p>
+                  <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 aspect-video relative group">
+                    {selectedEvent.poster_url.startsWith('data:application/pdf') ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                        <i className="fas fa-file-pdf text-5xl text-red-500"></i>
+                        <span className="text-xs font-bold text-slate-400">Documento PDF</span>
+                      </div>
+                    ) : (
+                      <img src={selectedEvent.poster_url} alt="Locandina" className="w-full h-full object-cover" />
+                    )}
+                    <a 
+                      href={selectedEvent.poster_url} 
+                      download={`Locandina_${selectedEvent.name.replace(/\s+/g, '_')}`}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 text-white font-black uppercase text-xs tracking-widest"
+                    >
+                      <i className="fas fa-download text-xl"></i> Scarica File
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
+                {onParticipate && (
+                  <button 
+                    onClick={() => {
+                      onParticipate(selectedEvent);
+                      setSelectedEvent(null);
+                    }}
+                    className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-plus"></i> Aggiungi alle mie gare
+                  </button>
+                )}
+                
+                <div className="flex gap-2 w-full sm:w-auto">
+                  {(user?.role === 'admin' || (user?.role === 'society' && selectedEvent.location === user.society)) && (
+                    <>
+                      <button 
+                        onClick={() => {
+                          handleEdit(selectedEvent);
+                          setSelectedEvent(null);
+                        }} 
+                        className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700"
+                        title="Modifica"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
+                      <button 
+                        onClick={() => {
+                          handleDelete(selectedEvent.id);
+                          setSelectedEvent(null);
+                        }} 
+                        className="w-12 h-12 rounded-2xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all border border-red-900/30"
+                        title="Elimina"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

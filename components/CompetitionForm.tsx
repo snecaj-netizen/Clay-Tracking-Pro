@@ -352,7 +352,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none"
               >
                 {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} {u.surname} ({u.email})</option>
+                  <option key={u.id} value={u.id}>{u.name} {u.surname}</option>
                 ))}
               </select>
               <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
