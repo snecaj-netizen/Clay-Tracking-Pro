@@ -588,6 +588,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setUserSortConfig({ key, direction });
   };
 
+  const hasActiveFilters = filterShooter !== '' || filterSociety !== '' || filterDiscipline !== '' || filterLocation !== '' || filterYear !== '';
+
   if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
   const resultsToDisplay = (currentUser?.role === 'admin' || currentUser?.role === 'society') ? allResults : competitions.map(c => ({
@@ -1334,10 +1336,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
               <button 
                 onClick={() => setShowFilters(!showFilters)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-500 hover:text-orange-500'}`}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
               >
                 <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
                 <span>Filtri</span>
+                {hasActiveFilters && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                )}
               </button>
             </div>
           </div>

@@ -211,10 +211,10 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
         </div>
 
         <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800">
-          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
             GIACENZA ATTUALE
           </button>
-          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+          <button onClick={() => setActiveTab('history')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
             STORICO CARICHI
           </button>
         </div>

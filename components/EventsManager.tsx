@@ -238,6 +238,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
   if (loading) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
+  const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '';
+
   const renderCalendarView = () => {
     const today = new Date().toISOString().split('T')[0];
     const monthName = currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
@@ -429,17 +431,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end">
           {!showForm && (
             <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
-              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><i className="fas fa-list text-sm"></i> <span>Lista</span></button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}><i className="fas fa-calendar-alt text-sm"></i> <span>Calendario</span></button>
+              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list text-sm"></i> <span>Lista</span></button>
+              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt text-sm"></i> <span>Calendario</span></button>
             </div>
           )}
           {!showForm && (
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
             >
               <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
               <span>Filtri</span>
+              {hasActiveFilters && (
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+              )}
             </button>
           )}
           {/* Button removed and replaced by floating button */}
