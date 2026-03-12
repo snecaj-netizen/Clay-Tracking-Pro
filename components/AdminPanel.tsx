@@ -1327,26 +1327,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       ) : activeTab === 'results' ? (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-list-ol text-orange-500"></i> Tutti i Risultati
             </h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-start sm:justify-end">
               {currentUser?.role === 'admin' && (
                 <button 
                   onClick={() => onEditCompetition && onEditCompetition()}
-                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-500"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
                 >
-                  <i className="fas fa-plus"></i>
-                  Aggiungi Gara
+                  <i className="fas fa-plus text-sm sm:text-base"></i>
+                  <span>Aggiungi <span className="hidden xs:inline">Gara</span></span>
                 </button>
               )}
               <button 
                 onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showFilters ? 'bg-slate-800 text-slate-400' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
               >
-                <i className="fas fa-filter"></i>
-                {showFilters ? 'Nascondi Filtri' : 'Filtra Risultati'}
+                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm sm:text-base`}></i>
+                <span className="hidden xs:inline">{showFilters ? 'Nascondi Filtri' : 'Filtra Risultati'}</span>
+                <span className="xs:hidden">Filtri</span>
               </button>
             </div>
           </div>

@@ -123,9 +123,9 @@ const App: React.FC = () => {
   };
 
   const saveCompetition = async (comp: Competition) => {
-    const isNew = !competitions.find(c => c.id === comp.id);
-    const method = isNew ? 'POST' : 'PUT';
-    const endpoint = isNew ? '/api/competitions' : `/api/competitions/${comp.id}`;
+    const isEdit = !!editingCompetition;
+    const method = isEdit ? 'PUT' : 'POST';
+    const endpoint = isEdit ? `/api/competitions/${comp.id}` : '/api/competitions';
 
     try {
       const res = await fetch(endpoint, {
@@ -138,18 +138,31 @@ const App: React.FC = () => {
           // If the admin created/edited a competition for another user, don't add it to their own list
           setCompetitions(prev => prev.filter(c => c.id !== comp.id));
         } else {
-          setCompetitions(prev => isNew ? [comp, ...prev] : prev.map(c => c.id === comp.id ? comp : c));
+          setCompetitions(prev => !isEdit ? [comp, ...prev] : prev.map(c => c.id === comp.id ? comp : c));
         }
         setView(previousView || 'history');
         setPreviousView(null);
         setEditingCompetition(null);
       } else {
         const errorData = await res.json();
-        alert(`Errore nel salvataggio della gara: ${errorData.error || res.statusText}`);
+        console.error('Save error:', errorData);
+        // Using a more robust way to show error if alert is blocked
+        const errorMsg = `Errore nel salvataggio della gara: ${errorData.error || res.statusText}`;
+        setConfirmConfig({
+          isOpen: true,
+          title: 'Errore',
+          message: errorMsg,
+          onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        });
       }
     } catch (err) {
       console.error('Error saving competition:', err);
-      alert('Errore di rete nel salvataggio della gara.');
+      setConfirmConfig({
+        isOpen: true,
+        title: 'Errore di rete',
+        message: 'Impossibile salvare la gara. Controlla la tua connessione.',
+        onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+      });
     }
   };
 
@@ -323,6 +336,7 @@ const App: React.FC = () => {
                 setEditingCompetition(comp);
                 setView('new');
               }}
+              onAddClick={() => { setEditingCompetition(null); setView('new'); }}
               triggerConfirm={triggerConfirm}
               user={user}
             />
