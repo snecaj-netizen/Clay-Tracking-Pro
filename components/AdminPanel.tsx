@@ -42,6 +42,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [initialTab]);
   const [showUserForm, setShowUserForm] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
@@ -471,6 +472,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!res.ok) throw new Error('Errore durante il salvataggio');
       
       setEditingUser(null);
+      setShowUserForm(false);
       setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard(''); setUserAvatar('');
       fetchUsers();
     } catch (err: any) {
@@ -542,6 +544,50 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const filteredUsers = users.filter(u => {
+    if (!userSearchTerm) return true;
+    const search = userSearchTerm.toLowerCase();
+    const fullName = `${u.name} ${u.surname}`.toLowerCase();
+    return fullName.includes(search) || 
+           (u.society && u.society.toLowerCase().includes(search)) || 
+           (u.fitav_card && u.fitav_card.toLowerCase().includes(search));
+  });
+
+  const sortedUsers = React.useMemo(() => {
+    let sortableUsers = [...filteredUsers];
+    if (userSortConfig !== null) {
+      sortableUsers.sort((a, b) => {
+        let aValue = a[userSortConfig.key] || '';
+        let bValue = b[userSortConfig.key] || '';
+        
+        if (userSortConfig.key === 'name') {
+           aValue = `${a.name} ${a.surname}`.toLowerCase();
+           bValue = `${b.name} ${b.surname}`.toLowerCase();
+        } else {
+           aValue = String(aValue).toLowerCase();
+           bValue = String(bValue).toLowerCase();
+        }
+
+        if (aValue < bValue) {
+          return userSortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return userSortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableUsers;
+  }, [filteredUsers, userSortConfig]);
+
+  const requestUserSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (userSortConfig && userSortConfig.key === key && userSortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setUserSortConfig({ key, direction });
+  };
+
   if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
   const resultsToDisplay = (currentUser?.role === 'admin' || currentUser?.role === 'society') ? allResults : competitions.map(c => ({
@@ -595,15 +641,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
       (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
     );
-
-  const filteredUsers = users.filter(u => {
-    if (!userSearchTerm) return true;
-    const search = userSearchTerm.toLowerCase();
-    const fullName = `${u.name} ${u.surname}`.toLowerCase();
-    return fullName.includes(search) || 
-           (u.society && u.society.toLowerCase().includes(search)) || 
-           (u.fitav_card && u.fitav_card.toLowerCase().includes(search));
-  });
 
   return (
     <div className="space-y-6">
@@ -1600,17 +1637,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  <th className="py-3 px-4">Nome</th>
-                  <th className="py-3 px-4">Tessera Fitav</th>
-                  <th className="py-3 px-4">Società</th>
-                  <th className="py-3 px-4">Cat./Qual.</th>
-                  <th className="py-3 px-4">Email</th>
-                  <th className="py-3 px-4">Ruolo</th>
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('name')}>
+                    Nome {userSortConfig?.key === 'name' ? (userSortConfig.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  </th>
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('fitav_card')}>
+                    Tessera Fitav {userSortConfig?.key === 'fitav_card' ? (userSortConfig.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  </th>
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('society')}>
+                    Società {userSortConfig?.key === 'society' ? (userSortConfig.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  </th>
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('category')}>
+                    Cat./Qual. {userSortConfig?.key === 'category' ? (userSortConfig.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  </th>
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('email')}>
+                    Email {userSortConfig?.key === 'email' ? (userSortConfig.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  </th>
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('role')}>
+                    Ruolo {userSortConfig?.key === 'role' ? (userSortConfig.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  </th>
                   <th className="py-3 px-4 text-right">Azioni</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map(u => (
+                {sortedUsers.map(u => (
                   <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-3 px-4 text-sm text-white font-bold">
                       <div className="flex items-center gap-3">
