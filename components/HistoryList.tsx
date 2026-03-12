@@ -6,12 +6,11 @@ interface HistoryListProps {
   competitions: Competition[];
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
-  onAddClick?: () => void;
   triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
   user?: any;
 }
 
-const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdit, onAddClick, triggerConfirm, user }) => {
+const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdit, triggerConfirm, user }) => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -592,38 +591,19 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
       <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-xl font-bold text-white flex items-center gap-2"><i className="fas fa-list-ul text-orange-600"></i>Cronologia Attività</h2>
-          <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
+          <div className="flex items-center gap-3 self-start sm:self-auto">
             <button 
               onClick={() => setShowFilters(!showFilters)} 
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 border ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
             >
-              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm sm:text-base`}></i>
-              <span className="hidden xs:inline">{showFilters ? 'Nascondi Filtri' : 'Filtra Risultati'}</span>
-              <span className="xs:hidden">Filtri</span>
+              <i className="fas fa-filter"></i> Filtri
               {(hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
               )}
             </button>
-
-            {onAddClick && user?.role !== 'society' && (
-              <button 
-                onClick={onAddClick}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
-              >
-                <i className="fas fa-plus text-sm sm:text-base"></i>
-                <span>Aggiungi <span className="hidden xs:inline">Gara</span></span>
-              </button>
-            )}
-
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
-              <button onClick={() => setViewMode('list')} className={`flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}>
-                <i className="fas fa-list sm:mr-1.5"></i> 
-                <span className="hidden sm:inline">Lista</span>
-              </button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}>
-                <i className="fas fa-calendar-alt sm:mr-1.5"></i> 
-                <span className="hidden sm:inline">Calendario</span>
-              </button>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list"></i> Lista</button>
+              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt"></i> Calendario</button>
             </div>
           </div>
         </div>
