@@ -66,6 +66,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socContactName, setSocContactName] = useState('');
   const [socLogo, setSocLogo] = useState('');
   const [societySearch, setSocietySearch] = useState('');
+  const [selectedSociety, setSelectedSociety] = useState<any>(null);
   
   // Team Creation State
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -1132,34 +1133,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSocieties.map(soc => (
-              <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex gap-4">
+              <div 
+                key={soc.id} 
+                onClick={() => setSelectedSociety(soc)}
+                className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex items-center gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md"
+              >
                 {soc.logo ? (
-                  <img src={soc.logo} alt={soc.name} className="w-16 h-16 rounded-xl object-cover border border-slate-800 flex-shrink-0" />
+                  <img src={soc.logo} alt={soc.name} className="w-12 h-12 rounded-xl object-cover border border-slate-800 flex-shrink-0" />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
-                    <i className="fas fa-building text-2xl text-slate-600"></i>
+                  <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                    <i className="fas fa-building text-xl text-slate-600"></i>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="absolute top-3 right-3 flex gap-2 transition-all">
-                    {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === soc.name)) && (
-                      <button onClick={() => handleEditSociety(soc)} className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white shadow-sm transition-all"><i className="fas fa-edit text-sm"></i></button>
-                    )}
-                    {currentUser?.role === 'admin' && (
-                      <button onClick={() => handleDeleteSociety(soc.id)} className="w-10 h-10 rounded-xl bg-red-950/40 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white shadow-sm"><i className="fas fa-trash-alt text-sm"></i></button>
-                    )}
+                  <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors">{soc.name}</h3>
+                  <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
+                    {soc.city && <span className="truncate"><i className="fas fa-map-marker-alt mr-1"></i>{soc.city} {soc.region ? `(${soc.region})` : ''}</span>}
+                    <span className="truncate"><i className="fas fa-envelope mr-1"></i>{soc.email}</span>
                   </div>
-                  <h3 className="text-lg font-black text-white mb-2 pr-24 truncate">{soc.name}</h3>
-                  <div className="space-y-1 text-xs text-slate-400">
-                    {soc.contact_name && <p className="truncate"><i className="fas fa-user mr-2 w-4"></i>{soc.contact_name}</p>}
-                    <p className="truncate"><i className="fas fa-envelope mr-2 w-4"></i>{soc.email}</p>
-                    {soc.phone && <p className="truncate"><i className="fas fa-phone mr-2 w-4"></i>{soc.phone}</p>}
-                    {soc.mobile && <p className="truncate"><i className="fas fa-mobile-alt mr-2 w-4"></i>{soc.mobile}</p>}
-                    {soc.address && <p className="truncate"><i className="fas fa-map-marker-alt mr-2 w-4"></i>{soc.address}, {soc.city} ({soc.region})</p>}
-                    {soc.website && <p className="truncate"><i className="fas fa-globe mr-2 w-4"></i><a href={soc.website} target="_blank" rel="noreferrer" className="text-orange-500 hover:underline">{soc.website}</a></p>}
-                  </div>
+                </div>
+                <div className="text-slate-600 group-hover:text-orange-500 transition-colors">
+                  <i className="fas fa-chevron-right"></i>
                 </div>
               </div>
             ))}
@@ -1169,6 +1165,97 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
           </div>
+
+          {selectedSociety && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedSociety(null)}>
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="relative h-32 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-6">
+                  <button onClick={() => setSelectedSociety(null)} className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-slate-800/80 text-slate-300 flex items-center gap-2 hover:bg-slate-700 hover:text-white transition-all z-10 border border-slate-700/50 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                    <i className="fas fa-times"></i> Chiudi
+                  </button>
+                  <div className="flex items-end gap-4 translate-y-6">
+                    {selectedSociety.logo ? (
+                      <img src={selectedSociety.logo} alt={selectedSociety.name} className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-950 bg-slate-900 shadow-xl" />
+                    ) : (
+                      <div className="w-24 h-24 rounded-2xl bg-slate-900 border-4 border-slate-950 flex items-center justify-center shadow-xl">
+                        <i className="fas fa-building text-3xl text-slate-600"></i>
+                      </div>
+                    )}
+                    <div className="mb-2">
+                      <h2 className="text-xl font-black text-white leading-tight">{selectedSociety.name}</h2>
+                      {selectedSociety.city && <p className="text-xs text-slate-400 mt-1"><i className="fas fa-map-marker-alt mr-1"></i>{selectedSociety.city} {selectedSociety.region ? `(${selectedSociety.region})` : ''}</p>}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6 pt-10 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedSociety.contact_name && (
+                      <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Referente</p>
+                        <p className="text-sm text-white">{selectedSociety.contact_name}</p>
+                      </div>
+                    )}
+                    {selectedSociety.email && (
+                      <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Email</p>
+                        <p className="text-sm text-white break-all">{selectedSociety.email}</p>
+                      </div>
+                    )}
+                    {selectedSociety.phone && (
+                      <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Telefono</p>
+                        <p className="text-sm text-white">{selectedSociety.phone}</p>
+                      </div>
+                    )}
+                    {selectedSociety.mobile && (
+                      <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Cellulare</p>
+                        <p className="text-sm text-white">{selectedSociety.mobile}</p>
+                      </div>
+                    )}
+                    {selectedSociety.address && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Indirizzo Completo</p>
+                        <p className="text-sm text-white">{selectedSociety.address}, {selectedSociety.zip_code} {selectedSociety.city} ({selectedSociety.region})</p>
+                      </div>
+                    )}
+                    {selectedSociety.website && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Sito Web</p>
+                        <a href={selectedSociety.website} target="_blank" rel="noreferrer" className="text-sm text-orange-500 hover:underline break-all">{selectedSociety.website}</a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-4 border-t border-slate-800">
+                    {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === selectedSociety.name)) && (
+                      <button 
+                        onClick={() => {
+                          setSelectedSociety(null);
+                          handleEditSociety(selectedSociety);
+                        }} 
+                        className="flex-1 py-3 rounded-xl bg-orange-600/10 text-orange-500 font-black text-xs uppercase hover:bg-orange-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                      >
+                        <i className="fas fa-edit"></i> Modifica
+                      </button>
+                    )}
+                    {currentUser?.role === 'admin' && (
+                      <button 
+                        onClick={() => {
+                          setSelectedSociety(null);
+                          handleDeleteSociety(selectedSociety.id);
+                        }} 
+                        className="flex-1 py-3 rounded-xl bg-red-950/30 text-red-500 font-black text-xs uppercase hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                      >
+                        <i className="fas fa-trash-alt"></i> Elimina
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : activeTab === 'events' ? (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
