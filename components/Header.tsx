@@ -36,9 +36,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const menuItems = [
     { id: 'history', label: 'Gare/Allenamenti', icon: 'fa-list-ul' },
     { id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' },
-    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
-    { id: 'societies', label: 'Società', icon: 'fa-building' },
+    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
+    { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
   ].filter(item => {
     if (user?.role === 'society') {
       return item.id === 'events' || item.id === 'societies';

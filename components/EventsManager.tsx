@@ -16,6 +16,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterSociety, setFilterSociety] = useState('');
+  const [filterDiscipline, setFilterDiscipline] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
+
+  const filteredEvents = React.useMemo(() => {
+    return events.filter(ev => {
+      if (filterSociety && ev.location !== filterSociety) return false;
+      if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
+      if (filterMonth) {
+        const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
+        if (evMonth !== filterMonth) return false;
+      }
+      return true;
+    });
+  }, [events, filterSociety, filterDiscipline, filterMonth]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
@@ -63,7 +80,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     
     for (let d = 1; d <= days; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      events.forEach(ev => {
+      filteredEvents.forEach(ev => {
         if (isDateInRange(dateStr, ev)) {
           if (!map[dateStr]) map[dateStr] = [];
           map[dateStr].push(ev);
@@ -71,7 +88,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       });
     }
     return map;
-  }, [events, currentMonth]);
+  }, [filteredEvents, currentMonth]);
 
   // Form states
   const [name, setName] = useState('');
@@ -450,6 +467,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-calendar-alt"></i> Calendario</button>
             </div>
           )}
+          {!showForm && (
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+            >
+              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i>
+              {showFilters ? 'Nascondi Filtri' : 'Filtra Eventi'}
+            </button>
+          )}
           {!showForm && (user?.role === 'admin' || user?.role === 'society') && (
             <button 
               onClick={() => setShowForm(true)}
@@ -460,6 +486,50 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           )}
         </div>
       </div>
+
+      {!showForm && showFilters && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300">
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
+            <select 
+              value={filterSociety} 
+              onChange={e => setFilterSociety(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+            >
+              <option value="">Tutte le società</option>
+              {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+            <select 
+              value={filterDiscipline} 
+              onChange={e => setFilterDiscipline(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+            >
+              <option value="">Tutte le discipline</option>
+              {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
+            <input 
+              type="month" 
+              value={filterMonth} 
+              onChange={e => setFilterMonth(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+            />
+          </div>
+          <div className="sm:col-span-3 flex justify-end">
+            <button 
+              onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
+              className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
+            >
+              Resetta Filtri
+            </button>
+          </div>
+        </div>
+      )}
 
       {showForm ? (
         <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
@@ -587,14 +657,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               </tr>
             </thead>
             <tbody>
-              {events.length === 0 ? (
+              {filteredEvents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500 italic text-sm">
                     Nessun evento trovato.
                   </td>
                 </tr>
               ) : (
-                events.map(ev => (
+                filteredEvents.map(ev => (
                   <tr key={ev.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                     <td className="py-4 px-4">
                       <div className="font-bold text-white">{ev.name}</div>
