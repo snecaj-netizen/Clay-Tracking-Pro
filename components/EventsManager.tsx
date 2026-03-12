@@ -6,9 +6,10 @@ interface EventsManagerProps {
   token: string;
   triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
   societies: any[];
+  onParticipate?: (event: SocietyEvent) => void;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -414,6 +415,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       )}
 
                       <div className="flex justify-end gap-2 mt-2">
+                        {onParticipate && (
+                          <button 
+                            onClick={() => onParticipate(ev)}
+                            className="px-3 py-1.5 rounded-lg bg-orange-600/20 text-orange-500 flex items-center gap-2 hover:bg-orange-600 hover:text-white transition-all text-xs font-bold"
+                            title="Aggiungi alle mie gare"
+                          >
+                            <i className="fas fa-plus"></i> Aggiungi
+                          </button>
+                        )}
                         {ev.poster_url && (
                           <a 
                             href={ev.poster_url} 
@@ -686,6 +696,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     </td>
                     <td className="py-4 px-4 text-right">
                       <div className="flex justify-end gap-2">
+                        {onParticipate && (
+                          <button 
+                            onClick={() => onParticipate(ev)}
+                            className="w-8 h-8 rounded-lg bg-orange-600/20 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
+                            title="Aggiungi alle mie gare"
+                          >
+                            <i className="fas fa-plus text-xs"></i>
+                          </button>
+                        )}
                         {ev.poster_url && (
                           <a 
                             href={ev.poster_url} 

@@ -5,6 +5,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 interface CompetitionFormProps {
   initialData?: Competition;
+  prefillData?: Partial<Competition>;
   knownLocations?: string[];
   availableCartridges: Cartridge[];
   societies: any[];
@@ -22,19 +23,20 @@ const WEATHER_OPTIONS = [
   { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
 ];
 
-const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLocations = [], availableCartridges = [], societies = [], currentUser, onSubmit, onCancel }) => {
-  const [name, setName] = useState(initialData?.name || '');
-  const [location, setLocation] = useState(initialData?.location || '');
-  const [discipline, setDiscipline] = useState<Discipline>(initialData?.discipline === Discipline.TRAINING ? Discipline.CK : (initialData?.discipline || Discipline.CK));
-  const [totalTargets, setTotalTargets] = useState<number>(initialData?.totalTargets || 50);
-  const [level, setLevel] = useState<CompetitionLevel>(initialData?.level || CompetitionLevel.REGIONAL);
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, knownLocations = [], availableCartridges = [], societies = [], currentUser, onSubmit, onCancel }) => {
+  const data = initialData || prefillData;
+  const [name, setName] = useState(data?.name || '');
+  const [location, setLocation] = useState(data?.location || '');
+  const [discipline, setDiscipline] = useState<Discipline>(data?.discipline === Discipline.TRAINING ? Discipline.CK : (data?.discipline || Discipline.CK));
+  const [totalTargets, setTotalTargets] = useState<number>(data?.totalTargets || 50);
+  const [level, setLevel] = useState<CompetitionLevel>(data?.level || CompetitionLevel.REGIONAL);
   const [eventType, setEventType] = useState<'Gara' | 'Allenamento'>(
-    (initialData?.level === CompetitionLevel.TRAINING || initialData?.discipline === Discipline.TRAINING) ? 'Allenamento' : 'Gara'
+    (data?.level === CompetitionLevel.TRAINING || data?.discipline === Discipline.TRAINING) ? 'Allenamento' : 'Gara'
   );
-  const [scores, setScores] = useState<number[]>(initialData?.scores || [25, 25]);
-  const [detailedScores, setDetailedScores] = useState<boolean[][]>(initialData?.detailedScores || []);
+  const [scores, setScores] = useState<number[]>(data?.scores || [25, 25]);
+  const [detailedScores, setDetailedScores] = useState<boolean[][]>(data?.detailedScores || []);
   const [users, setUsers] = useState<any[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<number>(initialData?.userId || currentUser?.id);
+  const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
@@ -50,19 +52,19 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, knownLoc
       .catch(err => console.error('Error fetching users:', err));
     }
   }, [currentUser]);
-  const [seriesImages, setSeriesImages] = useState<string[]>(initialData?.seriesImages || []);
+  const [seriesImages, setSeriesImages] = useState<string[]>(data?.seriesImages || []);
   const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
-  const [position, setPosition] = useState<number | undefined>(initialData?.position);
-  const [cost, setCost] = useState<number>(initialData?.cost || 0);
-  const [win, setWin] = useState<number>(initialData?.win || 0);
-  const [notes, setNotes] = useState(initialData?.notes || '');
-  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(initialData?.endDate || '');
-  const [usedCartridges, setUsedCartridges] = useState<UsedCartridge[]>(initialData?.usedCartridges || []);
+  const [position, setPosition] = useState<number | undefined>(data?.position);
+  const [cost, setCost] = useState<number>(data?.cost || 0);
+  const [win, setWin] = useState<number>(data?.win || 0);
+  const [notes, setNotes] = useState(data?.notes || '');
+  const [date, setDate] = useState(data?.date || new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(data?.endDate || '');
+  const [usedCartridges, setUsedCartridges] = useState<UsedCartridge[]>(data?.usedCartridges || []);
   
   // Weather states
-  const [weatherTemp, setWeatherTemp] = useState<number | undefined>(initialData?.weather?.temp);
-  const [weatherIcon, setWeatherIcon] = useState<string | undefined>(initialData?.weather?.icon);
+  const [weatherTemp, setWeatherTemp] = useState<number | undefined>(data?.weather?.temp);
+  const [weatherIcon, setWeatherIcon] = useState<string | undefined>(data?.weather?.icon);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
 
   const isTraining = eventType === 'Allenamento';

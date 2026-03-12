@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Discipline, Competition, Cartridge, AppData } from './types';
+import { Discipline, Competition, CompetitionLevel, Cartridge, AppData } from './types';
 import Dashboard from './components/Dashboard';
 import CompetitionForm from './components/CompetitionForm';
 import HistoryList from './components/HistoryList';
@@ -32,6 +32,7 @@ const App: React.FC = () => {
   );
   const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
+  const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   
   const [loading, setLoading] = useState(true);
 
@@ -101,6 +102,24 @@ const App: React.FC = () => {
   const handleUserUpdate = (updatedUser: any) => {
     setUser(updatedUser);
     localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+  };
+
+  const handleParticipateInEvent = (event: any) => {
+    const newComp: Partial<Competition> = {
+      name: event.name,
+      location: event.location,
+      date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      endDate: event.end_date ? event.end_date.split('T')[0] : undefined,
+      discipline: event.discipline as Discipline,
+      totalTargets: Number(event.targets) || 50,
+      level: event.type === 'Regionale' ? CompetitionLevel.REGIONAL : 
+             event.type === 'Nazionale' ? CompetitionLevel.NATIONAL : 
+             event.type === 'Internazionale' ? CompetitionLevel.INTERNATIONAL : 
+             CompetitionLevel.REGIONAL
+    };
+    setPrefillCompetition(newComp);
+    setPreviousView(view);
+    setView('new');
   };
 
   const saveCompetition = async (comp: Competition) => {
@@ -283,8 +302,10 @@ const App: React.FC = () => {
                 setView(previousView || 'history');
                 setPreviousView(null);
                 setEditingCompetition(null);
+                setPrefillCompetition(null);
               }}
               initialData={editingCompetition || undefined}
+              prefillData={prefillCompetition || undefined}
               availableCartridges={cartridges}
               societies={societies}
               knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
@@ -327,6 +348,7 @@ const App: React.FC = () => {
               token={token} 
               triggerConfirm={triggerConfirm} 
               societies={societies} 
+              onParticipate={handleParticipateInEvent}
             />
           </div>
         )}
