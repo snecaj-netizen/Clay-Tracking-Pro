@@ -1326,19 +1326,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               {currentUser?.role === 'admin' && (
                 <button 
                   onClick={() => onEditCompetition && onEditCompetition()}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
+                  className="px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
                 >
-                  <i className="fas fa-plus text-sm sm:text-base"></i>
-                  <span>Aggiungi <span className="hidden xs:inline">Gara</span></span>
+                  <i className="fas fa-plus text-base"></i>
+                  <span>Aggiungi Gara</span>
                 </button>
               )}
               <button 
                 onClick={() => setShowFilters(!showFilters)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                className={`px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
               >
-                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm sm:text-base`}></i>
-                <span className="hidden xs:inline">{showFilters ? 'Nascondi Filtri' : 'Filtra Risultati'}</span>
-                <span className="xs:hidden">Filtri</span>
+                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-base`}></i>
+                <span>Filtri</span>
               </button>
             </div>
           </div>
