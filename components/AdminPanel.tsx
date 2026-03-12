@@ -22,16 +22,24 @@ interface AdminPanelProps {
   triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
   onEditCompetition?: (comp?: Competition) => void;
   onDeleteCompetition?: (id: string) => void;
+  initialTab?: 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events';
+  onUserUpdate?: (user: any) => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm, onEditCompetition, onDeleteCompetition
+  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events'>(
-    currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile'
+    initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
   );
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [showUserForm, setShowUserForm] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [teamStats, setTeamStats] = useState<any[]>([]);
@@ -137,6 +145,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [profileQualification, setProfileQualification] = useState(currentUser?.qualification || '');
   const [profileSociety, setProfileSociety] = useState(currentUser?.society || '');
   const [profileFitavCard, setProfileFitavCard] = useState(currentUser?.fitav_card || '');
+  const [profileAvatar, setProfileAvatar] = useState(currentUser?.avatar || '');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -239,13 +248,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           qualification: profileQualification,
           society: profileSociety,
           fitav_card: profileFitavCard,
+          avatar: profileAvatar,
           password: profilePassword || undefined
         }),
       });
 
       if (!res.ok) throw new Error('Errore durante l\'aggiornamento del profilo');
       
-      setProfileSuccess('Profilo aggiornato con successo! Alcune modifiche potrebbero richiedere il ricaricamento.');
+      if (onUserUpdate) {
+        onUserUpdate({
+          ...currentUser,
+          name: profileName,
+          surname: profileSurname,
+          email: profileEmail,
+          category: profileCategory,
+          qualification: profileQualification,
+          society: profileSociety,
+          fitav_card: profileFitavCard,
+          avatar: profileAvatar
+        });
+      }
+      
+      setProfileSuccess('Profilo aggiornato con successo!');
       setProfilePassword('');
     } catch (err: any) {
       setError(err.message);
@@ -462,6 +486,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setPassword('');
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        setError('L\'immagine non può superare i 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
   const resultsToDisplay = (currentUser?.role === 'admin' || currentUser?.role === 'society') ? allResults : competitions.map(c => ({
@@ -503,69 +542,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setResultsPage(1);
   };
 
-  const filteredSocieties = societies.filter(soc => 
-    soc.name.toLowerCase().includes(societySearch.toLowerCase()) ||
-    (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
-    (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
-  );
+  const filteredSocieties = societies
+    .filter(soc => {
+      if (currentUser?.role === 'society') {
+        return soc.name === currentUser.society;
+      }
+      return true;
+    })
+    .filter(soc => 
+      soc.name.toLowerCase().includes(societySearch.toLowerCase()) ||
+      (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
+      (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
+    );
 
   return (
     <div className="space-y-6">
       {/* Tab Switcher */}
-      <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
-        {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-          <>
+      {activeTab !== 'societies' && (
+        <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
+          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('results')}
               className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-history mr-2"></i> Risultati
             </button>
-            <button 
-              onClick={() => setActiveTab('events')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <i className="fas fa-calendar-alt mr-2"></i> Eventi
-            </button>
-          </>
-        )}
-        <button 
-          onClick={() => setActiveTab('societies')}
-          className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'societies' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-        >
-          <i className="fas fa-building mr-2"></i> Società
-        </button>
-        {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-          <>
+          )}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('team')}
               className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-trophy mr-2"></i> Squadre
             </button>
-            {currentUser?.role === 'admin' && (
-              <button 
-                onClick={() => setActiveTab('users')}
-                className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                <i className="fas fa-users mr-2"></i> Utenti
-              </button>
-            )}
-          </>
-        )}
-        <button 
-          onClick={() => setActiveTab('profile')}
-          className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-        >
-          <i className="fas fa-user mr-2"></i> Profilo
-        </button>
-        <button 
-          onClick={() => setActiveTab('settings')}
-          className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-        >
-          <i className="fas fa-cog mr-2"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
-        </button>
-      </div>
+          )}
+          {currentUser?.role === 'admin' && (
+            <button 
+              onClick={() => setActiveTab('users')}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-users mr-2"></i> Utenti
+            </button>
+          )}
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <i className="fas fa-user mr-2"></i> Profilo
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <i className="fas fa-cog mr-2"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
+          </button>
+        </div>
+      )}
 
       {activeTab === 'settings' ? (
         <div className="animate-in fade-in slide-in-from-right-4 duration-500">
@@ -596,6 +628,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50">{error}</div>}
 
           <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div className="flex flex-col items-center mb-6">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 overflow-hidden flex items-center justify-center mb-2">
+                  {profileAvatar ? (
+                    <img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <i className="fas fa-user text-4xl text-slate-500"></i>
+                  )}
+                </div>
+                <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                  <i className="fas fa-camera text-white text-xl"></i>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                </label>
+              </div>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Foto Profilo (Max 2MB)</span>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
@@ -942,7 +991,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-building text-orange-500"></i> Gestione Società (TAV)
+              <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'La Tua Società' : 'Gestione Società (TAV)'}
             </h2>
             {currentUser?.role === 'admin' && (
               <button 
@@ -1014,18 +1063,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {/* Society Search */}
-          <div className="mb-6">
-            <div className="relative">
-              <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-              <input 
-                type="text" 
-                placeholder="Cerca società per nome, città o regione..." 
-                value={societySearch}
-                onChange={(e) => setSocietySearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
-              />
+          {currentUser?.role !== 'society' && (
+            <div className="mb-6">
+              <div className="relative">
+                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                <input 
+                  type="text" 
+                  placeholder="Cerca società per nome, città o regione..." 
+                  value={societySearch}
+                  onChange={(e) => setSocietySearch(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredSocieties.map(soc => (
@@ -1360,9 +1411,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 {users.map(u => (
                   <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-3 px-4 text-sm text-white font-bold">
-                      <div className="flex items-center gap-2">
-                        {u.is_logged_in && <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Online"></div>}
-                        <span>{u.name} {u.surname}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          {u.avatar ? (
+                            <img src={u.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <i className="fas fa-user text-slate-500 text-xs"></i>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {u.is_logged_in && <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Online"></div>}
+                          <span>{u.name} {u.surname}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.fitav_card || '-'}</td>

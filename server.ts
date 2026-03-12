@@ -52,6 +52,7 @@ const initDB = async () => {
         qualification TEXT,
         society TEXT,
         fitav_card TEXT,
+        avatar TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -62,6 +63,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS society TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS fitav_card TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT");
     } catch (e) {
       console.log("Columns already exist or error adding them");
     }
@@ -278,7 +280,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, society: user.society }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card } });
+    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card, avatar: user.avatar } });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -286,19 +288,19 @@ app.post('/api/auth/login', async (req, res) => {
 
 // User Profile Routes
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
-  const { name, surname, email, password, category, qualification, society, fitav_card } = req.body;
+  const { name, surname, email, password, category, qualification, society, fitav_card, avatar } = req.body;
   try {
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, fitav_card = $8 WHERE id = $9",
-        [name, surname, email, hash, category, qualification, society, fitav_card, req.user.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9 WHERE id = $10",
+        [name, surname, email, hash, category, qualification, society, fitav_card, avatar, req.user.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, fitav_card = $7 WHERE id = $8",
-        [name, surname, email, category, qualification, society, fitav_card, req.user.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, fitav_card = $7, avatar = $8 WHERE id = $9",
+        [name, surname, email, category, qualification, society, fitav_card, avatar, req.user.id]
       );
     }
     res.json({ success: true });
@@ -310,7 +312,7 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
 // Admin Routes (Manage Users)
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT id, name, surname, email, role, category, qualification, society, fitav_card, created_at FROM users");
+    const { rows } = await pool.query("SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, created_at FROM users");
     const now = Date.now();
     const usersWithStatus = rows.map(user => ({
       ...user,

@@ -27,10 +27,10 @@ const App: React.FC = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
-  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events'>(
-    user?.role === 'society' ? 'admin' : 'history'
+  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies'>(
+    user?.role === 'society' ? 'societies' : 'history'
   );
-  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | null>(null);
+  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   
   const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ const App: React.FC = () => {
     localStorage.setItem('auth_user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
-    setView(newUser.role === 'society' ? 'admin' : 'history');
+    setView(newUser.role === 'society' ? 'societies' : 'history');
   };
 
   const handleLogout = () => {
@@ -96,6 +96,11 @@ const App: React.FC = () => {
     setUser(null);
     setCompetitions([]);
     setCartridges([]);
+  };
+
+  const handleUserUpdate = (updatedUser: any) => {
+    setUser(updatedUser);
+    localStorage.setItem('auth_user', JSON.stringify(updatedUser));
   };
 
   const saveCompetition = async (comp: Competition) => {
@@ -326,6 +331,36 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {view === 'societies' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <AdminPanel 
+              user={user}
+              token={token}
+              competitions={competitions}
+              cartridges={cartridges}
+              clientId=""
+              onClientIdChange={() => {}}
+              onImport={handleImport}
+              isDriveConnected={false}
+              onConnectDrive={() => {}}
+              onDisconnectDrive={() => {}}
+              onSaveDrive={() => {}}
+              onLoadDrive={() => {}}
+              syncStatus="idle"
+              lastSync={null}
+              triggerConfirm={triggerConfirm}
+              onEditCompetition={(comp) => {
+                setPreviousView('societies');
+                setEditingCompetition(comp || null);
+                setView('new');
+              }}
+              onDeleteCompetition={deleteCompetition}
+              initialTab="societies"
+              onUserUpdate={handleUserUpdate}
+            />
+          </div>
+        )}
+
         {view === 'admin' && (
           <div>
             <AdminPanel 
@@ -350,6 +385,7 @@ const App: React.FC = () => {
                 setView('new');
               }}
               onDeleteCompetition={deleteCompetition}
+              onUserUpdate={handleUserUpdate}
             />
           </div>
         )}

@@ -88,6 +88,7 @@ export interface User {
   qualification?: string;
   society?: string;
   fitav_card?: string;
+  avatar?: string;
   is_logged_in?: boolean;
 }
 

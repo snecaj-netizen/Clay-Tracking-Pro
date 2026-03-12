@@ -38,14 +38,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     { id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' },
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
-    { 
-      id: 'admin', 
-      label: user?.role === 'admin' ? 'Admin' : 'Profilo', 
-      icon: user?.role === 'admin' ? 'fa-users-cog' : 'fa-user' 
-    },
+    { id: 'societies', label: 'Società', icon: 'fa-building' },
   ].filter(item => {
     if (user?.role === 'society') {
-      return item.id === 'admin';
+      return item.id === 'events' || item.id === 'societies';
+    }
+    if (item.id === 'warehouse' && user?.role === 'user') {
+      return false;
     }
     return true;
   });
@@ -56,26 +55,40 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
           <button 
-            onClick={() => onNavigate(user?.role === 'society' ? 'admin' : 'history')}
+            onClick={() => onNavigate(user?.role === 'society' ? 'societies' : 'history')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity active:scale-95"
           >
             <div className="bg-orange-600 p-2 rounded-lg shadow-inner">
               <i className="fas fa-bullseye text-xl text-white"></i>
             </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-white leading-none">
+            <div className="text-left">
+              <h1 className="text-xl font-black tracking-tight text-white leading-none text-left">
                 Clay Tracker <span className="text-orange-600">Pro</span>
               </h1>
             </div>
           </button>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="hidden sm:block text-right mr-2">
-              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
+            <button 
+              onClick={() => onNavigate('admin')}
+              className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
+            >
+              <div className="hidden sm:block text-right">
+                <div className={`text-[10px] font-black uppercase tracking-widest ${currentView === 'admin' ? 'text-orange-200' : 'text-slate-500'}`}>
+                  {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
+                </div>
+                <div className={`text-sm font-bold ${currentView === 'admin' ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                  {user?.name} {user?.surname}
+                </div>
               </div>
-              <div className="text-sm font-bold text-white">{user?.name} {user?.surname}</div>
-            </div>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all overflow-hidden ${currentView === 'admin' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-orange-500'}`}>
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <i className={`fas ${user?.role === 'admin' ? 'fa-users-cog' : 'fa-user'}`}></i>
+                )}
+              </div>
+            </button>
 
             <button 
               onClick={toggleTheme} 
@@ -88,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             {onLogout && (
               <button 
                 onClick={onLogout}
-                className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                className="hidden sm:flex w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 items-center justify-center text-red-500 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
                 title="Esci"
               >
                 <i className="fas fa-sign-out-alt"></i>
@@ -96,14 +109,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             )}
 
             {/* Kebab Menu Button (Mobile Only) */}
-            {user?.role !== 'society' && (
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="sm:hidden w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-orange-500 transition-all active:scale-95"
-              >
-                <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-ellipsis-v'}`}></i>
-              </button>
-            )}
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="sm:hidden w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-orange-500 transition-all active:scale-95"
+            >
+              <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-ellipsis-v'}`}></i>
+            </button>
           </div>
         </div>
 
@@ -135,11 +146,28 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   <span>{item.label}</span>
                 </button>
               ))}
-              <div className="mt-2 px-4 py-3 bg-slate-900/30 rounded-xl border border-slate-800/50">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                  {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
+              <div className="mt-2 px-4 py-3 bg-slate-900/30 rounded-xl border border-slate-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {user?.avatar ? (
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-700">
+                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    </div>
+                  ) : null}
+                  <div>
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                      {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
+                    </div>
+                    <div className="text-sm font-bold text-white">{user?.name} {user?.surname}</div>
+                  </div>
                 </div>
-                <div className="text-sm font-bold text-white">{user?.name} {user?.surname}</div>
+                {onLogout && (
+                  <button 
+                    onClick={onLogout}
+                    className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                  >
+                    <i className="fas fa-sign-out-alt"></i>
+                  </button>
+                )}
               </div>
             </div>
           </div>
