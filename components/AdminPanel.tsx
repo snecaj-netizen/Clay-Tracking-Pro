@@ -1592,7 +1592,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-3 px-4 text-sm text-white font-bold">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        <div 
+                          className={`w-8 h-8 rounded-full bg-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center ${
+                            u.is_logged_in 
+                              ? 'border-2 border-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
+                              : 'border border-slate-700'
+                          }`}
+                          title={u.is_logged_in ? "Online" : undefined}
+                        >
                           {u.avatar ? (
                             <img src={u.avatar} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
@@ -1600,7 +1607,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {u.is_logged_in && <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Online"></div>}
                           <span>{u.name} {u.surname}</span>
                         </div>
                       </div>
