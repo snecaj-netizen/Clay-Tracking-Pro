@@ -150,8 +150,9 @@ const initDB = async () => {
     // Add columns if they don't exist (for existing databases)
     try {
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS contact_name TEXT");
+      await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS logo TEXT");
     } catch (e) {
-      console.log("Column contact_name might already exist or error adding it:", e);
+      console.log("Column contact_name or logo might already exist or error adding it:", e);
     }
 
     try {
@@ -325,36 +326,36 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
 });
 
 app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, surname, email, password, role, category, qualification, society, fitav_card } = req.body;
+  const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar } = req.body;
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
-      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card]
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null]
     );
-    res.json({ id: rows[0].id, name, surname, email, role: role || 'user', category, qualification, society, fitav_card });
+    res.json({ id: rows[0].id, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
 app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, surname, email, role, password, category, qualification, society, fitav_card } = req.body;
+  const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar } = req.body;
   
   try {
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9 WHERE id = $10",
-        [name, surname, email, role, hash, category, qualification, society, fitav_card, req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10 WHERE id = $11",
+        [name, surname, email, role, hash, category, qualification, society, fitav_card, avatar || null, req.params.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8 WHERE id = $9",
-        [name, surname, email, role, category, qualification, society, fitav_card, req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9 WHERE id = $10",
+        [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, req.params.id]
       );
     }
     res.json({ success: true });
@@ -520,11 +521,11 @@ app.get('/api/societies', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name } = req.body;
+  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo } = req.body;
   try {
     const { rows } = await pool.query(
-      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website, contact_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name]
+      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null]
     );
     res.json(rows[0]);
   } catch (err: any) {
@@ -533,7 +534,7 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
 });
 
 app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name } = req.body;
+  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo } = req.body;
   try {
     if (req.user.role === 'society') {
       const { rows } = await pool.query("SELECT name FROM societies WHERE id = $1", [req.params.id]);
@@ -546,8 +547,8 @@ app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, as
     }
 
     await pool.query(
-      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10 WHERE id = $11",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, req.params.id]
+      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10, logo = $11 WHERE id = $12",
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, req.params.id]
     );
     res.json({ success: true });
   } catch (err: any) {

@@ -64,6 +64,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socMobile, setSocMobile] = useState('');
   const [socWebsite, setSocWebsite] = useState('');
   const [socContactName, setSocContactName] = useState('');
+  const [socLogo, setSocLogo] = useState('');
   const [societySearch, setSocietySearch] = useState('');
   
   // Team Creation State
@@ -136,6 +137,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [qualification, setQualification] = useState('');
   const [society, setSociety] = useState('');
   const [fitavCard, setFitavCard] = useState('');
+  const [userAvatar, setUserAvatar] = useState('');
 
   // Profile state for current user
   const [profileName, setProfileName] = useState(currentUser?.name || '');
@@ -368,7 +370,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       phone: socPhone, 
       mobile: socMobile, 
       website: socWebsite,
-      contact_name: socContactName
+      contact_name: socContactName,
+      logo: socLogo
     };
 
     try {
@@ -404,6 +407,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSocMobile(soc.mobile || '');
     setSocWebsite(soc.website || '');
     setSocContactName(soc.contact_name || '');
+    setSocLogo(soc.logo || '');
     setShowSocietyForm(true);
   };
 
@@ -426,13 +430,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
+  const handleUserAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        setError('L\'immagine non può superare i 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUserAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     const endpoint = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
     const method = editingUser ? 'PUT' : 'POST';
-    const body = { name, surname, email, role, category, qualification, society, fitav_card: fitavCard, password: password || undefined };
+    const body = { name, surname, email, role, category, qualification, society, fitav_card: fitavCard, password: password || undefined, avatar: userAvatar || undefined };
 
     try {
       const res = await fetch(endpoint, {
@@ -447,7 +466,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!res.ok) throw new Error('Errore durante il salvataggio');
       
       setEditingUser(null);
-      setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard('');
+      setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard(''); setUserAvatar('');
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -483,7 +502,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setQualification(user.qualification || '');
     setSociety(user.society || '');
     setFitavCard(user.fitav_card || '');
+    setUserAvatar(user.avatar || '');
     setPassword('');
+    setShowUserForm(true);
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -496,6 +517,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSocietyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        setError('L\'immagine non può superare i 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSocLogo(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -995,7 +1031,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h2>
             {currentUser?.role === 'admin' && (
               <button 
-                onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); }}
+                onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); setSocLogo(''); }}
                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
               >
                 <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
@@ -1007,6 +1043,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {showSocietyForm && (
             <form onSubmit={handleSocietySubmit} className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300 space-y-4">
               <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingSociety ? 'Modifica Società' : 'Nuova Società'}</h3>
+              
+              <div className="flex flex-col items-center mb-6">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
+                    {socLogo ? (
+                      <img src={socLogo} alt="Logo Società" className="w-full h-full object-cover" />
+                    ) : (
+                      <i className="fas fa-building text-4xl text-slate-500"></i>
+                    )}
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                    <i className="fas fa-camera text-white text-xl"></i>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleSocietyLogoChange} />
+                  </label>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo Società (Max 2MB)</span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
@@ -1080,23 +1134,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredSocieties.map(soc => (
-              <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative">
-                <div className="absolute top-3 right-3 flex gap-2 transition-all">
-                  {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === soc.name)) && (
-                    <button onClick={() => handleEditSociety(soc)} className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white shadow-sm transition-all"><i className="fas fa-edit text-sm"></i></button>
-                  )}
-                  {currentUser?.role === 'admin' && (
-                    <button onClick={() => handleDeleteSociety(soc.id)} className="w-10 h-10 rounded-xl bg-red-950/40 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white shadow-sm"><i className="fas fa-trash-alt text-sm"></i></button>
-                  )}
-                </div>
-                <h3 className="text-lg font-black text-white mb-2 pr-24">{soc.name}</h3>
-                <div className="space-y-1 text-xs text-slate-400">
-                  {soc.contact_name && <p><i className="fas fa-user mr-2 w-4"></i>{soc.contact_name}</p>}
-                  <p><i className="fas fa-envelope mr-2 w-4"></i>{soc.email}</p>
-                  {soc.phone && <p><i className="fas fa-phone mr-2 w-4"></i>{soc.phone}</p>}
-                  {soc.mobile && <p><i className="fas fa-mobile-alt mr-2 w-4"></i>{soc.mobile}</p>}
-                  {soc.address && <p><i className="fas fa-map-marker-alt mr-2 w-4"></i>{soc.address}, {soc.city} ({soc.region})</p>}
-                  {soc.website && <p><i className="fas fa-globe mr-2 w-4"></i><a href={soc.website} target="_blank" rel="noreferrer" className="text-orange-500 hover:underline">{soc.website}</a></p>}
+              <div key={soc.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex gap-4">
+                {soc.logo ? (
+                  <img src={soc.logo} alt={soc.name} className="w-16 h-16 rounded-xl object-cover border border-slate-800 flex-shrink-0" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                    <i className="fas fa-building text-2xl text-slate-600"></i>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="absolute top-3 right-3 flex gap-2 transition-all">
+                    {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === soc.name)) && (
+                      <button onClick={() => handleEditSociety(soc)} className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white shadow-sm transition-all"><i className="fas fa-edit text-sm"></i></button>
+                    )}
+                    {currentUser?.role === 'admin' && (
+                      <button onClick={() => handleDeleteSociety(soc.id)} className="w-10 h-10 rounded-xl bg-red-950/40 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white shadow-sm"><i className="fas fa-trash-alt text-sm"></i></button>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-black text-white mb-2 pr-24 truncate">{soc.name}</h3>
+                  <div className="space-y-1 text-xs text-slate-400">
+                    {soc.contact_name && <p className="truncate"><i className="fas fa-user mr-2 w-4"></i>{soc.contact_name}</p>}
+                    <p className="truncate"><i className="fas fa-envelope mr-2 w-4"></i>{soc.email}</p>
+                    {soc.phone && <p className="truncate"><i className="fas fa-phone mr-2 w-4"></i>{soc.phone}</p>}
+                    {soc.mobile && <p className="truncate"><i className="fas fa-mobile-alt mr-2 w-4"></i>{soc.mobile}</p>}
+                    {soc.address && <p className="truncate"><i className="fas fa-map-marker-alt mr-2 w-4"></i>{soc.address}, {soc.city} ({soc.region})</p>}
+                    {soc.website && <p className="truncate"><i className="fas fa-globe mr-2 w-4"></i><a href={soc.website} target="_blank" rel="noreferrer" className="text-orange-500 hover:underline">{soc.website}</a></p>}
+                  </div>
                 </div>
               </div>
             ))}
@@ -1317,6 +1380,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {showUserForm && (
             <form onSubmit={handleSubmit} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300">
               <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingUser ? 'Modifica Utente' : 'Nuovo Utente'}</h3>
+              
+              <div className="flex flex-col items-center mb-6">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
+                    {userAvatar ? (
+                      <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <i className="fas fa-user text-4xl text-slate-500"></i>
+                    )}
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                    <i className="fas fa-camera text-white text-xl"></i>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleUserAvatarChange} />
+                  </label>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Foto Profilo (Max 2MB)</span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="sm:col-span-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
@@ -1387,7 +1468,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
                   {editingUser ? 'Salva Modifiche' : 'Crea Utente'}
                 </button>
-                <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
+                <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setUserAvatar(''); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
                   Annulla
                 </button>
               </div>
