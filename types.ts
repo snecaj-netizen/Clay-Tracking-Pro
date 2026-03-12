@@ -4,6 +4,10 @@ export enum Discipline {
   SP = 'Sporting (SP)',
   ES = 'English Sporting (ES)',
   PC = 'Club Cup (PC)',
+  SK = 'Skeet (SK)',
+  FO = 'Fossa Olimpica (FO)',
+  FU = 'Fossa Universale (FU)',
+  TC = 'Tiro Combinato (TC)',
   TRAINING = 'Allenamento'
 }
 

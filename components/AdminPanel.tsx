@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
-import { Competition, Cartridge, AppData } from '../types';
+import { Competition, Cartridge, AppData, Discipline } from '../types';
 
 interface AdminPanelProps {
   user: any;
@@ -65,6 +65,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socWebsite, setSocWebsite] = useState('');
   const [socContactName, setSocContactName] = useState('');
   const [socLogo, setSocLogo] = useState('');
+  const [socOpeningHours, setSocOpeningHours] = useState('');
   const [societySearch, setSocietySearch] = useState('');
   const [selectedSociety, setSelectedSociety] = useState<any>(null);
   
@@ -372,7 +373,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       mobile: socMobile, 
       website: socWebsite,
       contact_name: socContactName,
-      logo: socLogo
+      logo: socLogo,
+      opening_hours: socOpeningHours
     };
 
     try {
@@ -388,7 +390,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!res.ok) throw new Error('Errore durante il salvataggio della società');
       
       setEditingSociety(null);
-      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite('');
+      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours('');
       setShowSocietyForm(false);
       fetchSocieties();
     } catch (err: any) {
@@ -409,6 +411,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSocWebsite(soc.website || '');
     setSocContactName(soc.contact_name || '');
     setSocLogo(soc.logo || '');
+    setSocOpeningHours(soc.opening_hours || '');
     setShowSocietyForm(true);
   };
 
@@ -819,10 +822,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                     >
                       <option value="">Seleziona...</option>
-                      <option value="Compak Sporting (CK)">Compak Sporting (CK)</option>
-                      <option value="Sporting (SP)">Sporting (SP)</option>
-                      <option value="English Sporting (ES)">English Sporting (ES)</option>
-                      <option value="Club Cup (PC)">Club Cup (PC)</option>
+                      {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -1032,7 +1034,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h2>
             {currentUser?.role === 'admin' && (
               <button 
-                onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); setSocLogo(''); }}
+                onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); setSocLogo(''); setSocOpeningHours(''); }}
                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
               >
                 <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
@@ -1104,6 +1106,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
                   <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
+                  <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
               </div>
               <div className="flex gap-2 pt-4">
@@ -1224,6 +1230,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="col-span-2 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Sito Web</p>
                         <a href={selectedSociety.website} target="_blank" rel="noreferrer" className="text-sm text-orange-500 hover:underline break-all">{selectedSociety.website}</a>
+                      </div>
+                    )}
+                    {selectedSociety.opening_hours && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Giorni e Orari di Apertura</p>
+                        <p className="text-sm text-white">{selectedSociety.opening_hours}</p>
                       </div>
                     )}
                   </div>

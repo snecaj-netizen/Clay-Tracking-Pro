@@ -87,11 +87,11 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
       }).join('\n');
 
       const prompt = `
-        Agisci come un coach esperto internazionale di Tiro a Volo (Sporting e Compak).
+        Agisci come un coach esperto internazionale di Tiro a Volo.
         Analizza i miei ultimi risultati reali:
         ${resultsSummary}
         
-        Considerando che le discipline sono CK (Compak), SP (Sporting), ES (English Sporting) e PC (Percorso Caccia).
+        Considerando che le discipline sono CK (Compak), SP (Sporting), ES (English Sporting), PC (Percorso Caccia), SK (Skeet), FO (Fossa Olimpica), FU (Fossa Universale) e TC (Tiro Combinato).
         Fornisci 3 consigli tecnici brevi e motivazionali in italiano per migliorare la mia media. 
         Sii specifico ma conciso. Usa un tono professionale e incoraggiante.
         Formatta la risposta con punti elenco.
