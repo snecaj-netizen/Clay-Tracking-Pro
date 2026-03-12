@@ -300,7 +300,7 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 pb-20 sm:pb-8 flex-1 w-full">
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Dashboard competitions={competitions} user={user} onAddClick={() => setView('new')} />
+            <Dashboard competitions={competitions} user={user} onAddClick={() => { setPreviousView('dashboard'); setView('new'); }} />
             {competitions.length > 0 && <StatsCharts competitions={competitions} />}
             {competitions.length > 0 && <GeminiCoach competitions={competitions} />}
           </div>
@@ -336,7 +336,6 @@ const App: React.FC = () => {
                 setEditingCompetition(comp);
                 setView('new');
               }}
-              onAddClick={() => { setEditingCompetition(null); setView('new'); }}
               triggerConfirm={triggerConfirm}
               user={user}
             />
@@ -427,13 +426,25 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Floating Add Button - Only on History Page and not for society role */}
-      {view === 'history' && user?.role !== 'society' && (
+      {/* Floating Add Button - Only on Dashboard/History/New Page and not for society role */}
+      {(view === 'dashboard' || view === 'history' || view === 'new') && user?.role !== 'society' && (
         <button 
-          onClick={() => { setEditingCompetition(null); setView('new'); }}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-600/40 hover:bg-orange-500 hover:scale-110 transition-all active:scale-95 z-50 floating-add-btn group"
+          onClick={() => { 
+            if (view === 'new') {
+              setView(previousView || 'history');
+              setPreviousView(null);
+              setEditingCompetition(null);
+              setPrefillCompetition(null);
+            } else {
+              setPreviousView(view);
+              setEditingCompetition(null); 
+              setView('new'); 
+            }
+          }}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${view === 'new' ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-50 floating-add-btn group`}
+          title={view === 'new' ? 'Chiudi' : 'Nuova Gara'}
         >
-          <i className="fas fa-plus text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
+          <i className={`fas ${view === 'new' ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
         </button>
       )}
 

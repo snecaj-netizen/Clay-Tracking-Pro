@@ -1053,8 +1053,8 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
 });
 
 async function setupVite(app: any) {
+  const isProd = process.env.NODE_ENV === "production";
   const distPath = path.resolve(process.cwd(), 'dist');
-  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(distPath);
 
   if (!isProd) {
     try {
@@ -1063,13 +1063,27 @@ async function setupVite(app: any) {
         appType: "spa",
       });
       app.use(vite.middlewares);
+      console.log('Vite middleware initialized');
     } catch (e) {
       console.error('Vite initialization failed, falling back to static serving', e);
-      serveStatic(app);
+      if (fs.existsSync(distPath)) {
+        serveStatic(app);
+      } else {
+        app.get('*', (req: any, res: any) => {
+          res.status(500).send('Vite failed to start and no build found. Please check server logs.');
+        });
+      }
     }
   } else {
-    console.log('Serving static files from dist directory');
-    serveStatic(app);
+    if (fs.existsSync(distPath)) {
+      console.log('Serving static files from dist directory');
+      serveStatic(app);
+    } else {
+      console.error('Production mode enabled but dist directory not found');
+      app.get('*', (req: any, res: any) => {
+        res.status(500).send('Production build not found. Run npm run build.');
+      });
+    }
   }
 }
 

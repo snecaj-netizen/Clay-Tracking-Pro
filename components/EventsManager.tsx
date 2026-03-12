@@ -428,30 +428,22 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         </h2>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-start sm:justify-end">
           {!showForm && (
-            <div className="flex bg-slate-900 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0">
-              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-list text-sm sm:text-base"></i> <span className="hidden xs:inline">Lista</span></button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-calendar-alt text-sm sm:text-base"></i> <span className="hidden xs:inline">Calendario</span></button>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+              <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-4 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-list text-base"></i> <span className="hidden xs:inline">Lista</span></button>
+              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-4 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-300'}`}><i className="fas fa-calendar-alt text-base"></i> <span className="hidden xs:inline">Calendario</span></button>
             </div>
           )}
           {!showForm && (
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              className={`px-4 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 shrink-0 ${showFilters ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
             >
-              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm sm:text-base`}></i>
+              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-base`}></i>
               <span className="hidden xs:inline">{showFilters ? 'Nascondi Filtri' : 'Filtra Eventi'}</span>
               <span className="xs:hidden">Filtri</span>
             </button>
           )}
-          {!showForm && (user?.role === 'admin' || user?.role === 'society') && (
-            <button 
-              onClick={() => setShowForm(true)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
-            >
-              <i className="fas fa-plus text-sm sm:text-base"></i>
-              <span>Nuovo <span className="hidden xs:inline">Evento</span></span>
-            </button>
-          )}
+          {/* Button removed and replaced by floating button */}
         </div>
       </div>
 
@@ -787,6 +779,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             </div>
           </div>
         </div>
+      )}
+      {/* Floating Add Button for Events */}
+      {(user?.role === 'admin' || user?.role === 'society') && (
+        <button 
+          onClick={() => {
+            if (!showForm) resetForm();
+            setShowForm(!showForm);
+          }}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${showForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-50 floating-add-btn group`}
+          title={showForm ? 'Chiudi' : 'Nuovo Evento'}
+        >
+          <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
+        </button>
       )}
     </div>
   );

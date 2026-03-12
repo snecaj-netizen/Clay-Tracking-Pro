@@ -93,10 +93,12 @@
         
         /* Fix: Keep white text on colored backgrounds in light mode */
         html.light-theme .bg-orange-600.text-white,
+        html.light-theme .bg-orange-500.text-white,
         html.light-theme .bg-red-600.text-white,
         html.light-theme .bg-emerald-600.text-white,
         html.light-theme .bg-blue-600.text-white,
         html.light-theme .bg-orange-600 .text-white,
+        html.light-theme .bg-orange-500 .text-white,
         html.light-theme .bg-red-600 .text-white,
         html.light-theme .bg-emerald-600 .text-white,
         html.light-theme .bg-blue-600 .text-white { color: #ffffff !important; }
@@ -108,8 +110,10 @@
         html.light-theme .hover\:text-white:hover { color: #ffffff !important; }
         
         /* Keep floating add button orange and white in light mode */
-        html.light-theme .floating-add-btn { color: #ffffff !important; border-color: #f8fafc !important; }
-        html.light-theme .floating-add-btn i { color: #ffffff !important; }
+        html.light-theme .floating-add-btn.bg-orange-600,
+        html.light-theme .floating-add-btn.bg-orange-500 { color: #ffffff !important; }
+        html.light-theme .floating-add-btn.bg-orange-600 i,
+        html.light-theme .floating-add-btn.bg-orange-500 i { color: #ffffff !important; }
 
         /* Hide scrollbar for Chrome, Safari and Opera */
         .no-scrollbar::-webkit-scrollbar {

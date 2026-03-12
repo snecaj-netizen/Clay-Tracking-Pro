@@ -1079,15 +1079,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'La Tua Società' : 'Gestione Società (TAV)'}
             </h2>
-            {currentUser?.role === 'admin' && (
-              <button 
-                onClick={() => { setShowSocietyForm(!showSocietyForm); setEditingSociety(null); setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocContactName(''); setSocLogo(''); setSocOpeningHours(''); }}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showSocietyForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
-              >
-                <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'}`}></i>
-                {showSocietyForm ? 'Chiudi' : 'Nuova Società'}
-              </button>
-            )}
           </div>
 
           {showSocietyForm && (
@@ -1709,6 +1700,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </table>
           </div>
         </div>
+      )}
+      {/* Floating Add Button for Societies */}
+      {activeTab === 'societies' && currentUser?.role === 'admin' && (
+        <button 
+          onClick={() => {
+            if (!showSocietyForm) {
+              setEditingSociety(null);
+              setSocName('');
+              setSocEmail('');
+              setSocAddress('');
+              setSocCity('');
+              setSocRegion('');
+              setSocZip('');
+              setSocPhone('');
+              setSocMobile('');
+              setSocWebsite('');
+              setSocContactName('');
+              setSocLogo('');
+              setSocOpeningHours('');
+            }
+            setShowSocietyForm(!showSocietyForm);
+          }}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-50 floating-add-btn group`}
+          title={showSocietyForm ? 'Chiudi' : 'Nuova Società'}
+        >
+          <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
+        </button>
       )}
     </div>
   );

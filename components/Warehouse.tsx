@@ -197,12 +197,6 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
             <i className="fas fa-warehouse text-orange-600"></i>
             Magazzino
           </h2>
-          <button 
-            onClick={() => setShowForm(!showForm)}
-            className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase transition-all shadow-lg"
-          >
-            {showForm ? 'Chiudi' : 'Nuovo Carico'}
-          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -445,6 +439,15 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
           </div>
         )}
       </div>
+
+      {/* Floating Add Button for Warehouse */}
+      <button 
+        onClick={() => setShowForm(!showForm)}
+        className={`fixed bottom-8 right-8 w-16 h-16 ${showForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-50 floating-add-btn group`}
+        title={showForm ? 'Chiudi' : 'Nuovo Carico'}
+      >
+        <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
+      </button>
     </div>
   );
 };
