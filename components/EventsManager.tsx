@@ -139,6 +139,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setNotes(ev.notes || '');
     setPosterUrl(ev.poster_url || '');
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {

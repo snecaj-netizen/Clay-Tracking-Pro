@@ -186,6 +186,7 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
     setImageUrl(c.imageUrl || '');
     setShowForm(true);
     setActiveTab('history');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (

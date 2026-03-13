@@ -338,6 +338,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewTeamSociety(team.society || '');
     setSelectedShooterIds(team.members ? team.members.map((m: any) => m.id) : []);
     setShowTeamForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteTeam = (id: number) => {
@@ -420,6 +421,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSocOpeningHours(soc.opening_hours || '');
     setSocDisciplines(soc.disciplines ? soc.disciplines.split(',') : []);
     setShowSocietyForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteSociety = (id: number) => {
@@ -521,6 +523,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setUserAvatar(user.avatar || '');
     setPassword('');
     setShowUserForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -835,6 +838,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <button 
                 onClick={() => {
                   setShowTeamForm(!showTeamForm);
+                  if (!showTeamForm) window.scrollTo({ top: 0, behavior: 'smooth' });
                   if (!showTeamForm && currentUser?.role === 'society' && currentUser?.society) {
                     setNewTeamSociety(currentUser.society);
                   } else if (!showTeamForm) {
@@ -1574,7 +1578,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               </div>
               <button 
-                onClick={() => { setShowUserForm(!showUserForm); setEditingUser(null); }}
+                onClick={() => { 
+                  setShowUserForm(!showUserForm); 
+                  setEditingUser(null); 
+                  if (!showUserForm) window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${showUserForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
               >
                 <i className={`fas ${showUserForm ? 'fa-times' : 'fa-user-plus'}`}></i>
@@ -1779,6 +1787,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               setSocOpeningHours('');
             }
             setShowSocietyForm(!showSocietyForm);
+            if (!showSocietyForm) window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           className={`fixed bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showSocietyForm ? 'Chiudi' : 'Nuova Società'}

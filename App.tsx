@@ -347,6 +347,7 @@ const App: React.FC = () => {
                 setPreviousView('history');
                 setEditingCompetition(comp);
                 setView('new');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               triggerConfirm={triggerConfirm}
               user={user}
@@ -400,6 +401,7 @@ const App: React.FC = () => {
                 setPreviousView('societies');
                 setEditingCompetition(comp || null);
                 setView('new');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteCompetition={deleteCompetition}
               initialTab="societies"
@@ -430,6 +432,7 @@ const App: React.FC = () => {
                 setPreviousView('admin');
                 setEditingCompetition(comp || null);
                 setView('new');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteCompetition={deleteCompetition}
               onUserUpdate={handleUserUpdate}
