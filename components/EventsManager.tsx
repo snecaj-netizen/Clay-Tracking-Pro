@@ -4,7 +4,7 @@ import { SocietyEvent, Discipline } from '../types';
 interface EventsManagerProps {
   user: any;
   token: string;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   societies: any[];
   onParticipate?: (event: SocietyEvent) => void;
 }
@@ -217,7 +217,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         } catch (err) {
           console.error('Error deleting event:', err);
         }
-      }
+      },
+      'Elimina',
+      'danger'
     );
   };
 

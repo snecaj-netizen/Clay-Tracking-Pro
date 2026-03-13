@@ -6,17 +6,29 @@ interface ConfirmModalProps {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmText?: string;
+  variant?: 'danger' | 'primary';
 }
 
-const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+const ConfirmModal: React.FC<ConfirmModalProps> = ({ 
+  isOpen, 
+  title, 
+  message, 
+  onConfirm, 
+  onCancel,
+  confirmText = 'Conferma',
+  variant = 'danger'
+}) => {
   if (!isOpen) return null;
+
+  const isDanger = variant === 'danger';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-950/30 flex items-center justify-center text-red-500">
-            <i className="fas fa-exclamation-triangle"></i>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDanger ? 'bg-red-950/30 text-red-500' : 'bg-orange-950/30 text-orange-500'}`}>
+            <i className={`fas ${isDanger ? 'fa-exclamation-triangle' : 'fa-sign-out-alt'}`}></i>
           </div>
           <h3 className="text-lg font-black text-white uppercase tracking-tight">{title}</h3>
         </div>
@@ -32,9 +44,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, title, message, onC
           </button>
           <button 
             onClick={() => { onConfirm(); onCancel(); }}
-            className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl transition-all active:scale-95 shadow-lg shadow-red-600/20 text-xs uppercase"
+            className={`flex-1 ${isDanger ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 'bg-orange-600 hover:bg-orange-500 shadow-orange-600/20'} text-white font-black py-3 rounded-xl transition-all active:scale-95 shadow-lg text-xs uppercase`}
           >
-            Elimina
+            {confirmText}
           </button>
         </div>
       </div>

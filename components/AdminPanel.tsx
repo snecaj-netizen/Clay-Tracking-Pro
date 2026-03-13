@@ -19,7 +19,7 @@ interface AdminPanelProps {
   onDisconnectDrive: () => void;
   onSaveDrive: () => void;
   onLoadDrive: () => void;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   onEditCompetition?: (comp?: Competition) => void;
   onDeleteCompetition?: (id: string) => void;
   initialTab?: 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events';
@@ -354,7 +354,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         } catch (err: any) {
           setError(err.message);
         }
-      }
+      },
+      'Elimina',
+      'danger'
     );
   };
 
@@ -417,7 +419,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setShowSocietyForm(true);
   };
 
-  const handleDeleteSociety = async (id: number) => {
+  const handleDeleteSociety = (id: number) => {
     triggerConfirm(
       'Elimina Società',
       'Sei sicuro di voler eliminare questa società? L\'azione è irreversibile.',
@@ -432,7 +434,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         } catch (err: any) {
           setError(err.message);
         }
-      }
+      },
+      'Elimina',
+      'danger'
     );
   };
 
@@ -480,7 +484,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     triggerConfirm(
       'Elimina Utente',
       'Sei sicuro di voler eliminare questo utente e tutti i suoi dati? L\'azione è irreversibile.',
@@ -495,7 +499,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         } catch (err: any) {
           setError(err.message);
         }
-      }
+      },
+      'Elimina',
+      'danger'
     );
   };
 
@@ -1455,13 +1461,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           onClick={() => {
                             triggerConfirm(
                               'Elimina Gara',
-                              `Sei sicuro di voler eliminare la gara "${r.name}" di ${r.userName} ${r.userSurname}?`,
+                              `Sei sicuro di voler eliminare la gara "${r.name}"${r.userName ? ` di ${r.userName} ${r.userSurname || ''}` : ''}?`,
                               () => {
                                 if (onDeleteCompetition) {
                                   onDeleteCompetition(r.id);
                                   setAllResults(prev => prev.filter(res => res.id !== r.id));
                                 }
-                              }
+                              },
+                              'Elimina',
+                              'danger'
                             );
                           }}
                           className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"

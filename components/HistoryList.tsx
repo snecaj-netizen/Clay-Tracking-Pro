@@ -6,7 +6,7 @@ interface HistoryListProps {
   competitions: Competition[];
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   user?: any;
 }
 
@@ -310,7 +310,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                   {user?.role !== 'society' && (
                     <>
                       <button onClick={() => onEdit(comp)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-edit"></i></button>
-                      <button onClick={() => { console.log('Delete button clicked for comp:', comp.id); triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id)); }} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-trash-alt"></i></button>
+                      <button onClick={() => { triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id), 'Elimina', 'danger'); }} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-trash-alt"></i></button>
                     </>
                   )}
                 </div>
@@ -560,7 +560,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                           {user?.role !== 'society' && (
                             <>
                               <button onClick={() => onEdit(comp)} className="w-7 h-7 rounded-md bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
-                              <button onClick={() => triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id))} className="w-7 h-7 rounded-md bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash-alt text-[10px]"></i></button>
+                              <button onClick={() => triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id), 'Elimina', 'danger')} className="w-7 h-7 rounded-md bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash-alt text-[10px]"></i></button>
                             </>
                           )}
                         </div>

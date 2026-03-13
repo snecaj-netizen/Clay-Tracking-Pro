@@ -42,6 +42,8 @@ const App: React.FC = () => {
     title: string;
     message: string;
     onConfirm: () => void;
+    confirmText?: string;
+    variant?: 'danger' | 'primary';
   }>({
     isOpen: false,
     title: '',
@@ -49,9 +51,9 @@ const App: React.FC = () => {
     onConfirm: () => {},
   });
 
-  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => {
     console.log('Triggering confirm modal:', { title, message });
-    setConfirmConfig({ isOpen: true, title, message, onConfirm });
+    setConfirmConfig({ isOpen: true, title, message, onConfirm, confirmText, variant });
   };
 
   // Fetch data from API
@@ -91,12 +93,20 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    setToken(null);
-    setUser(null);
-    setCompetitions([]);
-    setCartridges([]);
+    triggerConfirm(
+      'Logout',
+      'Sei sicuro di voler uscire dall\'applicazione?',
+      () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        setToken(null);
+        setUser(null);
+        setCompetitions([]);
+        setCartridges([]);
+      },
+      'Esci',
+      'primary'
+    );
   };
 
   const handleUserUpdate = (updatedUser: any) => {
@@ -276,7 +286,9 @@ const App: React.FC = () => {
           console.error('Error importing data:', err);
           alert('Errore di rete durante l\'importazione.');
         }
-      }
+      },
+      'Importa',
+      'danger'
     );
   };
 
@@ -463,6 +475,8 @@ const App: React.FC = () => {
         message={confirmConfig.message}
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
       />
     </div>
   );

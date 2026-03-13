@@ -7,7 +7,7 @@ interface WarehouseProps {
   onSave: (cart: Cartridge) => void;
   onDelete: (id: string) => void;
   onUpdateAll: (carts: Cartridge[]) => void;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
 }
 
 const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onUpdateAll, triggerConfirm }) => {
@@ -431,7 +431,7 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => startEdit(c)} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
-                    <button onClick={() => { console.log('Delete button clicked for cartridge:', c.id); triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id)); }} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
+                    <button onClick={() => { console.log('Delete button clicked for cartridge:', c.id); triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id), 'Elimina', 'danger'); }} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
                   </div>
                 </div>
               </div>
