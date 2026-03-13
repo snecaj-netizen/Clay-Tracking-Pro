@@ -68,6 +68,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socContactName, setSocContactName] = useState('');
   const [socLogo, setSocLogo] = useState('');
   const [socOpeningHours, setSocOpeningHours] = useState('');
+  const [socDisciplines, setSocDisciplines] = useState<string[]>([]);
   const [societySearch, setSocietySearch] = useState('');
   const [selectedSociety, setSelectedSociety] = useState<any>(null);
   
@@ -378,7 +379,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       website: socWebsite,
       contact_name: socContactName,
       logo: socLogo,
-      opening_hours: socOpeningHours
+      opening_hours: socOpeningHours,
+      disciplines: socDisciplines.join(',')
     };
 
     try {
@@ -394,7 +396,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!res.ok) throw new Error('Errore durante il salvataggio della società');
       
       setEditingSociety(null);
-      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours('');
+      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
       setShowSocietyForm(false);
       fetchSocieties();
     } catch (err: any) {
@@ -416,6 +418,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSocContactName(soc.contact_name || '');
     setSocLogo(soc.logo || '');
     setSocOpeningHours(soc.opening_hours || '');
+    setSocDisciplines(soc.disciplines ? soc.disciplines.split(',') : []);
     setShowSocietyForm(true);
   };
 
@@ -1157,6 +1160,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
                   <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
+                
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Discipline Disponibili</label>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                    {Object.keys(Discipline).filter(k => k !== 'TRAINING').map(key => (
+                      <label key={key} className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-all ${socDisciplines.includes(key) ? 'bg-orange-600/20 border-orange-600 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
+                        <input 
+                          type="checkbox" 
+                          className="hidden" 
+                          checked={socDisciplines.includes(key)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSocDisciplines([...socDisciplines, key]);
+                            } else {
+                              setSocDisciplines(socDisciplines.filter(d => d !== key));
+                            }
+                          }}
+                        />
+                        <span className="text-xs font-black">{key}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="flex gap-2 pt-4">
                 <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
@@ -1205,6 +1231,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     {soc.city && <span className="truncate"><i className="fas fa-map-marker-alt mr-1"></i>{soc.city} {soc.region ? `(${soc.region})` : ''}</span>}
                     <span className="truncate"><i className="fas fa-envelope mr-1"></i>{soc.email}</span>
                   </div>
+                  {soc.disciplines && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {soc.disciplines.split(',').slice(0, 5).map((d: string) => (
+                        <span key={d} className="text-[8px] font-black text-orange-500/80 bg-orange-500/10 px-1 rounded uppercase">{d}</span>
+                      ))}
+                      {soc.disciplines.split(',').length > 5 && <span className="text-[8px] font-black text-slate-500">...</span>}
+                    </div>
+                  )}
                 </div>
                 <div className="text-slate-600 group-hover:text-orange-500 transition-colors">
                   <i className="fas fa-chevron-right"></i>
@@ -1282,6 +1316,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="col-span-2 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Giorni e Orari di Apertura</p>
                         <p className="text-sm text-white">{selectedSociety.opening_hours}</p>
+                      </div>
+                    )}
+                    {selectedSociety.disciplines && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-xl p-3 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Discipline Disponibili</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSociety.disciplines.split(',').map((d: string) => (
+                            <span key={d} className="px-2 py-1 rounded-lg bg-orange-600/20 text-orange-500 text-[10px] font-black border border-orange-600/30">
+                              {d}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
