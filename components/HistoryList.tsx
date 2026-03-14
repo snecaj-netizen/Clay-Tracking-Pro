@@ -233,6 +233,11 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                       Pos. {comp.position}°
                     </span>
                   )}
+                  {comp.teamName && (
+                    <span className="bg-indigo-900/30 text-indigo-400 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border border-indigo-900/50">
+                      <i className="fas fa-users mr-1"></i> {comp.teamName}
+                    </span>
+                  )}
                   {comp.weather && (
                     <span className="bg-slate-800 text-white text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1.5 border border-slate-700 shadow-sm">
                       <i className={`fas ${comp.weather.icon || 'fa-cloud'} text-orange-400`}></i>

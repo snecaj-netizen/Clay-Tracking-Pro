@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
+  const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string } | null>(null);
   
   const [loading, setLoading] = useState(true);
 
@@ -89,7 +90,7 @@ const App: React.FC = () => {
     localStorage.setItem('auth_user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
-    setView(newUser.role === 'society' ? 'societies' : 'history');
+    setView(newUser.role === 'society' ? 'admin' : 'history');
   };
 
   const handleLogout = () => {
@@ -130,6 +131,17 @@ const App: React.FC = () => {
     setPrefillCompetition(newComp);
     setPreviousView(view);
     setView('new');
+  };
+
+  const handleCreateTeamFromEvent = (event: any) => {
+    setPrefillTeamData({
+      competition_name: event.name,
+      discipline: event.discipline,
+      society: user?.role === 'society' ? user.society : event.location,
+      location: event.location,
+      date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    setView('admin');
   };
 
   const saveCompetition = async (comp: Competition) => {
@@ -375,6 +387,7 @@ const App: React.FC = () => {
               triggerConfirm={triggerConfirm} 
               societies={societies} 
               onParticipate={handleParticipateInEvent}
+              onCreateTeam={handleCreateTeamFromEvent}
             />
           </div>
         )}
@@ -404,7 +417,7 @@ const App: React.FC = () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteCompetition={deleteCompetition}
-              initialTab="societies"
+              initialTab="results"
               onUserUpdate={handleUserUpdate}
             />
           </div>
@@ -436,6 +449,8 @@ const App: React.FC = () => {
               }}
               onDeleteCompetition={deleteCompetition}
               onUserUpdate={handleUserUpdate}
+              prefillTeam={prefillTeamData || undefined}
+              onPrefillTeamUsed={() => setPrefillTeamData(null)}
             />
           </div>
         )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
 import { Competition, Cartridge, AppData, Discipline } from '../types';
@@ -24,12 +24,20 @@ interface AdminPanelProps {
   onDeleteCompetition?: (id: string) => void;
   initialTab?: 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events';
   onUserUpdate?: (user: any) => void;
+  prefillTeam?: {
+    competition_name: string;
+    discipline: string;
+    society: string;
+    date: string;
+    location: string;
+  };
+  onPrefillTeamUsed?: () => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate
+  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate, prefillTeam, onPrefillTeamUsed
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events'>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
@@ -40,6 +48,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+
+  useEffect(() => {
+    if (prefillTeam) {
+      setActiveTab('team');
+      setShowTeamForm(true);
+      setNewTeamCompetitionName(prefillTeam.competition_name);
+      setNewTeamDiscipline(prefillTeam.discipline);
+      setNewTeamSociety(prefillTeam.society);
+      setNewTeamLocation(prefillTeam.location);
+      setNewTeamDate(prefillTeam.date);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (onPrefillTeamUsed) onPrefillTeamUsed();
+    }
+  }, [prefillTeam, onPrefillTeamUsed]);
   const [showUserForm, setShowUserForm] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
@@ -78,9 +100,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newTeamSize, setNewTeamSize] = useState<3 | 6>(3);
   const [newTeamCompetitionName, setNewTeamCompetitionName] = useState('');
   const [newTeamDiscipline, setNewTeamDiscipline] = useState('');
-  const [newTeamSociety, setNewTeamSociety] = useState('');
+  const [newTeamSociety, setNewTeamSociety] = useState(currentUser?.role === 'society' ? currentUser?.society || '' : '');
+  const [newTeamLocation, setNewTeamLocation] = useState('');
+  const [newTeamDate, setNewTeamDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
   const [editingTeam, setEditingTeam] = useState<any>(null);
+  const [editingScore, setEditingScore] = useState<{teamId: number, userId: number, score: number} | null>(null);
   
   // Results Filtering State
   const [showFilters, setShowFilters] = useState(false);
@@ -155,6 +180,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [profileAvatar, setProfileAvatar] = useState(currentUser?.avatar || '');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
+
+  const [statsFilterDiscipline, setStatsFilterDiscipline] = useState<string>('');
+
+  const filteredTeamStats = useMemo(() => {
+    if (!statsFilterDiscipline) return teamStats;
+    return teamStats.filter(s => s.discipline === statsFilterDiscipline);
+  }, [teamStats, statsFilterDiscipline]);
+
+  const statsDisciplines = useMemo(() => {
+    return Array.from(new Set(teamStats.map(s => s.discipline))).sort();
+  }, [teamStats]);
 
   const fetchSocieties = async () => {
     try {
@@ -306,6 +342,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           competition_name: newTeamCompetitionName,
           discipline: newTeamDiscipline,
           society: newTeamSociety,
+          location: newTeamLocation,
+          date: newTeamDate,
           memberIds: selectedShooterIds
         }),
       });
@@ -315,6 +353,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewTeamName('');
       setNewTeamCompetitionName('');
       setNewTeamDiscipline('');
+      setNewTeamLocation('');
+      setNewTeamDate(new Date().toISOString().split('T')[0]);
       if (currentUser?.role === 'society' && currentUser?.society) {
         setNewTeamSociety(currentUser.society);
       } else {
@@ -324,6 +364,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setShowTeamForm(false);
       setEditingTeam(null);
       fetchTeams();
+      fetchTeamStats();
+      fetchAllResults();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateScore = async (teamId: number, userId: number, score: number) => {
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${userId}/score`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ score })
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Errore durante l\'aggiornamento del punteggio');
+      }
+      
+      fetchTeams();
+      fetchTeamStats();
+      fetchAllResults();
+      setEditingScore(null);
+      setProfileSuccess('Punteggio aggiornato con successo!');
+      setTimeout(() => setProfileSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message);
     }
@@ -336,6 +405,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewTeamCompetitionName(team.competition_name || '');
     setNewTeamDiscipline(team.discipline || '');
     setNewTeamSociety(team.society || '');
+    setNewTeamLocation(team.location || '');
+    setNewTeamDate(team.date || new Date().toISOString().split('T')[0]);
     setSelectedShooterIds(team.members ? team.members.map((m: any) => m.id) : []);
     setShowTeamForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -351,7 +422,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (res.ok) fetchTeams();
+          if (res.ok) {
+            fetchTeams();
+            fetchTeamStats();
+            fetchAllResults();
+          }
           else throw new Error('Errore durante l\'eliminazione');
         } catch (err: any) {
           setError(err.message);
@@ -359,6 +434,90 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       },
       'Elimina',
       'danger'
+    );
+  };
+
+  const handleSendCompetitionToShooters = async (teamId: number) => {
+    try {
+      const res = await fetch(`/api/teams/${teamId}/send-competition`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) throw new Error('Errore durante l\'invio della gara ai tiratori');
+      
+      const data = await res.json();
+      setProfileSuccess(data.message || 'Gara inviata con successo ai tiratori!');
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleSaveAndSendCompetition = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedShooterIds.length !== newTeamSize) {
+      setError(`Devi selezionare esattamente ${newTeamSize} tiratori.`);
+      return;
+    }
+
+    triggerConfirm(
+      'Invia Gara ai Tiratori',
+      'Questa operazione salverà la squadra e invierà automaticamente la gara a tutti i tiratori selezionati. Continuare?',
+      async () => {
+        try {
+          // 1. Save the team first
+          const endpoint = editingTeam ? `/api/teams/${editingTeam.id}` : '/api/teams';
+          const method = editingTeam ? 'PUT' : 'POST';
+          
+          const res = await fetch(endpoint, {
+            method,
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({
+              name: newTeamName,
+              size: newTeamSize,
+              competition_name: newTeamCompetitionName,
+              discipline: newTeamDiscipline,
+              society: newTeamSociety,
+              location: newTeamLocation,
+              date: newTeamDate,
+              memberIds: selectedShooterIds
+            }),
+          });
+
+          if (!res.ok) throw new Error(`Errore durante il salvataggio della squadra`);
+          const data = await res.json();
+          const teamId = editingTeam ? editingTeam.id : data.id;
+
+          // 2. Send the competition
+          await handleSendCompetitionToShooters(teamId);
+          
+          // 3. Reset form
+          setNewTeamName('');
+          setNewTeamCompetitionName('');
+          setNewTeamDiscipline('');
+          setNewTeamLocation('');
+          setNewTeamDate(new Date().toISOString().split('T')[0]);
+          if (currentUser?.role === 'society' && currentUser?.society) {
+            setNewTeamSociety(currentUser.society);
+          } else {
+            setNewTeamSociety('');
+          }
+          setSelectedShooterIds([]);
+          setShowTeamForm(false);
+          setEditingTeam(null);
+          fetchTeams();
+        } catch (err: any) {
+          setError(err.message);
+        }
+      },
+      'Invia',
+      'primary'
     );
   };
 
@@ -853,8 +1012,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             {showTeamForm && (
-              <form onSubmit={handleCreateTeam} className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 mb-8 space-y-6 animate-in zoom-in-95 duration-300">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form onSubmit={handleCreateTeam} className="bg-slate-950/50 p-4 sm:p-6 rounded-2xl border border-slate-800 mb-8 space-y-4 sm:space-y-6 animate-in zoom-in-95 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Squadra</label>
                     <input 
@@ -863,25 +1022,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={newTeamName} 
                       onChange={e => setNewTeamName(e.target.value)} 
                       placeholder="Es: Team Gold"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo/Nome Gara</label>
-                    <input 
-                      type="text" 
-                      value={newTeamCompetitionName} 
-                      onChange={e => setNewTeamCompetitionName(e.target.value)} 
-                      placeholder="Es: Campionato Regionale"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-                    />
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
+                    {currentUser?.role === 'society' ? (
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={newTeamSociety} 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm opacity-50 cursor-not-allowed outline-none transition-all" 
+                      />
+                    ) : (
+                      <select 
+                        value={newTeamSociety} 
+                        onChange={e => setNewTeamSociety(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                      >
+                        <option value="">Seleziona...</option>
+                        {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
                     <select 
                       value={newTeamDiscipline} 
                       onChange={e => setNewTeamDiscipline(e.target.value)} 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                     >
                       <option value="">Seleziona...</option>
                       {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
@@ -890,16 +1059,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                    <select 
-                      value={newTeamSociety} 
-                      onChange={e => setNewTeamSociety(e.target.value)} 
-                      disabled={currentUser?.role === 'society'}
-                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <option value="">Seleziona...</option>
-                      {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                    </select>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo/Nome Gara</label>
+                    <input 
+                      type="text" 
+                      value={newTeamCompetitionName} 
+                      onChange={e => setNewTeamCompetitionName(e.target.value)} 
+                      placeholder="Es: Campionato Regionale"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV</label>
+                    <input 
+                      type="text" 
+                      value={newTeamLocation} 
+                      onChange={e => setNewTeamLocation(e.target.value)} 
+                      placeholder="Es: TAV Roma"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Gara</label>
+                    <input 
+                      type="date" 
+                      required 
+                      value={newTeamDate} 
+                      onChange={e => setNewTeamDate(e.target.value)} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" 
+                    />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Dimensione Squadra</label>
@@ -923,32 +1110,50 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     Seleziona {newTeamSize} Tiratori ({selectedShooterIds.length}/{newTeamSize})
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-950 rounded-xl border border-slate-800">
-                    {shooters.map(shooter => (
-                      <button
-                        key={shooter.id}
-                        type="button"
-                        onClick={() => {
-                          if (selectedShooterIds.includes(shooter.id)) {
-                            setSelectedShooterIds(prev => prev.filter(id => id !== shooter.id));
-                          } else if (selectedShooterIds.length < newTeamSize) {
-                            setSelectedShooterIds(prev => [...prev, shooter.id]);
-                          }
-                        }}
-                        className={`p-3 rounded-lg text-left text-xs font-bold transition-all border ${selectedShooterIds.includes(shooter.id) ? 'bg-orange-600/20 border-orange-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                      >
-                        {shooter.surname} {shooter.name}
-                      </button>
-                    ))}
+                    {shooters.map(shooter => {
+                      const shooterStats = teamStats.find(s => s.user_id === shooter.id && (!newTeamDiscipline || s.discipline === newTeamDiscipline));
+                      const avg = shooterStats ? Number(shooterStats.avg_score).toFixed(2) : '-';
+                      const isSelected = selectedShooterIds.includes(shooter.id);
+                      
+                      return (
+                        <button
+                          key={shooter.id}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedShooterIds(prev => prev.filter(id => id !== shooter.id));
+                            } else if (selectedShooterIds.length < newTeamSize) {
+                              setSelectedShooterIds(prev => [...prev, shooter.id]);
+                            }
+                          }}
+                          className={`p-3 rounded-lg text-left text-xs font-bold transition-all border flex flex-col gap-1 ${isSelected ? 'bg-orange-600/20 border-orange-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                        >
+                          <span className="truncate">{shooter.surname} {shooter.name}</span>
+                          <span className={`text-[9px] font-black uppercase ${isSelected ? 'text-orange-400' : 'text-slate-500'}`}>
+                            Media {newTeamDiscipline || 'Tot'}: {avg}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex flex-row gap-2">
                   <button 
                     type="submit" 
                     disabled={selectedShooterIds.length !== newTeamSize}
-                    className="flex-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-orange-600/20"
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-black py-3 px-1 rounded-xl transition-all shadow-lg text-[9px] sm:text-xs uppercase whitespace-nowrap"
                   >
-                    {editingTeam ? 'SALVA MODIFICHE' : 'CREA SQUADRA'}
+                    {editingTeam ? 'Salva' : 'Crea'}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSaveAndSendCompetition}
+                    disabled={selectedShooterIds.length !== newTeamSize}
+                    className="flex-[1.5] bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black py-3 px-1 rounded-xl transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-1 text-[9px] sm:text-xs uppercase whitespace-nowrap"
+                  >
+                    <i className="fas fa-paper-plane text-[8px] hidden sm:block"></i>
+                    Invia Gara
                   </button>
                   {editingTeam && (
                     <button 
@@ -958,6 +1163,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         setNewTeamName('');
                         setNewTeamCompetitionName('');
                         setNewTeamDiscipline('');
+                        setNewTeamLocation('');
+                        setNewTeamDate(new Date().toISOString().split('T')[0]);
                         if (currentUser?.role === 'society' && currentUser?.society) {
                           setNewTeamSociety(currentUser.society);
                         } else {
@@ -966,9 +1173,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         setSelectedShooterIds([]);
                         setShowTeamForm(false);
                       }}
-                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition-all"
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-400 font-black py-3 px-1 rounded-xl transition-all border border-slate-800 text-[9px] sm:text-xs uppercase whitespace-nowrap"
                     >
-                      ANNULLA
+                      Annulla
                     </button>
                   )}
                 </div>
@@ -978,66 +1185,111 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {/* Elenco Squadre Esistenti */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {teams.map(team => (
-                <div key={team.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative group">
-                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button 
-                      onClick={() => handleEditTeam(team)}
-                      className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
-                    >
-                      <i className="fas fa-edit text-xs"></i>
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteTeam(team.id)}
-                      className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"
-                    >
-                      <i className="fas fa-trash-alt text-xs"></i>
-                    </button>
+                <div key={team.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-3 group">
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[8px] font-black bg-orange-600/20 text-orange-500 px-1.5 py-0.5 rounded uppercase">
+                        {team.size} Tiratori
+                      </span>
+                      {team.discipline && (
+                        <span className="text-[8px] font-black bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">
+                          {team.discipline}
+                        </span>
+                      )}
+                      {team.society && (
+                        <span className="text-[8px] font-black bg-emerald-600/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase">
+                          {team.society}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                      <button 
+                        onClick={() => handleEditTeam(team)}
+                        className="w-7 h-7 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
+                      >
+                        <i className="fas fa-edit text-[10px]"></i>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTeam(team.id)}
+                        className="w-7 h-7 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"
+                      >
+                        <i className="fas fa-trash-alt text-[10px]"></i>
+                      </button>
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <span className="text-[9px] font-black bg-orange-600/20 text-orange-500 px-2 py-0.5 rounded uppercase mr-2">
-                      {team.size} Tiratori
-                    </span>
-                    {(team.competition_name || team.discipline || team.society) && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {team.discipline && (
-                          <span className="text-[9px] font-black bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded uppercase">
-                            {team.discipline}
-                          </span>
-                        )}
-                        {team.society && (
-                          <span className="text-[9px] font-black bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded uppercase">
-                            <i className="fas fa-building mr-1"></i> {team.society}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <h4 className="text-lg font-black text-white mt-1">{team.name}</h4>
+                  <div className="mb-2">
+                    <h4 className="text-base font-black text-white leading-tight truncate">{team.name}</h4>
                     {team.competition_name && (
-                      <p className="text-xs text-slate-400 font-medium">{team.competition_name}</p>
+                      <p className="text-[10px] text-slate-500 font-medium truncate">{team.competition_name}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {team.members.map((m: any, idx: number) => {
                       // Trova le statistiche del tiratore per la disciplina della squadra
                       const shooterStats = teamStats.find(s => s.user_id === m.id && (!team.discipline || s.discipline === team.discipline));
                       const catQual = shooterStats ? (shooterStats.category || shooterStats.qualification || '') : '';
                       const avg = shooterStats ? Number(shooterStats.avg_score).toFixed(2) : '-';
+                      const isEditingThis = editingScore?.teamId === team.id && editingScore?.userId === m.id;
                       
                       return (
-                        <div key={idx} className="text-xs text-slate-400 flex items-center justify-between bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
-                          <div className="flex items-center gap-2 truncate">
+                        <div key={idx} className="text-xs text-slate-400 flex items-center justify-between bg-slate-900/50 p-2 rounded-xl border border-slate-800/50 hover:border-slate-700 transition-all gap-3">
+                          <div className="flex items-center gap-2 truncate flex-1">
                             <span className="w-4 h-4 rounded-full bg-slate-800 text-[8px] flex items-center justify-center text-slate-500 font-bold shrink-0">{idx + 1}</span>
-                            <span className="font-bold text-slate-300 truncate">{m.surname} {m.name}</span>
-                            {catQual && (
-                              <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter shrink-0">({catQual})</span>
-                            )}
+                            <div className="flex flex-col truncate">
+                              <span className="font-bold text-slate-200 truncate">{m.surname} {m.name}</span>
+                              <div className="flex items-center gap-2">
+                                {catQual && (
+                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter shrink-0">{catQual}</span>
+                                )}
+                                <span className="text-[8px] font-black text-orange-500/70 uppercase tracking-widest shrink-0">Avg: {avg}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded shrink-0">
-                            Media: {avg}
+                          
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isEditingThis ? (
+                              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-orange-600/30">
+                                <input 
+                                  type="number" 
+                                  autoFocus
+                                  value={editingScore.score}
+                                  onChange={e => setEditingScore({...editingScore, score: parseInt(e.target.value) || 0})}
+                                  className="w-10 bg-transparent text-white text-xs font-black outline-none text-center"
+                                />
+                                <button 
+                                  onClick={() => handleUpdateScore(team.id, m.id, editingScore.score)}
+                                  className="text-emerald-500 hover:text-emerald-400 p-1"
+                                >
+                                  <i className="fas fa-check text-[10px]"></i>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className={`text-sm font-black ${m.score !== null ? 'text-white' : 'text-slate-700'}`}>
+                                  {m.score !== null ? m.score : '--'}
+                                </span>
+                                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                                  <button 
+                                    onClick={() => setEditingScore({ teamId: team.id, userId: m.id, score: m.score || 0 })}
+                                    className="text-slate-600 hover:text-orange-500 transition-all p-1"
+                                  >
+                                    <i className="fas fa-pencil-alt text-[10px]"></i>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
+                    
+                    {/* Totale Squadra */}
+                    <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Totale Squadra</span>
+                      <span className="text-lg font-black text-orange-500">
+                        {team.members.reduce((acc: number, m: any) => acc + (m.score || 0), 0)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1051,9 +1303,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Dashboard Squadre (Tabella Statistiche) */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-              <i className="fas fa-chart-line text-orange-500"></i> Statistiche Individuali
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                <i className="fas fa-chart-line text-orange-500"></i> Statistiche Individuali
+              </h2>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Filtra Disciplina:</label>
+                <select 
+                  value={statsFilterDiscipline} 
+                  onChange={(e) => setStatsFilterDiscipline(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-xs focus:border-orange-600 outline-none transition-all appearance-none"
+                >
+                  <option value="">Tutte</option>
+                  {statsDisciplines.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -1067,7 +1332,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {teamStats.map((s, idx) => (
+                  {filteredTeamStats.map((s, idx) => (
                     <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                       <td className="py-3 px-4 text-sm text-white font-bold">{s.surname} {s.name}</td>
                       <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{s.society || '-'}</td>
@@ -1372,6 +1637,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             token={token} 
             triggerConfirm={triggerConfirm} 
             societies={societies} 
+            onCreateTeam={(ev) => {
+              setActiveTab('team');
+              setShowTeamForm(true);
+              setNewTeamCompetitionName(ev.name);
+              setNewTeamDiscipline(ev.discipline);
+              setNewTeamSociety(ev.location);
+              setNewTeamDate(ev.start_date ? ev.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
         </div>
       ) : activeTab === 'results' ? (
@@ -1494,9 +1768,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <td className="py-3 px-4 text-[10px] text-slate-400 uppercase font-black">{r.discipline}</td>
                     <td className="py-3 px-4 text-[10px] text-slate-500 uppercase">{r.location || '-'}</td>
                     <td className="py-3 px-4 text-right">
-                      <span className="text-sm font-black text-white">
-                        {r.totalScore}/{r.totalTargets}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm font-black text-white">
+                          {r.totalScore}/{r.totalTargets}
+                        </span>
+                        {teamStats.find(s => s.user_id === r.userId && s.discipline === r.discipline) && (
+                          <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">
+                            Media: {parseFloat(teamStats.find(s => s.user_id === r.userId && s.discipline === r.discipline)!.avg_score).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     {currentUser?.role === 'admin' && (
                       <td className="py-3 px-4 flex justify-end gap-2">

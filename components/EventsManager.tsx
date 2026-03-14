@@ -7,9 +7,10 @@ interface EventsManagerProps {
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   societies: any[];
   onParticipate?: (event: SocietyEvent) => void;
+  onCreateTeam?: (event: SocietyEvent) => void;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate, onCreateTeam }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -384,6 +385,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                               {ev.visibility}
                             </span>
+                            {user?.role === 'admin' && ev.is_from_competition && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-amber-900/30 text-amber-500 border border-amber-900/50">
+                                <i className="fas fa-history mr-1"></i> Registrata
+                              </span>
+                            )}
                           </div>
                           <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
                           <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
@@ -632,6 +638,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                         {ev.visibility}
                       </span>
+                      {user?.role === 'admin' && ev.is_from_competition && (
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-amber-900/30 text-amber-500 border border-amber-900/50">
+                          <i className="fas fa-history mr-1"></i> Registrata
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
                     <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
@@ -681,6 +692,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${selectedEvent.visibility === 'Pubblica' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                     {selectedEvent.visibility}
                   </span>
+                  {user?.role === 'admin' && selectedEvent.is_from_competition && (
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-amber-900/40 text-amber-500 border border-amber-900/50">
+                      <i className="fas fa-history mr-1"></i> Gara Registrata
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-2xl font-black text-white leading-tight uppercase italic tracking-tighter">{selectedEvent.name}</h2>
                 <p className="text-sm text-slate-400 mt-1 flex items-center gap-2">
@@ -755,9 +771,21 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     <i className="fas fa-plus"></i> Aggiungi alle mie gare
                   </button>
                 )}
+
+                {(user?.role === 'admin' || user?.role === 'society') && onCreateTeam && (
+                  <button 
+                    onClick={() => {
+                      onCreateTeam(selectedEvent);
+                      setSelectedEvent(null);
+                    }}
+                    className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-users"></i> Crea Squadra
+                  </button>
+                )}
                 
                 <div className="flex gap-2 w-full sm:w-auto">
-                  {(user?.role === 'admin' || (user?.role === 'society' && selectedEvent.location === user.society)) && (
+                  {(user?.role === 'admin' || (user?.role === 'society' && selectedEvent.location === user.society)) && !selectedEvent.is_from_competition && (
                     <>
                       <button 
                         onClick={() => {

@@ -61,6 +61,7 @@ export interface Competition {
   weather?: WeatherInfo;
   userName?: string;
   userSurname?: string;
+  teamName?: string;
 }
 
 export interface Cartridge {
@@ -110,6 +111,7 @@ export interface SocietyEvent {
   notes?: string;
   poster_url?: string;
   created_by?: number;
+  is_from_competition?: boolean;
 }
 
 export interface AppData {

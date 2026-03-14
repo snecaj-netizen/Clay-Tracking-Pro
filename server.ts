@@ -89,7 +89,8 @@ const initDB = async () => {
         scores TEXT NOT NULL,
         detailedscores TEXT,
         seriesimages TEXT,
-        usedcartridges TEXT
+        usedcartridges TEXT,
+        team_name TEXT
       );
     `);
 
@@ -117,6 +118,7 @@ const initDB = async () => {
         society TEXT,
         competition_name TEXT,
         discipline TEXT,
+        date TEXT,
         created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -126,6 +128,10 @@ const initDB = async () => {
     try {
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS competition_name TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS discipline TEXT");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS date TEXT");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_name TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL");
     } catch (e) {
       console.log("Columns might already exist or error adding them:", e);
     }
@@ -447,7 +453,8 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       scores: JSON.parse(row.scores),
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
-      usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined
+      usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
+      teamName: row.team_name
     }));
     res.json(comps);
   } catch (err: any) {
@@ -489,7 +496,8 @@ app.get('/api/admin/export-all', authenticateToken, requireAdmin, async (req, re
       scores: JSON.parse(row.scores),
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
-      usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined
+      usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
+      teamName: row.team_name
     }));
 
     const cartridges = cartsRes.rows.map((row: any) => ({
@@ -572,10 +580,17 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
   try {
     let query = `
       SELECT t.*, 
-             json_agg(json_build_object('id', u.id, 'name', u.name, 'surname', u.surname)) as members
+             json_agg(json_build_object(
+               'id', u.id, 
+               'name', u.name, 
+               'surname', u.surname,
+               'score', c.totalscore,
+               'competition_id', c.id
+             )) as members
       FROM teams t
       LEFT JOIN team_members tm ON t.id = tm.team_id
       LEFT JOIN users u ON tm.user_id = u.id
+      LEFT JOIN competitions c ON c.team_id = t.id AND c.user_id = u.id
     `;
     let params: any[] = [];
 
@@ -594,14 +609,14 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
 });
 
 app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, size, memberIds, competition_name, discipline, society: bodySociety } = req.body;
+  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const society = req.user.role === 'society' ? req.user.society : bodySociety;
     const { rows } = await client.query(
-      "INSERT INTO teams (name, size, society, competition_name, discipline, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-      [name, size, society, competition_name, discipline, req.user.id]
+      "INSERT INTO teams (name, size, society, competition_name, discipline, date, location, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+      [name, size, society, competition_name, discipline, date, req.body.location, req.user.id]
     );
     const teamId = rows[0].id;
 
@@ -624,7 +639,7 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
 
 app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { id } = req.params;
-  const { name, size, memberIds, competition_name, discipline, society: bodySociety } = req.body;
+  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -638,20 +653,75 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
       }
     }
 
+    const teamId = parseInt(id);
     const society = req.user.role === 'society' ? req.user.society : bodySociety;
+    const numericMemberIds = memberIds.map((mid: any) => parseInt(mid));
+
+    // Get old members to identify changes
+    const { rows: oldMemberRows } = await client.query("SELECT user_id FROM team_members WHERE team_id = $1", [teamId]);
+    const oldMemberIds = oldMemberRows.map(r => r.user_id);
+
+    console.log(`Syncing team ${teamId}: oldMembers=${oldMemberIds}, newMembers=${numericMemberIds}`);
 
     await client.query(
-      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4, society = $5 WHERE id = $6",
-      [name, size, competition_name, discipline, society, id]
+      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4, society = $5, date = $6, location = $7 WHERE id = $8",
+      [name, size, competition_name, discipline, society, date, req.body.location, teamId]
     );
 
     // Update members
-    await client.query("DELETE FROM team_members WHERE team_id = $1", [id]);
-    for (const userId of memberIds) {
+    await client.query("DELETE FROM team_members WHERE team_id = $1", [teamId]);
+    for (const userId of numericMemberIds) {
       await client.query(
         "INSERT INTO team_members (team_id, user_id) VALUES ($1, $2)",
-        [id, userId]
+        [teamId, userId]
       );
+    }
+
+    // Sync competitions
+    const addedMemberIds = numericMemberIds.filter((mid: number) => !oldMemberIds.includes(mid));
+    const removedMemberIds = oldMemberIds.filter(mid => !numericMemberIds.includes(mid));
+    const keptMemberIds = numericMemberIds.filter((mid: number) => oldMemberIds.includes(mid));
+
+    console.log(`Changes: added=${addedMemberIds}, removed=${removedMemberIds}, kept=${keptMemberIds}`);
+
+    // 1. Delete competitions for removed members
+    if (removedMemberIds.length > 0) {
+      const delResult = await client.query("DELETE FROM competitions WHERE team_id = $1 AND user_id = ANY($2)", [teamId, removedMemberIds]);
+      console.log(`Deleted ${delResult.rowCount} competitions for removed members`);
+    }
+
+    // 2. Update competitions for kept members
+    if (keptMemberIds.length > 0) {
+      await client.query(
+        `UPDATE competitions SET name = $1, date = $2, location = $3, discipline = $4, team_name = $5 
+         WHERE team_id = $6 AND user_id = ANY($7)`,
+        [competition_name || name, date, req.body.location || society || '', discipline, name, teamId, keptMemberIds]
+      );
+    }
+
+    // 3. Create competitions for added members if team was already "sent"
+    const { rows: sentCompRows } = await client.query("SELECT id FROM competitions WHERE team_id = $1 LIMIT 1", [teamId]);
+    if (sentCompRows.length > 0 && addedMemberIds.length > 0) {
+      for (const userId of addedMemberIds) {
+        const compId = `team_comp_${Date.now()}_${userId}`;
+        await client.query(
+          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            compId, 
+            userId, 
+            competition_name || name, 
+            date || new Date().toISOString().split('T')[0], 
+            req.body.location || society || '', 
+            discipline || '', 
+            'Nazionale', 
+            0, 100, 0, 
+            JSON.stringify([0, 0, 0, 0]), 
+            name,
+            teamId
+          ]
+        );
+      }
     }
 
     await client.query('COMMIT');
@@ -666,15 +736,129 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
 
 app.delete('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    const { id } = req.params;
+    const teamId = parseInt(req.params.id);
     // If society, check if team belongs to society
     if (req.user.role === 'society') {
-      const { rows } = await pool.query("SELECT society FROM teams WHERE id = $1", [id]);
+      const { rows } = await pool.query("SELECT society FROM teams WHERE id = $1", [teamId]);
       if (rows.length === 0 || rows[0].society !== req.user.society) {
         return res.status(403).json({ error: "Unauthorized" });
       }
     }
-    await pool.query("DELETE FROM teams WHERE id = $1", [id]);
+    // Delete associated competitions first
+    await pool.query("DELETE FROM competitions WHERE team_id = $1", [teamId]);
+    await pool.query("DELETE FROM teams WHERE id = $1", [teamId]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const teamId = parseInt(req.params.id);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // 1. Get team info
+    const { rows: teamRows } = await client.query(`
+      SELECT t.*, 
+             json_agg(u.id) as member_ids
+      FROM teams t
+      LEFT JOIN team_members tm ON t.id = tm.team_id
+      LEFT JOIN users u ON tm.user_id = u.id
+      WHERE t.id = $1
+      GROUP BY t.id
+    `, [teamId]);
+
+    if (teamRows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    const team = teamRows[0];
+
+    // 2. Create or update competition for each member
+    for (const userId of team.member_ids) {
+      if (!userId) continue;
+
+      // Check if competition already exists for this team and user
+      const { rows: existingComp } = await client.query(
+        "SELECT id FROM competitions WHERE team_id = $1 AND user_id = $2",
+        [teamId, userId]
+      );
+
+      if (existingComp.length > 0) {
+        // Update existing
+        await client.query(
+          `UPDATE competitions SET name = $1, date = $2, location = $3, discipline = $4, team_name = $5 
+           WHERE id = $6`,
+          [
+            team.competition_name || team.name, 
+            team.date || new Date().toISOString().split('T')[0], 
+            team.location || team.society || '', 
+            team.discipline || '', 
+            team.name,
+            existingComp[0].id
+          ]
+        );
+      } else {
+        // Create new
+        const compId = `team_comp_${Date.now()}_${userId}`;
+        await client.query(
+          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            compId, 
+            userId, 
+            team.competition_name || team.name, 
+            team.date || new Date().toISOString().split('T')[0], 
+            team.location || team.society || '', 
+            team.discipline || '', 
+            'Nazionale', // Default level
+            0, // Initial score
+            100, // Default targets
+            0, // Initial average
+            JSON.stringify([0, 0, 0, 0]), // Default 4 series of 25
+            team.name,
+            teamId
+          ]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: `Gara inviata a ${team.member_ids.length} tiratori` });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/teams/:teamId/members/:userId/score', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const { teamId, userId } = req.params;
+  const { score } = req.body;
+  
+  try {
+    // 1. Check if competition exists
+    const { rows: compRows } = await pool.query(
+      "SELECT id FROM competitions WHERE team_id = $1 AND user_id = $2",
+      [teamId, userId]
+    );
+    
+    if (compRows.length === 0) {
+      return res.status(400).json({ error: "La gara deve essere prima inviata ai tiratori per poter inserire un risultato." });
+    }
+    
+    const compId = compRows[0].id;
+    
+    // 2. Update the score
+    await pool.query(
+      "UPDATE competitions SET totalscore = $1 WHERE id = $2",
+      [score, compId]
+    );
+    
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -684,24 +868,60 @@ app.delete('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (re
 // Events Routes
 app.get('/api/events', authenticateToken, async (req: any, res) => {
   try {
-    let query = "SELECT * FROM events";
-    let params: any[] = [];
+    // 1. Fetch regular events
+    let eventQuery = "SELECT * FROM events";
+    let eventParams: any[] = [];
 
     if (req.user.role === 'admin') {
       // Admin sees all
     } else if (req.user.role === 'society') {
       // Society sees their own and public
-      query += " WHERE location = $1 OR visibility = 'Pubblica'";
-      params.push(req.user.society);
+      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica'";
+      eventParams.push(req.user.society);
     } else {
       // User sees their society's and public
-      query += " WHERE location = $1 OR visibility = 'Pubblica'";
-      params.push(req.user.society || '');
+      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica'";
+      eventParams.push(req.user.society || '');
     }
 
-    query += " ORDER BY start_date DESC";
-    const { rows } = await pool.query(query, params);
-    res.json(rows);
+    const { rows: events } = await pool.query(eventQuery, eventParams);
+
+    // 2. Fetch admin competitions (gare)
+    // We filter by user role 'admin' and exclude training
+    const compQuery = `
+      SELECT c.*, u.name as user_name, u.surname as user_surname 
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      WHERE u.role = 'admin' 
+      AND c.discipline != 'Allenamento'
+      AND c.level != 'Allenamento / Pratica'
+    `;
+    const { rows: adminComps } = await pool.query(compQuery);
+
+    // 3. Map competitions to event format
+    const mappedComps = adminComps.map(c => ({
+      id: `comp_${c.id}`,
+      name: c.name,
+      type: c.level,
+      visibility: 'Gara Pubblica',
+      discipline: c.discipline,
+      location: c.location,
+      targets: c.totaltargets,
+      start_date: c.date,
+      end_date: c.enddate || c.date,
+      cost: c.cost?.toString(),
+      notes: c.notes || `Gara registrata da ${c.user_name} ${c.user_surname}`,
+      poster_url: null,
+      created_by: c.user_id,
+      is_from_competition: true
+    }));
+
+    // 4. Combine and sort
+    const allEvents = [...events, ...mappedComps].sort((a, b) => {
+      return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+    });
+
+    res.json(allEvents);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -819,7 +1039,10 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
       scores: JSON.parse(row.scores),
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
-      usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined
+      usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
+      teamName: row.team_name,
+      userName: row.userName,
+      userSurname: row.userSurname
     }));
     res.json(comps);
   } catch (err: any) {
