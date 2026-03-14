@@ -764,14 +764,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const hasActiveFilters = filterShooter !== '' || filterSociety !== '' || filterDiscipline !== '' || filterLocation !== '' || filterYear !== '';
 
-  if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
-
   const resultsToDisplay = (currentUser?.role === 'admin' || currentUser?.role === 'society') ? allResults : competitions.map(c => ({
     ...c,
     userName: currentUser?.name || '',
     userSurname: currentUser?.surname || '',
     userId: currentUser?.id || ''
   }));
+
+  if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
   const filteredResults = resultsToDisplay
     .filter(r => r.totalScore > 0)

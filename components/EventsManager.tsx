@@ -675,31 +675,31 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedEvent(null)}>
           <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
-            <div className="relative h-40 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-6 overflow-hidden">
+            <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
               {/* Decorative background elements */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
               
-              <button onClick={() => setSelectedEvent(null)} className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-slate-800/80 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all z-10 border border-slate-700/50 backdrop-blur-sm shadow-lg">
-                <i className="fas fa-times"></i>
+              <button onClick={() => setSelectedEvent(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 sm:w-10 sm:h-10 rounded-2xl bg-slate-800/90 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all z-20 border border-slate-700/50 backdrop-blur-md shadow-xl active:scale-90">
+                <i className="fas fa-times text-lg sm:text-base"></i>
               </button>
               
-              <div className="relative z-10 w-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${selectedEvent.discipline === Discipline.TRAINING ? 'bg-blue-900/40 text-blue-400 border border-blue-900/50' : 'bg-orange-900/40 text-orange-500 border border-orange-900/50'}`}>
+              <div className="relative z-10 w-full pr-10 sm:pr-0">
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${selectedEvent.discipline === Discipline.TRAINING ? 'bg-blue-900/40 text-blue-400 border border-blue-900/50' : 'bg-orange-900/40 text-orange-500 border border-orange-900/50'}`}>
                     {selectedEvent.discipline}
                   </span>
-                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${selectedEvent.visibility === 'Pubblica' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${selectedEvent.visibility === 'Pubblica' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                     {selectedEvent.visibility}
                   </span>
                   {user?.role === 'admin' && selectedEvent.is_from_competition && (
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-amber-900/40 text-amber-500 border border-amber-900/50">
-                      <i className="fas fa-history mr-1"></i> Gara Registrata
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-amber-900/40 text-amber-500 border border-amber-900/50">
+                      <i className="fas fa-history mr-1"></i> Registrata
                     </span>
                   )}
                 </div>
-                <h2 className="text-2xl font-black text-white leading-tight uppercase italic tracking-tighter">{selectedEvent.name}</h2>
-                <p className="text-sm text-slate-400 mt-1 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedEvent.name}</h2>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1 flex items-center gap-2">
                   <i className="fas fa-map-marker-alt text-orange-500"></i> {selectedEvent.location}
                 </p>
               </div>
