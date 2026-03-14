@@ -150,12 +150,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const shooters = React.useMemo(() => {
     const unique = new Map();
     teamStats.forEach(s => {
+      // Filter by society if one is selected
+      if (newTeamSociety && s.society !== newTeamSociety) return;
+      
       if (!unique.has(s.user_id)) {
-        unique.set(s.user_id, { id: s.user_id, name: s.name, surname: s.surname });
+        unique.set(s.user_id, { id: s.user_id, name: s.name, surname: s.surname, society: s.society });
       }
     });
-    return Array.from(unique.values()) as { id: number, name: string, surname: string }[];
-  }, [teamStats]);
+    return Array.from(unique.values()) as { id: number, name: string, surname: string, society: string }[];
+  }, [teamStats, newTeamSociety]);
 
   // Form state for Admin User Management
   const [name, setName] = useState('');
@@ -1037,7 +1040,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     ) : (
                       <select 
                         value={newTeamSociety} 
-                        onChange={e => setNewTeamSociety(e.target.value)} 
+                        onChange={e => {
+                          setNewTeamSociety(e.target.value);
+                          setSelectedShooterIds([]);
+                        }} 
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                       >
                         <option value="">Seleziona...</option>
