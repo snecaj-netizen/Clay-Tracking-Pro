@@ -1240,14 +1240,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       return (
                         <div key={idx} className="text-xs text-slate-400 flex items-center justify-between bg-slate-900/50 p-2 rounded-xl border border-slate-800/50 hover:border-slate-700 transition-all gap-3">
                           <div className="flex items-center gap-2 truncate flex-1">
-                            <span className="w-4 h-4 rounded-full bg-slate-800 text-[8px] flex items-center justify-center text-slate-500 font-bold shrink-0">{idx + 1}</span>
+                            <span className="w-5 h-5 rounded-full bg-slate-800 text-[10px] flex items-center justify-center text-slate-500 font-bold shrink-0">{idx + 1}</span>
                             <div className="flex flex-col truncate">
-                              <span className="font-bold text-slate-200 truncate">{m.surname} {m.name}</span>
+                              <span className="font-black text-slate-100 truncate text-sm">{m.surname} {m.name}</span>
                               <div className="flex items-center gap-2">
                                 {catQual && (
-                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter shrink-0">{catQual}</span>
+                                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter shrink-0">{catQual}</span>
                                 )}
-                                <span className="text-[8px] font-black text-orange-500/70 uppercase tracking-widest shrink-0">Avg: {avg}</span>
+                                <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest shrink-0">Avg: {avg}</span>
                               </div>
                             </div>
                           </div>
@@ -1271,7 +1271,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className={`text-sm font-black ${m.score !== null ? 'text-white' : 'text-slate-700'}`}>
+                                <span className={`text-base font-black ${m.score !== null ? 'text-white' : 'text-slate-700'}`}>
                                   {m.score !== null ? m.score : '--'}
                                 </span>
                                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
