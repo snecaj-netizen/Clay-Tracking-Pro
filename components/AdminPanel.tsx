@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
 import { Competition, Cartridge, AppData, Discipline } from '../types';
+
+type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events';
 
 interface AdminPanelProps {
   user: any;
@@ -22,7 +24,7 @@ interface AdminPanelProps {
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   onEditCompetition?: (comp?: Competition) => void;
   onDeleteCompetition?: (id: string) => void;
-  initialTab?: 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events';
+  initialTab?: Tab;
   onUserUpdate?: (user: any) => void;
   prefillTeam?: {
     competition_name: string;
@@ -39,7 +41,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate, prefillTeam, onPrefillTeamUsed
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events'>(
+  const [activeTab, setActiveTab] = useState<Tab>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
   );
 
@@ -196,7 +198,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return Array.from(new Set(teamStats.map(s => s.discipline))).sort();
   }, [teamStats]);
 
-  const fetchSocieties = async () => {
+  const fetchSocieties = useCallback(async () => {
     try {
       const res = await fetch('/api/societies', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -207,10 +209,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchUsers = async () => {
-    if (currentUser?.role !== 'admin') return;
+  const fetchUsers = useCallback(async () => {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -221,9 +223,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setError(err.message);
     }
-  };
+  }, [currentUser?.role, token]);
 
-  const fetchTeamStats = async () => {
+  const fetchTeamStats = useCallback(async () => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/team-stats', {
@@ -235,9 +237,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setError(err.message);
     }
-  };
+  }, [currentUser?.role, token]);
 
-  const fetchAllResults = async () => {
+  const fetchAllResults = useCallback(async () => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/all-results', {
@@ -249,9 +251,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setError(err.message);
     }
-  };
+  }, [currentUser?.role, token]);
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/teams', {
@@ -263,17 +265,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setError(err.message);
     }
-  };
+  }, [currentUser?.role, token]);
 
   useEffect(() => {
+    if (!token) return;
     setLoading(true);
     const promises = [fetchSocieties()];
     if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
-      promises.push(fetchTeamStats(), fetchAllResults(), fetchTeams());
-      if (currentUser?.role === 'admin') promises.push(fetchUsers());
+      promises.push(fetchTeamStats(), fetchAllResults(), fetchTeams(), fetchUsers());
     }
     Promise.all(promises).finally(() => setLoading(false));
-  }, [token]);
+  }, [token, currentUser?.role, currentUser?.society, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams, fetchUsers]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -808,6 +810,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           userName: r.userName,
           userSurname: r.userSurname,
           society: r.society,
+          category: r.category,
+          qualification: r.qualification,
           results: []
         });
       }
@@ -849,7 +853,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const filteredSocieties = societies
     .filter(soc => {
       if (currentUser?.role === 'society') {
-        return soc.name === currentUser.society;
+        return soc.name.trim().toLowerCase() === currentUser.society?.trim().toLowerCase();
       }
       return true;
     })
@@ -862,8 +866,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   return (
     <div className="space-y-6">
       {/* Tab Switcher */}
-      {activeTab !== 'societies' && (
-        <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
+      <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('results')}
@@ -874,18 +877,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
+              onClick={() => setActiveTab('events')}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-calendar-alt mr-2"></i> Gare
+            </button>
+          )}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+            <button 
               onClick={() => setActiveTab('team')}
               className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-trophy mr-2"></i> Squadre
             </button>
           )}
-          {currentUser?.role === 'admin' && (
+          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('users')}
               className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <i className="fas fa-users mr-2"></i> Utenti
+              <i className="fas fa-users mr-2"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
+            </button>
+          )}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+            <button 
+              onClick={() => setActiveTab('societies')}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'societies' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-building mr-2"></i> {currentUser?.role === 'society' ? 'Società' : 'TAV'}
             </button>
           )}
           <button 
@@ -901,8 +920,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <i className="fas fa-cog mr-2"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
           </button>
         </div>
-      )}
-
+      
       {activeTab === 'settings' ? (
         <div className="animate-in fade-in slide-in-from-right-4 duration-500">
           <Settings 
@@ -1684,6 +1702,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             token={token} 
             triggerConfirm={triggerConfirm} 
             societies={societies} 
+            restrictToSociety={true}
             onCreateTeam={(ev) => {
               setActiveTab('team');
               setShowTeamForm(true);
@@ -1791,7 +1810,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-8">
             {paginatedShooters.map((shooter) => (
               <div 
                 key={shooter.userId}
@@ -1800,35 +1819,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-orange-600/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-orange-600/10 transition-all"></div>
                 
-                <div className="flex items-center gap-4 mb-4 relative z-10">
-                  <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-orange-500 text-xl font-black shadow-inner">
+                <div className="flex items-center gap-3 mb-3 relative z-10">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-orange-500 text-lg font-black shadow-inner shrink-0">
                     {(shooter.userName?.[0] || '')}{(shooter.userSurname?.[0] || '')}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors truncate">
                       {shooter.userSurname || ''} {shooter.userName || ''}
                     </h3>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate">
-                      {shooter.society || 'Nessuna Società'}
-                    </p>
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest truncate">
+                        {shooter.society || 'Nessuna Società'}
+                      </p>
+                      {(shooter.category || shooter.qualification) && (
+                        <p className="text-[9px] font-black text-orange-500/70 uppercase tracking-widest truncate">
+                          • {shooter.category}{shooter.qualification ? ` / ${shooter.qualification}` : ''}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-slate-700 group-hover:text-orange-500 transition-all">
-                    <i className="fas fa-chevron-right text-xs"></i>
+                  <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center text-slate-700 group-hover:text-orange-500 transition-all shrink-0">
+                    <i className="fas fa-chevron-right text-[10px]"></i>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-900 relative z-10">
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-900 relative z-10">
                   <div className="text-center">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Gare</p>
-                    <p className="text-sm font-black text-white">{shooter.totalCompetitions}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Gare</p>
+                    <p className="text-xs font-black text-white">{shooter.totalCompetitions}</p>
                   </div>
                   <div className="text-center border-x border-slate-900">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Media</p>
-                    <p className="text-sm font-black text-orange-500">{shooter.average.toFixed(2)}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Media</p>
+                    <p className="text-xs font-black text-orange-500">{shooter.average.toFixed(2)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Best</p>
-                    <p className="text-sm font-black text-white">{shooter.bestScore}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Best</p>
+                    <p className="text-xs font-black text-white">{shooter.bestScore}</p>
                   </div>
                 </div>
               </div>
@@ -1928,28 +1954,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="h-[1px] flex-1 bg-gradient-to-r from-orange-500/50 to-transparent"></div>
                         </div>
                         
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           {results.map((r: any, idx: number) => (
-                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-orange-500/30 transition-all group">
-                              <div className="flex-1">
+                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:border-orange-500/30 transition-all group relative overflow-hidden">
+                              <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full -mr-8 -mt-8 blur-xl group-hover:bg-orange-600/10 transition-all"></div>
+                              <div className="flex-1 relative z-10">
                                 <div className="flex items-center gap-3 mb-2">
                                   <span className="px-2 py-1 rounded-lg bg-slate-900 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-800">
                                     {r.date}
                                   </span>
-                                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1 truncate max-w-[150px]">
                                     <i className="fas fa-map-marker-alt text-orange-500/50"></i>
                                     {r.location || 'Campo N.D.'}
                                   </span>
                                 </div>
-                                <h4 className="text-base font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tight">{r.name}</h4>
+                                <h4 className="text-sm font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tight truncate">{r.name}</h4>
                               </div>
                               
-                              <div className="flex items-center justify-between md:justify-end gap-8">
+                              <div className="flex items-center justify-between sm:justify-end gap-6 relative z-10">
                                 <div className="text-right">
-                                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Punteggio</p>
+                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Punteggio</p>
                                   <div className="flex items-baseline gap-1">
-                                    <span className="text-2xl font-black text-white">{r.totalScore}</span>
-                                    <span className="text-slate-600 font-black text-sm">/ {r.totalTargets}</span>
+                                    <span className="text-xl font-black text-white">{r.totalScore}</span>
+                                    <span className="text-slate-600 font-black text-xs">/ {r.totalTargets}</span>
                                   </div>
                                 </div>
                                 
@@ -1957,10 +1984,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <div className="flex gap-2">
                                     <button 
                                       onClick={() => onEditCompetition && onEditCompetition(r)}
-                                      className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
+                                      className="w-9 h-9 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
                                       title="Modifica"
                                     >
-                                      <i className="fas fa-edit text-sm"></i>
+                                      <i className="fas fa-edit text-xs"></i>
                                     </button>
                                     <button 
                                       onClick={() => {
@@ -1981,10 +2008,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                           'danger'
                                         );
                                       }}
-                                      className="w-10 h-10 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
+                                      className="w-9 h-9 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
                                       title="Elimina"
                                     >
-                                      <i className="fas fa-trash-alt text-sm"></i>
+                                      <i className="fas fa-trash-alt text-xs"></i>
                                     </button>
                                   </div>
                                 )}
@@ -2004,14 +2031,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-users-cog text-orange-500"></i> Gestione Utenti
+              <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
             </h2>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative">
                 <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                 <input 
                   type="text" 
-                  placeholder="Cerca per nome, società, tessera..." 
+                  placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
                   value={userSearchTerm}
                   onChange={(e) => setUserSearchTerm(e.target.value)}
                   className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
@@ -2021,12 +2048,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => { 
                   setShowUserForm(!showUserForm); 
                   setEditingUser(null); 
-                  if (!showUserForm) window.scrollTo({ top: 0, behavior: 'smooth' });
+                  if (!showUserForm) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (currentUser?.role === 'society') {
+                      setSociety(currentUser.society);
+                      setRole('user');
+                    }
+                  }
                 }}
                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${showUserForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
               >
                 <i className={`fas ${showUserForm ? 'fa-times' : 'fa-user-plus'}`}></i>
-                {showUserForm ? 'Chiudi' : 'Nuovo Utente'}
+                {showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
               </button>
             </div>
           </div>
@@ -2035,7 +2068,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {showUserForm && (
             <form onSubmit={handleSubmit} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300">
-              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingUser ? 'Modifica Utente' : 'Nuovo Utente'}</h3>
+              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingUser ? (currentUser?.role === 'society' ? 'Modifica Tiratore' : 'Modifica Utente') : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}</h3>
               
               <div className="flex flex-col items-center mb-6">
                 <div className="relative group">
@@ -2057,7 +2090,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="sm:col-span-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
-                  <select value={role} onChange={e => setRole(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                  <select 
+                    value={role} 
+                    onChange={e => setRole(e.target.value)} 
+                    disabled={currentUser?.role === 'society'}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
                     <option value="user">Tiratore</option>
                     <option value="society">Società</option>
                     <option value="admin">Amministratore</option>
@@ -2109,7 +2147,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select 
                     value={society} 
                     onChange={e => setSociety(e.target.value)} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    disabled={currentUser?.role === 'society'}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value="">Seleziona...</option>
                     {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -2122,7 +2161,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="flex gap-2">
                 <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                  {editingUser ? 'Salva Modifiche' : 'Crea Utente'}
+                  {editingUser ? 'Salva Modifiche' : (currentUser?.role === 'society' ? 'Crea Tiratore' : 'Crea Utente')}
                 </button>
                 <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setUserAvatar(''); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
                   Annulla
@@ -2190,8 +2229,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 flex justify-end gap-2">
-                      <button onClick={() => { editUser(u); setShowUserForm(true); }} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-xs"></i></button>
-                      <button onClick={() => handleDelete(u.id)} disabled={u.email === 'snecaj@gmail.com'} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all disabled:opacity-30"><i className="fas fa-trash-alt text-xs"></i></button>
+                      <button 
+                        onClick={() => { editUser(u); setShowUserForm(true); }} 
+                        disabled={currentUser?.role === 'society' && u.role === 'admin'}
+                        className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all disabled:opacity-30"
+                        title={currentUser?.role === 'society' && u.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
+                      >
+                        <i className="fas fa-edit text-xs"></i>
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(u.id)} 
+                        disabled={u.email === 'snecaj@gmail.com' || (currentUser?.role === 'society' && (u.role === 'admin' || u.role === 'society'))} 
+                        className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all disabled:opacity-30"
+                        title={currentUser?.role === 'society' && (u.role === 'admin' || u.role === 'society') ? "Non puoi eliminare questo account" : "Elimina"}
+                      >
+                        <i className="fas fa-trash-alt text-xs"></i>
+                      </button>
                     </td>
                   </tr>
                 ))}

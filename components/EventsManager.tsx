@@ -8,9 +8,10 @@ interface EventsManagerProps {
   societies: any[];
   onParticipate?: (event: SocietyEvent) => void;
   onCreateTeam?: (event: SocietyEvent) => void;
+  restrictToSociety?: boolean;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate, onCreateTeam }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate, onCreateTeam, restrictToSociety }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -27,6 +28,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
   const filteredEvents = React.useMemo(() => {
     return events.filter(ev => {
+      if (restrictToSociety && user?.role === 'society') {
+        if (ev.location !== user.society) return false;
+      }
       if (filterSociety && ev.location !== filterSociety) return false;
       if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
       if (filterMonth) {
@@ -461,18 +465,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       </div>
 
       {!showForm && showFilters && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300">
-          <div>
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
-            <select 
-              value={filterSociety} 
-              onChange={e => setFilterSociety(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-            >
-              <option value="">Tutte le società</option>
-              {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-            </select>
-          </div>
+        <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
+          {!(restrictToSociety && user?.role === 'society') && (
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
+              <select 
+                value={filterSociety} 
+                onChange={e => setFilterSociety(e.target.value)} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+              >
+                <option value="">Tutte le società</option>
+                {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
             <select 
@@ -493,7 +499,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
             />
           </div>
-          <div className="sm:col-span-3 flex justify-end">
+          <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end`}>
             <button 
               onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
               className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"

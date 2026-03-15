@@ -319,9 +319,17 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
 });
 
 // Admin Routes (Manage Users)
-app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    const { rows } = await pool.query("SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, created_at FROM users");
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, created_at FROM users";
+    let params: any[] = [];
+    
+    if (req.user.role === 'society') {
+      query += " WHERE LOWER(TRIM(society)) = LOWER(TRIM($1))";
+      params.push(req.user.society);
+    }
+    
+    const { rows } = await pool.query(query, params);
     const now = Date.now();
     const usersWithStatus = rows.map(user => ({
       ...user,
@@ -333,8 +341,18 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar } = req.body;
+  
+  if (req.user.role === 'society') {
+    if (role && role !== 'user') {
+      return res.status(403).json({ error: 'Societies can only create shooters' });
+    }
+    if (society !== req.user.society) {
+      return res.status(403).json({ error: 'Societies can only create shooters for their own society' });
+    }
+  }
+
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
 
@@ -349,10 +367,28 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
-app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar } = req.body;
   
   try {
+    const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
+    if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    if (req.user.role === 'society') {
+      if (userCheck.rows[0].role === 'admin') {
+        return res.status(403).json({ error: 'Societies cannot modify administrators' });
+      }
+      if (userCheck.rows[0].society !== req.user.society) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      if (role && role !== 'user') {
+        return res.status(403).json({ error: 'Societies can only manage shooters' });
+      }
+      if (society && society !== req.user.society) {
+        return res.status(403).json({ error: 'Societies can only manage shooters for their own society' });
+      }
+    }
+
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
@@ -415,7 +451,9 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         c.*, 
         u.name as user_name, 
         u.surname as user_surname,
-        u.society
+        u.society,
+        u.category,
+        u.qualification
       FROM competitions c
       JOIN users u ON c.user_id = u.id
     `;
@@ -436,6 +474,8 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       userName: row.user_name,
       userSurname: row.user_surname,
       society: row.society,
+      category: row.category,
+      qualification: row.qualification,
       name: row.name,
       date: row.date,
       endDate: row.enddate,
@@ -462,8 +502,20 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
   }
 });
 
-app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
+    if (req.user.role === 'society') {
+      const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
+      if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+      
+      if (userCheck.rows[0].role === 'admin' || userCheck.rows[0].role === 'society') {
+        return res.status(403).json({ error: 'Societies cannot delete administrators or other society accounts' });
+      }
+      
+      if (userCheck.rows[0].society !== req.user.society) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
     await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
     res.json({ success: true });
   } catch (err: any) {

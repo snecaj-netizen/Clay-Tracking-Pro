@@ -417,7 +417,7 @@ const App: React.FC = () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteCompetition={deleteCompetition}
-              initialTab="results"
+              initialTab="societies"
               onUserUpdate={handleUserUpdate}
             />
           </div>
