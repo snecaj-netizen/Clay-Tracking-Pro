@@ -119,6 +119,45 @@ export interface AppData {
   cartridges: Cartridge[];
 }
 
+export enum ChallengeMode {
+  BEST_SCORE = 'Miglior Risultato',
+  AVERAGE = 'Media Totale',
+  TOP_THREE_AVG = 'Media Migliori 3',
+  TOTAL_HITS = 'Totale Piattelli Rotti',
+  ACCURACY = 'Precisione (%)',
+  CONSISTENCY = 'Costanza (Serie)',
+  BEST_SERIES = 'Miglior Serie Singola',
+  PARTICIPATION = 'Numero di Gare',
+  TOP_FIVE_AVG = 'Media Migliori 5',
+  CLUTCH_PERFORMANCE = 'Performance Finale (Ultima Serie)',
+  PERFECT_SERIES = 'Numero Serie Perfette (25/25)'
+}
+
+export interface Challenge {
+  id: string;
+  societyId: number;
+  societyName: string;
+  name: string;
+  discipline: Discipline;
+  mode: ChallengeMode;
+  startDate: string;
+  endDate: string;
+  prize: string;
+  createdAt: string;
+}
+
+export interface ChallengeRankingEntry {
+  userId: number;
+  userName: string;
+  userSurname: string;
+  category: string;
+  qualification: string;
+  value: number;
+  competitionCount: number;
+  bestScore: number;
+  totalHits: number;
+}
+
 export interface Stats {
   totalCompetitions: number;
   overallAverage: number;

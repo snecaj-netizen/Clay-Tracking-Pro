@@ -26,7 +26,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Errore di autenticazione');
+      if (!res.ok) {
+        if (res.status === 403 && data.message) {
+          throw new Error(data.message);
+        }
+        throw new Error(data.error || 'Errore di autenticazione');
+      }
 
       onLogin(data.token, data.user);
     } catch (err: any) {

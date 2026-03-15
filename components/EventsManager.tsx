@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { SocietyEvent, Discipline } from '../types';
 
 interface EventsManagerProps {
@@ -678,7 +679,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       )}
 
       {/* Event Detail Modal */}
-      {selectedEvent && (
+      {selectedEvent && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedEvent(null)}>
           <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
@@ -822,7 +823,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Floating Add Button for Events */}
       {(user?.role === 'admin' || user?.role === 'society') && (

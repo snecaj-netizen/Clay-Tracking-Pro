@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
+import HallOfFame from './HallOfFame';
 import { Competition, Cartridge, AppData, Discipline } from '../types';
 
-type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events';
+type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events' | 'halloffame';
 
 interface AdminPanelProps {
   user: any;
@@ -198,6 +200,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return Array.from(new Set(teamStats.map(s => s.discipline))).sort();
   }, [teamStats]);
 
+  const dashboardStats = useMemo(() => {
+    const onlineUsers = users.filter(u => u.is_logged_in);
+    const onlineSocieties = new Set(onlineUsers.filter(u => u.society).map(u => u.society));
+    
+    const topUser = [...users]
+      .filter(u => (u.login_count || 0) > 0)
+      .sort((a, b) => (b.login_count || 0) - (a.login_count || 0))[0];
+      
+    const socCounts: {[key: string]: number} = {};
+    users.forEach(u => {
+      if (u.society) {
+        socCounts[u.society] = (socCounts[u.society] || 0) + (u.login_count || 0);
+      }
+    });
+    
+    const topSocEntry = Object.entries(socCounts)
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      onlineUsersCount: onlineUsers.length,
+      onlineSocietiesCount: onlineSocieties.size,
+      topUserName: topUser ? `${topUser.name} ${topUser.surname}` : '-',
+      topUserLogins: topUser ? topUser.login_count : 0,
+      topSocName: topSocEntry ? topSocEntry[0] : '-',
+      topSocLogins: topSocEntry ? topSocEntry[1] : 0
+    };
+  }, [users]);
+
   const fetchSocieties = useCallback(async () => {
     try {
       const res = await fetch('/api/societies', {
@@ -276,6 +307,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     Promise.all(promises).finally(() => setLoading(false));
   }, [token, currentUser?.role, currentUser?.society, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams, fetchUsers]);
+
+  useEffect(() => {
+    if (activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
+      const interval = setInterval(fetchUsers, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, currentUser?.role, fetchUsers]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -675,6 +713,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
+  const handleToggleStatus = (id: number, currentStatus: string) => {
+    const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+    const actionText = newStatus === 'suspended' ? 'Sospendi' : 'Riattiva';
+    const confirmTitle = newStatus === 'suspended' ? 'Sospendi Utente' : 'Riattiva Utente';
+    const confirmMessage = newStatus === 'suspended' 
+      ? 'Sei sicuro di voler sospendere l\'accesso a questo utente? Riceverà una notifica al prossimo login.' 
+      : 'Sei sicuro di voler riattivare l\'accesso a questo utente?';
+
+    triggerConfirm(
+      confirmTitle,
+      confirmMessage,
+      async () => {
+        try {
+          const res = await fetch(`/api/admin/users/${id}/status`, {
+            method: 'PATCH',
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: newStatus })
+          });
+          if (!res.ok) throw new Error('Errore durante il cambio di stato');
+          fetchUsers();
+        } catch (err: any) {
+          setError(err.message);
+        }
+      },
+      actionText,
+      newStatus === 'suspended' ? 'danger' : 'primary'
+    );
+  };
+
   const editUser = (user: any) => {
     setEditingUser(user);
     setName(user.name);
@@ -732,8 +802,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const sortedUsers = React.useMemo(() => {
     let sortableUsers = [...filteredUsers];
-    if (userSortConfig !== null) {
-      sortableUsers.sort((a, b) => {
+    
+    // Always prioritize logged in users first
+    sortableUsers.sort((a, b) => {
+      if (a.is_logged_in && !b.is_logged_in) return -1;
+      if (!a.is_logged_in && b.is_logged_in) return 1;
+      
+      if (userSortConfig !== null) {
         let aValue = a[userSortConfig.key] || '';
         let bValue = b[userSortConfig.key] || '';
         
@@ -751,9 +826,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         if (aValue > bValue) {
           return userSortConfig.direction === 'asc' ? 1 : -1;
         }
-        return 0;
-      });
-    }
+      }
+      return 0;
+    });
+    
     return sortableUsers;
   }, [filteredUsers, userSortConfig]);
 
@@ -885,10 +961,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
+              onClick={() => setActiveTab('halloffame')}
+              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-trophy mr-2"></i> Hall of Fame
+            </button>
+          )}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+            <button 
               onClick={() => setActiveTab('team')}
               className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <i className="fas fa-trophy mr-2"></i> Squadre
+              <i className="fas fa-users-cog mr-2"></i> Squadre
             </button>
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -940,6 +1024,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             onLoadDrive={onLoadDrive}
           />
         </div>
+      ) : activeTab === 'halloffame' ? (
+        <HallOfFame 
+          user={currentUser} 
+          token={token} 
+          triggerConfirm={triggerConfirm} 
+        />
       ) : activeTab === 'profile' ? (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
@@ -1586,7 +1676,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
           </div>
 
-          {selectedSociety && (
+          {selectedSociety && createPortal(
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedSociety(null)}>
               <div className="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="relative h-32 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-6">
@@ -1692,7 +1782,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       ) : activeTab === 'events' ? (
@@ -1890,9 +1981,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {selectedShooterResults && (
+          {selectedShooterResults && createPortal(
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
                   <div className="flex items-center gap-5">
                     <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-orange-600/20">
@@ -2024,7 +2115,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   ))}
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       ) : (
@@ -2065,6 +2157,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4">{error}</div>}
+
+          {/* User Management Dashboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <i className="fas fa-user-check text-green-500 text-xs"></i>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Utenti Online</span>
+              </div>
+              <div className="text-2xl font-black text-white">{dashboardStats.onlineUsersCount}</div>
+            </div>
+            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <i className="fas fa-building text-blue-500 text-xs"></i>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società Online</span>
+              </div>
+              <div className="text-2xl font-black text-white">{dashboardStats.onlineSocietiesCount}</div>
+            </div>
+            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                  <i className="fas fa-star text-orange-500 text-xs"></i>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Utente più Attivo</span>
+              </div>
+              <div className="text-sm font-bold text-white truncate">
+                {dashboardStats.topUserName}
+              </div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                {dashboardStats.topUserLogins} Accessi
+              </div>
+            </div>
+            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <i className="fas fa-trophy text-purple-500 text-xs"></i>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società più Attiva</span>
+              </div>
+              <div className="text-sm font-bold text-white truncate">
+                {dashboardStats.topSocName}
+              </div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                {dashboardStats.topSocLogins} Accessi Totali
+              </div>
+            </div>
+          </div>
 
           {showUserForm && (
             <form onSubmit={handleSubmit} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300">
@@ -2229,6 +2371,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 flex justify-end gap-2">
+                      {currentUser?.role === 'admin' && (
+                        <button 
+                          onClick={() => handleToggleStatus(u.id, u.status)} 
+                          disabled={u.email === 'snecaj@gmail.com'}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 ${
+                            u.status === 'suspended' 
+                              ? 'bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white' 
+                              : 'bg-red-500/5 text-red-500/60 hover:bg-red-600 hover:text-white'
+                          }`}
+                          title={u.status === 'suspended' ? "Riattiva" : "Sospendi"}
+                        >
+                          <i className={`fas ${u.status === 'suspended' ? 'fa-user-check' : 'fa-user-slash'} text-xs`}></i>
+                        </button>
+                      )}
                       <button 
                         onClick={() => { editUser(u); setShowUserForm(true); }} 
                         disabled={currentUser?.role === 'society' && u.role === 'admin'}
@@ -2239,9 +2395,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </button>
                       <button 
                         onClick={() => handleDelete(u.id)} 
-                        disabled={u.email === 'snecaj@gmail.com' || (currentUser?.role === 'society' && (u.role === 'admin' || u.role === 'society'))} 
+                        disabled={u.email === 'snecaj@gmail.com' || currentUser?.role === 'society'} 
                         className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all disabled:opacity-30"
-                        title={currentUser?.role === 'society' && (u.role === 'admin' || u.role === 'society') ? "Non puoi eliminare questo account" : "Elimina"}
+                        title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (u.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
                       >
                         <i className="fas fa-trash-alt text-xs"></i>
                       </button>

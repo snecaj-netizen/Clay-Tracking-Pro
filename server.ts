@@ -53,6 +53,9 @@ const initDB = async () => {
         society TEXT,
         fitav_card TEXT,
         avatar TEXT,
+        status TEXT DEFAULT 'active',
+        login_count INTEGER DEFAULT 0,
+        last_login TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -64,6 +67,9 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS society TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS fitav_card TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP");
     } catch (e) {
       console.log("Columns already exist or error adding them");
     }
@@ -216,6 +222,20 @@ const initDB = async () => {
         PRIMARY KEY (team_id, user_id)
       );
     `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS challenges (
+        id TEXT PRIMARY KEY,
+        society_id INTEGER NOT NULL REFERENCES societies(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        discipline TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        prize TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     // Create default admin user if not exists
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", ['snecaj@gmail.com']);
@@ -285,8 +305,18 @@ app.post('/api/auth/login', async (req, res) => {
     const user = rows[0];
     if (!user) return res.status(400).json({ error: 'User not found' });
 
+    if (user.status === 'suspended') {
+      return res.status(403).json({ 
+        error: 'Account sospeso', 
+        message: 'Il tuo account è stato sospeso. Contatta l\'amministratore per maggiori informazioni.' 
+      });
+    }
+
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+
+    // Update login count and last login
+    await pool.query("UPDATE users SET login_count = login_count + 1, last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, society: user.society }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card, avatar: user.avatar } });
@@ -321,7 +351,7 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
 // Admin Routes (Manage Users)
 app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, created_at FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, status, login_count, last_login, created_at FROM users";
     let params: any[] = [];
     
     if (req.user.role === 'society') {
@@ -358,17 +388,17 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
-      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null]
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null, 'active']
     );
-    res.json({ id: rows[0].id, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar });
+    res.json({ id: rows[0].id, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar, status: 'active' });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar } = req.body;
+  const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar, status } = req.body;
   
   try {
     const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
@@ -387,19 +417,22 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       if (society && society !== req.user.society) {
         return res.status(403).json({ error: 'Societies can only manage shooters for their own society' });
       }
+      if (status && status !== userCheck.rows[0].status) {
+        return res.status(403).json({ error: 'Societies cannot change user status' });
+      }
     }
 
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10 WHERE id = $11",
-        [name, surname, email, role, hash, category, qualification, society, fitav_card, avatar || null, req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10, status = $11 WHERE id = $12",
+        [name, surname, email, role, hash, category, qualification, society, fitav_card, avatar || null, status || 'active', req.params.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9 WHERE id = $10",
-        [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, status = $10 WHERE id = $11",
+        [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, status || 'active', req.params.id]
       );
     }
     res.json({ success: true });
@@ -505,18 +538,38 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
 app.delete('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
     if (req.user.role === 'society') {
-      const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
-      if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-      
-      if (userCheck.rows[0].role === 'admin' || userCheck.rows[0].role === 'society') {
-        return res.status(403).json({ error: 'Societies cannot delete administrators or other society accounts' });
-      }
-      
-      if (userCheck.rows[0].society !== req.user.society) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+      return res.status(403).json({ error: 'Solo l\'amministratore può eliminare gli utenti' });
     }
+    
+    const userCheck = await pool.query("SELECT role, email FROM users WHERE id = $1", [req.params.id]);
+    if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    if (userCheck.rows[0].email === 'snecaj@gmail.com') {
+      return res.status(403).json({ error: 'Cannot delete main admin' });
+    }
+
     await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/users/:id/status', authenticateToken, requireAdmin, async (req: any, res) => {
+  const { status } = req.body;
+  if (!['active', 'suspended'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  try {
+    const userCheck = await pool.query("SELECT email FROM users WHERE id = $1", [req.params.id]);
+    if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    if (userCheck.rows[0].email === 'snecaj@gmail.com') {
+      return res.status(403).json({ error: 'Cannot suspend main admin' });
+    }
+
+    await pool.query("UPDATE users SET status = $1 WHERE id = $2", [status, req.params.id]);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -622,6 +675,208 @@ app.delete('/api/admin/societies/:id', authenticateToken, requireAdmin, async (r
   try {
     await pool.query("DELETE FROM societies WHERE id = $1", [req.params.id]);
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Challenges Routes
+app.get('/api/challenges', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT c.*, s.name as society_name 
+      FROM challenges c 
+      JOIN societies s ON c.society_id = s.id 
+      ORDER BY c.created_at DESC
+    `);
+    res.json(rows.map(r => ({
+      id: r.id,
+      societyId: r.society_id,
+      societyName: r.society_name,
+      name: r.name,
+      discipline: r.discipline,
+      mode: r.mode,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      prize: r.prize,
+      createdAt: r.created_at
+    })));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/challenges', authenticateToken, requireAdmin, async (req, res) => {
+  const { societyId, name, discipline, mode, startDate, endDate, prize } = req.body;
+  const id = Math.random().toString(36).substr(2, 9);
+  try {
+    await pool.query(
+      "INSERT INTO challenges (id, society_id, name, discipline, mode, start_date, end_date, prize) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [id, societyId, name, discipline, mode, startDate, endDate, prize]
+    );
+    res.json({ id });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/challenges/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { societyId, name, discipline, mode, startDate, endDate, prize } = req.body;
+  try {
+    await pool.query(
+      "UPDATE challenges SET society_id = $1, name = $2, discipline = $3, mode = $4, start_date = $5, end_date = $6, prize = $7 WHERE id = $8",
+      [societyId, name, discipline, mode, startDate, endDate, prize, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/challenges/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM challenges WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
+  try {
+    const { rows: challengeRows } = await pool.query(`
+      SELECT c.*, s.name as society_name 
+      FROM challenges c 
+      JOIN societies s ON c.society_id = s.id 
+      WHERE c.id = $1
+    `, [req.params.id]);
+    
+    if (challengeRows.length === 0) return res.status(404).json({ error: 'Challenge not found' });
+    const challenge = challengeRows[0];
+
+    const { rows: compRows } = await pool.query(`
+      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.discipline = $1 
+      AND c.location = $2
+      AND u.society = $2
+      AND c.date >= $3
+      AND c.date <= $4
+    `, [challenge.discipline, challenge.society_name, challenge.start_date, challenge.end_date]);
+
+    const shooterStats: Record<number, any> = {};
+
+    compRows.forEach(c => {
+      if (!shooterStats[c.user_id]) {
+        shooterStats[c.user_id] = {
+          userId: c.user_id,
+          userName: c.user_name,
+          userSurname: c.user_surname,
+          category: c.category || 'N/D',
+          qualification: c.qualification || 'N/D',
+          scores: [], // total scores per competition
+          allSeriesScores: [], // individual series scores
+          totalHits: 0,
+          totalTargets: 0,
+          competitionCount: 0,
+          bestScore: 0,
+          bestSeries: 0,
+          lastSeriesScores: [],
+          perfectSeriesCount: 0
+        };
+      }
+      
+      const stats = shooterStats[c.user_id];
+      stats.scores.push(c.totalscore);
+      stats.totalHits += c.totalscore;
+      stats.totalTargets += c.totaltargets;
+      stats.competitionCount += 1;
+      if (c.totalscore > stats.bestScore) stats.bestScore = c.totalscore;
+
+      // Parse series scores
+      try {
+        const series = JSON.parse(c.scores);
+        if (Array.isArray(series) && series.length > 0) {
+          // Last series for clutch performance
+          const lastVal = parseInt(series[series.length - 1]);
+          if (!isNaN(lastVal)) stats.lastSeriesScores.push(lastVal);
+
+          series.forEach(s => {
+            const val = parseInt(s);
+            if (!isNaN(val)) {
+              stats.allSeriesScores.push(val);
+              if (val > stats.bestSeries) stats.bestSeries = val;
+              if (val === 25) stats.perfectSeriesCount += 1;
+            }
+          });
+        }
+      } catch (e) {}
+    });
+
+    const ranking = Object.values(shooterStats).map(stats => {
+      let value = 0;
+      let sortAsc = false;
+
+      switch (challenge.mode) {
+        case 'Miglior Risultato':
+          value = stats.bestScore;
+          break;
+        case 'Media Totale':
+          value = stats.totalHits / stats.competitionCount;
+          break;
+        case 'Media Migliori 3':
+          const sorted = [...stats.scores].sort((a, b) => b - a);
+          const top3 = sorted.slice(0, 3);
+          value = top3.reduce((a, b) => a + b, 0) / (top3.length || 1);
+          break;
+        case 'Totale Piattelli Rotti':
+          value = stats.totalHits;
+          break;
+        case 'Precisione (%)':
+          value = (stats.totalHits / (stats.totalTargets || 1)) * 100;
+          break;
+        case 'Miglior Serie Singola':
+          value = stats.bestSeries;
+          break;
+        case 'Numero di Gare':
+          value = stats.competitionCount;
+          break;
+        case 'Media Migliori 5':
+          const sorted5 = [...stats.scores].sort((a, b) => b - a);
+          const top5 = sorted5.slice(0, 5);
+          value = top5.reduce((a, b) => a + b, 0) / (top5.length || 1);
+          break;
+        case 'Performance Finale (Ultima Serie)':
+          value = stats.lastSeriesScores.reduce((a: number, b: number) => a + b, 0) / (stats.lastSeriesScores.length || 1);
+          break;
+        case 'Numero Serie Perfette (25/25)':
+          value = stats.perfectSeriesCount;
+          break;
+        case 'Costanza (Serie)':
+          // Calculate standard deviation of series scores
+          if (stats.allSeriesScores.length > 1) {
+            const mean = stats.allSeriesScores.reduce((a: number, b: number) => a + b, 0) / stats.allSeriesScores.length;
+            const variance = stats.allSeriesScores.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / stats.allSeriesScores.length;
+            value = Math.sqrt(variance);
+            sortAsc = true; // Lower deviation is better
+          } else {
+            value = 999; // High value for those with only 1 series
+            sortAsc = true;
+          }
+          break;
+      }
+      return {
+        ...stats,
+        value: parseFloat(value.toFixed(2)),
+        sortAsc
+      };
+    }).sort((a, b) => {
+      if (a.sortAsc) return a.value - b.value;
+      return b.value - a.value;
+    });
+
+    res.json(ranking);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
