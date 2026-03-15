@@ -944,9 +944,12 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
       SELECT c.*, u.name as user_name, u.surname as user_surname 
       FROM competitions c
       JOIN users u ON c.user_id = u.id
+      LEFT JOIN teams t ON c.team_id = t.id
+      LEFT JOIN users tu ON t.created_by = tu.id
       WHERE u.role = 'admin' 
       AND c.discipline != 'Allenamento'
       AND c.level != 'Allenamento / Pratica'
+      AND (c.team_id IS NULL OR tu.role != 'society')
     `;
     const { rows: adminComps } = await pool.query(compQuery);
 
