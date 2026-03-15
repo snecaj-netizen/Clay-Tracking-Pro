@@ -101,7 +101,7 @@ export interface SocietyEvent {
   id: string;
   name: string;
   type: string; // Regionale, Nazionale, Internazionale
-  visibility: string; // Gara di Società, Gara Pubblica
+  visibility: string; // Gara di Società, Pubblica
   discipline: string;
   location: string;
   targets: number;

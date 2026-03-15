@@ -539,7 +539,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Visibilità *</label>
               <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
                 <option value="Gara di Società">Gara di Società (Solo propri tiratori)</option>
-                <option value="Pubblica">Gara Pubblica (Tutti)</option>
+                <option value="Pubblica">Pubblica (Tutti)</option>
               </select>
             </div>
 
@@ -686,8 +686,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
               
-              <button onClick={() => setSelectedEvent(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 sm:w-10 sm:h-10 rounded-2xl bg-slate-800/90 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all z-20 border border-slate-700/50 backdrop-blur-md shadow-xl active:scale-90">
-                <i className="fas fa-times text-lg sm:text-base"></i>
+              <button 
+                onClick={() => setSelectedEvent(null)} 
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg z-20"
+              >
+                <i className="fas fa-times text-lg"></i>
               </button>
               
               <div className="relative z-10 w-full pr-10 sm:pr-0">

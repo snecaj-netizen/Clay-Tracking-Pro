@@ -958,7 +958,7 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
       id: `comp_${c.id}`,
       name: c.name,
       type: c.level,
-      visibility: 'Gara Pubblica',
+      visibility: 'Pubblica',
       discipline: c.discipline,
       location: c.location,
       targets: c.totaltargets,
