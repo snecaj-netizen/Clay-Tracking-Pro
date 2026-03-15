@@ -115,6 +115,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterLocation, setFilterLocation] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [resultsPage, setResultsPage] = useState(1);
+  const [selectedShooterResults, setSelectedShooterResults] = useState<any | null>(null);
   const resultsPerPage = 50;
 
   const filterOptions = React.useMemo(() => {
@@ -771,33 +772,73 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     userId: currentUser?.id || ''
   }));
 
+  const filteredResults = useMemo(() => {
+    return resultsToDisplay
+      .filter(r => r.totalScore > 0)
+      .filter(r => {
+        const shooterMatch = `${r.userName || ''} ${r.userSurname || ''}`.toLowerCase().includes(filterShooter.toLowerCase()) || 
+                             `${r.userSurname || ''} ${r.userName || ''}`.toLowerCase().includes(filterShooter.toLowerCase());
+        const societyMatch = !filterSociety || r.society === filterSociety;
+        const disciplineMatch = !filterDiscipline || r.discipline === filterDiscipline;
+        const locationMatch = !filterLocation || r.location === filterLocation;
+        
+        let yearMatch = true;
+        if (filterYear && r.date) {
+          const dateParts = r.date.split(/[-/]/);
+          const year = dateParts[0].length === 4 ? dateParts[0] : dateParts[2];
+          yearMatch = year === filterYear;
+        }
+
+        return shooterMatch && societyMatch && disciplineMatch && locationMatch && yearMatch;
+      })
+      .sort((a, b) => {
+        const dateA = a.date ? (new Date(a.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(a.date).getTime()) : 0;
+        const dateB = b.date ? (new Date(b.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(b.date).getTime()) : 0;
+        return dateB - dateA; // Sort by date descending
+      });
+  }, [resultsToDisplay, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
+
+  const groupedShooters = useMemo(() => {
+    const groups = new Map();
+    filteredResults.forEach(r => {
+      const key = r.userId;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          userId: r.userId,
+          userName: r.userName,
+          userSurname: r.userSurname,
+          society: r.society,
+          results: []
+        });
+      }
+      groups.get(key).results.push(r);
+    });
+    
+    return Array.from(groups.values()).map(group => {
+      const results = group.results;
+      const totalCompetitions = results.length;
+      const totalScore = results.reduce((acc: number, r: any) => acc + (r.totalScore || 0), 0);
+      const totalTargets = results.reduce((acc: number, r: any) => acc + (r.totalTargets || 0), 0);
+      const average = totalTargets > 0 ? (totalScore / totalTargets) * 25 : 0;
+      const bestScore = results.length > 0 ? Math.max(...results.map((r: any) => r.totalScore || 0)) : 0;
+      
+      return {
+        ...group,
+        totalCompetitions,
+        average,
+        bestScore
+      };
+    }).sort((a, b) => {
+      const nameA = `${a.userSurname || ''} ${a.userName || ''}`.trim();
+      const nameB = `${b.userSurname || ''} ${b.userName || ''}`.trim();
+      return nameA.localeCompare(nameB);
+    });
+  }, [filteredResults]);
+
   if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
-  const filteredResults = resultsToDisplay
-    .filter(r => r.totalScore > 0)
-    .filter(r => {
-      const shooterMatch = `${r.userName} ${r.userSurname}`.toLowerCase().includes(filterShooter.toLowerCase()) || 
-                           `${r.userSurname} ${r.userName}`.toLowerCase().includes(filterShooter.toLowerCase());
-      const societyMatch = !filterSociety || r.society === filterSociety;
-      const disciplineMatch = !filterDiscipline || r.discipline === filterDiscipline;
-      const locationMatch = !filterLocation || r.location === filterLocation;
-      
-      let yearMatch = true;
-      if (filterYear && r.date) {
-        const dateParts = r.date.split(/[-/]/);
-        const year = dateParts[0].length === 4 ? dateParts[0] : dateParts[2];
-        yearMatch = year === filterYear;
-      }
-
-      return shooterMatch && societyMatch && disciplineMatch && locationMatch && yearMatch;
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(a.date).getTime();
-      const dateB = new Date(b.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(b.date).getTime();
-      return dateA - dateB;
-    });
-
-  const totalPages = Math.ceil(filteredResults.length / resultsPerPage);
+  const totalPages = Math.ceil(groupedShooters.length / resultsPerPage);
+  const paginatedShooters = groupedShooters.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
   const paginatedResults = filteredResults.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
 
   const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -1750,102 +1791,214 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  <th className="py-3 px-4">Data</th>
-                  <th className="py-3 px-4">Tiratore</th>
-                  <th className="py-3 px-4">Società</th>
-                  <th className="py-3 px-4">Gara</th>
-                  <th className="py-3 px-4">Disciplina</th>
-                  <th className="py-3 px-4">Campo</th>
-                  <th className="py-3 px-4 text-right">Risultato</th>
-                  {currentUser?.role === 'admin' && <th className="py-3 px-4 text-right">Azioni</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedResults.map((r, idx) => (
-                  <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                    <td className="py-3 px-4 text-[10px] text-slate-500 font-bold">{r.date}</td>
-                    <td className="py-3 px-4 text-xs text-white font-bold">{r.userSurname} {r.userName}</td>
-                    <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{r.society || '-'}</td>
-                    <td className="py-3 px-4 text-xs text-slate-300">{r.name}</td>
-                    <td className="py-3 px-4 text-[10px] text-slate-400 uppercase font-black">{r.discipline}</td>
-                    <td className="py-3 px-4 text-[10px] text-slate-500 uppercase">{r.location || '-'}</td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-black text-white">
-                          {r.totalScore}/{r.totalTargets}
-                        </span>
-                        {teamStats.find(s => s.user_id === r.userId && s.discipline === r.discipline) && (
-                          <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">
-                            Media: {parseFloat(teamStats.find(s => s.user_id === r.userId && s.discipline === r.discipline)!.avg_score).toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    {currentUser?.role === 'admin' && (
-                      <td className="py-3 px-4 flex justify-end gap-2">
-                        <button 
-                          onClick={() => onEditCompetition && onEditCompetition(r)}
-                          className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
-                          title="Modifica"
-                        >
-                          <i className="fas fa-edit text-xs"></i>
-                        </button>
-                        <button 
-                          onClick={() => {
-                            triggerConfirm(
-                              'Elimina Gara',
-                              `Sei sicuro di voler eliminare la gara "${r.name}"${r.userName ? ` di ${r.userName} ${r.userSurname || ''}` : ''}?`,
-                              () => {
-                                if (onDeleteCompetition) {
-                                  onDeleteCompetition(r.id);
-                                  setAllResults(prev => prev.filter(res => res.id !== r.id));
-                                }
-                              },
-                              'Elimina',
-                              'danger'
-                            );
-                          }}
-                          className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"
-                          title="Elimina"
-                        >
-                          <i className="fas fa-trash-alt text-xs"></i>
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 border-t border-slate-800">
-                <span className="text-xs text-slate-500">
-                  Pagina <span className="text-white font-bold">{resultsPage}</span> di <span className="text-white font-bold">{totalPages}</span>
-                  <span className="ml-2">({filteredResults.length} risultati)</span>
-                </span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setResultsPage(p => Math.max(1, p - 1))}
-                    disabled={resultsPage === 1}
-                    className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
-                  >
-                    <i className="fas fa-chevron-left mr-1"></i> Precedente
-                  </button>
-                  <button 
-                    onClick={() => setResultsPage(p => Math.min(totalPages, p + 1))}
-                    disabled={resultsPage === totalPages}
-                    className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
-                  >
-                    Successiva <i className="fas fa-chevron-right ml-1"></i>
-                  </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {paginatedShooters.map((shooter) => (
+              <div 
+                key={shooter.userId}
+                onClick={() => setSelectedShooterResults(shooter)}
+                className="bg-slate-950 border border-slate-800 rounded-2xl p-4 hover:border-orange-500/50 transition-all cursor-pointer group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-600/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-orange-600/10 transition-all"></div>
+                
+                <div className="flex items-center gap-4 mb-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-orange-500 text-xl font-black shadow-inner">
+                    {(shooter.userName?.[0] || '')}{(shooter.userSurname?.[0] || '')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors truncate">
+                      {shooter.userSurname || ''} {shooter.userName || ''}
+                    </h3>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate">
+                      {shooter.society || 'Nessuna Società'}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-slate-700 group-hover:text-orange-500 transition-all">
+                    <i className="fas fa-chevron-right text-xs"></i>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-900 relative z-10">
+                  <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Gare</p>
+                    <p className="text-sm font-black text-white">{shooter.totalCompetitions}</p>
+                  </div>
+                  <div className="text-center border-x border-slate-900">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Media</p>
+                    <p className="text-sm font-black text-orange-500">{shooter.average.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Best</p>
+                    <p className="text-sm font-black text-white">{shooter.bestScore}</p>
+                  </div>
                 </div>
               </div>
-            )}
+            ))}
           </div>
+
+          {groupedShooters.length === 0 && (
+            <div className="text-center py-20 bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
+              <i className="fas fa-search text-4xl text-slate-800 mb-4"></i>
+              <p className="text-slate-500 font-bold">Nessun tiratore trovato con i filtri selezionati</p>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-6 border-t border-slate-800">
+              <button 
+                disabled={resultsPage === 1}
+                onClick={() => setResultsPage(prev => prev - 1)}
+                className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-black uppercase text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+              >
+                Precedente
+              </button>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                Pagina {resultsPage} di {totalPages}
+              </span>
+              <button 
+                disabled={resultsPage === totalPages}
+                onClick={() => setResultsPage(prev => prev + 1)}
+                className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-black uppercase text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+              >
+                Successiva
+              </button>
+            </div>
+          )}
+
+          {selectedShooterResults && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+                <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-orange-600/20">
+                      {(selectedShooterResults.userName?.[0] || '')}{(selectedShooterResults.userSurname?.[0] || '')}
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                        {selectedShooterResults.userSurname || ''} {selectedShooterResults.userName || ''}
+                      </h2>
+                      <p className="text-xs font-black text-orange-500 uppercase tracking-[0.2em] mt-1">
+                        {selectedShooterResults.society || 'Nessuna Società'}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedShooterResults(null)}
+                    className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                  >
+                    <i className="fas fa-times text-lg"></i>
+                  </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                  {Object.entries(
+                    (selectedShooterResults.results || [])
+                      .filter((r: any) => {
+                        if (currentUser?.role === 'society' && r.name?.toLowerCase().includes('allenamento')) return false;
+                        return true;
+                      })
+                      .reduce((acc: any, r: any) => {
+                        const disc = r.discipline || 'Altro';
+                        if (!acc[disc]) acc[disc] = [];
+                        acc[disc].push(r);
+                        return acc;
+                      }, {})
+                  ).length === 0 ? (
+                    <div className="text-center py-20">
+                      <p className="text-slate-500 font-bold">Nessuna gara trovata per questo tiratore</p>
+                    </div>
+                  ) : (
+                    Object.entries(
+                      (selectedShooterResults.results || [])
+                        .filter((r: any) => {
+                          if (currentUser?.role === 'society' && r.name?.toLowerCase().includes('allenamento')) return false;
+                          return true;
+                        })
+                        .reduce((acc: any, r: any) => {
+                          const disc = r.discipline || 'Altro';
+                          if (!acc[disc]) acc[disc] = [];
+                          acc[disc].push(r);
+                          return acc;
+                        }, {})
+                    ).map(([discipline, results]: [string, any]) => (
+                      <div key={discipline} className="mb-12 last:mb-0">
+                        <div className="flex items-center gap-4 mb-6">
+                          <h3 className="text-sm font-black text-white uppercase tracking-[0.3em] whitespace-nowrap">
+                            {discipline}
+                          </h3>
+                          <div className="h-[1px] flex-1 bg-gradient-to-r from-orange-500/50 to-transparent"></div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 gap-4">
+                          {results.map((r: any, idx: number) => (
+                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-orange-500/30 transition-all group">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="px-2 py-1 rounded-lg bg-slate-900 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-800">
+                                    {r.date}
+                                  </span>
+                                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                                    <i className="fas fa-map-marker-alt text-orange-500/50"></i>
+                                    {r.location || 'Campo N.D.'}
+                                  </span>
+                                </div>
+                                <h4 className="text-base font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tight">{r.name}</h4>
+                              </div>
+                              
+                              <div className="flex items-center justify-between md:justify-end gap-8">
+                                <div className="text-right">
+                                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Punteggio</p>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-black text-white">{r.totalScore}</span>
+                                    <span className="text-slate-600 font-black text-sm">/ {r.totalTargets}</span>
+                                  </div>
+                                </div>
+                                
+                                {currentUser?.role === 'admin' && (
+                                  <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => onEditCompetition && onEditCompetition(r)}
+                                      className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
+                                      title="Modifica"
+                                    >
+                                      <i className="fas fa-edit text-sm"></i>
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        triggerConfirm(
+                                          'Elimina Gara',
+                                          `Sei sicuro di voler eliminare la gara "${r.name}"?`,
+                                          () => {
+                                            if (onDeleteCompetition) {
+                                              onDeleteCompetition(r.id);
+                                              setAllResults(prev => prev.filter(res => res.id !== r.id));
+                                              setSelectedShooterResults((prev: any) => ({
+                                                ...prev,
+                                                results: prev.results.filter((res: any) => res.id !== r.id)
+                                              }));
+                                            }
+                                          },
+                                          'Elimina',
+                                          'danger'
+                                        );
+                                      }}
+                                      className="w-10 h-10 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
+                                      title="Elimina"
+                                    >
+                                      <i className="fas fa-trash-alt text-sm"></i>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
