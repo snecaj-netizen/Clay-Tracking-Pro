@@ -205,7 +205,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const onlineSocieties = new Set(onlineUsers.filter(u => u.society).map(u => u.society));
     
     const topUser = [...users]
-      .filter(u => (u.login_count || 0) > 0)
+      .filter(u => u.role === 'user' && (u.login_count || 0) > 0)
       .sort((a, b) => (b.login_count || 0) - (a.login_count || 0))[0];
       
     const socCounts: {[key: string]: number} = {};
@@ -927,17 +927,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const filteredSocieties = societies
-    .filter(soc => {
-      if (currentUser?.role === 'society') {
-        return soc.name.trim().toLowerCase() === currentUser.society?.trim().toLowerCase();
-      }
-      return true;
-    })
     .filter(soc => 
       soc.name.toLowerCase().includes(societySearch.toLowerCase()) ||
       (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
       (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
-    );
+    )
+    .sort((a, b) => {
+      if (currentUser?.role === 'society') {
+        const mySoc = currentUser.society?.trim().toLowerCase();
+        const aName = a.name.trim().toLowerCase();
+        const bName = b.name.trim().toLowerCase();
+        if (aName === mySoc) return -1;
+        if (bName === mySoc) return 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="space-y-6">
@@ -1512,7 +1516,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'La Tua Società' : 'Gestione Società (TAV)'}
+              <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}
             </h2>
           </div>
 
@@ -1620,20 +1624,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {/* Society Search */}
-          {currentUser?.role !== 'society' && (
-            <div className="mb-6">
-              <div className="relative">
-                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                <input 
-                  type="text" 
-                  placeholder="Cerca società per nome, città o regione..." 
-                  value={societySearch}
-                  onChange={(e) => setSocietySearch(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
-                />
-              </div>
+          <div className="mb-6">
+            <div className="relative">
+              <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+              <input 
+                type="text" 
+                placeholder="Cerca società per nome, città o regione..." 
+                value={societySearch}
+                onChange={(e) => setSocietySearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+              />
             </div>
-          )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSocieties.map(soc => (
@@ -2183,7 +2185,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
                   <i className="fas fa-star text-orange-500 text-xs"></i>
                 </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Utente più Attivo</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore più Attivo</span>
               </div>
               <div className="text-sm font-bold text-white truncate">
                 {dashboardStats.topUserName}
