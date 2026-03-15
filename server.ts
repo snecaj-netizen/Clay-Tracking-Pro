@@ -681,14 +681,27 @@ app.delete('/api/admin/societies/:id', authenticateToken, requireAdmin, async (r
 });
 
 // Challenges Routes
-app.get('/api/challenges', authenticateToken, async (req, res) => {
+app.get('/api/challenges', authenticateToken, async (req: any, res) => {
   try {
-    const { rows } = await pool.query(`
+    let query = `
       SELECT c.*, s.name as society_name 
       FROM challenges c 
       JOIN societies s ON c.society_id = s.id 
-      ORDER BY c.created_at DESC
-    `);
+    `;
+    let params: any[] = [];
+
+    if (req.user.role === 'society') {
+      query += ` WHERE s.name = $1 `;
+      params = [req.user.society];
+    } else if (req.user.role === 'user') {
+      query += ` WHERE s.name = $1 `;
+      params = [req.user.society];
+    }
+    // Admin sees all
+
+    query += ` ORDER BY c.created_at DESC `;
+
+    const { rows } = await pool.query(query, params);
     res.json(rows.map(r => ({
       id: r.id,
       societyId: r.society_id,
@@ -706,8 +719,16 @@ app.get('/api/challenges', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/admin/challenges', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { societyId, name, discipline, mode, startDate, endDate, prize } = req.body;
+  
+  if (req.user.role === 'society') {
+    const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [societyId]);
+    if (socRows.length === 0 || socRows[0].name !== req.user.society) {
+      return res.status(403).json({ error: 'Le società possono creare sfide solo per la propria TAV.' });
+    }
+  }
+
   const id = Math.random().toString(36).substr(2, 9);
   try {
     await pool.query(
@@ -720,9 +741,24 @@ app.post('/api/admin/challenges', authenticateToken, requireAdmin, async (req, r
   }
 });
 
-app.put('/api/admin/challenges/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { societyId, name, discipline, mode, startDate, endDate, prize } = req.body;
   try {
+    const { rows: challengeRows } = await pool.query("SELECT society_id FROM challenges WHERE id = $1", [req.params.id]);
+    if (challengeRows.length === 0) return res.status(404).json({ error: 'Sfida non trovata' });
+
+    if (req.user.role === 'society') {
+      const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [challengeRows[0].society_id]);
+      if (socRows.length === 0 || socRows[0].name !== req.user.society) {
+        return res.status(403).json({ error: 'Accesso negato' });
+      }
+      // Ensure they don't try to move it to another society
+      const { rows: newSocRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [societyId]);
+      if (newSocRows.length === 0 || newSocRows[0].name !== req.user.society) {
+        return res.status(403).json({ error: 'Non puoi spostare la sfida a un\'altra società.' });
+      }
+    }
+
     await pool.query(
       "UPDATE challenges SET society_id = $1, name = $2, discipline = $3, mode = $4, start_date = $5, end_date = $6, prize = $7 WHERE id = $8",
       [societyId, name, discipline, mode, startDate, endDate, prize, req.params.id]
@@ -733,12 +769,22 @@ app.put('/api/admin/challenges/:id', authenticateToken, requireAdmin, async (req
   }
 });
 
-app.delete('/api/admin/challenges/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
+    const { rows: challengeRows } = await pool.query("SELECT society_id FROM challenges WHERE id = $1", [req.params.id]);
+    if (challengeRows.length === 0) return res.status(404).json({ error: 'Sfida non trovata' });
+
+    if (req.user.role === 'society') {
+      const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [challengeRows[0].society_id]);
+      if (socRows.length === 0 || socRows[0].name !== req.user.society) {
+        return res.status(403).json({ error: 'Accesso negato' });
+      }
+    }
+
     await pool.query("DELETE FROM challenges WHERE id = $1", [req.params.id]);
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 

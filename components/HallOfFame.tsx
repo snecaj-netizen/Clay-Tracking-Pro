@@ -181,11 +181,16 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
           </h2>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Sfide e Contest tra Tiratori</p>
         </div>
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'society') && (
           <button 
             onClick={() => {
               if (showForm) resetForm();
               setShowForm(!showForm);
+              if (!showForm && user?.role === 'society') {
+                // Pre-select society for society users
+                const mySoc = societies.find(s => s.name === user.society);
+                if (mySoc) setSocietyId(mySoc.id);
+              }
             }}
             className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${showForm ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20'}`}
           >
@@ -207,10 +212,11 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                 required
                 value={societyId}
                 onChange={(e) => setSocietyId(Number(e.target.value))}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none transition-all appearance-none"
+                disabled={user?.role === 'society'}
+                className={`w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none transition-all appearance-none ${user?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <option value="">Seleziona Società</option>
-                {societies.map(s => (
+                {societies.filter(s => user?.role === 'admin' || s.name === user.society).map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
@@ -332,7 +338,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                 <span className="text-[10px] font-black px-3 py-1 rounded-full bg-orange-900/30 text-orange-500 border border-orange-900/50 uppercase tracking-widest">
                   {c.discipline}
                 </span>
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || (user?.role === 'society' && c.societyName === user.society)) && (
                   <div className="flex gap-2">
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleEdit(c); }}
