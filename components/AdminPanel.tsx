@@ -2161,54 +2161,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4">{error}</div>}
 
           {/* User Management Dashboard */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <i className="fas fa-user-check text-green-500 text-xs"></i>
+          {currentUser?.role === 'admin' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                    <i className="fas fa-user-check text-green-500 text-xs"></i>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Utenti Online</span>
                 </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Utenti Online</span>
+                <div className="text-2xl font-black text-white">{dashboardStats.onlineUsersCount}</div>
               </div>
-              <div className="text-2xl font-black text-white">{dashboardStats.onlineUsersCount}</div>
-            </div>
-            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <i className="fas fa-building text-blue-500 text-xs"></i>
+              <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <i className="fas fa-building text-blue-500 text-xs"></i>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società Online</span>
                 </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società Online</span>
+                <div className="text-2xl font-black text-white">{dashboardStats.onlineSocietiesCount}</div>
               </div>
-              <div className="text-2xl font-black text-white">{dashboardStats.onlineSocietiesCount}</div>
-            </div>
-            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                  <i className="fas fa-star text-orange-500 text-xs"></i>
+              <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <i className="fas fa-star text-orange-500 text-xs"></i>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore più Attivo</span>
                 </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore più Attivo</span>
-              </div>
-              <div className="text-sm font-bold text-white truncate">
-                {dashboardStats.topUserName}
-              </div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                {dashboardStats.topUserLogins} Accessi
-              </div>
-            </div>
-            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <i className="fas fa-trophy text-purple-500 text-xs"></i>
+                <div className="text-sm font-bold text-white truncate">
+                  {dashboardStats.topUserName}
                 </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società più Attiva</span>
+                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                  {dashboardStats.topUserLogins} Accessi
+                </div>
               </div>
-              <div className="text-sm font-bold text-white truncate">
-                {dashboardStats.topSocName}
-              </div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                {dashboardStats.topSocLogins} Accessi Totali
+              <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <i className="fas fa-trophy text-purple-500 text-xs"></i>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società più Attiva</span>
+                </div>
+                <div className="text-sm font-bold text-white truncate">
+                  {dashboardStats.topSocName}
+                </div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                  {dashboardStats.topSocLogins} Accessi Totali
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {showUserForm && (
             <form onSubmit={handleSubmit} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300">
