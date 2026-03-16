@@ -29,7 +29,7 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
     }
   };
 
-  const generateReport = async () => {
+  const generateReport = async (signal?: AbortSignal) => {
     // Filtriamo solo le gare (non allenamenti) concluse
     const completedComps = competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0);
     
@@ -48,16 +48,20 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
         const token = localStorage.getItem('auth_token');
         if (token) {
           const res = await fetch('/api/gemini-key', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` },
+            signal
           });
           if (res.ok) {
             const data = await res.json();
             apiKey = data.key;
           }
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
         console.error("Failed to fetch API key from server", e);
       }
+
+      if (signal?.aborted) return;
 
       if (!apiKey) {
         const rawKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
@@ -105,12 +109,15 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
         contents: prompt,
       });
 
+      if (signal?.aborted) return;
+
       if (response.text) {
         setReport(response.text);
       } else {
         setError("Impossibile generare il report al momento.");
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error("Error generating report:", err);
       if (err.message && err.message.includes("API key not valid")) {
         setNeedsKey(true);
@@ -118,16 +125,20 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
         setError("Si è verificato un errore durante la generazione del report.");
       }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     // Generate report automatically if we have completed competitions, no report yet, and the panel is open
     const completedComps = competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0);
     if (isOpen && completedComps.length > 0 && !report && !loading && !needsKey && !error) {
-      generateReport();
+      generateReport(controller.signal);
     }
+    return () => controller.abort();
   }, [competitions, isOpen]);
 
   const toggleOpen = () => {

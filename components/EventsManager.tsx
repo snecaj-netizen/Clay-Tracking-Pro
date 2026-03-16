@@ -10,9 +10,11 @@ interface EventsManagerProps {
   onParticipate?: (event: SocietyEvent) => void;
   onCreateTeam?: (event: SocietyEvent) => void;
   restrictToSociety?: boolean;
+  initialEventId?: string | null;
+  onInitialEventHandled?: () => void;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate, onCreateTeam, restrictToSociety }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -26,6 +28,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [filterSociety, setFilterSociety] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
+
+  useEffect(() => {
+    if (initialEventId && events.length > 0) {
+      const event = events.find(e => e.id === initialEventId);
+      if (event) {
+        setSelectedEvent(event);
+        if (onInitialEventHandled) onInitialEventHandled();
+      }
+    }
+  }, [initialEventId, events, onInitialEventHandled]);
 
   const nextUpcomingEventId = React.useMemo(() => {
     const today = new Date();
@@ -188,16 +200,22 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [posterUrl, setPosterUrl] = useState('');
   const [registrationLink, setRegistrationLink] = useState('');
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (signal?: AbortSignal) => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/events', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       if (res.ok) {
         const data = await res.json();
         setEvents(data);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
@@ -205,7 +223,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   };
 
   useEffect(() => {
-    fetchEvents();
+    const controller = new AbortController();
+    fetchEvents(controller.signal);
+    return () => controller.abort();
   }, [token]);
 
   const handleEdit = (ev: SocietyEvent) => {

@@ -30,32 +30,38 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
   const [prize, setPrize] = useState('');
 
   useEffect(() => {
-    fetchChallenges();
-    fetchSocieties();
+    const controller = new AbortController();
+    fetchChallenges(controller.signal);
+    fetchSocieties(controller.signal);
+    return () => controller.abort();
   }, []);
 
-  const fetchChallenges = async () => {
+  const fetchChallenges = async (signal?: AbortSignal) => {
     try {
       const res = await fetch('/api/challenges', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       const data = await res.json();
       setChallenges(data);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('Error fetching challenges:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSocieties = async () => {
+  const fetchSocieties = async (signal?: AbortSignal) => {
     try {
       const res = await fetch('/api/societies', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       const data = await res.json();
       setSocieties(data);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('Error fetching societies:', err);
     }
   };

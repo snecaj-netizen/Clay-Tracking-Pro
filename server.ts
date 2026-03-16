@@ -357,7 +357,7 @@ initDB().then(() => {
             userIds, 
             "Gara in arrivo!", 
             `La gara "${event.name}" inizierà tra 2 giorni presso ${event.location}.`, 
-            `/events`
+            `/events?id=${event.id}`
           );
         }
       }
@@ -470,20 +470,27 @@ app.put('/api/notifications/:id/read', authenticateToken, async (req: any, res) 
 // Helper to send push notifications
 const sendPushNotification = async (userIds: number[], title: string, body: string, url: string) => {
   try {
+    // Get Admin ID to ensure they get all notifications
+    const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
+    const adminId = adminRows[0]?.id;
+
+    // Ensure Admin is in userIds if not already
+    const finalUserIds = [...new Set([...userIds, adminId])].filter(id => id !== undefined);
+
     // Save to notifications table
-    for (const userId of userIds) {
+    for (const userId of finalUserIds) {
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
         [userId, title, body, url]
       );
     }
 
-    if (userIds.length === 0) return;
+    if (finalUserIds.length === 0) return;
 
     // Get subscriptions
     const { rows: subscriptions } = await pool.query(
       "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
-      [userIds]
+      [finalUserIds]
     );
 
     const payload = JSON.stringify({ title, body, url });
@@ -556,6 +563,38 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.get('/api/admin/notifications', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT n.*, u.name as user_name, u.surname as user_surname 
+       FROM notifications n 
+       LEFT JOIN users u ON n.user_id = u.id 
+       ORDER BY n.created_at DESC LIMIT 200`
+    );
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/notifications/:id', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    await pool.query("DELETE FROM notifications WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/notifications/:id/read', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    await pool.query("UPDATE notifications SET read = TRUE WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin Routes (Manage Users)
 app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
@@ -599,7 +638,13 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
       "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
       [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null, 'active']
     );
-    res.json({ id: rows[0].id, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar, status: 'active' });
+    
+    // Notify Admin about new user
+    const newUserId = rows[0].id;
+    const creatorName = req.user.role === 'society' ? `la società ${req.user.society}` : 'l\'amministratore';
+    sendPushNotification([], "Nuovo Utente Registrato", `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorName}.`, `/admin?tab=users`);
+
+    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar, status: 'active' });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -643,6 +688,12 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
         [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, status || 'active', req.params.id]
       );
     }
+    
+    // Notify Admin if a society modifies a user
+    if (req.user.role === 'society') {
+      sendPushNotification([], "Utente Modificato", `La società ${req.user.society} ha modificato i dati dell'utente: ${name} ${surname}.`, `/admin?tab=users`);
+    }
+
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -1202,7 +1253,7 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
         memberIds,
         "Nuova Squadra!",
         `Sei stato inserito nella squadra "${name}" per la gara "${competition_name}".`,
-        `/teams`
+        `/history`
       );
     }
 
@@ -1405,6 +1456,17 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
     }
 
     await client.query('COMMIT');
+
+    // Send push notification to team members
+    if (team.member_ids && team.member_ids.length > 0) {
+      sendPushNotification(
+        team.member_ids.filter((id: any) => id !== null),
+        "Gara Assegnata!",
+        `La gara "${team.competition_name || team.name}" è stata assegnata alla tua squadra "${team.name}".`,
+        `/history`
+      );
+    }
+
     res.json({ success: true, message: `Gara inviata a ${team.member_ids.length} tiratori` });
   } catch (err: any) {
     await client.query('ROLLBACK');
@@ -1523,9 +1585,30 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     );
 
     // Send push notification
-    const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
-    const userIds = users.map(u => u.id);
-    sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events`);
+    let userIds: number[] = [];
+    if (visibility === 'Pubblica') {
+      const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+      userIds = users.map(u => u.id);
+    } else {
+      // For society events, notify users of the society that created the event
+      // If admin creates it, we might need to check the location
+      let targetSociety = req.user.society;
+      if (!targetSociety && req.user.role === 'admin') {
+        targetSociety = location; // Assume location is the society name if admin creates it
+      }
+
+      if (targetSociety) {
+        const { rows: users } = await pool.query(
+          "SELECT id FROM users WHERE role = 'user' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
+          [targetSociety]
+        );
+        userIds = users.map(u => u.id);
+      }
+    }
+    
+    if (userIds.length > 0) {
+      sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events?id=${id}`);
+    }
 
     res.status(201).json({ message: 'Evento creato' });
   } catch (err: any) {

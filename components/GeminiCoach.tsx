@@ -28,7 +28,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
     }
   };
 
-  const getCoachAdvice = async () => {
+  const getCoachAdvice = async (signal?: AbortSignal) => {
     // Filtriamo solo le sessioni concluse per l'analisi
     const completedOnes = competitions.filter(c => c.totalScore > 0);
     
@@ -47,16 +47,20 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
         const token = localStorage.getItem('auth_token');
         if (token) {
           const res = await fetch('/api/gemini-key', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` },
+            signal
           });
           if (res.ok) {
             const data = await res.json();
             apiKey = data.key;
           }
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
         console.error("Failed to fetch API key from server", e);
       }
+
+      if (signal?.aborted) return;
 
       if (!apiKey) {
         const rawKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
@@ -103,6 +107,8 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
         contents: prompt,
       });
 
+      if (signal?.aborted) return;
+
       const text = response.text;
       if (!text) {
         throw new Error("Il coach non ha restituito alcun consiglio. Riprova.");
@@ -110,6 +116,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
       
       setAdvice(text);
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error("Gemini Coach Error Details:", error);
       let userMessage = "Impossibile connettersi al coach AI al momento.";
       
@@ -123,7 +130,9 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
       
       setAdvice(userMessage);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   };
 
@@ -174,7 +183,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
               Il Coach Gemini analizzerà i tuoi ultimi 5 risultati reali per identificare trend e fornirti suggerimenti tecnici personalizzati.
             </p>
             <button 
-              onClick={getCoachAdvice}
+              onClick={() => getCoachAdvice()}
               disabled={loading}
               className="bg-white hover:bg-orange-50 text-slate-950 font-black py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center gap-2"
             >

@@ -34,8 +34,32 @@ const App: React.FC = () => {
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string } | null>(null);
+  const [initialEventId, setInitialEventId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
+
+  // Handle deep links from notifications
+  useEffect(() => {
+    const handleNavigation = () => {
+      const path = window.location.pathname;
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      if (path === '/history') {
+        setView('history');
+      } else if (path === '/events') {
+        setView('events');
+        const id = searchParams.get('id');
+        if (id) {
+          setInitialEventId(id);
+        }
+      }
+    };
+
+    handleNavigation();
+    // Also listen for popstate if needed, though sw.js usually reloads or opens new window
+    window.addEventListener('popstate', handleNavigation);
+    return () => window.removeEventListener('popstate', handleNavigation);
+  }, []);
 
   // Confirm Modal state
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -58,19 +82,20 @@ const App: React.FC = () => {
   };
 
   // Fetch data from API
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!token) return;
     try {
       const [compsRes, cartsRes, socsRes] = await Promise.all([
-        fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
+        fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
+        fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal })
       ]);
 
       if (compsRes.ok) setCompetitions(await compsRes.json());
       if (cartsRes.ok) setCartridges(await cartsRes.json());
       if (socsRes.ok) setSocieties(await socsRes.json());
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
@@ -78,11 +103,13 @@ const App: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
+    const controller = new AbortController();
     if (token) {
-      fetchData();
+      fetchData(controller.signal);
     } else {
       setLoading(false);
     }
+    return () => controller.abort();
   }, [token, fetchData]);
 
   const handleLogin = (newToken: string, newUser: any) => {
@@ -388,6 +415,8 @@ const App: React.FC = () => {
               societies={societies} 
               onParticipate={handleParticipateInEvent}
               onCreateTeam={handleCreateTeamFromEvent}
+              initialEventId={initialEventId}
+              onInitialEventHandled={() => setInitialEventId(null)}
             />
           </div>
         )}

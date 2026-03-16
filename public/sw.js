@@ -36,14 +36,15 @@ self.addEventListener('notificationclick', function(event) {
       let matchingClient = null;
       for (let i = 0; i < windowClients.length; i++) {
         const windowClient = windowClients[i];
-        if (windowClient.url === urlToOpen) {
+        // Check if the client is on the same origin
+        if (new URL(windowClient.url).origin === self.location.origin) {
           matchingClient = windowClient;
           break;
         }
       }
 
       if (matchingClient) {
-        return matchingClient.focus();
+        return matchingClient.navigate(urlToOpen).then(client => client.focus());
       } else {
         return clients.openWindow(urlToOpen);
       }

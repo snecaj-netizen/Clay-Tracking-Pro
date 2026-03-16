@@ -115,13 +115,31 @@ export default function NotificationBell({ token }: NotificationBellProps) {
 
   const markAsRead = async (id: number) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, {
+      const res = await fetch(`/api/notifications/${id}/read`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      }
     } catch (err) {
       console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleNotificationClick = async (notif: any) => {
+    if (!notif.read) {
+      await markAsRead(notif.id);
+    }
+    
+    if (notif.url) {
+      if (notif.url.startsWith('/')) {
+        window.history.pushState({}, '', notif.url);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        setShowDropdown(false);
+      } else {
+        window.location.href = notif.url;
+      }
     }
   };
 
@@ -164,10 +182,7 @@ export default function NotificationBell({ token }: NotificationBellProps) {
               notifications.map(notif => (
                 <div 
                   key={notif.id} 
-                  onClick={() => {
-                    if (!notif.read) markAsRead(notif.id);
-                    if (notif.url) window.location.href = notif.url;
-                  }}
+                  onClick={() => handleNotificationClick(notif)}
                   className={`p-4 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.read ? 'opacity-50 hover:bg-slate-800/30' : 'bg-slate-800/20 hover:bg-slate-800/50'}`}
                 >
                   <div className="flex justify-between items-start mb-1">

@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
+import AdminNotifications from './AdminNotifications';
 import { Competition, Cartridge, AppData, Discipline } from '../types';
 
 // Fix Leaflet default icon issue
@@ -48,7 +49,7 @@ function MapResizer() {
   return null;
 }
 
-type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events' | 'halloffame';
+type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events' | 'halloffame' | 'notifications';
 
 interface AdminPanelProps {
   user: any;
@@ -289,89 +290,114 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     };
   }, [users]);
 
-  const fetchSocieties = useCallback(async () => {
+  const fetchSocieties = useCallback(async (signal?: AbortSignal) => {
     try {
       const res = await fetch('/api/societies', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       if (!res.ok) throw new Error('Failed to fetch societies');
       const data = await res.json();
       setSocieties(data);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     }
   }, [token]);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (signal?: AbortSignal) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       if (!res.ok) throw new Error('Failed to fetch users');
       const data = await res.json();
       setUsers(data);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     }
   }, [currentUser?.role, token]);
 
-  const fetchTeamStats = useCallback(async () => {
+  const fetchTeamStats = useCallback(async (signal?: AbortSignal) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/team-stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       if (!res.ok) throw new Error('Failed to fetch team stats');
       const data = await res.json();
       setTeamStats(data);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     }
   }, [currentUser?.role, token]);
 
-  const fetchAllResults = useCallback(async () => {
+  const fetchAllResults = useCallback(async (signal?: AbortSignal) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/all-results', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       if (!res.ok) throw new Error('Failed to fetch all results');
       const data = await res.json();
       setAllResults(data);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     }
   }, [currentUser?.role, token]);
 
-  const fetchTeams = useCallback(async () => {
+  const fetchTeams = useCallback(async (signal?: AbortSignal) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/teams', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
       });
       if (!res.ok) throw new Error('Failed to fetch teams');
       const data = await res.json();
       setTeams(data);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     }
   }, [currentUser?.role, token]);
 
   useEffect(() => {
     if (!token) return;
+    const controller = new AbortController();
     setLoading(true);
-    const promises = [fetchSocieties()];
+    const promises = [fetchSocieties(controller.signal)];
     if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
-      promises.push(fetchTeamStats(), fetchAllResults(), fetchTeams(), fetchUsers());
+      promises.push(
+        fetchTeamStats(controller.signal), 
+        fetchAllResults(controller.signal), 
+        fetchTeams(controller.signal), 
+        fetchUsers(controller.signal)
+      );
     }
-    Promise.all(promises).finally(() => setLoading(false));
+    Promise.all(promises).finally(() => {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    });
+    return () => controller.abort();
   }, [token, currentUser?.role, currentUser?.society, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams, fetchUsers]);
 
   useEffect(() => {
     if (activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
-      const interval = setInterval(fetchUsers, 30000); // Refresh every 30 seconds
-      return () => clearInterval(interval);
+      const controller = new AbortController();
+      const interval = setInterval(() => fetchUsers(controller.signal), 30000); // Refresh every 30 seconds
+      return () => {
+        clearInterval(interval);
+        controller.abort();
+      };
     }
   }, [activeTab, currentUser?.role, fetchUsers]);
 
@@ -1066,6 +1092,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   activeTab === 'results' ? 'fa-history' :
                   activeTab === 'events' ? 'fa-calendar-alt' :
                   activeTab === 'halloffame' ? 'fa-trophy' :
+                  activeTab === 'notifications' ? 'fa-bell' :
                   activeTab === 'team' ? 'fa-users-cog' :
                   activeTab === 'users' ? 'fa-users' :
                   activeTab === 'profile' ? 'fa-user' :
@@ -1076,6 +1103,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 {activeTab === 'results' ? 'Risultati' :
                  activeTab === 'events' ? 'Gare' :
                  activeTab === 'halloffame' ? 'Hall of Fame' :
+                 activeTab === 'notifications' ? 'Notifiche' :
                  activeTab === 'team' ? 'Squadre' :
                  activeTab === 'users' ? (currentUser?.role === 'society' ? 'Tiratori' : 'Utenti') :
                  activeTab === 'profile' ? 'Profilo' :
@@ -1108,6 +1136,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       <i className="fas fa-trophy w-5 text-center"></i> Hall of Fame
                     </button>
+                    {currentUser?.role === 'admin' && (
+                      <button 
+                        onClick={() => { setActiveTab('notifications'); setIsMobileMenuOpen(false); }}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'notifications' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                      >
+                        <i className="fas fa-bell w-5"></i>
+                        Notifiche
+                      </button>
+                    )}
                     <button 
                       onClick={() => { setActiveTab('team'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
@@ -1167,6 +1204,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Hall of Fame</span><span className="md:hidden">HoF</span>
               </button>
             )}
+            {currentUser?.role === 'admin' && (
+              <button 
+                onClick={() => setActiveTab('notifications')}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'notifications' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <i className="fas fa-bell mr-1 lg:mr-2"></i> <span className="hidden md:inline">Notifiche</span><span className="md:hidden">Not.</span>
+              </button>
+            )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('team')}
@@ -1223,6 +1268,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           token={token} 
           triggerConfirm={triggerConfirm} 
         />
+      ) : activeTab === 'notifications' ? (
+        <AdminNotifications token={token} triggerConfirm={triggerConfirm} />
       ) : activeTab === 'profile' ? (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
