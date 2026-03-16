@@ -55,6 +55,24 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
     });
   }, [competitions, filterDiscipline, filterLocation, filterStatus]);
 
+  const nextUpcomingCompId = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const fiveDaysFromNow = new Date(today);
+    fiveDaysFromNow.setDate(today.getDate() + 5);
+    
+    const futureComps = competitions.filter(c => {
+      const start = new Date(c.date);
+      start.setHours(0, 0, 0, 0);
+      return start > today && start <= fiveDaysFromNow;
+    });
+    
+    if (futureComps.length === 0) return null;
+    
+    futureComps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return futureComps[0].id;
+  }, [competitions]);
+
   const sortedCompetitions = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -75,27 +93,17 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
       if (isOngoingA && !isOngoingB) return -1;
       if (!isOngoingA && isOngoingB) return 1;
 
+      const isNextA = a.id === nextUpcomingCompId;
+      const isNextB = b.id === nextUpcomingCompId;
+
+      if (isNextA && !isNextB) return -1;
+      if (!isNextA && isNextB) return 1;
+
       const timeA = new Date(a.date).getTime();
       const timeB = new Date(b.date).getTime();
       return sortOrder === 'DESC' ? timeB - timeA : timeA - timeB;
     });
-  }, [filteredCompetitions, sortOrder]);
-
-  const nextUpcomingCompId = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const futureComps = competitions.filter(c => {
-      const start = new Date(c.date);
-      start.setHours(0, 0, 0, 0);
-      return start > today;
-    });
-    
-    if (futureComps.length === 0) return null;
-    
-    futureComps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    return futureComps[0].id;
-  }, [competitions]);
+  }, [filteredCompetitions, sortOrder, nextUpcomingCompId]);
 
   // Helper per verificare se una data è compresa in un intervallo
   const isDateInRange = (checkDate: string, comp: Competition) => {

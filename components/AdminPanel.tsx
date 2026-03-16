@@ -66,6 +66,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (onPrefillTeamUsed) onPrefillTeamUsed();
     }
   }, [prefillTeam, onPrefillTeamUsed]);
+
   const [showUserForm, setShowUserForm] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
@@ -110,7 +111,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [editingScore, setEditingScore] = useState<{teamId: number, userId: number, score: number} | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
   // Results Filtering State
   const [showFilters, setShowFilters] = useState(false);
   const [filterShooter, setFilterShooter] = useState('');
@@ -945,67 +958,152 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Tab Switcher */}
-      <div className="sticky top-16 sm:top-[104px] z-40 flex bg-slate-900 p-1 rounded-2xl border border-slate-800 max-w-2xl mx-auto overflow-x-auto no-scrollbar shadow-xl">
+      {/* Overlay for mobile menu */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] sm:hidden transition-opacity duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Tab Switcher - Mobile (Custom Elegant Dropdown) */}
+      <div className="sm:hidden sticky top-16 z-[46] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-800 shadow-lg">
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
+              <i className={`fas ${
+                activeTab === 'results' ? 'fa-history' :
+                activeTab === 'events' ? 'fa-calendar-alt' :
+                activeTab === 'halloffame' ? 'fa-trophy' :
+                activeTab === 'team' ? 'fa-users-cog' :
+                activeTab === 'users' ? 'fa-users' :
+                activeTab === 'profile' ? 'fa-user' :
+                'fa-cog'
+              }`}></i>
+            </div>
+            <span className="uppercase tracking-widest text-[10px] font-black">
+              {activeTab === 'results' ? 'Risultati' :
+               activeTab === 'events' ? 'Gare' :
+               activeTab === 'halloffame' ? 'Hall of Fame' :
+               activeTab === 'team' ? 'Squadre' :
+               activeTab === 'users' ? (currentUser?.role === 'society' ? 'Tiratori' : 'Utenti') :
+               activeTab === 'profile' ? 'Profilo' :
+               (currentUser?.role === 'admin' ? 'Avanzate' : 'Backup')}
+            </span>
+          </div>
+          <i className={`fas fa-chevron-down text-xs transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-180' : ''}`}></i>
+        </button>
+
+        {isMobileMenuOpen && (
+          <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+            <div className="p-2 grid grid-cols-1 gap-1">
+              {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                <>
+                  <button 
+                    onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-history w-5 text-center"></i> Risultati
+                  </button>
+                  <button 
+                    onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-calendar-alt w-5 text-center"></i> Gare
+                  </button>
+                  <button 
+                    onClick={() => { setActiveTab('halloffame'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-trophy w-5 text-center"></i> Hall of Fame
+                  </button>
+                  <button 
+                    onClick={() => { setActiveTab('team'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-users-cog w-5 text-center"></i> Squadre
+                  </button>
+                  <button 
+                    onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
+                  </button>
+                </>
+              )}
+              <button 
+                onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+              >
+                <i className="fas fa-user w-5 text-center"></i> Profilo
+              </button>
+              <button 
+                onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+              >
+                <i className="fas fa-cog w-5 text-center"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Tab Switcher - Desktop */}
+      <div className="hidden sm:flex sticky top-[104px] z-40 bg-slate-900 p-1 rounded-2xl border border-slate-800 w-full shadow-xl flex-wrap">
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('results')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              <i className="fas fa-history mr-2"></i> Risultati
+              <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati</span><span className="md:hidden">Ris.</span>
             </button>
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('events')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              <i className="fas fa-calendar-alt mr-2"></i> Gare
+              <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">Gare</span><span className="md:hidden">Gare</span>
             </button>
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('halloffame')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              <i className="fas fa-trophy mr-2"></i> Hall of Fame
+              <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Hall of Fame</span><span className="md:hidden">HoF</span>
             </button>
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('team')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              <i className="fas fa-users-cog mr-2"></i> Squadre
+              <i className="fas fa-users-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">Squadre</span><span className="md:hidden">Sq.</span>
             </button>
           )}
           {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
             <button 
               onClick={() => setActiveTab('users')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              <i className="fas fa-users mr-2"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
-            </button>
-          )}
-          {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-            <button 
-              onClick={() => setActiveTab('societies')}
-              className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'societies' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <i className="fas fa-building mr-2"></i> {currentUser?.role === 'society' ? 'Società' : 'TAV'}
+              <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : 'Ut.'}</span>
             </button>
           )}
           <button 
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
           >
-            <i className="fas fa-user mr-2"></i> Profilo
+            <i className="fas fa-user mr-1 lg:mr-2"></i> <span className="hidden md:inline">Profilo</span><span className="md:hidden">Prof.</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
           >
-            <i className="fas fa-cog mr-2"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
+            <i className="fas fa-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}</span><span className="md:hidden">{currentUser?.role === 'admin' ? 'Av.' : 'Bk.'}</span>
           </button>
         </div>
       
