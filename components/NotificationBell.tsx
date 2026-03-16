@@ -142,7 +142,7 @@ export default function NotificationBell({ token }: NotificationBellProps) {
       </button>
 
       {showDropdown && (
-        <div className="absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top-right">
+        <div className="fixed top-[72px] left-4 right-4 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-2 sm:w-80 sm:max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top-right">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-sm font-black text-white uppercase tracking-tight">Notifiche</h3>
             {!isSubscribed && permission !== 'granted' && permission !== 'denied' && (
@@ -155,7 +155,7 @@ export default function NotificationBell({ token }: NotificationBellProps) {
             )}
           </div>
           
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="p-6 text-center text-slate-500 text-xs">
                 Nessuna notifica

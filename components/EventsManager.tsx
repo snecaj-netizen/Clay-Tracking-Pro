@@ -28,7 +28,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [filterMonth, setFilterMonth] = useState('');
 
   const filteredEvents = React.useMemo(() => {
-    return events.filter(ev => {
+    const filtered = events.filter(ev => {
       if (restrictToSociety && user?.role === 'society') {
         if (ev.location !== user.society) return false;
       }
@@ -40,7 +40,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       }
       return true;
     });
-  }, [events, filterSociety, filterDiscipline, filterMonth]);
+    
+    return filtered.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
