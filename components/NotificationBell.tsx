@@ -131,7 +131,7 @@ export default function NotificationBell({ token }: NotificationBellProps) {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setShowDropdown(!showDropdown)}
-        className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-orange-500/50 transition-all relative"
+        className={`w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition-all relative ${showDropdown ? 'text-orange-500 border-orange-500/50' : 'text-slate-400 hover:text-orange-500 hover:border-orange-500/50'}`}
       >
         <i className="fas fa-bell"></i>
         {unreadCount > 0 && (
