@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Settings from './Settings';
@@ -15,6 +15,18 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Map Resizer component to fix Leaflet "half-loaded" issue
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events' | 'halloffame';
 
@@ -1937,11 +1949,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ) : (
             <div className="h-[600px] w-full rounded-2xl overflow-hidden border border-slate-800 relative z-0">
               <MapContainer 
-                center={[41.8719, 12.5674]} // Center of Italy
+                center={[41.9028, 12.4964]} // Center on Rome
                 zoom={6} 
                 style={{ height: '100%', width: '100%' }}
                 className="z-0"
               >
+                <MapResizer />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -1950,9 +1963,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <Marker 
                     key={soc.id} 
                     position={[parseFloat(soc.lat), parseFloat(soc.lng)]}
-                    eventHandlers={{
-                      click: () => setSelectedSociety(soc),
-                    }}
                   >
                     <Popup className="custom-popup">
                       <div className="text-center">
