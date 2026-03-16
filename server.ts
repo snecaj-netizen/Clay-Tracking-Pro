@@ -13,6 +13,7 @@ const __dirname = path.dirname(__filename);
 
 import nodemailer from 'nodemailer';
 import webpush from 'web-push';
+import cron from 'node-cron';
 
 import { createServer as createViteServer } from 'vite';
 
@@ -321,7 +322,47 @@ const initDB = async () => {
   }
 };
 
-initDB();
+initDB().then(() => {
+  // Setup cron job for upcoming events (2 days before)
+  cron.schedule('0 10 * * *', async () => {
+    try {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 2);
+      const targetDateStr = targetDate.toISOString().split('T')[0];
+
+      const { rows: events } = await pool.query(
+        "SELECT * FROM events WHERE start_date = $1",
+        [targetDateStr]
+      );
+
+      for (const event of events) {
+        let userIds: number[] = [];
+        
+        if (event.visibility === 'Pubblica') {
+          const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+          userIds = users.map(u => u.id);
+        } else {
+          const { rows: creators } = await pool.query("SELECT society FROM users WHERE id = $1", [event.created_by]);
+          if (creators.length > 0 && creators[0].society) {
+            const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user' AND society = $1", [creators[0].society]);
+            userIds = users.map(u => u.id);
+          }
+        }
+
+        if (userIds.length > 0) {
+          await sendPushNotification(
+            userIds, 
+            "Gara in arrivo!", 
+            `La gara "${event.name}" inizierà tra 2 giorni presso ${event.location}.`, 
+            `/events`
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Error in cron job for upcoming events:", err);
+    }
+  });
+});
 
 const activeUsers = new Map<number, number>();
 
@@ -1151,6 +1192,17 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
     }
 
     await client.query('COMMIT');
+
+    // Send push notification to team members
+    if (memberIds && memberIds.length > 0) {
+      await sendPushNotification(
+        memberIds,
+        "Nuova Squadra!",
+        `Sei stato inserito nella squadra "${name}" per la gara "${competition_name}".`,
+        `/teams`
+      );
+    }
+
     res.json({ success: true, id: teamId });
   } catch (err: any) {
     await client.query('ROLLBACK');

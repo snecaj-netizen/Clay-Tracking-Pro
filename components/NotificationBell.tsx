@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const urlBase64ToUint8Array = (base64String: string) => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -26,6 +26,20 @@ export default function NotificationBell({ token }: NotificationBellProps) {
   const [permission, setPermission] = useState<NotificationPermission>(
     'Notification' in window ? Notification.permission : 'default'
   );
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -114,7 +128,7 @@ export default function NotificationBell({ token }: NotificationBellProps) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setShowDropdown(!showDropdown)}
         className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-orange-500/50 transition-all relative"
@@ -128,10 +142,10 @@ export default function NotificationBell({ token }: NotificationBellProps) {
       </button>
 
       {showDropdown && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top-right">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-sm font-black text-white uppercase tracking-tight">Notifiche</h3>
-            {!isSubscribed && permission !== 'denied' && (
+            {!isSubscribed && permission !== 'granted' && permission !== 'denied' && (
               <button 
                 onClick={subscribeUser}
                 className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400"
