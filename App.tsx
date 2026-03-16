@@ -419,6 +419,7 @@ const App: React.FC = () => {
               onDeleteCompetition={deleteCompetition}
               initialTab="societies"
               onUserUpdate={handleUserUpdate}
+              hideTabs={true}
             />
           </div>
         )}

@@ -169,19 +169,26 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 </button>
               ))}
               <div className="mt-2 px-4 py-3 bg-slate-900/30 rounded-xl border border-slate-800/50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => { onNavigate('admin'); setIsMenuOpen(false); }}
+                  className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity active:scale-95 overflow-hidden pr-2"
+                >
                   {user?.avatar ? (
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-700">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-700 shrink-0">
                       <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                     </div>
-                  ) : null}
-                  <div>
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center border border-slate-700 shrink-0">
+                      <i className={`fas ${user?.role === 'admin' ? 'fa-users-cog' : 'fa-user'}`}></i>
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 truncate">
                       {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
                     </div>
-                    <div className="text-sm font-bold text-white">{user?.name} {user?.surname}</div>
+                    <div className="text-sm font-bold text-white truncate">{user?.name} {user?.surname}</div>
                   </div>
-                </div>
+                </button>
                 {onLogout && (
                   <button 
                     onClick={onLogout}
