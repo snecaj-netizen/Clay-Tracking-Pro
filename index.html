@@ -164,11 +164,37 @@
         input[type="number"] {
             -moz-appearance: textfield; /* Firefox */
         }
+
+        /* Leaflet custom popup styling */
+        .custom-popup .leaflet-popup-content-wrapper {
+            background-color: #0f172a;
+            color: #f8fafc;
+            border: 1px solid #1e293b;
+            border-radius: 1rem;
+            padding: 0;
+            overflow: hidden;
+        }
+        .custom-popup .leaflet-popup-tip {
+            background-color: #0f172a;
+            border: 1px solid #1e293b;
+        }
+        html.light-theme .custom-popup .leaflet-popup-content-wrapper {
+            background-color: #ffffff;
+            color: #0f172a;
+            border-color: #e2e8f0;
+        }
+        html.light-theme .custom-popup .leaflet-popup-tip {
+            background-color: #ffffff;
+            border-color: #e2e8f0;
+        }
+        .custom-popup .leaflet-popup-content {
+            margin: 0;
+            width: 250px !important;
+        }
     </style>
 <!-- Google API Client & Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-slate-950 text-slate-50 min-h-screen">
     <div id="root"></div>

@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import { Competition, Cartridge, AppData, Discipline } from '../types';
+
+// Fix Leaflet default icon issue
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events' | 'halloffame';
 
@@ -83,6 +94,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   
   // Society Form State
   const [showSocietyForm, setShowSocietyForm] = useState(false);
+  const [societyViewMode, setSocietyViewMode] = useState<'list' | 'map'>('list');
   const [editingSociety, setEditingSociety] = useState<any>(null);
   const [socName, setSocName] = useState('');
   const [socEmail, setSocEmail] = useState('');
@@ -586,6 +598,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     const endpoint = editingSociety ? `/api/admin/societies/${editingSociety.id}` : '/api/admin/societies';
     const method = editingSociety ? 'PUT' : 'POST';
+    
+    let lat = null;
+    let lng = null;
+    
+    // Geocode address if available
+    if (socAddress && socCity) {
+      try {
+        const query = encodeURIComponent(`${socAddress}, ${socCity}, ${socRegion || ''}, Italy`);
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData.length > 0) {
+            lat = parseFloat(geoData[0].lat);
+            lng = parseFloat(geoData[0].lon);
+          }
+        }
+      } catch (e) {
+        console.error("Geocoding failed", e);
+      }
+    }
+
     const body = { 
       name: socName, 
       email: socEmail, 
@@ -599,7 +632,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       contact_name: socContactName,
       logo: socLogo,
       opening_hours: socOpeningHours,
-      disciplines: socDisciplines.join(',')
+      disciplines: socDisciplines.join(','),
+      lat,
+      lng
     };
 
     try {
@@ -1622,6 +1657,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}
             </h2>
+            {currentUser?.role === 'admin' && !showSocietyForm && (
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    const missing = societies.filter(s => !s.lat || !s.lng);
+                    if (missing.length === 0) {
+                      triggerConfirm(
+                        'Coordinate Aggiornate',
+                        'Tutte le società hanno già le coordinate.',
+                        () => {},
+                        'OK',
+                        'primary'
+                      );
+                      return;
+                    }
+                    triggerConfirm(
+                      'Aggiorna Coordinate',
+                      `Vuoi aggiornare le coordinate per ${missing.length} società mancanti? Potrebbe richiedere qualche secondo.`,
+                      async () => {
+                        for (const soc of missing) {
+                          if (soc.address && soc.city) {
+                            try {
+                              const query = encodeURIComponent(`${soc.address}, ${soc.city}, ${soc.region || ''}, Italy`);
+                              const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+                              if (geoRes.ok) {
+                                const geoData = await geoRes.json();
+                                if (geoData && geoData.length > 0) {
+                                  const lat = parseFloat(geoData[0].lat);
+                                  const lng = parseFloat(geoData[0].lon);
+                                  await fetch(`/api/admin/societies/${soc.id}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                    body: JSON.stringify({ ...soc, lat, lng })
+                                  });
+                                }
+                              }
+                              // Add a small delay to respect Nominatim rate limits (1 request per second)
+                              await new Promise(resolve => setTimeout(resolve, 1100));
+                            } catch (e) {
+                              console.error("Geocoding failed for", soc.name, e);
+                            }
+                          }
+                        }
+                        fetchSocieties();
+                      },
+                      'Aggiorna',
+                      'primary'
+                    );
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-black py-2 px-4 rounded-xl transition-all active:scale-95 text-xs uppercase flex items-center gap-2"
+                >
+                  <i className="fas fa-sync-alt"></i> Coord.
+                </button>
+                <button onClick={() => {
+                  setEditingSociety(null);
+                  setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
+                  setShowSocietyForm(true);
+                }} className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-4 rounded-xl transition-all active:scale-95 text-xs uppercase flex items-center gap-2 shadow-lg shadow-orange-600/20">
+                  <i className="fas fa-plus"></i> Nuova
+                </button>
+              </div>
+            )}
           </div>
 
           {showSocietyForm && (
@@ -1727,9 +1824,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </form>
           )}
 
-          {/* Society Search */}
-          <div className="mb-6">
-            <div className="relative">
+          {/* Society Search and View Toggle */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
               <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
               <input 
                 type="text" 
@@ -1739,48 +1836,106 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
               />
             </div>
+            <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
+              <button
+                onClick={() => setSocietyViewMode('list')}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+              >
+                <i className="fas fa-list mr-2"></i> Lista
+              </button>
+              <button
+                onClick={() => setSocietyViewMode('map')}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+              >
+                <i className="fas fa-map-marked-alt mr-2"></i> Mappa
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSocieties.map(soc => (
-              <div 
-                key={soc.id} 
-                onClick={() => setSelectedSociety(soc)}
-                className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex items-center gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md"
-              >
-                {soc.logo ? (
-                  <img src={soc.logo} alt={soc.name} className="w-12 h-12 rounded-xl object-cover border border-slate-800 flex-shrink-0" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
-                    <i className="fas fa-building text-xl text-slate-600"></i>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors">{soc.name}</h3>
-                  <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
-                    {soc.city && <span className="truncate"><i className="fas fa-map-marker-alt mr-1"></i>{soc.city} {soc.region ? `(${soc.region})` : ''}</span>}
-                    <span className="truncate"><i className="fas fa-envelope mr-1"></i>{soc.email}</span>
-                  </div>
-                  {soc.disciplines && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {soc.disciplines.split(',').slice(0, 5).map((d: string) => (
-                        <span key={d} className="text-[8px] font-black text-orange-500/80 bg-orange-500/10 px-1 rounded uppercase">{d}</span>
-                      ))}
-                      {soc.disciplines.split(',').length > 5 && <span className="text-[8px] font-black text-slate-500">...</span>}
+          {societyViewMode === 'list' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredSocieties.map(soc => (
+                <div 
+                  key={soc.id} 
+                  onClick={() => setSelectedSociety(soc)}
+                  className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex items-center gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md"
+                >
+                  {soc.logo ? (
+                    <img src={soc.logo} alt={soc.name} className="w-12 h-12 rounded-xl object-cover border border-slate-800 flex-shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                      <i className="fas fa-building text-xl text-slate-600"></i>
                     </div>
                   )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors">{soc.name}</h3>
+                    <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
+                      {soc.city && <span className="truncate"><i className="fas fa-map-marker-alt mr-1"></i>{soc.city} {soc.region ? `(${soc.region})` : ''}</span>}
+                      <span className="truncate"><i className="fas fa-envelope mr-1"></i>{soc.email}</span>
+                    </div>
+                    {soc.disciplines && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {soc.disciplines.split(',').slice(0, 5).map((d: string) => (
+                          <span key={d} className="text-[8px] font-black text-orange-500/80 bg-orange-500/10 px-1 rounded uppercase">{d}</span>
+                        ))}
+                        {soc.disciplines.split(',').length > 5 && <span className="text-[8px] font-black text-slate-500">...</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-slate-600 group-hover:text-orange-500 transition-colors">
+                    <i className="fas fa-chevron-right"></i>
+                  </div>
                 </div>
-                <div className="text-slate-600 group-hover:text-orange-500 transition-colors">
-                  <i className="fas fa-chevron-right"></i>
+              ))}
+              {filteredSocieties.length === 0 && (
+                <div className="col-span-full py-12 text-center text-slate-600 italic text-sm">
+                  Nessuna società trovata.
                 </div>
-              </div>
-            ))}
-            {filteredSocieties.length === 0 && (
-              <div className="col-span-full py-12 text-center text-slate-600 italic text-sm">
-                Nessuna società trovata.
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-[600px] w-full rounded-2xl overflow-hidden border border-slate-800 relative z-0">
+              <MapContainer 
+                center={[41.8719, 12.5674]} // Center of Italy
+                zoom={6} 
+                style={{ height: '100%', width: '100%' }}
+                className="z-0"
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {filteredSocieties.filter(s => s.lat && s.lng).map(soc => (
+                  <Marker 
+                    key={soc.id} 
+                    position={[parseFloat(soc.lat), parseFloat(soc.lng)]}
+                    eventHandlers={{
+                      click: () => setSelectedSociety(soc),
+                    }}
+                  >
+                    <Popup className="custom-popup">
+                      <div className="text-center">
+                        <h3 className="font-black text-slate-900">{soc.name}</h3>
+                        <p className="text-xs text-slate-600 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setSelectedSociety(soc); }}
+                          className="mt-2 text-xs font-bold text-orange-600 hover:underline"
+                        >
+                          Vedi Dettagli
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+              {filteredSocieties.filter(s => !s.lat || !s.lng).length > 0 && (
+                <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-sm border border-slate-800 rounded-xl p-3 text-xs text-slate-400 text-center z-[400]">
+                  <i className="fas fa-info-circle text-orange-500 mr-2"></i>
+                  {filteredSocieties.filter(s => !s.lat || !s.lng).length} società non hanno coordinate e non sono visibili sulla mappa. Modificale per aggiornare la posizione.
+                </div>
+              )}
+            </div>
+          )}
 
           {selectedSociety && createPortal(
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedSociety(null)}>

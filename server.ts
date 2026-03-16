@@ -167,6 +167,8 @@ const initDB = async () => {
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS logo TEXT");
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS opening_hours TEXT");
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS disciplines TEXT");
+      await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS lat NUMERIC");
+      await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS lng NUMERIC");
     } catch (e) {
       console.log("Column contact_name, logo, opening_hours or disciplines might already exist or error adding it:", e);
     }
@@ -841,11 +843,11 @@ app.get('/api/societies', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines } = req.body;
+  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng } = req.body;
   try {
     const { rows } = await pool.query(
-      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null]
+      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id",
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null]
     );
     res.json(rows[0]);
   } catch (err: any) {
@@ -854,7 +856,7 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
 });
 
 app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines } = req.body;
+  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng } = req.body;
   try {
     if (req.user.role === 'society') {
       const { rows } = await pool.query("SELECT name FROM societies WHERE id = $1", [req.params.id]);
@@ -867,8 +869,8 @@ app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, as
     }
 
     await pool.query(
-      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10, logo = $11, opening_hours = $12, disciplines = $13 WHERE id = $14",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, req.params.id]
+      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10, logo = $11, opening_hours = $12, disciplines = $13, lat = $14, lng = $15 WHERE id = $16",
+      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, req.params.id]
     );
     res.json({ success: true });
   } catch (err: any) {
