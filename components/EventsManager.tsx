@@ -100,6 +100,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     return map;
   }, [filteredEvents, currentMonth]);
 
+  const isPastEvent = (ev: SocietyEvent) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(ev.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate.getTime() < today.getTime();
+  };
+
   // Form states
   const [name, setName] = useState('');
   const [type, setType] = useState('Regionale');
@@ -376,11 +384,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 </div>
               ) : (
                 <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
-                  {eventsByDate[selectedDay].map(ev => (
+                  {eventsByDate[selectedDay].map(ev => {
+                    const past = isPastEvent(ev);
+                    return (
                     <div 
                       key={ev.id} 
                       onClick={() => setSelectedEvent(ev)}
-                      className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md overflow-hidden"
+                      className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -424,7 +434,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
                       <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -641,11 +652,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               Nessun evento trovato.
             </div>
           ) : (
-            filteredEvents.map(ev => (
+            filteredEvents.map(ev => {
+              const past = isPastEvent(ev);
+              return (
               <div 
                 key={ev.id} 
                 onClick={() => setSelectedEvent(ev)}
-                className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md overflow-hidden"
+                className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -684,7 +697,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
                 <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -810,7 +824,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   </button>
                 )}
 
-                {(user?.role === 'admin' || user?.role === 'society') && onCreateTeam && (
+                {(user?.role === 'admin' || user?.role === 'society') && onCreateTeam && !isPastEvent(selectedEvent) && (
                   <button 
                     onClick={() => {
                       onCreateTeam(selectedEvent);
