@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Competition } from '../types';
+import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
   currentView: string;
@@ -116,6 +117,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             >
               <i className={`fas ${isLightMode ? 'fa-moon' : 'fa-sun'}`}></i>
             </button>
+
+            <NotificationBell token={localStorage.getItem('auth_token') || ''} />
 
             {onLogout && (
               <button 

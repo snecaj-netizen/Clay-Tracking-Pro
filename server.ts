@@ -12,6 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import nodemailer from 'nodemailer';
+import webpush from 'web-push';
 
 import { createServer as createViteServer } from 'vite';
 
@@ -244,6 +245,61 @@ const initDB = async () => {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vapid_keys (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        public_key TEXT NOT NULL,
+        private_key TEXT NOT NULL
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        subscription JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, subscription)
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        url TEXT,
+        read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Initialize VAPID keys
+    try {
+      const { rows: vapidRows } = await pool.query("SELECT * FROM vapid_keys WHERE id = 1");
+      if (vapidRows.length === 0) {
+        const vapidKeys = webpush.generateVAPIDKeys();
+        await pool.query(
+          "INSERT INTO vapid_keys (id, public_key, private_key) VALUES (1, $1, $2)",
+          [vapidKeys.publicKey, vapidKeys.privateKey]
+        );
+        webpush.setVapidDetails(
+          'mailto:snecaj@gmail.com',
+          vapidKeys.publicKey,
+          vapidKeys.privateKey
+        );
+      } else {
+        webpush.setVapidDetails(
+          'mailto:snecaj@gmail.com',
+          vapidRows[0].public_key,
+          vapidRows[0].private_key
+        );
+      }
+    } catch (e) {
+      console.log("Error initializing VAPID keys:", e);
+    }
+
     // Create default admin user if not exists
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", ['snecaj@gmail.com']);
     if (rows.length === 0) {
@@ -303,6 +359,107 @@ app.get('/api/health', (req, res) => {
 app.get('/api/gemini-key', authenticateToken, (req, res) => {
   res.json({ key: process.env.GEMINI_API_KEY || '' });
 });
+
+// Push Notifications Routes
+app.get('/api/vapidPublicKey', (req, res) => {
+  pool.query("SELECT public_key FROM vapid_keys WHERE id = 1")
+    .then(({ rows }) => {
+      if (rows.length > 0) {
+        res.json({ publicKey: rows[0].public_key });
+      } else {
+        res.status(404).json({ error: 'VAPID keys not initialized' });
+      }
+    })
+    .catch(err => res.status(500).json({ error: err.message }));
+});
+
+app.post('/api/subscribe', authenticateToken, async (req: any, res) => {
+  const subscription = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO push_subscriptions (user_id, subscription) VALUES ($1, $2) ON CONFLICT (user_id, subscription) DO NOTHING",
+      [req.user.id, subscription]
+    );
+    res.status(201).json({ message: 'Subscribed successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/unsubscribe', authenticateToken, async (req: any, res) => {
+  const subscription = req.body;
+  try {
+    await pool.query(
+      "DELETE FROM push_subscriptions WHERE user_id = $1 AND subscription::text = $2::text",
+      [req.user.id, JSON.stringify(subscription)]
+    );
+    res.json({ message: 'Unsubscribed successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/notifications', authenticateToken, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50",
+      [req.user.id]
+    );
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/notifications/:id/read', authenticateToken, async (req: any, res) => {
+  try {
+    await pool.query(
+      "UPDATE notifications SET read = TRUE WHERE id = $1 AND user_id = $2",
+      [req.params.id, req.user.id]
+    );
+    res.json({ message: 'Notification marked as read' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper to send push notifications
+const sendPushNotification = async (userIds: number[], title: string, body: string, url: string) => {
+  try {
+    // Save to notifications table
+    for (const userId of userIds) {
+      await pool.query(
+        "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
+        [userId, title, body, url]
+      );
+    }
+
+    if (userIds.length === 0) return;
+
+    // Get subscriptions
+    const { rows: subscriptions } = await pool.query(
+      "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
+      [userIds]
+    );
+
+    const payload = JSON.stringify({ title, body, url });
+
+    for (const sub of subscriptions) {
+      try {
+        await webpush.sendNotification(sub.subscription, payload);
+      } catch (err: any) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          // Subscription has expired or is no longer valid
+          await pool.query("DELETE FROM push_subscriptions WHERE id = $1", [sub.id]);
+        } else {
+          console.error("Error sending push notification:", err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error in sendPushNotification:", err);
+  }
+};
 
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
@@ -742,6 +899,12 @@ app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, asyn
       "INSERT INTO challenges (id, society_id, name, discipline, mode, start_date, end_date, prize) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       [id, societyId, name, discipline, mode, startDate, endDate, prize]
     );
+
+    // Send push notification
+    const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+    const userIds = users.map(u => u.id);
+    sendPushNotification(userIds, "Nuova Sfida!", `${name} - ${prize}`, `/challenges`);
+
     res.json({ id });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -1303,6 +1466,12 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id]
     );
+
+    // Send push notification
+    const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+    const userIds = users.map(u => u.id);
+    sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events`);
+
     res.status(201).json({ message: 'Evento creato' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

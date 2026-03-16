@@ -913,13 +913,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const totalScore = results.reduce((acc: number, r: any) => acc + (r.totalScore || 0), 0);
       const totalTargets = results.reduce((acc: number, r: any) => acc + (r.totalTargets || 0), 0);
       const average = totalTargets > 0 ? (totalScore / totalTargets) * 25 : 0;
-      const bestScore = results.length > 0 ? Math.max(...results.map((r: any) => r.totalScore || 0)) : 0;
+      const bestAverage = results.length > 0 ? Math.max(...results.map((r: any) => r.totalTargets > 0 ? (r.totalScore / r.totalTargets) * 25 : 0)) : 0;
       
       return {
         ...group,
         totalCompetitions,
         average,
-        bestScore
+        bestAverage
       };
     }).sort((a, b) => {
       const nameA = `${a.userSurname || ''} ${a.userName || ''}`.trim();
@@ -967,12 +967,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       {/* Tab Switcher - Mobile (Custom Elegant Dropdown) */}
-      <div 
-        className={`sm:hidden sticky top-16 z-[46] py-3 -mx-4 px-4 border-b border-slate-800 shadow-lg backdrop-blur-xl ${isMobileMenuOpen ? '!bg-[#020617]/95' : 'bg-slate-950/90'}`}
-      >
+      <div className="sm:hidden sticky top-16 z-[46] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-800 shadow-lg">
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="w-full !bg-[#020617]/80 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
+          className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
@@ -986,7 +984,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 'fa-cog'
               }`}></i>
             </div>
-            <span className="uppercase tracking-widest text-[10px] font-black text-white">
+            <span className="uppercase tracking-widest text-[10px] font-black">
               {activeTab === 'results' ? 'Risultati' :
                activeTab === 'events' ? 'Gare' :
                activeTab === 'halloffame' ? 'Hall of Fame' :
@@ -996,41 +994,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                (currentUser?.role === 'admin' ? 'Avanzate' : 'Backup')}
             </span>
           </div>
-          <i className={`fas fa-chevron-down text-xs transition-transform duration-300 text-slate-400 ${isMobileMenuOpen ? 'rotate-180' : ''}`}></i>
+          <i className={`fas fa-chevron-down text-xs transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-180' : ''}`}></i>
         </button>
 
         {isMobileMenuOpen && (
-          <div className="absolute top-full left-4 right-4 mt-2 !bg-[#020617]/98 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+          <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
             <div className="p-2 grid grid-cols-1 gap-1">
               {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                 <>
                   <button 
                     onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
                     <i className="fas fa-history w-5 text-center"></i> Risultati
                   </button>
                   <button 
                     onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
                     <i className="fas fa-calendar-alt w-5 text-center"></i> Gare
                   </button>
                   <button 
                     onClick={() => { setActiveTab('halloffame'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
                     <i className="fas fa-trophy w-5 text-center"></i> Hall of Fame
                   </button>
                   <button 
                     onClick={() => { setActiveTab('team'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
                     <i className="fas fa-users-cog w-5 text-center"></i> Squadre
                   </button>
                   <button 
                     onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
                     <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
                   </button>
@@ -1038,13 +1036,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
               <button 
                 onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
               >
                 <i className="fas fa-user w-5 text-center"></i> Profilo
               </button>
               <button 
                 onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
               >
                 <i className="fas fa-cog w-5 text-center"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
               </button>
@@ -2047,7 +2045,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div className="text-center">
                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Best</p>
-                    <p className="text-xs font-black text-white">{shooter.bestScore}</p>
+                    <p className="text-xs font-black text-white">{shooter.bestAverage.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
