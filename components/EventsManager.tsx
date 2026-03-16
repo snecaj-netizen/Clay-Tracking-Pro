@@ -351,10 +351,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2 relative z-10">
+          <div className="grid grid-cols-7 gap-2 mb-4 relative z-10">
             {weekDays.map(day => (
-              <div key={day} className="text-center text-[9px] font-black text-slate-500 uppercase tracking-widest py-2">
-                {day}
+              <div key={day} className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] py-2">
+                {day.slice(0, 1)}
               </div>
             ))}
           </div>
@@ -379,49 +379,34 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   todayDate.setHours(0, 0, 0, 0);
                   return todayDate >= compDate && todayDate <= endDate;
                 });
+                const hasNextUpcoming = dayEvents.some(e => e.id === nextUpcomingEventId);
 
                 if (hasOngoing) {
-                  highlightClass = 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400 hover:bg-emerald-900/50';
-                  glowClass = 'shadow-[0_0_15px_rgba(16,185,129,0.2)]';
-                } else if (hasComp) {
-                  highlightClass = 'bg-orange-900/30 border-orange-500/50 text-orange-400 hover:bg-orange-900/50';
-                  glowClass = 'shadow-[0_0_15px_rgba(249,115,22,0.2)]';
+                  highlightClass = 'bg-orange-950/40 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.4)] text-orange-500 z-10';
+                  glowClass = 'animate-pulse';
+                } else if (hasNextUpcoming) {
+                  highlightClass = 'bg-emerald-950/40 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] text-emerald-500 z-10';
                 } else {
-                  highlightClass = 'bg-blue-900/30 border-blue-500/50 text-blue-400 hover:bg-blue-900/50';
+                  highlightClass = hasComp 
+                    ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
+                    : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
+                  glowClass = hasComp ? 'shadow-[0_0_15px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_15px_rgba(59,130,246,0.1)]';
                 }
-              } else if (isToday) {
-                highlightClass = 'bg-slate-800/80 border-slate-600 text-white';
-              }
-
-              if (isSelected) {
-                highlightClass = 'bg-white text-slate-900 border-white scale-105 z-10';
-                glowClass = 'shadow-[0_0_20px_rgba(255,255,255,0.3)]';
               }
 
               return (
                 <div 
                   key={idx} 
                   onClick={() => slot.date && setSelectedDay(slot.date)}
-                  className={`
-                    aspect-square rounded-xl sm:rounded-2xl border flex flex-col items-center justify-center relative transition-all duration-300
-                    ${slot.isCurrentMonth ? 'cursor-pointer' : 'opacity-20 pointer-events-none'}
-                    ${highlightClass} ${glowClass}
-                  `}
+                  className={`aspect-square rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative cursor-pointer transition-all border ${!slot.isCurrentMonth ? 'opacity-0 pointer-events-none' : ''} ${isSelected ? 'border-orange-600 bg-orange-600/20 scale-105 z-10' : highlightClass} ${glowClass}`}
                 >
-                  {slot.day && (
-                    <>
-                      <span className={`text-xs sm:text-sm font-bold ${isSelected ? 'text-slate-900' : (isToday && (!dayEvents || dayEvents.length === 0) ? 'text-white' : '')}`}>
-                        {slot.day}
-                      </span>
-                      {dayEvents && dayEvents.length > 0 && (
-                        <div className="flex gap-0.5 mt-1 absolute bottom-1.5 sm:bottom-2">
-                          {dayEvents.slice(0, 3).map((e, i) => (
-                            <span key={i} className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isSelected ? 'bg-slate-900' : (e.discipline === Discipline.TRAINING ? 'bg-blue-400' : 'bg-orange-500')}`}></span>
-                          ))}
-                          {dayEvents.length > 3 && <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isSelected ? 'bg-slate-900' : 'bg-slate-400'}`}></span>}
-                        </div>
-                      )}
-                    </>
+                  <span className={`font-black ${isToday ? 'text-white bg-orange-600 w-7 h-7 sm:w-9 sm:h-9 text-sm sm:text-base flex items-center justify-center rounded-full shadow-lg shadow-orange-600/20' : isSelected ? 'text-white text-base sm:text-lg' : 'text-slate-300 text-sm sm:text-base'}`}>
+                    {slot.day}
+                  </span>
+                  {dayEvents && dayEvents.length > 0 && !isToday && (
+                    <div className="absolute bottom-1.5 sm:bottom-2 flex gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${dayEvents.some(c => c.discipline !== Discipline.TRAINING) ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                    </div>
                   )}
                 </div>
               );
@@ -430,15 +415,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         </div>
 
         {/* Details Column */}
-        <div className="w-full lg:w-5/12 xl:w-1/2">
+        <div className="w-full lg:w-5/12 xl:w-1/2 flex flex-col">
           {selectedDay ? (
-            <div className="bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-2xl h-full backdrop-blur-sm animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-xl h-full animate-in fade-in slide-in-from-right-4">
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/50">
                 <div>
-                  <h3 className="text-xl font-black text-white tracking-tight">
-                    {new Date(selectedDay).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </h3>
-                  {selectedDay === today && <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest bg-orange-500/10 px-2 py-0.5 rounded-full mt-1 inline-block">Oggi</span>}
+                  <h4 className="text-sm font-black text-white uppercase tracking-widest">
+                    Eventi del Giorno
+                  </h4>
+                  <p className="text-[10px] text-slate-500 font-bold mt-1">
+                    {new Date(selectedDay).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
                 </div>
                 <button onClick={() => setSelectedDay(null)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"><i className="fas fa-times text-xs"></i></button>
               </div>
@@ -449,7 +436,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nessun evento registrato</p>
                 </div>
               ) : (
-                <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+                <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                   {eventsByDate[selectedDay].map(ev => {
                     const past = isPastEvent(ev);
                     const ongoing = isOngoingEvent(ev);
