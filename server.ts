@@ -210,10 +210,17 @@ const initDB = async () => {
         cost TEXT,
         notes TEXT,
         poster_url TEXT,
+        registration_link TEXT,
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    try {
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_link TEXT`);
+    } catch (e) {
+      console.log("Error adding registration_link to events:", e);
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
@@ -1288,13 +1295,13 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url } = req.body;
+  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link } = req.body;
   
   try {
     await pool.query(
-      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, req.user.id]
+      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id]
     );
     res.status(201).json({ message: 'Evento creato' });
   } catch (err: any) {
@@ -1307,7 +1314,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url } = req.body;
+  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link } = req.body;
   
   try {
     // Check ownership if not admin
@@ -1319,9 +1326,9 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     }
 
     await pool.query(
-      `UPDATE events SET name = $1, type = $2, visibility = $3, discipline = $4, location = $5, targets = $6, start_date = $7, end_date = $8, cost = $9, notes = $10, poster_url = $11
-       WHERE id = $12`,
-      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, req.params.id]
+      `UPDATE events SET name = $1, type = $2, visibility = $3, discipline = $4, location = $5, targets = $6, start_date = $7, end_date = $8, cost = $9, notes = $10, poster_url = $11, registration_link = $12
+       WHERE id = $13`,
+      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.params.id]
     );
     res.json({ message: 'Evento aggiornato' });
   } catch (err: any) {

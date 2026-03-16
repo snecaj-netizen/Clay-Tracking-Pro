@@ -110,6 +110,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
+  const [registrationLink, setRegistrationLink] = useState('');
 
   const fetchEvents = async () => {
     try {
@@ -144,6 +145,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setCost(ev.cost || '');
     setNotes(ev.notes || '');
     setPosterUrl(ev.poster_url || '');
+    setRegistrationLink(ev.registration_link || '');
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -161,6 +163,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setCost('');
     setNotes('');
     setPosterUrl('');
+    setRegistrationLink('');
     setShowForm(false);
   };
 
@@ -179,7 +182,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       end_date: endDate,
       cost,
       notes,
-      poster_url: posterUrl
+      poster_url: posterUrl,
+      registration_link: registrationLink
     };
 
     try {
@@ -588,6 +592,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             </div>
 
             <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Link Iscrizione</label>
+              <input type="url" placeholder="https://..." value={registrationLink} onChange={(e) => setRegistrationLink(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            </div>
+
+            <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Locandina / Programma</label>
               <div className="flex items-center gap-4">
                 <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-4 py-3 text-center transition-all">
@@ -743,6 +752,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Note e Informazioni</p>
                   <p className="text-sm text-slate-300 leading-relaxed italic">{selectedEvent.notes}</p>
+                </div>
+              )}
+
+              {selectedEvent.registration_link && (
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscrizione Online</p>
+                    <p className="text-sm text-slate-300">Clicca sul pulsante per iscriverti alla gara.</p>
+                  </div>
+                  <a 
+                    href={selectedEvent.registration_link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="px-6 py-3 rounded-xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 whitespace-nowrap"
+                  >
+                    <i className="fas fa-external-link-alt"></i> Iscriviti Ora
+                  </a>
                 </div>
               )}
 

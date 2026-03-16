@@ -110,6 +110,7 @@ export interface SocietyEvent {
   cost?: string;
   notes?: string;
   poster_url?: string;
+  registration_link?: string;
   created_by?: number;
   is_from_competition?: boolean;
 }
