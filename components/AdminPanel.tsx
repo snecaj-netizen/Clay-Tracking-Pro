@@ -1992,12 +1992,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       <Popup className="custom-popup">
                       <div className="text-center">
-                        <h3 className="font-black text-slate-900">{soc.name}</h3>
-                        <p className="text-xs text-slate-600 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
+                        <h3 className="font-black text-white">{soc.name}</h3>
+                        <p className="text-xs text-slate-400 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
                         <div className="flex items-center justify-center gap-2 mt-2">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setSelectedSociety(soc); }}
-                            className="text-xs font-bold text-orange-600 hover:underline"
+                            className="text-xs font-bold text-orange-500 hover:underline"
                           >
                             Vedi Dettagli
                           </button>
@@ -2007,7 +2007,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                              className="text-xs font-bold text-blue-400 hover:underline flex items-center gap-1"
                               title="Apri in Google Maps"
                             >
                               <i className="fas fa-directions"></i> Naviga
