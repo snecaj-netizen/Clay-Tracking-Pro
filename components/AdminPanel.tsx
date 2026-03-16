@@ -69,11 +69,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (prefillTeam) {
       setActiveTab('team');
       setShowTeamForm(true);
-      setNewTeamCompetitionName(prefillTeam.competition_name);
-      setNewTeamDiscipline(prefillTeam.discipline);
-      setNewTeamSociety(prefillTeam.society);
-      setNewTeamLocation(prefillTeam.location);
-      setNewTeamDate(prefillTeam.date);
+      setNewTeamCompetitionName(prefillTeam.competition_name || '');
+      setNewTeamDiscipline(prefillTeam.discipline || '');
+      setNewTeamSociety(prefillTeam.society || '');
+      setNewTeamLocation(prefillTeam.location || '');
+      setNewTeamDate(prefillTeam.date || '');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (onPrefillTeamUsed) onPrefillTeamUsed();
     }
@@ -472,8 +472,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleEditTeam = (team: any) => {
     setEditingTeam(team);
-    setNewTeamName(team.name);
-    setNewTeamSize(team.size as 3 | 6);
+    setNewTeamName(team.name || '');
+    setNewTeamSize(team.size as 3 | 6 || 3);
     setNewTeamCompetitionName(team.competition_name || '');
     setNewTeamDiscipline(team.discipline || '');
     setNewTeamSociety(team.society || '');
@@ -677,8 +677,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleEditSociety = (soc: any) => {
     setEditingSociety(soc);
-    setSocName(soc.name);
-    setSocEmail(soc.email);
+    setSocName(soc.name || '');
+    setSocEmail(soc.email || '');
     setSocAddress(soc.address || '');
     setSocCity(soc.city || '');
     setSocRegion(soc.region || '');
@@ -815,10 +815,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const editUser = (user: any) => {
     setEditingUser(user);
-    setName(user.name);
-    setSurname(user.surname);
-    setEmail(user.email);
-    setRole(user.role);
+    setName(user.name || '');
+    setSurname(user.surname || '');
+    setEmail(user.email || '');
+    setRole(user.role || 'user');
     setCategory(user.category || '');
     setQualification(user.qualification || '');
     setSociety(user.society || '');
@@ -2143,9 +2143,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             onCreateTeam={(ev) => {
               setActiveTab('team');
               setShowTeamForm(true);
-              setNewTeamCompetitionName(ev.name);
-              setNewTeamDiscipline(ev.discipline);
-              setNewTeamSociety(ev.location);
+              setNewTeamCompetitionName(ev.name || '');
+              setNewTeamDiscipline(ev.discipline || '');
+              setNewTeamSociety(ev.location || '');
               setNewTeamDate(ev.start_date ? ev.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
