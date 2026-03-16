@@ -108,6 +108,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socContactName, setSocContactName] = useState('');
   const [socLogo, setSocLogo] = useState('');
   const [socOpeningHours, setSocOpeningHours] = useState('');
+  const [socGoogleMapsLink, setSocGoogleMapsLink] = useState('');
   const [socDisciplines, setSocDisciplines] = useState<string[]>([]);
   const [societySearch, setSocietySearch] = useState('');
   const [selectedSociety, setSelectedSociety] = useState<any>(null);
@@ -602,8 +603,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     let lat = null;
     let lng = null;
     
-    // Geocode address if available
-    if (socAddress && socCity) {
+    // Try to extract lat/lng from Google Maps link if provided
+    if (socGoogleMapsLink) {
+      const match = socGoogleMapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        lat = parseFloat(match[1]);
+        lng = parseFloat(match[2]);
+      } else {
+        const qMatch = socGoogleMapsLink.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (qMatch) {
+          lat = parseFloat(qMatch[1]);
+          lng = parseFloat(qMatch[2]);
+        }
+      }
+    }
+    
+    // Geocode address if available and we don't have lat/lng yet
+    if (!lat && !lng && socAddress && socCity) {
       try {
         const query = encodeURIComponent(`${socAddress}, ${socCity}, ${socRegion || ''}, Italy`);
         const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
@@ -632,9 +648,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       contact_name: socContactName,
       logo: socLogo,
       opening_hours: socOpeningHours,
+      google_maps_link: socGoogleMapsLink,
       disciplines: socDisciplines.join(','),
-      lat,
-      lng
+      lat: lat || (editingSociety ? editingSociety.lat : null),
+      lng: lng || (editingSociety ? editingSociety.lng : null)
     };
 
     try {
@@ -650,7 +667,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!res.ok) throw new Error('Errore durante il salvataggio della società');
       
       setEditingSociety(null);
-      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
+      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
       setShowSocietyForm(false);
       fetchSocieties();
     } catch (err: any) {
@@ -672,6 +689,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSocContactName(soc.contact_name || '');
     setSocLogo(soc.logo || '');
     setSocOpeningHours(soc.opening_hours || '');
+    setSocGoogleMapsLink(soc.google_maps_link || '');
     setSocDisciplines(soc.disciplines ? soc.disciplines.split(',') : []);
     setShowSocietyForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1712,7 +1730,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
                 <button onClick={() => {
                   setEditingSociety(null);
-                  setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
+                  setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
                   setShowSocietyForm(true);
                 }} className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-4 rounded-xl transition-all active:scale-95 text-xs uppercase flex items-center gap-2 shadow-lg shadow-orange-600/20">
                   <i className="fas fa-plus"></i> Nuova
@@ -1754,6 +1772,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
                   <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Google Maps (Opzionale)</label>
+                  <input type="url" value={socGoogleMapsLink} onChange={e => setSocGoogleMapsLink(e.target.value)} placeholder="https://goo.gl/maps/..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
@@ -1868,7 +1890,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors">{soc.name}</h3>
+                    <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors flex items-center gap-2">
+                      {soc.name}
+                      {currentUser?.role === 'admin' && soc.lat && soc.lng && (
+                        <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" title="Coordinate registrate"></span>
+                      )}
+                    </h3>
                     <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
                       {soc.city && <span className="truncate"><i className="fas fa-map-marker-alt mr-1"></i>{soc.city} {soc.region ? `(${soc.region})` : ''}</span>}
                       <span className="truncate"><i className="fas fa-envelope mr-1"></i>{soc.email}</span>
@@ -1882,8 +1909,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     )}
                   </div>
-                  <div className="text-slate-600 group-hover:text-orange-500 transition-colors">
-                    <i className="fas fa-chevron-right"></i>
+                  <div className="flex items-center gap-2">
+                    {(soc.google_maps_link || (soc.lat && soc.lng)) && (
+                      <a 
+                        href={soc.google_maps_link || `https://www.google.com/maps/dir/?api=1&destination=${soc.lat},${soc.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
+                        title="Apri in Google Maps"
+                      >
+                        <i className="fas fa-directions"></i>
+                      </a>
+                    )}
+                    <div className="text-slate-600 group-hover:text-orange-500 transition-colors ml-2">
+                      <i className="fas fa-chevron-right"></i>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1917,12 +1958,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="text-center">
                         <h3 className="font-black text-slate-900">{soc.name}</h3>
                         <p className="text-xs text-slate-600 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setSelectedSociety(soc); }}
-                          className="mt-2 text-xs font-bold text-orange-600 hover:underline"
-                        >
-                          Vedi Dettagli
-                        </button>
+                        <div className="flex items-center justify-center gap-2 mt-2">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setSelectedSociety(soc); }}
+                            className="text-xs font-bold text-orange-600 hover:underline"
+                          >
+                            Vedi Dettagli
+                          </button>
+                          {(soc.google_maps_link || (soc.lat && soc.lng)) && (
+                            <a 
+                              href={soc.google_maps_link || `https://www.google.com/maps/dir/?api=1&destination=${soc.lat},${soc.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                              title="Apri in Google Maps"
+                            >
+                              <i className="fas fa-directions"></i> Naviga
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </Popup>
                   </Marker>
@@ -1963,7 +2018,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       )}
                       <div className="mb-2">
                         <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedSociety.name}</h2>
-                        {selectedSociety.city && <p className="text-xs sm:text-sm text-slate-400 mt-1 flex items-center gap-2"><i className="fas fa-map-marker-alt text-orange-500"></i>{selectedSociety.city} {selectedSociety.region ? `(${selectedSociety.region})` : ''}</p>}
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          {selectedSociety.city && <p className="text-xs sm:text-sm text-slate-400 flex items-center gap-2"><i className="fas fa-map-marker-alt text-orange-500"></i>{selectedSociety.city} {selectedSociety.region ? `(${selectedSociety.region})` : ''}</p>}
+                          {(selectedSociety.google_maps_link || (selectedSociety.lat && selectedSociety.lng)) && (
+                            <a 
+                              href={selectedSociety.google_maps_link || `https://www.google.com/maps/dir/?api=1&destination=${selectedSociety.lat},${selectedSociety.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] font-black bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-2 py-1 rounded-lg transition-colors flex items-center gap-1 uppercase tracking-wider"
+                            >
+                              <i className="fas fa-directions"></i> Naviga
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2005,6 +2072,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Sito Web</p>
                         <a href={selectedSociety.website} target="_blank" rel="noreferrer" className="text-sm font-bold text-orange-500 hover:underline break-all">{selectedSociety.website}</a>
+                      </div>
+                    )}
+                    {selectedSociety.google_maps_link && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Link Google Maps</p>
+                        <a href={selectedSociety.google_maps_link} target="_blank" rel="noreferrer" className="text-sm font-bold text-orange-500 hover:underline break-all flex items-center gap-2">
+                          <i className="fas fa-map-marked-alt"></i> Apri Mappa
+                        </a>
                       </div>
                     )}
                     {selectedSociety.opening_hours && (
@@ -2716,6 +2791,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               setSocContactName('');
               setSocLogo('');
               setSocOpeningHours('');
+              setSocGoogleMapsLink('');
             }
             setShowSocietyForm(!showSocietyForm);
             if (!showSocietyForm) window.scrollTo({ top: 0, behavior: 'smooth' });
