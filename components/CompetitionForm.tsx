@@ -56,6 +56,12 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
   const [position, setPosition] = useState<number | undefined>(data?.position);
   const [cost, setCost] = useState<number>(data?.cost || 0);
+  const [costPerSeries, setCostPerSeries] = useState<number>(() => {
+    if (data?.cost && data?.scores?.length && (data?.level === CompetitionLevel.TRAINING || data?.discipline === Discipline.TRAINING)) {
+      return Number((data.cost / data.scores.length).toFixed(2));
+    }
+    return 0;
+  });
   const [win, setWin] = useState<number>(data?.win || 0);
   const [notes, setNotes] = useState(data?.notes || '');
   const [date, setDate] = useState(data?.date || new Date().toISOString().split('T')[0]);
@@ -323,7 +329,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       totalScore,
       averagePerSeries,
       position: isTraining ? undefined : position,
-      cost,
+      cost: isTraining ? costPerSeries * scores.length : cost,
       win,
       notes,
       usedCartridges,
@@ -523,10 +529,18 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Costo (€)</label>
-          <input type="number" step="0.01" value={cost} onChange={(e) => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-        </div>
+        {isTraining ? (
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Costo per Serie (€)</label>
+            <input type="number" step="0.01" value={costPerSeries} onChange={(e) => setCostPerSeries(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <p className="text-[10px] text-slate-400 font-medium mt-1">Totale: € {(costPerSeries * scores.length).toFixed(2)}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Costo (€)</label>
+            <input type="number" step="0.01" value={cost} onChange={(e) => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+          </div>
+        )}
         {!isTraining && (
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Vincita (€)</label>
