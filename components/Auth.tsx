@@ -50,9 +50,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-600/20">
-            <i className="fas fa-crosshairs text-3xl text-white"></i>
-          </div>
+          <img src="/icon.svg" alt="Clay Tracker Pro" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg shadow-orange-600/20" />
           <h1 className="text-2xl font-black text-white uppercase tracking-tight">Clay Tracker Pro</h1>
           <p className="text-slate-500 text-sm mt-2">Accedi al tuo account</p>
         </div>
@@ -104,6 +102,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <button type="button" onClick={handleForgotPassword} className="text-slate-400 hover:text-white text-xs transition-colors">
             Hai dimenticato la password?
           </button>
+          
+          <div className="mt-8 pt-6 border-t border-slate-800/50">
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Sei un tiratore e vuoi utilizzare l'App?<br/>
+              <span className="text-orange-500 font-semibold mt-1 block">Chiedi alla tua Società le credenziali di accesso!</span>
+            </p>
+          </div>
         </div>
       </div>
     </div>
