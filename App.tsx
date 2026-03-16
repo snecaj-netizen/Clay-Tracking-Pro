@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string } | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
+  const [initialAdminTab, setInitialAdminTab] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +52,12 @@ const App: React.FC = () => {
         const id = searchParams.get('id');
         if (id) {
           setInitialEventId(id);
+        }
+      } else if (path === '/admin') {
+        setView('admin');
+        const tab = searchParams.get('tab');
+        if (tab) {
+          setInitialAdminTab(tab);
         }
       }
     };
@@ -481,6 +488,7 @@ const App: React.FC = () => {
               onUserUpdate={handleUserUpdate}
               prefillTeam={prefillTeamData || undefined}
               onPrefillTeamUsed={() => setPrefillTeamData(null)}
+              initialTab={initialAdminTab as any}
             />
           </div>
         )}

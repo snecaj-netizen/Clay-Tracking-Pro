@@ -357,7 +357,8 @@ initDB().then(() => {
             userIds, 
             "Gara in arrivo!", 
             `La gara "${event.name}" inizierà tra 2 giorni presso ${event.location}.`, 
-            `/events?id=${event.id}`
+            `/events?id=${event.id}`,
+            event.visibility === 'Pubblica' ? 'all' : 'society'
           );
         }
       }
@@ -468,7 +469,7 @@ app.put('/api/notifications/:id/read', authenticateToken, async (req: any, res) 
 });
 
 // Helper to send push notifications
-const sendPushNotification = async (userIds: number[], title: string, body: string, url: string) => {
+const sendPushNotification = async (userIds: (number | string)[], title: string, body: string, url: string, recipientType?: 'all' | 'society' | 'team') => {
   try {
     // Get Admin ID
     const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
@@ -476,8 +477,12 @@ const sendPushNotification = async (userIds: number[], title: string, body: stri
 
     if (!adminId) return;
 
-    // 1. Handle standard users (excluding admin from this specific list to handle them separately)
-    const standardUserIds = userIds.filter(id => id !== adminId && id !== undefined);
+    // Ensure all IDs are numbers for reliable comparison
+    const numericAdminId = Number(adminId);
+    const numericUserIds = userIds.map(id => Number(id)).filter(id => !isNaN(id));
+
+    // 1. Handle standard users (strictly excluding admin)
+    const standardUserIds = numericUserIds.filter(id => id !== numericAdminId);
     
     // Save standard notifications
     for (const userId of standardUserIds) {
@@ -487,34 +492,51 @@ const sendPushNotification = async (userIds: number[], title: string, body: stri
       );
     }
 
-    // 2. Handle Admin notification (compacted with recipient info)
+    // 2. Handle Admin notification (compacted with specific logic)
     let adminBody = body;
-    if (standardUserIds.length > 0) {
+    if (recipientType === 'all') {
+      adminBody = `${body}\n\nDestinatari: Tutti i tiratori`;
+    } else if (recipientType === 'society') {
+      adminBody = `${body}\n\nDestinatari: Tiratori della società`;
+    } else if (recipientType === 'team' && standardUserIds.length > 0) {
       const { rows: recipientRows } = await pool.query(
         "SELECT name, surname FROM users WHERE id = ANY($1)",
         [standardUserIds]
       );
       const recipientNames = recipientRows.map(r => `${r.name} ${r.surname}`).join(', ');
       adminBody = `${body}\n\nInviato a: ${recipientNames}`;
+    } else if (standardUserIds.length > 0 && !recipientType) {
+      // Fallback for other types if any
+      const { rows: recipientRows } = await pool.query(
+        "SELECT name, surname FROM users WHERE id = ANY($1)",
+        [standardUserIds]
+      );
+      const recipientNames = recipientRows.map(r => `${r.name} ${r.surname}`).join(', ');
+      adminBody = `${body}\n\nDestinatari: ${recipientNames}`;
     }
+
+    const adminUrl = '/admin?tab=notifications';
 
     await pool.query(
       "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
-      [adminId, title, adminBody, url]
+      [numericAdminId, title, adminBody, adminUrl]
     );
 
     // 3. Send Push Notifications
-    const allUserIds = [...new Set([...standardUserIds, adminId])];
+    const allUserIdsToNotify = [...new Set([...standardUserIds, numericAdminId])];
     const { rows: subscriptions } = await pool.query(
       "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
-      [allUserIds]
+      [allUserIdsToNotify]
     );
 
     for (const sub of subscriptions) {
       try {
-        // Use the specific body for admin
-        const currentBody = sub.user_id === adminId ? adminBody : body;
-        const payload = JSON.stringify({ title, body: currentBody, url });
+        // Use the specific body and URL for admin
+        const isAdmin = Number(sub.user_id) === numericAdminId;
+        const currentBody = isAdmin ? adminBody : body;
+        const currentUrl = isAdmin ? adminUrl : url;
+        
+        const payload = JSON.stringify({ title, body: currentBody, url: currentUrl });
         await webpush.sendNotification(sub.subscription, payload);
       } catch (err: any) {
         if (err.statusCode === 404 || err.statusCode === 410) {
@@ -1023,7 +1045,7 @@ app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, asyn
       );
       const userIds = users.map(u => u.id);
       if (userIds.length > 0) {
-        sendPushNotification(userIds, "Nuova Sfida!", `${name} - ${prize}`, `/challenges`);
+        sendPushNotification(userIds, "Nuova Sfida!", `${name} - ${prize}`, `/challenges`, 'society');
       }
     }
 
@@ -1280,7 +1302,8 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
         memberIds,
         "Nuova Squadra!",
         `Sei stato inserito nella squadra "${name}" per la gara "${competition_name}".`,
-        `/history`
+        `/history`,
+        'team'
       );
     }
 
@@ -1389,7 +1412,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
         allInvolvedIds,
         "Squadra Aggiornata",
         `La squadra "${name}" è stata modificata. Controlla i dettagli.`,
-        `/history`
+        `/history`,
+        'team'
       );
     }
 
@@ -1431,7 +1455,8 @@ app.delete('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (re
         memberIds,
         "Squadra Sciolta",
         `La squadra "${team.name}" è stata eliminata dall'amministratore o dalla società.`,
-        `/history`
+        `/history`,
+        'team'
       );
     }
 
@@ -1522,7 +1547,8 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
         team.member_ids.filter((id: any) => id !== null),
         "Gara Assegnata!",
         `La gara "${team.competition_name || team.name}" è stata assegnata alla tua squadra "${team.name}".`,
-        `/history`
+        `/history`,
+        'team'
       );
     }
 
@@ -1666,7 +1692,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     }
     
     if (userIds.length > 0) {
-      sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events?id=${id}`);
+      sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events?id=${id}`, visibility === 'Pubblica' ? 'all' : 'society');
     }
 
     res.status(201).json({ message: 'Evento creato' });
@@ -1716,7 +1742,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
       }
     }
     if (userIds.length > 0) {
-      sendPushNotification(userIds, "Evento Aggiornato", `L'evento "${name}" ha subito delle modifiche.`, `/events?id=${req.params.id}`);
+      sendPushNotification(userIds, "Evento Aggiornato", `L'evento "${name}" ha subito delle modifiche.`, `/events?id=${req.params.id}`, visibility === 'Pubblica' ? 'all' : 'society');
     }
 
     res.json({ message: 'Evento aggiornato' });
@@ -1761,7 +1787,7 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
       }
     }
     if (userIds.length > 0) {
-      sendPushNotification(userIds, "Evento Annullato", `L'evento "${event.name}" è stato annullato.`, `/events`);
+      sendPushNotification(userIds, "Evento Annullato", `L'evento "${event.name}" è stato annullato.`, `/events`, event.visibility === 'Pubblica' ? 'all' : 'society');
     }
 
     res.json({ message: 'Evento eliminato' });
