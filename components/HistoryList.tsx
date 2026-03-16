@@ -58,13 +58,13 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
   const nextUpcomingCompId = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const fiveDaysFromNow = new Date(today);
-    fiveDaysFromNow.setDate(today.getDate() + 5);
+    const sixDaysFromNow = new Date(today);
+    sixDaysFromNow.setDate(today.getDate() + 6);
     
     const futureComps = competitions.filter(c => {
       const start = new Date(c.date);
       start.setHours(0, 0, 0, 0);
-      return start > today && start <= fiveDaysFromNow;
+      return start > today && start <= sixDaysFromNow;
     });
     
     if (futureComps.length === 0) return null;

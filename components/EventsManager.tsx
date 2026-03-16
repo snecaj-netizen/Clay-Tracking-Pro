@@ -27,6 +27,24 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
 
+  const nextUpcomingEventId = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sixDaysFromNow = new Date(today);
+    sixDaysFromNow.setDate(today.getDate() + 6);
+    
+    const futureEvents = events.filter(ev => {
+      const start = new Date(ev.start_date);
+      start.setHours(0, 0, 0, 0);
+      return start > today && start <= sixDaysFromNow;
+    });
+    
+    if (futureEvents.length === 0) return null;
+    
+    futureEvents.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+    return futureEvents[0].id;
+  }, [events]);
+
   const filteredEvents = React.useMemo(() => {
     const filtered = events.filter(ev => {
       if (restrictToSociety && user?.role === 'society') {
@@ -41,8 +59,46 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       return true;
     });
     
-    return filtered.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
-  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return filtered.sort((a, b) => {
+      const startA = new Date(a.start_date);
+      startA.setHours(0, 0, 0, 0);
+      const endA = new Date(a.end_date);
+      endA.setHours(0, 0, 0, 0);
+      const isOngoingA = today >= startA && today <= endA;
+
+      const startB = new Date(b.start_date);
+      startB.setHours(0, 0, 0, 0);
+      const endB = new Date(b.end_date);
+      endB.setHours(0, 0, 0, 0);
+      const isOngoingB = today >= startB && today <= endB;
+
+      if (isOngoingA && !isOngoingB) return -1;
+      if (!isOngoingA && isOngoingB) return 1;
+
+      const isNextA = a.id === nextUpcomingEventId;
+      const isNextB = b.id === nextUpcomingEventId;
+
+      if (isNextA && !isNextB) return -1;
+      if (!isNextA && isNextB) return 1;
+
+      const isPastA = endA.getTime() < today.getTime();
+      const isPastB = endB.getTime() < today.getTime();
+
+      if (!isPastA && isPastB) return -1;
+      if (isPastA && !isPastB) return 1;
+
+      // If both are past, sort descending (newest past event first)
+      if (isPastA && isPastB) {
+        return startB.getTime() - startA.getTime();
+      }
+
+      // If both are future, sort ascending (closest future event first)
+      return startA.getTime() - startB.getTime();
+    });
+  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user, nextUpcomingEventId]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
@@ -106,6 +162,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     const endDate = new Date(ev.end_date);
     endDate.setHours(0, 0, 0, 0);
     return endDate.getTime() < today.getTime();
+  };
+
+  const isOngoingEvent = (ev: SocietyEvent) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(ev.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(ev.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    return today >= startDate && today <= endDate;
   };
 
   // Form states
@@ -386,15 +452,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                   {eventsByDate[selectedDay].map(ev => {
                     const past = isPastEvent(ev);
+                    const ongoing = isOngoingEvent(ev);
+                    const isNext = ev.id === nextUpcomingEventId;
+                    
                     return (
                     <div 
                       key={ev.id} 
                       onClick={() => setSelectedEvent(ev)}
-                      className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
+                      className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-700 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            {ongoing && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
+                                IN CORSO
+                              </span>
+                            )}
+                            {isNext && !ongoing && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
+                                PROSSIMA GARA
+                              </span>
+                            )}
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
                               {ev.discipline.split(' ')[0]}
                             </span>
@@ -654,15 +733,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           ) : (
             filteredEvents.map(ev => {
               const past = isPastEvent(ev);
+              const ongoing = isOngoingEvent(ev);
+              const isNext = ev.id === nextUpcomingEventId;
+              
               return (
               <div 
                 key={ev.id} 
                 onClick={() => setSelectedEvent(ev)}
-                className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
+                className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-700 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      {ongoing && (
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
+                          IN CORSO
+                        </span>
+                      )}
+                      {isNext && !ongoing && (
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
+                          PROSSIMA GARA
+                        </span>
+                      )}
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
                         {ev.discipline.split(' ')[0]}
                       </span>
