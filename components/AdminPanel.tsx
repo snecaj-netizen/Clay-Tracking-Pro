@@ -1908,12 +1908,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {societyViewMode === 'list' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSocieties.map(soc => (
-                <div 
-                  key={soc.id} 
-                  onClick={() => setSelectedSociety(soc)}
-                  className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 relative flex items-center gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md"
-                >
+              {filteredSocieties.map(soc => {
+                const isMySoc = currentUser?.society?.trim().toLowerCase() === soc.name.trim().toLowerCase();
+                return (
+                  <div 
+                    key={soc.id} 
+                    onClick={() => setSelectedSociety(soc)}
+                    className={`bg-slate-950/50 border ${isMySoc ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.15)]' : 'border-slate-800'} rounded-2xl p-4 relative flex items-center gap-4 cursor-pointer hover:bg-slate-900/50 transition-all group shadow-sm hover:shadow-md`}
+                  >
                   {soc.logo ? (
                     <img src={soc.logo} alt={soc.name} className="w-12 h-12 rounded-xl object-cover border border-slate-800 flex-shrink-0" />
                   ) : (
@@ -1959,7 +1961,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
               {filteredSocieties.length === 0 && (
                 <div className="col-span-full py-12 text-center text-slate-600 italic text-sm">
                   Nessuna società trovata.
