@@ -16,6 +16,26 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Red icon for user's society
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Orange icon for other societies
+const orangeIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 // Map Resizer component to fix Leaflet "half-loaded" issue
 function MapResizer() {
   const map = useMap();
@@ -1013,8 +1033,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase()))
     )
     .sort((a, b) => {
-      if (currentUser?.role === 'society') {
-        const mySoc = currentUser.society?.trim().toLowerCase();
+      const mySoc = currentUser?.society?.trim().toLowerCase();
+      if (mySoc) {
         const aName = a.name.trim().toLowerCase();
         const bName = b.name.trim().toLowerCase();
         if (aName === mySoc) return -1;
@@ -1959,12 +1979,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {filteredSocieties.filter(s => s.lat && s.lng).map(soc => (
-                  <Marker 
-                    key={soc.id} 
-                    position={[parseFloat(soc.lat), parseFloat(soc.lng)]}
-                  >
-                    <Popup className="custom-popup">
+                {filteredSocieties.filter(s => s.lat && s.lng).map(soc => {
+                  const isMySoc = currentUser?.society?.trim().toLowerCase() === soc.name.trim().toLowerCase();
+                  return (
+                    <Marker 
+                      key={soc.id} 
+                      position={[parseFloat(soc.lat), parseFloat(soc.lng)]}
+                      icon={isMySoc ? redIcon : orangeIcon}
+                    >
+                      <Popup className="custom-popup">
                       <div className="text-center">
                         <h3 className="font-black text-slate-900">{soc.name}</h3>
                         <p className="text-xs text-slate-600 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
@@ -1991,7 +2014,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </Popup>
                   </Marker>
-                ))}
+                );
+              })}
               </MapContainer>
               {filteredSocieties.filter(s => !s.lat || !s.lng).length > 0 && (
                 <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-sm border border-slate-800 rounded-xl p-3 text-xs text-slate-400 text-center z-[400]">
