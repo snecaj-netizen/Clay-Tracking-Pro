@@ -9,6 +9,7 @@ import Warehouse from './components/Warehouse';
 import Auth from './components/Auth';
 import AdminPanel from './components/AdminPanel';
 import EventsManager from './components/EventsManager';
+import AICoachPage from './components/AICoachPage';
 import ConfirmModal from './components/ConfirmModal';
 
 const App: React.FC = () => {
@@ -25,10 +26,10 @@ const App: React.FC = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
-  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies'>(
+  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
-  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | null>(null);
+  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string } | null>(null);
@@ -357,6 +358,12 @@ const App: React.FC = () => {
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Dashboard competitions={competitions} user={user} onAddClick={() => { setPreviousView('dashboard'); setView('new'); }} />
+          </div>
+        )}
+
+        {view === 'ai-coach' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <AICoachPage competitions={competitions} cartridges={cartridges} user={user} />
           </div>
         )}
         

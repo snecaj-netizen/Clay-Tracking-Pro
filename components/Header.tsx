@@ -45,20 +45,19 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     }
   };
 
-  const menuItems = [
-    { id: 'history', label: 'Gare/Allenamenti', icon: 'fa-list-ul' },
-    { id: 'dashboard', label: 'Report Gare', icon: 'fa-chart-pie' },
-    { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
+  const menuItems = user?.role === 'society' ? [
     { id: 'admin', label: 'Risultati', icon: 'fa-poll' },
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
-  ].filter(item => {
-    if (user?.role === 'society') {
-      return item.id === 'events' || item.id === 'societies' || item.id === 'admin';
-    }
-    if (item.id === 'admin') return false; // Only show in profile button for others
-    return true;
-  });
+    { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
+  ] : [
+    { id: 'history', label: 'Gare/Allenamenti', icon: 'fa-list-ul' },
+    { id: 'dashboard', label: 'Report Gare', icon: 'fa-chart-pie' },
+    { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
+    { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
+    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
+    { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
+  ];
 
   return (
     <>
