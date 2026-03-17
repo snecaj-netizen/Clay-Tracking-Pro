@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Discipline, Competition, CompetitionLevel, Cartridge, UsedCartridge, WeatherInfo, getSeriesLayout } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
+import SocietySearch from './SocietySearch';
 
 interface CompetitionFormProps {
   initialData?: Competition;
@@ -412,19 +413,13 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Campo / TAV</label>
-          <div className="relative">
-            <select 
-              value={location} 
-              onChange={(e) => setLocation(e.target.value)} 
-              className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none"
-            >
-              <option value="">Seleziona Campo / TAV...</option>
-              {societies.map(soc => <option key={soc.id} value={soc.name}>{soc.name}</option>)}
-              {knownLocations.filter(loc => !societies.some(s => s.name === loc)).map(loc => <option key={loc} value={loc}>{loc}</option>)}
-              {!societies.some(s => s.name === location) && !knownLocations.includes(location) && location && <option value={location}>{location}</option>}
-            </select>
-            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
-          </div>
+          <SocietySearch 
+            value={location}
+            onChange={setLocation}
+            societies={societies}
+            placeholder="Seleziona Campo / TAV..."
+            required
+          />
           <p className="text-[10px] text-slate-500 italic">Se il campo non è in elenco, chiedi all'amministratore di aggiungerlo.</p>
         </div>
 

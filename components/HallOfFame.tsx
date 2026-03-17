@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SocietySearch from './SocietySearch';
 import { createPortal } from 'react-dom';
 import { Discipline, Challenge, ChallengeMode, ChallengeRankingEntry } from '../types';
 
@@ -214,18 +215,15 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società Ospitante *</label>
-              <select 
-                required
+              <SocietySearch 
                 value={societyId}
-                onChange={(e) => setSocietyId(Number(e.target.value))}
+                onChange={(val) => setSocietyId(Number(val))}
+                societies={societies.filter(s => user?.role === 'admin' || s.name === user.society)}
+                placeholder="Seleziona Società"
+                useId={true}
                 disabled={user?.role === 'society'}
-                className={`w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none transition-all appearance-none ${user?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <option value="">Seleziona Società</option>
-                {societies.filter(s => user?.role === 'admin' || s.name === user.society).map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+                required
+              />
             </div>
 
             <div className="space-y-2">

@@ -1702,41 +1702,8 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
 
     const { rows: events } = await pool.query(eventQuery, eventParams);
 
-    // 2. Fetch admin competitions (gare)
-    // We filter by user role 'admin' and exclude training
-    const compQuery = `
-      SELECT c.*, u.name as user_name, u.surname as user_surname 
-      FROM competitions c
-      JOIN users u ON c.user_id = u.id
-      LEFT JOIN teams t ON c.team_id = t.id
-      LEFT JOIN users tu ON t.created_by = tu.id
-      WHERE u.role = 'admin' 
-      AND c.discipline != 'Allenamento'
-      AND c.level != 'Allenamento / Pratica'
-      AND (c.team_id IS NULL OR tu.role != 'society')
-    `;
-    const { rows: adminComps } = await pool.query(compQuery);
-
-    // 3. Map competitions to event format
-    const mappedComps = adminComps.map(c => ({
-      id: `comp_${c.id}`,
-      name: c.name,
-      type: c.level,
-      visibility: 'Pubblica',
-      discipline: c.discipline,
-      location: c.location,
-      targets: c.totaltargets,
-      start_date: c.date,
-      end_date: c.enddate || c.date,
-      cost: c.cost?.toString(),
-      notes: c.notes || `Gara registrata da ${c.user_name} ${c.user_surname}`,
-      poster_url: null,
-      created_by: c.user_id,
-      is_from_competition: true
-    }));
-
     // 4. Combine and sort
-    const allEvents = [...events, ...mappedComps].sort((a, b) => {
+    const allEvents = [...events].sort((a, b) => {
       return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
     });
 

@@ -7,6 +7,7 @@ import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import AdminNotifications from './AdminNotifications';
+import SocietySearch from './SocietySearch';
 import { Competition, Cartridge, AppData, Discipline, getSeriesLayout } from '../types';
 
 // Fix Leaflet default icon issue
@@ -1053,8 +1054,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const paginatedShooters = groupedShooters.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
   const paginatedResults = filteredResults.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
 
-  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    setter(e.target.value);
+  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement> | string) => {
+    const value = typeof e === 'string' ? e : e.target.value;
+    setter(value);
     setResultsPage(1);
   };
 
@@ -1337,19 +1339,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                <div className="relative">
-                  <select 
-                    value={profileSociety} 
-                    onChange={e => setProfileSociety(e.target.value)} 
-                    disabled={currentUser?.role === 'society'}
-                    className={`w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <option value="">Seleziona...</option>
-                    {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                    {!societies.some(s => s.name === profileSociety) && profileSociety && <option value={profileSociety}>{profileSociety}</option>}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
-                </div>
+                <SocietySearch 
+                  value={profileSociety}
+                  onChange={setProfileSociety}
+                  societies={societies}
+                  placeholder="Seleziona..."
+                  disabled={currentUser?.role === 'society'}
+                />
               </div>
               {currentUser?.role !== 'society' && (
                 <>
@@ -1433,17 +1429,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm opacity-50 cursor-not-allowed outline-none transition-all" 
                       />
                     ) : (
-                      <select 
-                        value={newTeamSociety} 
-                        onChange={e => {
-                          setNewTeamSociety(e.target.value);
+                      <SocietySearch 
+                        value={newTeamSociety}
+                        onChange={(val) => {
+                          setNewTeamSociety(val);
                           setSelectedShooterIds([]);
-                        }} 
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                      >
-                        <option value="">Seleziona...</option>
-                        {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                      </select>
+                        }}
+                        societies={societies}
+                        placeholder="Seleziona..."
+                      />
                     )}
                   </div>
                   <div>
@@ -2245,14 +2239,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                <select 
-                  value={filterSociety} 
-                  onChange={handleFilterChange(setFilterSociety)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                >
-                  <option value="">Tutte</option>
-                  {filterOptions.societies.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <SocietySearch 
+                  value={filterSociety}
+                  onChange={handleFilterChange(setFilterSociety)}
+                  societies={societies}
+                  placeholder="Tutte"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
@@ -2694,15 +2686,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                  <select 
-                    value={society} 
-                    onChange={e => setSociety(e.target.value)} 
+                  <SocietySearch 
+                    value={society}
+                    onChange={setSociety}
+                    societies={societies}
+                    placeholder="Seleziona..."
                     disabled={currentUser?.role === 'society'}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <option value="">Seleziona...</option>
-                    {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>

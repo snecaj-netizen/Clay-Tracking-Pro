@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { SocietyEvent, Discipline } from '../types';
+import SocietySearch from './SocietySearch';
 
 interface EventsManagerProps {
   user: any;
@@ -586,11 +587,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                               {ev.visibility}
                             </span>
-                            {user?.role === 'admin' && ev.is_from_competition && (
-                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-amber-900/30 text-amber-500 border border-amber-900/50">
-                                <i className="fas fa-history mr-1"></i> Registrata
-                              </span>
-                            )}
                           </div>
                           <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
                           <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
@@ -684,14 +680,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           {!(restrictToSociety && user?.role === 'society') && (
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
-              <select 
-                value={filterSociety} 
-                onChange={e => setFilterSociety(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                <option value="">Tutte le società</option>
-                {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-              </select>
+              <SocietySearch 
+                value={filterSociety}
+                onChange={setFilterSociety}
+                societies={societies}
+                placeholder="Tutte le società"
+              />
             </div>
           )}
           <div>
@@ -770,12 +764,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Campo / TAV *</label>
               {user?.role === 'admin' ? (
-                <select value={location} onChange={(e) => setLocation(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                  <option value="">Seleziona Società</option>
-                  {societies.map(s => (
-                    <option key={s.id} value={s.name}>{s.name}</option>
-                  ))}
-                </select>
+                <SocietySearch 
+                  value={location}
+                  onChange={setLocation}
+                  societies={societies}
+                  placeholder="Seleziona Società"
+                  required
+                />
               ) : (
                 <input type="text" value={location} disabled className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-400 cursor-not-allowed" />
               )}
@@ -879,11 +874,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                         {ev.visibility}
                       </span>
-                      {user?.role === 'admin' && ev.is_from_competition && (
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-amber-900/30 text-amber-500 border border-amber-900/50">
-                          <i className="fas fa-history mr-1"></i> Registrata
-                        </span>
-                      )}
                     </div>
                     <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
                     <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
@@ -937,11 +927,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${selectedEvent.visibility === 'Pubblica' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                     {selectedEvent.visibility}
                   </span>
-                  {user?.role === 'admin' && selectedEvent.is_from_competition && (
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-amber-900/40 text-amber-500 border border-amber-900/50">
-                      <i className="fas fa-history mr-1"></i> Registrata
-                    </span>
-                  )}
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedEvent.name}</h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1 flex items-center gap-2">
@@ -1047,7 +1032,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 )}
                 
                 <div className="flex gap-2 w-full sm:w-auto">
-                  {(user?.role === 'admin' || (user?.role === 'society' && selectedEvent.location === user.society)) && !selectedEvent.is_from_competition && (
+                  {(user?.role === 'admin' || (user?.role === 'society' && selectedEvent.location === user.society)) && (
                     <>
                       <button 
                         onClick={() => {

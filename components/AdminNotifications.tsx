@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SocietySearch from './SocietySearch';
 
 interface AdminNotificationsProps {
   token: string;
@@ -189,17 +190,13 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
             {(targetType === 'specific_society' || targetType === 'shooters_of_society') && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seleziona Società</label>
-                <select 
+                <SocietySearch 
                   value={targetId}
-                  onChange={(e) => setTargetId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  onChange={setTargetId}
+                  societies={societies}
+                  placeholder="Scegli una società..."
                   required
-                >
-                  <option value="">Scegli una società...</option>
-                  {societies.map(soc => (
-                    <option key={soc.id} value={soc.name}>{soc.name}</option>
-                  ))}
-                </select>
+                />
               </div>
             )}
 
