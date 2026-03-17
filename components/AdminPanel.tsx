@@ -1883,8 +1883,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 placeholder="Cerca società per nome, città o regione..." 
                 value={societySearch}
                 onChange={(e) => setSocietySearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-10 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
               />
+              {societySearch && (
+                <button 
+                  onClick={() => setSocietySearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white transition-colors"
+                  title="Pulisci ricerca"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
             </div>
             <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
               <button

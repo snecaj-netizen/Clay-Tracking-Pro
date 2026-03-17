@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import * as XLSX from 'xlsx';
 import { SocietyEvent, Discipline } from '../types';
 
 interface EventsManagerProps {
@@ -345,6 +346,99 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     }
   };
 
+  const downloadExcelTemplate = () => {
+    const templateData = [
+      {
+        'Nome Gara': 'Esempio Gara',
+        'Tipologia': 'Regionale',
+        'Visibilità': 'Pubblica',
+        'Disciplina': 'Compak',
+        'Società': 'Nome Società',
+        'Piattelli': 50,
+        'Data Inizio': '2026-03-17',
+        'Data Fine': '2026-03-17',
+        'Costo': 25,
+        'Note': 'Note opzionali',
+        'Link Iscrizione': 'https://...'
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Modello Gare');
+    XLSX.writeFile(wb, 'modello_gare.xlsx');
+  };
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        if (data.length === 0) {
+          alert('Il file Excel è vuoto.');
+          return;
+        }
+
+        const importedEvents = data.map(row => ({
+          id: crypto.randomUUID(),
+          name: row['Nome Gara'] || 'Gara senza nome',
+          type: row['Tipologia'] || 'Regionale',
+          visibility: row['Visibilità'] || 'Pubblica',
+          discipline: row['Disciplina'] || Discipline.CK,
+          location: row['Società'] || '',
+          targets: parseInt(row['Piattelli']) || 50,
+          start_date: row['Data Inizio'] || new Date().toISOString().split('T')[0],
+          end_date: row['Data Fine'] || row['Data Inizio'] || new Date().toISOString().split('T')[0],
+          cost: row['Costo']?.toString() || '',
+          notes: row['Note'] || '',
+          registration_link: row['Link Iscrizione'] || ''
+        }));
+
+        triggerConfirm(
+          'Importa Gare',
+          `Sei sicuro di voler importare ${importedEvents.length} gare dal file Excel?`,
+          async () => {
+            setLoading(true);
+            try {
+              for (const ev of importedEvents) {
+                await fetch('/api/events', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify(ev)
+                });
+              }
+              fetchEvents();
+              alert('Importazione completata con successo!');
+            } catch (err) {
+              console.error('Error importing events:', err);
+              alert('Errore durante l\'importazione di alcune gare.');
+            } finally {
+              setLoading(false);
+            }
+          },
+          'Importa',
+          'primary'
+        );
+      } catch (err) {
+        console.error('Error reading Excel file:', err);
+        alert('Errore nella lettura del file Excel. Assicurati che il formato sia corretto.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset input
+  };
+
   if (loading) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
   const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '';
@@ -546,6 +640,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           <i className="fas fa-calendar-alt text-orange-500"></i> Gestione Eventi
         </h2>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end">
+          {user?.role === 'admin' && !showForm && (
+            <div className="flex gap-2 mr-2">
+              <button 
+                onClick={downloadExcelTemplate}
+                className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+                title="Scarica modello Excel"
+              >
+                <i className="fas fa-file-download"></i>
+                <span className="hidden sm:inline">Modello</span>
+              </button>
+              <label className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
+                <i className="fas fa-file-import"></i>
+                <span className="hidden sm:inline">Importa Excel</span>
+                <input type="file" accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
+              </label>
+            </div>
+          )}
           {!showForm && (
             <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 shrink-0">
               <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list text-sm"></i> <span>Lista</span></button>
