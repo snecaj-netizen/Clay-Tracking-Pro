@@ -47,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   const menuItems = [
     { id: 'history', label: 'Gare/Allenamenti', icon: 'fa-list-ul' },
-    { id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' },
+    { id: 'dashboard', label: 'Report Gare', icon: 'fa-chart-pie' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
     { id: 'admin', label: 'Risultati', icon: 'fa-poll' },
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },

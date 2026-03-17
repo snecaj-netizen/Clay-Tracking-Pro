@@ -4,8 +4,6 @@ import Dashboard from './components/Dashboard';
 import CompetitionForm from './components/CompetitionForm';
 import HistoryList from './components/HistoryList';
 import Header from './components/Header';
-import StatsCharts from './components/StatsCharts';
-import GeminiCoach from './components/GeminiCoach';
 import Settings from './components/Settings';
 import Warehouse from './components/Warehouse';
 import Auth from './components/Auth';
@@ -359,8 +357,6 @@ const App: React.FC = () => {
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Dashboard competitions={competitions} user={user} onAddClick={() => { setPreviousView('dashboard'); setView('new'); }} />
-            {competitions.length > 0 && <StatsCharts competitions={competitions} />}
-            {competitions.length > 0 && <GeminiCoach competitions={competitions} />}
           </div>
         )}
         

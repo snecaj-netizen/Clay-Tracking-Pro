@@ -2,6 +2,8 @@
 import React from 'react';
 import { Competition, Discipline } from '../types';
 import DashboardAIReport from './DashboardAIReport';
+import StatsCharts from './StatsCharts';
+import GeminiCoach from './GeminiCoach';
 
 interface DashboardProps {
   competitions: Competition[];
@@ -95,7 +97,98 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
 
   return (
     <div className="space-y-8">
-      {/* Promemoria Gare in Arrivo */}
+      {/* 1. Report Gare (Prestazioni in Gara) */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 ml-2">
+          <i className="fas fa-trophy text-orange-500"></i>
+          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Prestazioni in Gara</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Gare Concluse</p>
+            <h3 className="text-3xl font-black text-white">{compStats?.count || 0}</h3>
+          </div>
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl border-l-4 border-l-orange-600">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Gara /25</p>
+            <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
+          </div>
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
+            {compStats?.bestPlacementComp ? (
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
+                  <span className="text-xs font-bold text-slate-400 uppercase">Posto</span>
+                </div>
+                <div className="mt-1">
+                  <p className="text-[10px] font-bold text-orange-500 uppercase truncate" title={compStats.bestPlacementComp.name}>
+                    {compStats.bestPlacementComp.name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Media: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <h3 className="text-3xl font-black text-slate-700">-</h3>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. AI Performance Report */}
+      <DashboardAIReport competitions={competitions} />
+
+      {/* 3. Statistiche Allenamento */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 ml-2">
+          <i className="fas fa-dumbbell text-blue-500"></i>
+          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Statistiche Allenamento</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl border-l-4 border-l-blue-600">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Pratica /25</p>
+            <h3 className="text-3xl font-black text-blue-500">{trainingStats?.avg.toFixed(2) || '0.00'}</h3>
+          </div>
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Serie Concluse</p>
+            <h3 className="text-3xl font-black text-white">{trainingStats?.totalSeries || 0}</h3>
+          </div>
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Sessioni Finite</p>
+            <h3 className="text-3xl font-black text-white">{trainingStats?.count || 0}</h3>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Grafici Statistici */}
+      <StatsCharts competitions={competitions} />
+
+      {/* 5. Bilancio Generale (Bilancio Finanziario) */}
+      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+        <div className="flex items-center gap-2 mb-6">
+          <i className="fas fa-wallet text-slate-500"></i>
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Bilancio Generale</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-6">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Costi Totali</p>
+            <p className="text-xs sm:text-xl font-black text-red-500 break-words">€{financial.totalCost.toFixed(2)}</p>
+          </div>
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Vincite Gare</p>
+            <p className="text-xs sm:text-xl font-black text-green-500 break-words">€{financial.totalWin.toFixed(2)}</p>
+          </div>
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Saldo Netto</p>
+            <p className={`text-xs sm:text-xl font-black break-words ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+              {financial.balance >= 0 ? '+' : ''}€{financial.balance.toFixed(2)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Prossimi Appuntamenti */}
       {upcomingCompetitions.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between ml-2">
@@ -149,93 +242,8 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
         </div>
       )}
 
-      {/* Sezione Gare */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 ml-2">
-          <i className="fas fa-trophy text-orange-500"></i>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Prestazioni in Gara</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Gare Concluse</p>
-            <h3 className="text-3xl font-black text-white">{compStats?.count || 0}</h3>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl border-l-4 border-l-orange-600">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Gara /25</p>
-            <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
-            {compStats?.bestPlacementComp ? (
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
-                  <span className="text-xs font-bold text-slate-400 uppercase">Posto</span>
-                </div>
-                <div className="mt-1">
-                  <p className="text-[10px] font-bold text-orange-500 uppercase truncate" title={compStats.bestPlacementComp.name}>
-                    {compStats.bestPlacementComp.name}
-                  </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
-                    Media: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <h3 className="text-3xl font-black text-slate-700">-</h3>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* AI Report Section */}
-      <DashboardAIReport competitions={competitions} />
-
-      {/* Sezione Allenamento */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 ml-2">
-          <i className="fas fa-dumbbell text-blue-500"></i>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Statistiche Allenamento</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl border-l-4 border-l-blue-600">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Pratica /25</p>
-            <h3 className="text-3xl font-black text-blue-500">{trainingStats?.avg.toFixed(2) || '0.00'}</h3>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Serie Concluse</p>
-            <h3 className="text-3xl font-black text-white">{trainingStats?.totalSeries || 0}</h3>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Sessioni Finite</p>
-            <h3 className="text-3xl font-black text-white">{trainingStats?.count || 0}</h3>
-          </div>
-        </div>
-      </div>
-
-      {/* Bilancio Finanziario */}
-      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
-        <div className="flex items-center gap-2 mb-6">
-          <i className="fas fa-wallet text-slate-500"></i>
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Bilancio Generale</h3>
-        </div>
-        <div className="grid grid-cols-3 gap-2 sm:gap-6">
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
-            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Costi Totali</p>
-            <p className="text-xs sm:text-xl font-black text-red-500 break-words">€{financial.totalCost.toFixed(2)}</p>
-          </div>
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
-            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Vincite Gare</p>
-            <p className="text-xs sm:text-xl font-black text-green-500 break-words">€{financial.totalWin.toFixed(2)}</p>
-          </div>
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
-            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Saldo Netto</p>
-            <p className={`text-xs sm:text-xl font-black break-words ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
-              {financial.balance >= 0 ? '+' : ''}€{financial.balance.toFixed(2)}
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* 7. Analisi Coach AI */}
+      <GeminiCoach competitions={competitions} />
     </div>
   );
 };
