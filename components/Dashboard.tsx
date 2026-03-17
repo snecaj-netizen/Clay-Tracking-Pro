@@ -1,17 +1,16 @@
 
 import React from 'react';
 import { Competition, Discipline } from '../types';
-import DashboardAIReport from './DashboardAIReport';
 import StatsCharts from './StatsCharts';
-import GeminiCoach from './GeminiCoach';
 
 interface DashboardProps {
   competitions: Competition[];
   onAddClick: () => void;
+  onCoachClick: () => void;
   user?: any;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoachClick, user }) => {
   // Filtriamo solo le gare REALI (punteggio > 0) per le statistiche
   const upcomingCompetitions = React.useMemo(() => {
     const now = new Date();
@@ -136,10 +135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
         </div>
       </div>
 
-      {/* 2. AI Performance Report */}
-      <DashboardAIReport competitions={competitions} />
-
-      {/* 3. Statistiche Allenamento */}
+      {/* 2. Statistiche Allenamento */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 ml-2">
           <i className="fas fa-dumbbell text-blue-500"></i>
@@ -161,10 +157,10 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
         </div>
       </div>
 
-      {/* 4. Grafici Statistici */}
+      {/* 3. Grafici Statistici */}
       <StatsCharts competitions={competitions} />
 
-      {/* 5. Bilancio Generale (Bilancio Finanziario) */}
+      {/* 4. Bilancio Generale (Bilancio Finanziario) */}
       <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 mb-6">
           <i className="fas fa-wallet text-slate-500"></i>
@@ -188,7 +184,7 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
         </div>
       </div>
 
-      {/* 6. Prossimi Appuntamenti */}
+      {/* 5. Prossimi Appuntamenti */}
       {upcomingCompetitions.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between ml-2">
@@ -242,8 +238,28 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, user })
         </div>
       )}
 
-      {/* 7. Analisi Coach AI */}
-      <GeminiCoach competitions={competitions} />
+      {/* 7. Analisi Coach AI - CTA to Full Page */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl overflow-hidden relative group cursor-pointer hover:border-orange-600/50 transition-all" onClick={onCoachClick}>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-orange-600/20 transition-all"></div>
+        <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
+          <div className="w-20 h-20 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20 shrink-0">
+            <i className="fas fa-user-tie text-3xl"></i>
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+              {user?.role === 'society' ? 'Hai bisogno di un\'analisi di squadra?' : 'Vuoi migliorare la tua tecnica?'}
+            </h3>
+            <p className="text-slate-400 text-sm font-medium mb-4">
+              {user?.role === 'society' 
+                ? 'Il tuo Consulente AI ha analizzato i nuovi dati agonistici. Scopri i trend e ricevi consigli strategici.' 
+                : 'Il tuo Coach AI ha analizzato le tue ultime prestazioni. Chiedigli consigli personalizzati o un piano di allenamento.'}
+            </p>
+            <button className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95">
+              Parla con il Coach <i className="fas fa-arrow-right ml-2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

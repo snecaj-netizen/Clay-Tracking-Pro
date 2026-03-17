@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Competition, Cartridge, Discipline } from '../types';
+import { Competition, Cartridge, Discipline, CompetitionLevel } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -39,7 +39,7 @@ const AICoachPage: React.FC<AICoachPageProps> = ({ competitions, cartridges, use
         setCoachStatus('thinking');
         const isSociety = user?.role === 'society';
         const filteredCount = isSociety 
-          ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== 'Allenamento / Pratica' as any).length
+          ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== CompetitionLevel.TRAINING).length
           : competitions.length;
 
         const greeting = isSociety 
@@ -128,7 +128,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
       
       // Prepare context - Filter out trainings for society
       const filteredComps = isSociety 
-        ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== 'Allenamento / Pratica' as any)
+        ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== CompetitionLevel.TRAINING)
         : competitions;
 
       const lastComps = [...filteredComps]
@@ -141,7 +141,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         - Nome: ${user?.name}
         - Ruolo: Gestore Società
         - Risultati recenti delle GARE dei tiratori (ultimi 30):
-        ${lastComps.map(c => `- ${c.date}: ${c.userName} ${c.userSurname} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
+        ${lastComps.map(c => `- ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
         
         Obiettivo: Analizzare le performance di squadra esclusivamente nelle GARE, identificare i tiratori più competitivi, suggerire strategie per le prossime competizioni o convocazioni basate sui risultati agonistici.
         Rispondi in modo professionale, strategico e orientato alla crescita della società. Usa il Markdown.
