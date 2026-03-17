@@ -25,6 +25,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<SocietyEvent | null>(null);
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   
   const [showFilters, setShowFilters] = useState(false);
   const [filterSociety, setFilterSociety] = useState('');
@@ -378,7 +379,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
@@ -388,6 +389,26 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           return;
         }
 
+        const parseExcelDate = (dateVal: any) => {
+          if (!dateVal) return new Date().toISOString().split('T')[0];
+          if (dateVal instanceof Date) {
+            const d = new Date(dateVal.getTime() - dateVal.getTimezoneOffset() * 60000);
+            return d.toISOString().split('T')[0];
+          }
+          if (typeof dateVal === 'string') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return dateVal;
+            const parts = dateVal.split(/[\/\-]/);
+            if (parts.length === 3 && parts[2].length === 4) {
+              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+            const parsed = new Date(dateVal);
+            if (!isNaN(parsed.getTime())) {
+              return parsed.toISOString().split('T')[0];
+            }
+          }
+          return new Date().toISOString().split('T')[0];
+        };
+
         const importedEvents = data.map(row => ({
           id: crypto.randomUUID(),
           name: row['Nome Gara'] || 'Gara senza nome',
@@ -396,8 +417,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           discipline: row['Disciplina'] || Discipline.CK,
           location: row['Società'] || '',
           targets: parseInt(row['Piattelli']) || 50,
-          start_date: row['Data Inizio'] || new Date().toISOString().split('T')[0],
-          end_date: row['Data Fine'] || row['Data Inizio'] || new Date().toISOString().split('T')[0],
+          start_date: parseExcelDate(row['Data Inizio']),
+          end_date: parseExcelDate(row['Data Fine'] || row['Data Inizio']),
           cost: row['Costo']?.toString() || '',
           notes: row['Note'] || '',
           registration_link: row['Link Iscrizione'] || ''
@@ -438,6 +459,34 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     };
     reader.readAsBinaryString(file);
     e.target.value = ''; // Reset input
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedEvents.length === 0) return;
+    triggerConfirm(
+      'Elimina Gare',
+      `Sei sicuro di voler eliminare ${selectedEvents.length} gare selezionate?`,
+      async () => {
+        setLoading(true);
+        try {
+          for (const id of selectedEvents) {
+            await fetch(`/api/events/${id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+          }
+          fetchEvents();
+          setSelectedEvents([]);
+        } catch (err) {
+          console.error('Error deleting events:', err);
+          alert('Errore durante l\'eliminazione delle gare.');
+        } finally {
+          setLoading(false);
+        }
+      },
+      'Elimina',
+      'danger'
+    );
   };
 
   if (loading) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
@@ -838,68 +887,126 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       ) : viewMode === 'calendar' ? (
         renderCalendarView()
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredEvents.length === 0 ? (
-            <div className="col-span-full py-12 text-center text-slate-600 italic text-sm bg-slate-950/30 rounded-2xl border border-dashed border-slate-800">
-              Nessun evento trovato.
-            </div>
-          ) : (
-            filteredEvents.map(ev => {
-              const past = isPastEvent(ev);
-              const ongoing = isOngoingEvent(ev);
-              const isNext = ev.id === nextUpcomingEventId;
-              
-              return (
-              <div 
-                key={ev.id} 
-                onClick={() => setSelectedEvent(ev)}
-                className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      {ongoing && (
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                          IN CORSO
-                        </span>
-                      )}
-                      {isNext && !ongoing && (
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
-                          PROSSIMA GARA
-                        </span>
-                      )}
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
-                        {ev.discipline.split(' ')[0]}
-                      </span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                        {ev.visibility}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
-                    <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-lg font-black text-white leading-none">{ev.targets}</div>
-                    <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Piattelli</div>
+        <div className="space-y-4">
+          {filteredEvents.length > 0 && (
+            <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-2xl border border-slate-800">
+              <label className="flex items-center gap-2 cursor-pointer group px-2">
+                <div className="relative flex items-center justify-center">
+                  <input 
+                    type="checkbox" 
+                    className="peer sr-only"
+                    checked={selectedEvents.length === filteredEvents.length && filteredEvents.length > 0}
+                    onChange={() => {
+                      if (selectedEvents.length === filteredEvents.length) {
+                        setSelectedEvents([]);
+                      } else {
+                        setSelectedEvents(filteredEvents.map(e => e.id));
+                      }
+                    }}
+                  />
+                  <div className="w-5 h-5 rounded border-2 border-slate-600 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center">
+                    <i className="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
                   </div>
                 </div>
-                
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-calendar-alt text-slate-600"></i>
-                    <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-tag text-slate-600"></i>
-                    <span>{ev.type}</span>
-                  </div>
-                </div>
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">
+                  Seleziona Tutti
+                </span>
+              </label>
 
-                <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </div>
-              );
-            })
+              {selectedEvents.length > 0 && (
+                <button 
+                  onClick={handleBulkDelete}
+                  className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                >
+                  <i className="fas fa-trash-alt"></i>
+                  Elimina Selezionati ({selectedEvents.length})
+                </button>
+              )}
+            </div>
           )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredEvents.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-slate-600 italic text-sm bg-slate-950/30 rounded-2xl border border-dashed border-slate-800">
+                Nessun evento trovato.
+              </div>
+            ) : (
+              filteredEvents.map(ev => {
+                const past = isPastEvent(ev);
+                const ongoing = isOngoingEvent(ev);
+                const isNext = ev.id === nextUpcomingEventId;
+                const isSelected = selectedEvents.includes(ev.id);
+                
+                return (
+                <div 
+                  key={ev.id} 
+                  onClick={() => setSelectedEvent(ev)}
+                  className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : ''} ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
+                >
+                  <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
+                    <label className="relative flex items-center justify-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="peer sr-only"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedEvents([...selectedEvents, ev.id]);
+                          } else {
+                            setSelectedEvents(selectedEvents.filter(id => id !== ev.id));
+                          }
+                        }}
+                      />
+                      <div className="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
+                        <i className="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-3 pr-8">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        {ongoing && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
+                            IN CORSO
+                          </span>
+                        )}
+                        {isNext && !ongoing && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
+                            PROSSIMA GARA
+                          </span>
+                        )}
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
+                          {ev.discipline.split(' ')[0]}
+                        </span>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                          {ev.visibility}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
+                      <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-calendar-alt text-slate-600"></i>
+                      <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <div className="text-sm font-black text-white leading-none">{ev.targets}</div>
+                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">Piattelli</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
 
