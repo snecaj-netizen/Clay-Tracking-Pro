@@ -5,7 +5,7 @@ import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
   currentView: string;
-  onNavigate: (view: any) => void;
+  onNavigate: (view: any, tab?: string) => void;
   onLogout?: () => void;
   user?: any;
 }
@@ -46,7 +46,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   };
 
   const menuItems = user?.role === 'society' ? [
-    { id: 'admin', label: 'Risultati', icon: 'fa-poll' },
+    { id: 'admin', tab: 'results', label: 'Risultati', icon: 'fa-poll' },
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
@@ -89,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
           <div className="flex items-center gap-2 sm:gap-4">
             <button 
-              onClick={() => onNavigate('admin')}
+              onClick={() => onNavigate('admin', 'profile')}
               className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
             >
               <div className="hidden sm:block text-right">
@@ -144,7 +144,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
           {menuItems.map((item) => (
             <button 
               key={item.id}
-              onClick={() => onNavigate(item.id)} 
+              onClick={() => onNavigate(item.id, (item as any).tab)} 
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'}`}
             >
               <i className={`fas ${item.icon} text-xs`}></i>
@@ -160,7 +160,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               {menuItems.map((item) => (
                 <button 
                   key={item.id}
-                  onClick={() => { onNavigate(item.id); setIsMenuOpen(false); }} 
+                  onClick={() => { onNavigate(item.id, (item as any).tab); setIsMenuOpen(false); }} 
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${currentView === item.id ? 'bg-orange-600 text-white' : 'text-slate-400 bg-slate-900/50'}`}
                 >
                   <i className={`fas ${item.icon} w-5`}></i>
@@ -169,7 +169,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               ))}
               <div className="mt-2 px-4 py-3 bg-slate-900/30 rounded-xl border border-slate-800/50 flex items-center justify-between">
                 <button 
-                  onClick={() => { onNavigate('admin'); setIsMenuOpen(false); }}
+                  onClick={() => { onNavigate('admin', 'profile'); setIsMenuOpen(false); }}
                   className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity active:scale-95 overflow-hidden pr-2"
                 >
                   {user?.avatar ? (

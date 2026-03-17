@@ -340,6 +340,17 @@ const App: React.FC = () => {
     );
   };
 
+  const handleNavigate = (newView: any, tab?: string) => {
+    if (newView === 'admin' && tab) {
+      setInitialAdminTab(tab);
+    } else if (newView === 'admin' && user?.role === 'society') {
+      setInitialAdminTab('results');
+    } else {
+      setInitialAdminTab(null);
+    }
+    setView(newView);
+  };
+
   if (!token) {
     return <Auth onLogin={handleLogin} />;
   }
@@ -352,12 +363,12 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col pb-24 sm:pb-8">
       <Header 
         currentView={view} 
-        onNavigate={setView} 
+        onNavigate={handleNavigate} 
         onLogout={handleLogout}
         user={user}
       />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 pb-20 sm:pb-8 flex-1 w-full">
+      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 pb-20 sm:pb-8 flex-1 w-full ${view === 'ai-coach' ? 'flex flex-col' : ''}`}>
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Dashboard 
@@ -370,7 +381,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'ai-coach' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1 flex flex-col">
             <AICoachPage competitions={competitions} cartridges={cartridges} user={user} />
           </div>
         )}

@@ -214,9 +214,9 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] max-w-5xl mx-auto">
+    <div className="flex flex-col flex-1 w-full max-w-5xl mx-auto">
       {/* Coach Header */}
-      <div className="bg-slate-900 border border-slate-600 rounded-3xl p-6 mb-6 shadow-xl flex items-center justify-between">
+      <div className="bg-slate-900 border border-slate-600 rounded-3xl p-6 mb-6 shadow-xl flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20">
@@ -279,7 +279,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
 
         {/* Suggested Questions */}
         {messages.length < 3 && (
-          <div className="px-6 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="px-6 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
             {suggestedQuestions.map((q, i) => (
               <button
                 key={i}
@@ -293,7 +293,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         )}
 
         {/* Input Area */}
-        <div className="p-4 bg-slate-900 border-t border-slate-800">
+        <div className="p-4 bg-slate-900 border-t border-slate-800 shrink-0">
           <div className="relative flex items-center gap-2">
             <input
               type="text"
