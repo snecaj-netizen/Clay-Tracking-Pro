@@ -103,15 +103,15 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
           <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Prestazioni in Gara</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Gare Concluse</p>
             <h3 className="text-3xl font-black text-white">{compStats?.count || 0}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl border-l-4 border-l-orange-600">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl border-l-4 border-l-orange-600">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Gara /25</p>
             <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
             {compStats?.bestPlacementComp ? (
               <div>
@@ -142,15 +142,15 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
           <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Statistiche Allenamento</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl border-l-4 border-l-blue-600">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl border-l-4 border-l-blue-600">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Pratica /25</p>
             <h3 className="text-3xl font-black text-blue-500">{trainingStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Serie Concluse</p>
             <h3 className="text-3xl font-black text-white">{trainingStats?.totalSeries || 0}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Sessioni Finite</p>
             <h3 className="text-3xl font-black text-white">{trainingStats?.count || 0}</h3>
           </div>
@@ -161,21 +161,21 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
       <StatsCharts competitions={competitions} />
 
       {/* 4. Bilancio Generale (Bilancio Finanziario) */}
-      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+      <div className="bg-slate-900 p-6 rounded-3xl border border-white/10 shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 mb-6">
           <i className="fas fa-wallet text-slate-500"></i>
           <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Bilancio Generale</h3>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-6">
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-white/10 min-w-0 flex flex-col justify-center">
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Costi Totali</p>
             <p className="text-xs sm:text-xl font-black text-red-500 break-words">€{financial.totalCost.toFixed(2)}</p>
           </div>
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-white/10 min-w-0 flex flex-col justify-center">
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Vincite Gare</p>
             <p className="text-xs sm:text-xl font-black text-green-500 break-words">€{financial.totalWin.toFixed(2)}</p>
           </div>
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-800 min-w-0 flex flex-col justify-center">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-white/10 min-w-0 flex flex-col justify-center">
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Saldo Netto</p>
             <p className={`text-xs sm:text-xl font-black break-words ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
               {financial.balance >= 0 ? '+' : ''}€{financial.balance.toFixed(2)}
@@ -201,7 +201,7 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
               const d = new Date(comp.date);
               const isToday = d.toDateString() === new Date().toDateString();
               return (
-                <div key={comp.id} className={`group relative bg-slate-900 p-5 rounded-2xl border ${isToday ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800'} shadow-xl overflow-hidden transition-all hover:border-emerald-500/30`}>
+                <div key={comp.id} className={`group relative bg-slate-900 p-5 rounded-2xl border ${isToday ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10'} shadow-xl overflow-hidden transition-all hover:border-emerald-500/30`}>
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -239,7 +239,7 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
       )}
 
       {/* 7. Analisi Coach AI - CTA to Full Page */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl overflow-hidden relative group cursor-pointer hover:border-orange-600/50 transition-all" onClick={onCoachClick}>
+      <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-xl overflow-hidden relative group cursor-pointer hover:border-orange-600/50 transition-all" onClick={onCoachClick}>
         <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-orange-600/20 transition-all"></div>
         <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
           <div className="w-20 h-20 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20 shrink-0">

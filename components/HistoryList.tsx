@@ -194,7 +194,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
           const isNextUpcoming = comp.id === nextUpcomingCompId;
           const isPlanned = compDate > today && comp.totalScore === 0;
 
-          let borderClass = 'border-slate-800';
+          let borderClass = 'border-white/10';
           let bgClass = 'bg-slate-900';
           
           if (isOngoing) {
@@ -528,7 +528,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
               ) : (
                 <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                   {compsByDate[selectedDay].map(comp => (
-                    <div key={comp.id} className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl flex flex-col gap-3 hover:border-slate-700 transition-colors group">
+                    <div key={comp.id} className="bg-slate-950/80 border border-white/10 p-5 rounded-2xl flex flex-col gap-3 hover:border-orange-500/30 transition-colors group">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
