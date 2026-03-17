@@ -279,6 +279,19 @@ const initDB = async () => {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS scheduled_broadcasts (
+        id SERIAL PRIMARY KEY,
+        target_type TEXT NOT NULL,
+        target_id TEXT,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        scheduled_at TIMESTAMP NOT NULL,
+        sent BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Initialize VAPID keys
     try {
       const { rows: vapidRows } = await pool.query("SELECT * FROM vapid_keys WHERE id = 1");
@@ -364,6 +377,31 @@ initDB().then(() => {
       }
     } catch (err) {
       console.error("Error in cron job for upcoming events:", err);
+    }
+  });
+
+  // Setup cron job for scheduled broadcasts
+  cron.schedule('* * * * *', async () => {
+    try {
+      const now = new Date();
+      const { rows: pendingBroadcasts } = await pool.query(
+        "SELECT * FROM scheduled_broadcasts WHERE sent = FALSE AND scheduled_at <= $1",
+        [now]
+      );
+
+      for (const broadcast of pendingBroadcasts) {
+        try {
+          const userIds = await getTargetUserIds(broadcast.target_type, broadcast.target_id);
+          if (userIds.length > 0) {
+            await sendPushNotification(userIds, broadcast.title, broadcast.body, '/dashboard');
+          }
+          await pool.query("UPDATE scheduled_broadcasts SET sent = TRUE WHERE id = $1", [broadcast.id]);
+        } catch (err) {
+          console.error('Error processing scheduled broadcast:', err);
+        }
+      }
+    } catch (err) {
+      console.error("Error in cron job for scheduled broadcasts:", err);
     }
   });
 });
@@ -551,6 +589,28 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
   }
 };
 
+const getTargetUserIds = async (targetType: string, targetId: string | null) => {
+  let userQuery = "";
+  let queryParams: any[] = [];
+
+  if (targetType === 'all_societies') {
+    userQuery = "SELECT id FROM users WHERE role = 'society'";
+  } else if (targetType === 'specific_society') {
+    userQuery = "SELECT id FROM users WHERE role = 'society' AND society = $1";
+    queryParams = [targetId];
+  } else if (targetType === 'all_shooters') {
+    userQuery = "SELECT id FROM users WHERE role = 'user'";
+  } else if (targetType === 'shooters_of_society') {
+    userQuery = "SELECT id FROM users WHERE role = 'user' AND society = $1";
+    queryParams = [targetId];
+  }
+
+  if (!userQuery) return [];
+
+  const { rows: targetUsers } = await pool.query(userQuery, queryParams);
+  return targetUsers.map(u => u.id);
+};
+
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
@@ -629,6 +689,37 @@ app.put('/api/admin/notifications/:id/read', authenticateToken, requireAdmin, as
   try {
     await pool.query("UPDATE notifications SET read = TRUE WHERE id = $1", [req.params.id]);
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/notifications/send', authenticateToken, requireAdmin, async (req: any, res) => {
+  const { targetType, targetId, title, body, scheduledAt } = req.body;
+  
+  if (!title || !body || !targetType) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const sendTime = scheduledAt ? new Date(scheduledAt) : new Date();
+    const now = new Date();
+
+    if (sendTime > now) {
+      // Schedule for later
+      await pool.query(
+        "INSERT INTO scheduled_broadcasts (target_type, target_id, title, body, scheduled_at) VALUES ($1, $2, $3, $4, $5)",
+        [targetType, targetId, title, body, sendTime]
+      );
+      res.json({ message: 'Notification scheduled successfully' });
+    } else {
+      // Send immediately
+      const userIds = await getTargetUserIds(targetType, targetId);
+      if (userIds.length > 0) {
+        await sendPushNotification(userIds, title, body, '/dashboard');
+      }
+      res.json({ message: 'Notification sent successfully' });
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Competition, Discipline } from '../types';
+import { Competition, Discipline, getSeriesLayout } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 interface DashboardAIReportProps {
@@ -87,7 +87,9 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
       const resultsSummary = lastComps.map(c => {
         const score = c.totalScore || 0;
         const targets = c.totalTargets || 25;
-        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / 25));
+        const layoutObj = getSeriesLayout(c.discipline);
+        const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
+        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / tps));
         return `- ${c.name} (${c.discipline}, Livello: ${c.level}): ${score}/${targets} (Media: ${avg.toFixed(1)}) - Posizione: ${c.position || 'N/D'}`;
       }).join('\n');
 

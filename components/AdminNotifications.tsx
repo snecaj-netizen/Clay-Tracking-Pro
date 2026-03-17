@@ -8,10 +8,75 @@ interface AdminNotificationsProps {
 export default function AdminNotifications({ token, triggerConfirm }: AdminNotificationsProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [societies, setSocieties] = useState<any[]>([]);
+  
+  // Form states
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [targetType, setTargetType] = useState('all_shooters');
+  const [targetId, setTargetId] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [sending, setSending] = useState(false);
+  const [showSendForm, setShowSendForm] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
+    fetchSocieties();
   }, [token]);
+
+  const fetchSocieties = async () => {
+    try {
+      const res = await fetch('/api/societies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSocieties(data);
+      }
+    } catch (err) {
+      console.error('Error fetching societies:', err);
+    }
+  };
+
+  const handleSendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !body) return;
+
+    setSending(true);
+    try {
+      const res = await fetch('/api/admin/notifications/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title,
+          body,
+          targetType,
+          targetId,
+          scheduledAt: scheduledAt || null
+        })
+      });
+
+      if (res.ok) {
+        setTitle('');
+        setBody('');
+        setScheduledAt('');
+        setShowSendForm(false);
+        fetchNotifications();
+        // Show success message if needed
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Errore durante l\'invio della notifica');
+      }
+    } catch (err) {
+      console.error('Error sending notification:', err);
+      alert('Errore di rete durante l\'invio');
+    } finally {
+      setSending(false);
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -77,10 +142,107 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-black text-white uppercase tracking-tight">Gestione Notifiche</h2>
-        <span className="text-xs font-bold text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-          {notifications.length} Totali
-        </span>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowSendForm(!showSendForm)}
+            className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-orange-600/20"
+          >
+            <i className={`fas ${showSendForm ? 'fa-times' : 'fa-paper-plane'}`}></i>
+            {showSendForm ? 'Annulla' : 'Invia Notifica'}
+          </button>
+          <span className="text-xs font-bold text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
+            {notifications.length} Totali
+          </span>
+        </div>
       </div>
+
+      {showSendForm && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+          <form onSubmit={handleSendNotification} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo</label>
+                <input 
+                  type="text" 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Inserisci il titolo..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Destinatari</label>
+                <select 
+                  value={targetType}
+                  onChange={(e) => setTargetType(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                >
+                  <option value="all_shooters">Tutti i tiratori</option>
+                  <option value="all_societies">Tutte le società</option>
+                  <option value="specific_society">Una società specifica</option>
+                  <option value="shooters_of_society">Tiratori di una società specifica</option>
+                </select>
+              </div>
+            </div>
+
+            {(targetType === 'specific_society' || targetType === 'shooters_of_society') && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seleziona Società</label>
+                <select 
+                  value={targetId}
+                  onChange={(e) => setTargetId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  required
+                >
+                  <option value="">Scegli una società...</option>
+                  {societies.map(soc => (
+                    <option key={soc.id} value={soc.name}>{soc.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Messaggio</label>
+              <textarea 
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Scrivi qui il contenuto della notifica..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-h-[100px] resize-none"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Programmazione (Opzionale)</label>
+                <input 
+                  type="datetime-local" 
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                />
+                <p className="text-[9px] text-slate-500 italic ml-1">Lascia vuoto per inviare subito.</p>
+              </div>
+              <div className="flex items-end">
+                <button 
+                  type="submit"
+                  disabled={sending}
+                  className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-black uppercase py-4 rounded-xl transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2"
+                >
+                  {sending ? (
+                    <i className="fas fa-spinner fa-spin"></i>
+                  ) : (
+                    <i className="fas fa-paper-plane"></i>
+                  )}
+                  {scheduledAt ? 'Programma Notifica' : 'Invia Ora'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="grid gap-3">
         {notifications.length === 0 ? (

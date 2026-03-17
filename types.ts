@@ -8,6 +8,10 @@ export enum Discipline {
   FO = 'Fossa Olimpica (FO)',
   FU = 'Fossa Universale (FU)',
   TC = 'Tiro Combinato (TC)',
+  EL = 'Elica (EL)',
+  SK_ISSF = 'Skeet ISSF (SK ISSF)',
+  TR1 = 'Trap 1 (TR1)',
+  DT = 'Double Trap (DT)',
   TRAINING = 'Allenamento'
 }
 
@@ -175,6 +179,24 @@ export const getSeriesLayout = (discipline: Discipline) => {
     return {
       label: 'Piazzola',
       layout: [9, 9, 7]
+    };
+  }
+  if (discipline === Discipline.EL) {
+    return {
+      label: 'Serie',
+      layout: [3, 3, 3, 3] // Example for 12 targets, can be adjusted
+    };
+  }
+  if (discipline === Discipline.DT) {
+    return {
+      label: 'Pedana',
+      layout: [6, 6, 6, 6, 6] // 30 targets
+    };
+  }
+  if (discipline === Discipline.SK_ISSF) {
+    return {
+      label: 'Pedana',
+      layout: [3, 3, 3, 3, 3, 3, 3, 4] // 25 targets over 8 stations
     };
   }
   return {

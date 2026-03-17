@@ -114,10 +114,13 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       if (level === CompetitionLevel.TRAINING) setLevel(CompetitionLevel.REGIONAL);
       
       // Update scores length based on totalTargets
-      const numSeries = totalTargets / 25;
+      const seriesLayoutObj = getSeriesLayout(discipline);
+      const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+      const numSeries = Math.ceil(totalTargets / targetsPerSeries);
+
       if (scores.length !== numSeries) {
         setScores(prev => {
-          const newScores = Array(numSeries).fill(25);
+          const newScores = Array(numSeries).fill(targetsPerSeries);
           for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
             newScores[i] = prev[i];
           }
@@ -132,7 +135,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         });
       }
     }
-  }, [eventType, totalTargets]);
+  }, [eventType, totalTargets, discipline]);
 
   const fetchWeatherWithAI = async () => {
     let currentLocation = location;
@@ -429,20 +432,29 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           <div className="md:col-span-2 space-y-4 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Numero Serie</label>
-              <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded">TOTALE: {scores.length * 25} PIATTELLI</span>
+              <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded">
+                TOTALE: {scores.reduce((a, b) => a + b, 0)} PIATTELLI
+              </span>
             </div>
             <div className="flex items-center gap-4">
               <button type="button" onClick={() => scores.length > 1 && setScores(scores.slice(0, -1))} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">-</button>
               <div className="flex-[2] text-center text-3xl font-black text-white">{scores.length}</div>
-              <button type="button" onClick={() => scores.length < 12 && setScores([...scores, 25])} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">+</button>
+              <button type="button" onClick={() => {
+                const layoutObj = getSeriesLayout(discipline);
+                const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
+                if (scores.length < 12) setScores([...scores, tps]);
+              }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">+</button>
             </div>
           </div>
         ) : (
           <div className="md:col-span-2 space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Piattelli Gara</label>
-            <div className="flex gap-4">
-              {[25, 50, 100, 200].map(val => (
-                <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border-2 border-slate-700'}`}>{val}</button>
+            <div className="flex flex-wrap gap-4">
+              {(discipline === Discipline.EL ? [12, 24, 36] : 
+                discipline === Discipline.DT ? [150] :
+                discipline === Discipline.SK_ISSF ? [75, 125] :
+                [25, 50, 100, 200]).map(val => (
+                <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 min-w-[60px] py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border-2 border-slate-700'}`}>{val}</button>
               ))}
             </div>
           </div>

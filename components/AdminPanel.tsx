@@ -7,7 +7,7 @@ import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import AdminNotifications from './AdminNotifications';
-import { Competition, Cartridge, AppData, Discipline } from '../types';
+import { Competition, Cartridge, AppData, Discipline, getSeriesLayout } from '../types';
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -1025,8 +1025,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const totalCompetitions = results.length;
       const totalScore = results.reduce((acc: number, r: any) => acc + (r.totalScore || 0), 0);
       const totalTargets = results.reduce((acc: number, r: any) => acc + (r.totalTargets || 0), 0);
-      const average = totalTargets > 0 ? (totalScore / totalTargets) * 25 : 0;
-      const bestAverage = results.length > 0 ? Math.max(...results.map((r: any) => r.totalTargets > 0 ? (r.totalScore / r.totalTargets) * 25 : 0)) : 0;
+      const layoutObj = getSeriesLayout(results[0]?.discipline as Discipline || Discipline.CK);
+      const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
+      const average = totalTargets > 0 ? (totalScore / totalTargets) * tps : 0;
+      const bestAverage = results.length > 0 ? Math.max(...results.map((r: any) => {
+        const rLayoutObj = getSeriesLayout(r.discipline as Discipline);
+        const rTps = rLayoutObj.layout.reduce((a, b) => a + b, 0);
+        return r.totalTargets > 0 ? (r.totalScore / r.totalTargets) * rTps : 0;
+      })) : 0;
       
       return {
         ...group,

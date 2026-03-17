@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Competition } from '../types';
+import { Competition, Discipline, getSeriesLayout } from '../types';
 
 interface GeminiCoachProps {
   competitions: Competition[];
@@ -86,7 +86,9 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
       const resultsSummary = lastFive.map(c => {
         const score = c.totalScore || 0;
         const targets = c.totalTargets || 25;
-        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / 25));
+        const layoutObj = getSeriesLayout(c.discipline as Discipline);
+        const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
+        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / tps));
         return `- ${c.name} (${c.discipline}): ${score}/${targets} (Media: ${avg.toFixed(1)})`;
       }).join('\n');
 
@@ -95,7 +97,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
         Analizza i miei ultimi risultati reali:
         ${resultsSummary}
         
-        Considerando che le discipline sono CK (Compak), SP (Sporting), ES (English Sporting), PC (Percorso Caccia), SK (Skeet), FO (Fossa Olimpica), FU (Fossa Universale) e TC (Tiro Combinato).
+        Considerando che le discipline sono CK (Compak), SP (Sporting), ES (English Sporting), PC (Percorso Caccia), SK (Skeet), FO (Fossa Olimpica), FU (Fossa Universale), TC (Tiro Combinato), EL (Elica), SK ISSF (Skeet ISSF), TR1 (Trap 1) e DT (Double Trap).
         Fornisci 3 consigli tecnici brevi e motivazionali in italiano per migliorare la mia media. 
         Sii specifico ma conciso. Usa un tono professionale e incoraggiante.
         Formatta la risposta con punti elenco.

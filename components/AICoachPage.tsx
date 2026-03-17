@@ -146,7 +146,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         Obiettivo: Analizzare le performance di squadra esclusivamente nelle GARE, identificare i tiratori più competitivi, suggerire strategie per le prossime competizioni o convocazioni basate sui risultati agonistici.
         Rispondi in modo professionale, strategico e orientato alla crescita della società. Usa il Markdown.
       ` : `
-        Sei un Coach esperto di Tiro a Volo (Trap, Skeet, Sporting, Compak).
+        Sei un Coach esperto di Tiro a Volo (Trap, Skeet, Sporting, Compak, Elica, Skeet ISSF, Trap 1, Double Trap).
         Dati dell'utente:
         - Nome: ${user?.name} ${user?.surname}
         - Ruolo: ${user?.role}
