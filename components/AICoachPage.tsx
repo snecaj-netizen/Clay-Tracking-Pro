@@ -214,21 +214,21 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
   ];
 
   return (
-    <div className="flex flex-col flex-1 w-full max-w-5xl mx-auto">
+    <div className="flex flex-col w-full max-w-5xl mx-auto h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-10rem)]">
       {/* Coach Header */}
-      <div className="bg-slate-900 border border-slate-600 rounded-3xl p-6 mb-6 shadow-xl flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="bg-slate-900 border border-slate-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-xl flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative">
-            <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20">
-              <i className="fas fa-user-tie text-2xl"></i>
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20">
+              <i className="fas fa-user-tie text-xl sm:text-2xl"></i>
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 ${coachStatus === 'thinking' ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+            <div className={`absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-slate-900 ${coachStatus === 'thinking' ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></div>
           </div>
           <div>
-            <h2 className="text-xl font-black text-white uppercase tracking-tight">
+            <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
               {user?.role === 'society' ? 'Consulente AI Società' : 'Coach AI Personale'}
             </h2>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">
               {coachStatus === 'thinking' ? 'Analisi in corso...' : (user?.role === 'society' ? 'Pronto per l\'analisi di squadra' : 'Il Coach è pronto ad aiutarti')}
             </p>
           </div>
@@ -237,16 +237,16 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         {needsKey && (
           <button 
             onClick={checkAndOpenKeySelector}
-            className="bg-orange-600/10 hover:bg-orange-600/20 text-orange-500 border border-orange-500/20 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+            className="bg-orange-600/10 hover:bg-orange-600/20 text-orange-500 border border-orange-500/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all"
           >
-            <i className="fas fa-key mr-2"></i> Configura API
+            <i className="fas fa-key sm:mr-2"></i> <span className="hidden sm:inline">Configura API</span>
           </button>
         )}
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+      <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
               <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl ${
