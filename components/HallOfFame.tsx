@@ -399,9 +399,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
       {/* Challenge Details Modal */}
       {selectedChallenge && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setSelectedChallenge(null)}>
-          <div className="relative w-full max-w-4xl bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-4xl bg-slate-950 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-6 sm:p-8 border-b border-slate-800 relative">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-6 sm:p-8 border-b border-slate-700 relative">
               <button 
                 onClick={() => setSelectedChallenge(null)}
                 className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg z-20"
@@ -439,7 +439,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">Categoria:</span>
-                    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar">
+                    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 overflow-x-auto no-scrollbar">
                       {categories.map(cat => (
                         <button 
                           key={cat}

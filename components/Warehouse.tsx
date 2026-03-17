@@ -328,13 +328,13 @@ const Warehouse: React.FC<WarehouseProps> = ({ cartridges, onSave, onDelete, onU
         {activeTab === 'inventory' ? (
           <div className="grid grid-cols-1 gap-4">
             {groupedStock.length === 0 ? (
-              <div className="text-center py-20 text-slate-600 border-2 border-dashed border-slate-900 rounded-3xl">
+              <div className="text-center py-20 text-slate-600 border-2 border-dashed border-slate-700 rounded-3xl">
                 <i className="fas fa-box-open text-4xl mb-3 opacity-20"></i>
                 <p className="text-sm font-medium">Magazzino vuoto.</p>
               </div>
             ) : (
               groupedStock.map(type => (
-                <div key={`${type.producer}-${type.model}-${type.leadNumber}`} className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
+                <div key={`${type.producer}-${type.model}-${type.leadNumber}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
                   <div className="w-full sm:w-28 h-24 sm:h-full bg-slate-800 relative overflow-hidden flex-shrink-0">
                     {type.imageUrl ? (
                       <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" />

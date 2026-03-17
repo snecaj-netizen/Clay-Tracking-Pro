@@ -1081,7 +1081,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Tab Switcher - Mobile (Custom Elegant Dropdown) */}
       {!hideTabs && (
-        <div className="sm:hidden sticky top-16 z-[46] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-800 shadow-lg">
+        <div className="sm:hidden sticky top-16 z-[46] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
@@ -1114,7 +1114,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
 
           {isMobileMenuOpen && (
-            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
               <div className="p-2 grid grid-cols-1 gap-1">
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                   <>
@@ -1179,7 +1179,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
-        <div className="hidden sm:flex sticky top-[104px] z-40 bg-slate-900 p-1 rounded-2xl border border-slate-800 w-full shadow-xl flex-wrap">
+        <div className="hidden sm:flex sticky top-[104px] z-40 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('results')}
@@ -1271,7 +1271,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       ) : activeTab === 'notifications' ? (
         <AdminNotifications token={token} triggerConfirm={triggerConfirm} />
       ) : activeTab === 'profile' ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
             <i className="fas fa-user-circle text-orange-500"></i> Il Tuo Profilo
           </h2>
@@ -1300,15 +1300,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
-                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
@@ -1318,7 +1318,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={profilePassword} 
                     onChange={e => setProfilePassword(e.target.value)} 
                     placeholder="Lascia vuoto per non cambiare" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
                   />
                   <button 
                     type="button"
@@ -1336,7 +1336,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={profileSociety} 
                     onChange={e => setProfileSociety(e.target.value)} 
                     disabled={currentUser?.role === 'society'}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value="">Seleziona...</option>
                     {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -1349,11 +1349,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
-                    <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
-                    <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                    <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                       <option value="">Seleziona...</option>
                       <option value="Eccellenza">Eccellenza</option>
                       <option value="1*">1*</option>
@@ -1363,7 +1363,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
-                    <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                    <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                       <option value="">Seleziona...</option>
                       <option value="Veterani">Veterani</option>
                       <option value="Master">Master</option>
@@ -1381,7 +1381,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       ) : activeTab === 'team' ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Gestione Squadre */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                 <i className="fas fa-users text-orange-500"></i> Gestione Squadre
@@ -1404,7 +1404,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             {showTeamForm && (
-              <form onSubmit={handleCreateTeam} className="bg-slate-950/50 p-4 sm:p-6 rounded-2xl border border-slate-800 mb-8 space-y-4 sm:space-y-6 animate-in zoom-in-95 duration-300">
+              <form onSubmit={handleCreateTeam} className="bg-slate-950/50 p-4 sm:p-6 rounded-2xl border border-slate-700 mb-8 space-y-4 sm:space-y-6 animate-in zoom-in-95 duration-300">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Squadra</label>
@@ -1580,7 +1580,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {/* Elenco Squadre Esistenti */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {teams.map(team => (
-                <div key={team.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl p-3 group">
+                <div key={team.id} className="bg-slate-950/50 border border-slate-700 rounded-2xl p-3 group">
                   <div className="flex items-start justify-between mb-2 gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[8px] font-black bg-orange-600/20 text-orange-500 px-1.5 py-0.5 rounded uppercase">
@@ -1697,7 +1697,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           {/* Dashboard Squadre (Tabella Statistiche) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
               <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                 <i className="fas fa-chart-line text-orange-500"></i> Statistiche Individuali
@@ -1749,7 +1749,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       ) : activeTab === 'societies' ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}

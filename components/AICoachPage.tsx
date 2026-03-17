@@ -216,7 +216,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] max-w-5xl mx-auto">
       {/* Coach Header */}
-      <div className="bg-slate-900 border border-white/10 rounded-3xl p-6 mb-6 shadow-xl flex items-center justify-between">
+      <div className="bg-slate-900 border border-slate-600 rounded-3xl p-6 mb-6 shadow-xl flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20">
@@ -245,7 +245,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-slate-900/50 border border-white/10 rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
+      <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
         <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>

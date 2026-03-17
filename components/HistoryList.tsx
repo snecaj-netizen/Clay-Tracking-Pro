@@ -177,7 +177,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
   const renderListView = () => (
     <div className="space-y-4 pt-4">
       {sortedCompetitions.length === 0 ? (
-        <div className="bg-slate-900/50 border-2 border-dashed border-slate-800 rounded-3xl p-12 text-center">
+        <div className="bg-slate-900/50 border-2 border-dashed border-slate-700 rounded-3xl p-12 text-center">
           <i className="fas fa-search text-slate-700 text-3xl mb-4"></i>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Nessun risultato con i filtri attuali</p>
         </div>
@@ -194,7 +194,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
           const isNextUpcoming = comp.id === nextUpcomingCompId;
           const isPlanned = compDate > today && comp.totalScore === 0;
 
-          let borderClass = 'border-white/10';
+          let borderClass = 'border-slate-600';
           let bgClass = 'bg-slate-900';
           
           if (isOngoing) {
@@ -211,7 +211,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
           }
 
           return (
-            <div key={comp.id} className={`${bgClass} rounded-2xl p-5 border ${borderClass} hover:border-slate-700 transition-all group relative`}>
+            <div key={comp.id} className={`${bgClass} rounded-2xl p-5 border ${borderClass} hover:border-slate-400 transition-all group relative`}>
               <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">

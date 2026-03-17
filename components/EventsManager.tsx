@@ -547,7 +547,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         </h2>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end">
           {!showForm && (
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 shrink-0">
               <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list text-sm"></i> <span>Lista</span></button>
               <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt text-sm"></i> <span>Calendario</span></button>
             </div>
@@ -555,7 +555,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           {!showForm && (
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-600'}`}
             >
               <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
               <span>Filtri</span>
@@ -569,14 +569,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       </div>
 
       {!showForm && showFilters && (
-        <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
+        <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-700 animate-in zoom-in-95 duration-300`}>
           {!(restrictToSociety && user?.role === 'society') && (
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
               <select 
                 value={filterSociety} 
                 onChange={e => setFilterSociety(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
               >
                 <option value="">Tutte le società</option>
                 {societies.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -588,7 +588,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             <select 
               value={filterDiscipline} 
               onChange={e => setFilterDiscipline(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
             >
               <option value="">Tutte le discipline</option>
               {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
@@ -615,7 +615,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       )}
 
       {showForm ? (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-white uppercase tracking-widest">{editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}</h3>
             <button type="button" onClick={resetForm} className="text-slate-400 hover:text-white">
@@ -747,7 +747,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               <div 
                 key={ev.id} 
                 onClick={() => setSelectedEvent(ev)}
-                className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-700 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
+                className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">

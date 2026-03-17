@@ -103,15 +103,15 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
           <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Prestazioni in Gara</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Gare Concluse</p>
             <h3 className="text-3xl font-black text-white">{compStats?.count || 0}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl border-l-4 border-l-orange-600">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl border-l-4 border-l-orange-600">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Gara /25</p>
             <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
             {compStats?.bestPlacementComp ? (
               <div>
@@ -142,15 +142,15 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
           <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Statistiche Allenamento</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl border-l-4 border-l-blue-600">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl border-l-4 border-l-blue-600">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Pratica /25</p>
             <h3 className="text-3xl font-black text-blue-500">{trainingStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Serie Concluse</p>
             <h3 className="text-3xl font-black text-white">{trainingStats?.totalSeries || 0}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-white/10 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Sessioni Finite</p>
             <h3 className="text-3xl font-black text-white">{trainingStats?.count || 0}</h3>
           </div>
@@ -167,15 +167,15 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
           <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Bilancio Generale</h3>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-6">
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-white/10 min-w-0 flex flex-col justify-center">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-600 min-w-0 flex flex-col justify-center">
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Costi Totali</p>
             <p className="text-xs sm:text-xl font-black text-red-500 break-words">€{financial.totalCost.toFixed(2)}</p>
           </div>
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-white/10 min-w-0 flex flex-col justify-center">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-600 min-w-0 flex flex-col justify-center">
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Vincite Gare</p>
             <p className="text-xs sm:text-xl font-black text-green-500 break-words">€{financial.totalWin.toFixed(2)}</p>
           </div>
-          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-white/10 min-w-0 flex flex-col justify-center">
+          <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-600 min-w-0 flex flex-col justify-center">
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Saldo Netto</p>
             <p className={`text-xs sm:text-xl font-black break-words ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
               {financial.balance >= 0 ? '+' : ''}€{financial.balance.toFixed(2)}

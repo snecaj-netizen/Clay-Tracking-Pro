@@ -84,12 +84,12 @@ const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="space-y-6 pb-10">
       {/* Sezione Backup Manuale - Sempre Visibile */}
-      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
+      <section className="bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-xl">
         <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-3">
           <i className="fas fa-hdd text-blue-500"></i> Backup Manuale
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button onClick={handleExport} className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-700 transition-all">
+          <button onClick={handleExport} className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-600 transition-all">
             <i className="fas fa-file-export text-orange-500"></i> Esporta JSON (Miei Dati)
           </button>
           {user?.role === 'admin' && (
@@ -97,7 +97,7 @@ const Settings: React.FC<SettingsProps> = ({
               <i className="fas fa-database"></i> Esporta Tutto (Admin)
             </button>
           )}
-          <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-700 transition-all">
+          <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-600 transition-all">
             <i className="fas fa-file-import text-blue-500"></i> Importa JSON
           </button>
           <input type="file" ref={fileInputRef} onChange={(e) => {
