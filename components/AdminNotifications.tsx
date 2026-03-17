@@ -19,6 +19,7 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
   const [scheduledAt, setScheduledAt] = useState('');
   const [sending, setSending] = useState(false);
   const [showSendForm, setShowSendForm] = useState(false);
+  const [selectedNotifications, setSelectedNotifications] = useState<number[]>([]);
 
   useEffect(() => {
     fetchNotifications();
@@ -121,9 +122,38 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
           });
           if (res.ok) {
             setNotifications(prev => prev.filter(n => n.id !== id));
+            setSelectedNotifications(prev => prev.filter(nId => nId !== id));
           }
         } catch (err) {
           console.error('Error deleting notification:', err);
+        }
+      },
+      'Elimina',
+      'danger'
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedNotifications.length === 0) return;
+    triggerConfirm(
+      'Elimina Notifiche',
+      `Sei sicuro di voler eliminare ${selectedNotifications.length} notifiche selezionate?`,
+      async () => {
+        setLoading(true);
+        try {
+          for (const id of selectedNotifications) {
+            await fetch(`/api/admin/notifications/${id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+          }
+          fetchNotifications();
+          setSelectedNotifications([]);
+        } catch (err) {
+          console.error('Error deleting notifications:', err);
+          alert('Errore durante l\'eliminazione delle notifiche.');
+        } finally {
+          setLoading(false);
         }
       },
       'Elimina',
@@ -242,32 +272,90 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
       )}
 
       <div className="grid gap-3">
+        {notifications.length > 0 && (
+          <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-2xl border border-slate-800">
+            <label className="flex items-center gap-2 cursor-pointer group px-2">
+              <div className="relative flex items-center justify-center">
+                <input 
+                  type="checkbox" 
+                  className="peer sr-only"
+                  checked={selectedNotifications.length === notifications.length && notifications.length > 0}
+                  onChange={() => {
+                    if (selectedNotifications.length === notifications.length) {
+                      setSelectedNotifications([]);
+                    } else {
+                      setSelectedNotifications(notifications.map(n => n.id));
+                    }
+                  }}
+                />
+                <div className="w-5 h-5 rounded border-2 border-slate-600 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center">
+                  <i className="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                </div>
+              </div>
+              <span className="text-xs font-black text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">
+                Seleziona Tutte
+              </span>
+            </label>
+
+            {selectedNotifications.length > 0 && (
+              <button 
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
+              >
+                <i className="fas fa-trash-alt"></i>
+                Elimina Selezionate ({selectedNotifications.length})
+              </button>
+            )}
+          </div>
+        )}
+
         {notifications.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center">
             <i className="fas fa-bell-slash text-slate-700 text-4xl mb-4"></i>
             <p className="text-slate-500 font-medium">Nessuna notifica presente nel sistema.</p>
           </div>
         ) : (
-          notifications.map(notif => (
+          notifications.map(notif => {
+            const isSelected = selectedNotifications.includes(notif.id);
+            return (
             <div 
               key={notif.id}
-              className={`bg-slate-900 border border-slate-800 rounded-2xl p-4 transition-all hover:border-slate-700 ${notif.read ? 'opacity-60' : 'border-l-4 border-l-orange-600'}`}
+              className={`bg-slate-900 border rounded-2xl p-4 transition-all hover:border-slate-700 ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : 'border-slate-800'} ${notif.read ? 'opacity-60' : 'border-l-4 border-l-orange-600'}`}
             >
               <div className="flex justify-between items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-bold text-white">{notif.title}</h3>
-                    {!notif.read && <span className="w-2 h-2 rounded-full bg-orange-500"></span>}
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-3">{notif.body}</p>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                      <i className="fas fa-user text-orange-500/50"></i>
-                      Destinatario: <span className="text-slate-300">{notif.user_name} {notif.user_surname}</span>
+                <div className="flex items-start gap-4 flex-1">
+                  <label className="relative flex items-center justify-center cursor-pointer mt-1">
+                    <input 
+                      type="checkbox" 
+                      className="peer sr-only"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedNotifications([...selectedNotifications, notif.id]);
+                        } else {
+                          setSelectedNotifications(selectedNotifications.filter(id => id !== notif.id));
+                        }
+                      }}
+                    />
+                    <div className="w-5 h-5 rounded border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
+                      <i className="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                      <i className="fas fa-calendar text-orange-500/50"></i>
-                      {new Date(notif.created_at).toLocaleString()}
+                  </label>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-white">{notif.title}</h3>
+                      {!notif.read && <span className="w-2 h-2 rounded-full bg-orange-500"></span>}
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-3">{notif.body}</p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                        <i className="fas fa-user text-orange-500/50"></i>
+                        Destinatario: <span className="text-slate-300">{notif.user_name} {notif.user_surname}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                        <i className="fas fa-calendar text-orange-500/50"></i>
+                        {new Date(notif.created_at).toLocaleString()}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -291,7 +379,8 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
