@@ -506,6 +506,34 @@ app.put('/api/notifications/:id/read', authenticateToken, async (req: any, res) 
   }
 });
 
+app.delete('/api/notifications/:id', authenticateToken, async (req: any, res) => {
+  try {
+    await pool.query(
+      "DELETE FROM notifications WHERE id = $1 AND user_id = $2",
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/notifications/bulk-delete', authenticateToken, async (req: any, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Invalid ids' });
+    }
+    await pool.query(
+      "DELETE FROM notifications WHERE id = ANY($1) AND user_id = $2",
+      [ids, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Helper to send push notifications
 const sendPushNotification = async (userIds: (number | string)[], title: string, body: string, url: string, recipientType?: 'all' | 'society' | 'team') => {
   try {
@@ -532,10 +560,14 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
 
     // 2. Handle Admin notification (compacted with specific logic)
     let adminBody = body;
+    let shouldNotifyAdmin = false;
+
     if (recipientType === 'all') {
       adminBody = `${body}\n\nDestinatari: Tutti i tiratori`;
+      shouldNotifyAdmin = true;
     } else if (recipientType === 'society') {
       adminBody = `${body}\n\nDestinatari: Tiratori della società`;
+      shouldNotifyAdmin = true;
     } else if (recipientType === 'team' && standardUserIds.length > 0) {
       const { rows: recipientRows } = await pool.query(
         "SELECT name, surname FROM users WHERE id = ANY($1)",
@@ -543,25 +575,23 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       );
       const recipientNames = recipientRows.map(r => `${r.name} ${r.surname}`).join(', ');
       adminBody = `${body}\n\nInviato a: ${recipientNames}`;
-    } else if (standardUserIds.length > 0 && !recipientType) {
-      // Fallback for other types if any
-      const { rows: recipientRows } = await pool.query(
-        "SELECT name, surname FROM users WHERE id = ANY($1)",
-        [standardUserIds]
-      );
-      const recipientNames = recipientRows.map(r => `${r.name} ${r.surname}`).join(', ');
-      adminBody = `${body}\n\nDestinatari: ${recipientNames}`;
+      shouldNotifyAdmin = true;
+    } else if (standardUserIds.length === 0 && !recipientType) {
+      // Fallback for admin-specific notifications (e.g. new user registration)
+      shouldNotifyAdmin = true;
     }
 
-    const adminUrl = '/admin?tab=notifications';
+    const adminUrl = '/notifications';
 
-    await pool.query(
-      "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
-      [numericAdminId, title, adminBody, adminUrl]
-    );
+    if (shouldNotifyAdmin) {
+      await pool.query(
+        "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
+        [numericAdminId, title, adminBody, adminUrl]
+      );
+    }
 
     // 3. Send Push Notifications
-    const allUserIdsToNotify = [...new Set([...standardUserIds, numericAdminId])];
+    const allUserIdsToNotify = shouldNotifyAdmin ? [...new Set([...standardUserIds, numericAdminId])] : standardUserIds;
     const { rows: subscriptions } = await pool.query(
       "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
       [allUserIdsToNotify]
@@ -679,6 +709,19 @@ app.get('/api/admin/notifications', authenticateToken, requireAdmin, async (req:
 app.delete('/api/admin/notifications/:id', authenticateToken, requireAdmin, async (req: any, res) => {
   try {
     await pool.query("DELETE FROM notifications WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/notifications/bulk-delete', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Invalid ids' });
+    }
+    await pool.query("DELETE FROM notifications WHERE id = ANY($1)", [ids]);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

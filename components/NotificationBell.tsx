@@ -132,15 +132,21 @@ export default function NotificationBell({ token }: NotificationBellProps) {
       await markAsRead(notif.id);
     }
     
-    if (notif.url) {
-      if (notif.url.startsWith('/')) {
-        window.history.pushState({}, '', notif.url);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-        setShowDropdown(false);
-      } else {
-        window.location.href = notif.url;
-      }
+    const targetUrl = notif.url || '/notifications';
+    
+    if (targetUrl.startsWith('/')) {
+      window.history.pushState({}, '', targetUrl);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      setShowDropdown(false);
+    } else {
+      window.location.href = targetUrl;
     }
+  };
+
+  const handleViewAll = () => {
+    window.history.pushState({}, '', '/notifications');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    setShowDropdown(false);
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -196,6 +202,15 @@ export default function NotificationBell({ token }: NotificationBellProps) {
                 </div>
               ))
             )}
+          </div>
+          
+          <div className="p-2 border-t border-slate-800 bg-slate-900/50">
+            <button 
+              onClick={handleViewAll}
+              className="w-full py-2 text-center text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 hover:bg-slate-800/50 rounded-lg transition-colors"
+            >
+              Vedi tutte le notifiche
+            </button>
           </div>
         </div>
       )}

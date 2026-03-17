@@ -11,6 +11,7 @@ import AdminPanel from './components/AdminPanel';
 import EventsManager from './components/EventsManager';
 import AICoachPage from './components/AICoachPage';
 import ConfirmModal from './components/ConfirmModal';
+import NotificationsManager from './components/NotificationsManager';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -26,10 +27,10 @@ const App: React.FC = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
-  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach'>(
+  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
-  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | null>(null);
+  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string } | null>(null);
@@ -58,6 +59,8 @@ const App: React.FC = () => {
         if (tab) {
           setInitialAdminTab(tab);
         }
+      } else if (path === '/notifications') {
+        setView('notifications');
       }
     };
 
@@ -497,6 +500,16 @@ const App: React.FC = () => {
               prefillTeam={prefillTeamData || undefined}
               onPrefillTeamUsed={() => setPrefillTeamData(null)}
               initialTab={initialAdminTab as any}
+            />
+          </div>
+        )}
+
+        {view === 'notifications' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+            <NotificationsManager 
+              token={token} 
+              userRole={user?.role} 
+              triggerConfirm={triggerConfirm} 
             />
           </div>
         )}

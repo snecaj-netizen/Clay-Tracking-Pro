@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import SocietySearch from './SocietySearch';
 
-interface AdminNotificationsProps {
+interface NotificationsManagerProps {
   token: string;
+  userRole: string;
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
 }
 
-export default function AdminNotifications({ token, triggerConfirm }: AdminNotificationsProps) {
+export default function NotificationsManager({ token, userRole, triggerConfirm }: NotificationsManagerProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [societies, setSocieties] = useState<any[]>([]);
@@ -21,10 +22,14 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
   const [showSendForm, setShowSendForm] = useState(false);
   const [selectedNotifications, setSelectedNotifications] = useState<number[]>([]);
 
+  const isAdmin = userRole === 'admin';
+
   useEffect(() => {
     fetchNotifications();
-    fetchSocieties();
-  }, [token]);
+    if (isAdmin) {
+      fetchSocieties();
+    }
+  }, [token, isAdmin]);
 
   const fetchSocieties = async () => {
     try {
@@ -42,7 +47,7 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !body) return;
+    if (!title || !body || !isAdmin) return;
 
     setSending(true);
     try {
@@ -67,7 +72,6 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
         setScheduledAt('');
         setShowSendForm(false);
         fetchNotifications();
-        // Show success message if needed
       } else {
         const data = await res.json();
         alert(data.error || 'Errore durante l\'invio della notifica');
@@ -82,7 +86,8 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('/api/admin/notifications', {
+      const endpoint = isAdmin ? '/api/admin/notifications' : '/api/notifications';
+      const res = await fetch(endpoint, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -90,7 +95,7 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
         setNotifications(data);
       }
     } catch (err) {
-      console.error('Error fetching admin notifications:', err);
+      console.error('Error fetching notifications:', err);
     } finally {
       setLoading(false);
     }
@@ -98,7 +103,8 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
 
   const markAsRead = async (id: number) => {
     try {
-      const res = await fetch(`/api/admin/notifications/${id}/read`, {
+      const endpoint = isAdmin ? `/api/admin/notifications/${id}/read` : `/api/notifications/${id}/read`;
+      const res = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -116,7 +122,8 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
       'Sei sicuro di voler eliminare questa notifica?',
       async () => {
         try {
-          const res = await fetch(`/api/admin/notifications/${id}`, {
+          const endpoint = isAdmin ? `/api/admin/notifications/${id}` : `/api/notifications/${id}`;
+          const res = await fetch(endpoint, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -141,13 +148,16 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
       async () => {
         setLoading(true);
         try {
-          for (const id of selectedNotifications) {
-            await fetch(`/api/admin/notifications/${id}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-          }
-          fetchNotifications();
+          const endpoint = isAdmin ? '/api/admin/notifications/bulk-delete' : '/api/notifications/bulk-delete';
+          await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: selectedNotifications })
+          });
+          await fetchNotifications();
           setSelectedNotifications([]);
         } catch (err) {
           console.error('Error deleting notifications:', err);
@@ -174,20 +184,22 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-black text-white uppercase tracking-tight">Gestione Notifiche</h2>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowSendForm(!showSendForm)}
-            className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-orange-600/20"
-          >
-            <i className={`fas ${showSendForm ? 'fa-times' : 'fa-paper-plane'}`}></i>
-            {showSendForm ? 'Annulla' : 'Invia Notifica'}
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => setShowSendForm(!showSendForm)}
+              className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-orange-600/20"
+            >
+              <i className={`fas ${showSendForm ? 'fa-times' : 'fa-paper-plane'}`}></i>
+              {showSendForm ? 'Annulla' : 'Invia Notifica'}
+            </button>
+          )}
           <span className="text-xs font-bold text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
             {notifications.length} Totali
           </span>
         </div>
       </div>
 
-      {showSendForm && (
+      {isAdmin && showSendForm && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
           <form onSubmit={handleSendNotification} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -348,10 +360,12 @@ export default function AdminNotifications({ token, triggerConfirm }: AdminNotif
                     </div>
                     <p className="text-xs text-slate-400 leading-relaxed mb-3">{notif.body}</p>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                        <i className="fas fa-user text-orange-500/50"></i>
-                        Destinatario: <span className="text-slate-300">{notif.user_name} {notif.user_surname}</span>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                          <i className="fas fa-user text-orange-500/50"></i>
+                          Destinatario: <span className="text-slate-300">{notif.user_name} {notif.user_surname}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                         <i className="fas fa-calendar text-orange-500/50"></i>
                         {new Date(notif.created_at).toLocaleString()}

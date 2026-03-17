@@ -6,7 +6,6 @@ import 'leaflet/dist/leaflet.css';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
-import AdminNotifications from './AdminNotifications';
 import SocietySearch from './SocietySearch';
 import { Competition, Cartridge, AppData, Discipline, getSeriesLayout } from '../types';
 
@@ -1144,15 +1143,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       <i className="fas fa-trophy w-5 text-center"></i> Hall of Fame
                     </button>
-                    {currentUser?.role === 'admin' && (
-                      <button 
-                        onClick={() => { setActiveTab('notifications'); setIsMobileMenuOpen(false); }}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'notifications' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                      >
-                        <i className="fas fa-bell w-5"></i>
-                        Notifiche
-                      </button>
-                    )}
                     <button 
                       onClick={() => { setActiveTab('team'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
@@ -1212,14 +1202,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Hall of Fame</span><span className="md:hidden">HoF</span>
               </button>
             )}
-            {currentUser?.role === 'admin' && (
-              <button 
-                onClick={() => setActiveTab('notifications')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'notifications' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-              >
-                <i className="fas fa-bell mr-1 lg:mr-2"></i> <span className="hidden md:inline">Notifiche</span><span className="md:hidden">Not.</span>
-              </button>
-            )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('team')}
@@ -1276,8 +1258,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           token={token} 
           triggerConfirm={triggerConfirm} 
         />
-      ) : activeTab === 'notifications' ? (
-        <AdminNotifications token={token} triggerConfirm={triggerConfirm} />
       ) : activeTab === 'profile' ? (
         <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
