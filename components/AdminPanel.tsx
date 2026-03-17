@@ -1756,57 +1756,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h2>
             {currentUser?.role === 'admin' && !showSocietyForm && (
               <div className="flex gap-2">
-                <button 
-                  onClick={() => {
-                    const missing = societies.filter(s => !s.lat || !s.lng);
-                    if (missing.length === 0) {
-                      triggerConfirm(
-                        'Coordinate Aggiornate',
-                        'Tutte le società hanno già le coordinate.',
-                        () => {},
-                        'OK',
-                        'primary'
-                      );
-                      return;
-                    }
-                    triggerConfirm(
-                      'Aggiorna Coordinate',
-                      `Vuoi aggiornare le coordinate per ${missing.length} società mancanti? Potrebbe richiedere qualche secondo.`,
-                      async () => {
-                        for (const soc of missing) {
-                          if (soc.address && soc.city) {
-                            try {
-                              const query = encodeURIComponent(`${soc.address}, ${soc.city}, ${soc.region || ''}, Italy`);
-                              const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
-                              if (geoRes.ok) {
-                                const geoData = await geoRes.json();
-                                if (geoData && geoData.length > 0) {
-                                  const lat = parseFloat(geoData[0].lat);
-                                  const lng = parseFloat(geoData[0].lon);
-                                  await fetch(`/api/admin/societies/${soc.id}`, {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                    body: JSON.stringify({ ...soc, lat, lng })
-                                  });
-                                }
-                              }
-                              // Add a small delay to respect Nominatim rate limits (1 request per second)
-                              await new Promise(resolve => setTimeout(resolve, 1100));
-                            } catch (e) {
-                              console.error("Geocoding failed for", soc.name, e);
-                            }
-                          }
-                        }
-                        fetchSocieties();
-                      },
-                      'Aggiorna',
-                      'primary'
-                    );
-                  }}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-black py-2 px-4 rounded-xl transition-all active:scale-95 text-xs uppercase flex items-center gap-2"
-                >
-                  <i className="fas fa-sync-alt"></i> Coord.
-                </button>
                 <button onClick={() => {
                   setEditingSociety(null);
                   setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
@@ -1973,8 +1922,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors flex items-center gap-2">
                       {soc.name}
-                      {currentUser?.role === 'admin' && soc.lat && soc.lng && (
-                        <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" title="Coordinate registrate"></span>
+                      {currentUser?.role === 'admin' && (
+                        <span 
+                          className={`w-2 h-2 rounded-full ${soc.google_maps_link ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]'}`} 
+                          title={soc.google_maps_link ? "Link Google Maps presente" : "Link Google Maps mancante"}
+                        ></span>
                       )}
                     </h3>
                     <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
