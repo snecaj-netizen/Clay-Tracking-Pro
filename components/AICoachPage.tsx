@@ -141,7 +141,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         - Nome: ${user?.name}
         - Ruolo: Gestore Società
         - Risultati recenti delle GARE dei tiratori (ultimi 30):
-        ${lastComps.map(c => `- ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
+        ${lastComps.map(c => `- ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Strozzature: ${c.chokes ? `${c.chokes.firstBarrel}/${c.chokes.secondBarrel}` : 'N.D.'}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
         
         Obiettivo: Analizzare le performance di squadra esclusivamente nelle GARE, identificare i tiratori più competitivi, suggerire strategie per le prossime competizioni o convocazioni basate sui risultati agonistici.
         Rispondi in modo professionale, strategico e orientato alla crescita della società. Usa il Markdown.
@@ -151,7 +151,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         - Nome: ${user?.name} ${user?.surname}
         - Ruolo: ${user?.role}
         - Ultimi 15 risultati:
-        ${lastComps.slice(0, 15).map(c => `- ${c.date}: ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Media: ${c.averagePerSeries.toFixed(2)}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
+        ${lastComps.slice(0, 15).map(c => `- ${c.date}: ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Media: ${c.averagePerSeries.toFixed(2)}, Strozzature: ${c.chokes ? `${c.chokes.firstBarrel}/${c.chokes.secondBarrel}` : 'N.D.'}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
         
         Magazzino Cartucce:
         ${cartridges.map(c => `- ${c.producer} ${c.model} (${c.leadNumber}), Qta: ${c.quantity}`).join('\n')}

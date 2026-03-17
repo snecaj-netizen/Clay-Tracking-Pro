@@ -57,6 +57,10 @@ export interface Competition {
   cost: number;
   win: number;
   notes?: string;
+  chokes?: {
+    firstBarrel: string;
+    secondBarrel: string;
+  };
   usedCartridges?: UsedCartridge[];
   weather?: WeatherInfo;
   userName?: string;

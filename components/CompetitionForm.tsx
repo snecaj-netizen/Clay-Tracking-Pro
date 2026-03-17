@@ -66,6 +66,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [notes, setNotes] = useState(data?.notes || '');
   const [date, setDate] = useState(data?.date || new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(data?.endDate || '');
+  const [chokes, setChokes] = useState(data?.chokes || { firstBarrel: '1*', secondBarrel: '1*' });
   const [usedCartridges, setUsedCartridges] = useState<UsedCartridge[]>(data?.usedCartridges || []);
   
   // Weather states
@@ -332,6 +333,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       cost: isTraining ? costPerSeries * scores.length : cost,
       win,
       notes,
+      chokes,
       usedCartridges,
       weather: weatherTemp !== undefined ? { temp: weatherTemp, icon: weatherIcon } : undefined
     };
@@ -495,6 +497,38 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                   <i className={`fas ${opt.icon} ${weatherIcon === opt.icon ? 'text-white' : opt.color}`}></i>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800/50">
+        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Strozzatura Utilizzata</label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prima Canna</label>
+            <div className="relative">
+              <select 
+                value={chokes.firstBarrel} 
+                onChange={(e) => setChokes(prev => ({ ...prev, firstBarrel: e.target.value }))}
+                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white focus:border-orange-600 outline-none transition-all appearance-none text-sm"
+              >
+                {['1*', '2*', '3*', '4*', '5*'].map(val => <option key={val} value={val}>{val}</option>)}
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Seconda Canna</label>
+            <div className="relative">
+              <select 
+                value={chokes.secondBarrel} 
+                onChange={(e) => setChokes(prev => ({ ...prev, secondBarrel: e.target.value }))}
+                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white focus:border-orange-600 outline-none transition-all appearance-none text-sm"
+              >
+                {['1*', '2*', '3*', '4*', '5*'].map(val => <option key={val} value={val}>{val}</option>)}
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
             </div>
           </div>
         </div>
