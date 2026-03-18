@@ -436,6 +436,8 @@ const App: React.FC = () => {
               initialData={editingCompetition || undefined}
               prefillData={prefillCompetition || undefined}
               availableCartridges={cartridges}
+              cartridgeTypes={cartridgeTypes}
+              onNavigateToWarehouse={() => setView('warehouse')}
               societies={societies}
               knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
             />

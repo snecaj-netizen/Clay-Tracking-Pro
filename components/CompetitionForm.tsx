@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Discipline, Competition, CompetitionLevel, Cartridge, UsedCartridge, WeatherInfo, getSeriesLayout } from '../types';
+import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, WeatherInfo, getSeriesLayout } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
@@ -10,10 +10,12 @@ interface CompetitionFormProps {
   prefillData?: Partial<Competition>;
   knownLocations?: string[];
   availableCartridges: Cartridge[];
+  cartridgeTypes: CartridgeType[];
   societies: any[];
   currentUser: any;
   onSubmit: (comp: Competition) => void;
   onCancel: () => void;
+  onNavigateToWarehouse?: () => void;
 }
 
 const WEATHER_OPTIONS = [
@@ -25,7 +27,7 @@ const WEATHER_OPTIONS = [
   { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
 ];
 
-const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, knownLocations = [], availableCartridges = [], societies = [], currentUser, onSubmit, onCancel }) => {
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, knownLocations = [], availableCartridges = [], cartridgeTypes = [], societies = [], currentUser, onSubmit, onCancel, onNavigateToWarehouse }) => {
   const data = initialData || prefillData;
   const [name, setName] = useState(data?.name || '');
   const [location, setLocation] = useState(data?.location || '');
@@ -39,6 +41,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [detailedScores, setDetailedScores] = useState<boolean[][]>(data?.detailedScores || []);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
+  const [cartridgeSource, setCartridgeSource] = useState<'warehouse' | 'types'>('warehouse');
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
@@ -538,29 +541,90 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       </div>
 
       <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800/50">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Cartucce Utilizzate</label>
-          {usedCartridges.length > 0 && <span className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20 uppercase">{usedCartridges.length} Selezionate</span>}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Cartucce Utilizzate</label>
+            {usedCartridges.length > 0 && <span className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20 uppercase">{usedCartridges.length} Selezionate</span>}
+          </div>
+          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button 
+              type="button"
+              onClick={() => setCartridgeSource('warehouse')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'warehouse' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Dal Magazzino
+            </button>
+            <button 
+              type="button"
+              onClick={() => setCartridgeSource('types')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Tutti i Tipi
+            </button>
+          </div>
         </div>
-        {groupedCartridges.length === 0 ? (
-          <div className="bg-slate-900/50 p-4 rounded-xl border border-dashed border-slate-800 text-center"><p className="text-xs text-slate-600 italic">Nessuna cartuccia in magazzino.</p></div>
+
+        {cartridgeSource === 'warehouse' ? (
+          groupedCartridges.length === 0 ? (
+            <div className="bg-slate-900/50 p-6 rounded-xl border border-dashed border-slate-800 text-center">
+              <i className="fas fa-box-open text-slate-700 text-2xl mb-2"></i>
+              <p className="text-xs text-slate-500 italic">Nessuna cartuccia in magazzino.</p>
+              <button 
+                type="button" 
+                onClick={onNavigateToWarehouse}
+                className="mt-3 text-[10px] font-black text-orange-500 hover:text-orange-400 uppercase tracking-widest"
+              >
+                Vai al Magazzino per caricare <i className="fas fa-arrow-right ml-1"></i>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {groupedCartridges.map(group => {
+                const selected = usedCartridges.some(uc => uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber);
+                return (
+                  <button key={`${group.producer}-${group.model}-${group.leadNumber}`} type="button" onClick={() => toggleCartridge(group)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
+                      {group.imageUrl ? <img src={group.imageUrl} alt={group.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[10px]">{group.leadNumber}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{group.producer} {group.model}</p>
+                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {group.leadNumber} • {group.totalQuantity} Pz</p>
+                    </div>
+                    {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
+                  </button>
+                );
+              })}
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {groupedCartridges.map(group => {
-              const selected = usedCartridges.some(uc => uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber);
-              return (
-                <button key={`${group.producer}-${group.model}-${group.leadNumber}`} type="button" onClick={() => toggleCartridge(group)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
-                  <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
-                    {group.imageUrl ? <img src={group.imageUrl} alt={group.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[10px]">{group.leadNumber}</div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{group.producer} {group.model}</p>
-                    <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {group.leadNumber}</p>
-                  </div>
-                  {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
-                </button>
-              );
-            })}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {cartridgeTypes.map(type => {
+                const selected = usedCartridges.some(uc => uc.producer === type.producer && uc.model === type.model && uc.leadNumber === type.leadNumber);
+                return (
+                  <button key={type.id} type="button" onClick={() => toggleCartridge(type)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
+                      {type.imageUrl ? <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[10px]">{type.leadNumber}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{type.producer} {type.model}</p>
+                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {type.leadNumber}</p>
+                    </div>
+                    {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="bg-orange-950/20 border border-orange-900/30 p-4 rounded-xl text-center">
+              <p className="text-[10px] text-orange-200 font-medium italic">Non trovi la tua cartuccia?</p>
+              <button 
+                type="button" 
+                onClick={onNavigateToWarehouse}
+                className="mt-1 text-[10px] font-black text-orange-500 hover:text-orange-400 uppercase tracking-widest underline underline-offset-4"
+              >
+                Carica un nuovo tipo di cartuccia <i className="fas fa-external-link-alt ml-1"></i>
+              </button>
+            </div>
           </div>
         )}
       </div>
