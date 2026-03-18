@@ -42,6 +42,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
   const [cartridgeSource, setCartridgeSource] = useState<'warehouse' | 'types'>('warehouse');
+  const [cartridgeSearch, setCartridgeSearch] = useState('');
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
@@ -549,51 +550,72 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Cartucce Utilizzate</label>
             {usedCartridges.length > 0 && <span className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20 uppercase">{usedCartridges.length} Selezionate</span>}
           </div>
-          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-            <button 
-              type="button"
-              onClick={() => setCartridgeSource('warehouse')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'warehouse' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              Dal Magazzino
-            </button>
-            <button 
-              type="button"
-              onClick={() => setCartridgeSource('types')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              Tutti i Tipi
-            </button>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 min-w-[140px] sm:min-w-[200px]">
+              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-[10px]"></i>
+              <input 
+                type="text" 
+                placeholder="Cerca cartuccia..." 
+                value={cartridgeSearch}
+                onChange={(e) => setCartridgeSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-[11px] text-white placeholder:text-slate-600 focus:border-orange-500/50 outline-none transition-all"
+              />
+            </div>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+              <button 
+                type="button"
+                onClick={() => setCartridgeSource('warehouse')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'warehouse' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Magazzino
+              </button>
+              <button 
+                type="button"
+                onClick={() => setCartridgeSource('types')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Tutti i Tipi
+              </button>
+            </div>
           </div>
         </div>
 
         {cartridgeSource === 'warehouse' ? (
-          groupedCartridges.length === 0 ? (
+          groupedCartridges.filter(g => 
+            g.producer.toLowerCase().includes(cartridgeSearch.toLowerCase()) || 
+            g.model.toLowerCase().includes(cartridgeSearch.toLowerCase())
+          ).length === 0 ? (
             <div className="bg-slate-900/50 p-6 rounded-xl border border-dashed border-slate-800 text-center">
               <i className="fas fa-box-open text-slate-700 text-2xl mb-2"></i>
-              <p className="text-xs text-slate-500 italic">Nessuna cartuccia in magazzino.</p>
-              <button 
-                type="button" 
-                onClick={onNavigateToWarehouse}
-                className="mt-3 text-[10px] font-black text-orange-500 hover:text-orange-400 uppercase tracking-widest"
-              >
-                Vai al Magazzino per caricare <i className="fas fa-arrow-right ml-1"></i>
-              </button>
+              <p className="text-xs text-slate-500 italic">Nessuna cartuccia trovata.</p>
+              {cartridgeSearch === '' && (
+                <button 
+                  type="button" 
+                  onClick={onNavigateToWarehouse}
+                  className="mt-3 text-[10px] font-black text-orange-500 hover:text-orange-400 uppercase tracking-widest"
+                >
+                  Vai al Magazzino per caricare <i className="fas fa-arrow-right ml-1"></i>
+                </button>
+              )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {groupedCartridges.map(group => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              {groupedCartridges
+                .filter(g => 
+                  g.producer.toLowerCase().includes(cartridgeSearch.toLowerCase()) || 
+                  g.model.toLowerCase().includes(cartridgeSearch.toLowerCase())
+                )
+                .map(group => {
                 const selected = usedCartridges.some(uc => uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber && uc.grams === group.grams);
                 return (
-                  <button key={`${group.producer}-${group.model}-${group.leadNumber}-${group.grams}`} type="button" onClick={() => toggleCartridge(group)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
-                    <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
-                      {group.imageUrl ? <img src={group.imageUrl} alt={group.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[10px]">{group.leadNumber}</div>}
+                  <button key={`${group.producer}-${group.model}-${group.leadNumber}-${group.grams}`} type="button" onClick={() => toggleCartridge(group)} className={`px-2 py-2 rounded-xl text-left transition-all border-2 flex items-center gap-2 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
+                      {group.imageUrl ? <img src={group.imageUrl} alt={group.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[9px]">{group.leadNumber}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{group.producer} {group.model}</p>
-                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {group.leadNumber} • {group.grams}g • {group.totalQuantity} Pz</p>
+                      <p className={`text-[10px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{group.producer} {group.model}</p>
+                      <p className={`text-[8px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>{group.leadNumber} • {group.grams}g • {group.totalQuantity} Pz</p>
                     </div>
-                    {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
                   </button>
                 );
               })}
@@ -601,19 +623,23 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           )
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {cartridgeTypes.map(type => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              {cartridgeTypes
+                .filter(t => 
+                  t.producer.toLowerCase().includes(cartridgeSearch.toLowerCase()) || 
+                  t.model.toLowerCase().includes(cartridgeSearch.toLowerCase())
+                )
+                .map(type => {
                 const selected = usedCartridges.some(uc => uc.producer === type.producer && uc.model === type.model && uc.leadNumber === type.leadNumber && uc.grams === type.grams);
                 return (
-                  <button key={type.id} type="button" onClick={() => toggleCartridge(type)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
-                    <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
-                      {type.imageUrl ? <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[10px]">{type.leadNumber}</div>}
+                  <button key={type.id} type="button" onClick={() => toggleCartridge(type)} className={`px-2 py-2 rounded-xl text-left transition-all border-2 flex items-center gap-2 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
+                      {type.imageUrl ? <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[9px]">{type.leadNumber}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{type.producer} {type.model}</p>
-                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {type.leadNumber} • {type.grams}g</p>
+                      <p className={`text-[10px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{type.producer} {type.model}</p>
+                      <p className={`text-[8px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>{type.leadNumber} • {type.grams}g</p>
                     </div>
-                    {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
                   </button>
                 );
               })}
