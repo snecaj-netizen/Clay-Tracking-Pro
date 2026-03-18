@@ -68,7 +68,7 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`} ref={wrapperRef}>
+    <div className="relative" ref={wrapperRef}>
       <div className="relative">
         <input
           type="text"
@@ -81,7 +81,7 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
-          className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:border-orange-600 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
           {searchTerm && !disabled && (

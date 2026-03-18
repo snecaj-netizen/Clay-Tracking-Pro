@@ -734,30 +734,39 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 onChange={setFilterSociety}
                 societies={societies}
                 placeholder="Tutte le società"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
               />
             </div>
           )}
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
-            <select 
-              value={filterDiscipline} 
-              onChange={e => setFilterDiscipline(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-            >
-              <option value="">Tutte le discipline</option>
-              {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div className="relative group">
+              <select 
+                value={filterDiscipline} 
+                onChange={e => setFilterDiscipline(e.target.value)} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+              >
+                <option value="">Tutte le discipline</option>
+                {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <i className="fas fa-chevron-down text-[10px]"></i>
+              </div>
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
-            <input 
-              type="month" 
-              value={filterMonth} 
-              onChange={e => setFilterMonth(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-              style={{ colorScheme: 'dark' }}
-            />
+            <div className="relative group">
+              <input 
+                type="month" 
+                value={filterMonth} 
+                onChange={e => setFilterMonth(e.target.value)} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                style={{ colorScheme: 'dark' }}
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <i className="fas fa-calendar-alt text-xs"></i>
+              </div>
+            </div>
           </div>
           <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end`}>
             <button 

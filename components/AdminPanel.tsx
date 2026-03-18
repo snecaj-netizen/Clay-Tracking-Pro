@@ -2217,36 +2217,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
-                <select 
-                  value={filterDiscipline} 
-                  onChange={handleFilterChange(setFilterDiscipline)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                >
-                  <option value="">Tutte</option>
-                  {filterOptions.disciplines.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <div className="relative group">
+                  <select 
+                    value={filterDiscipline} 
+                    onChange={handleFilterChange(setFilterDiscipline)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Tutte</option>
+                    {filterOptions.disciplines.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo</label>
-                <select 
-                  value={filterLocation} 
-                  onChange={handleFilterChange(setFilterLocation)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                >
-                  <option value="">Tutti</option>
-                  {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
+                <div className="relative group">
+                  <select 
+                    value={filterLocation} 
+                    onChange={handleFilterChange(setFilterLocation)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Tutti</option>
+                    {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Anno</label>
-                <select 
-                  value={filterYear} 
-                  onChange={handleFilterChange(setFilterYear)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                >
-                  <option value="">Tutti</option>
-                  {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <div className="relative group">
+                  <select 
+                    value={filterYear} 
+                    onChange={handleFilterChange(setFilterYear)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Tutti</option>
+                    {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
+                </div>
               </div>
               <div className="sm:col-span-5 flex justify-end">
                 <button 
