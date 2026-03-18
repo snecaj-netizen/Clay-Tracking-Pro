@@ -212,26 +212,6 @@ const initDB = async () => {
       // Ignore if constraint already exists
     }
 
-    // Migrate existing societies from users and teams
-    try {
-      await pool.query(`
-        INSERT INTO societies (name, email)
-        SELECT DISTINCT society, ''
-        FROM users
-        WHERE society IS NOT NULL AND society != ''
-        ON CONFLICT (name) DO NOTHING;
-      `);
-      await pool.query(`
-        INSERT INTO societies (name, email)
-        SELECT DISTINCT society, ''
-        FROM teams
-        WHERE society IS NOT NULL AND society != ''
-        ON CONFLICT (name) DO NOTHING;
-      `);
-    } catch (e) {
-      console.log("Error migrating societies:", e);
-    }
-
     await pool.query(`
       CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
@@ -377,6 +357,41 @@ const initDB = async () => {
       const hash = bcrypt.hashSync('admin', salt);
       await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
     }
+
+    // Migrate existing societies from users, teams, events and competitions
+    try {
+      await pool.query(`
+        INSERT INTO societies (name, email)
+        SELECT DISTINCT TRIM(society), ''
+        FROM users
+        WHERE society IS NOT NULL AND society != ''
+        ON CONFLICT (name) DO NOTHING;
+      `);
+      await pool.query(`
+        INSERT INTO societies (name, email)
+        SELECT DISTINCT TRIM(society), ''
+        FROM teams
+        WHERE society IS NOT NULL AND society != ''
+        ON CONFLICT (name) DO NOTHING;
+      `);
+      await pool.query(`
+        INSERT INTO societies (name, email)
+        SELECT DISTINCT TRIM(location), ''
+        FROM events
+        WHERE location IS NOT NULL AND location != ''
+        ON CONFLICT (name) DO NOTHING;
+      `);
+      await pool.query(`
+        INSERT INTO societies (name, email)
+        SELECT DISTINCT TRIM(location), ''
+        FROM competitions
+        WHERE location IS NOT NULL AND location != ''
+        ON CONFLICT (name) DO NOTHING;
+      `);
+    } catch (e) {
+      console.log("Error migrating societies:", e);
+    }
+
     console.log('Connected to PostgreSQL database and initialized tables.');
   } catch (err) {
     console.error('Error initializing database', err);
