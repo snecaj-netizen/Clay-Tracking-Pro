@@ -47,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   const menuItems = user?.role === 'society' ? [
     { id: 'admin', tab: 'results', label: 'Risultati', icon: 'fa-poll' },
-    { id: 'events', label: 'Le tue Gare', icon: 'fa-calendar-alt' },
+    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
   ] : [
