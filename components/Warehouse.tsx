@@ -181,14 +181,22 @@ const Warehouse: React.FC<WarehouseProps> = ({
   };
 
   const handleSetExact = (typeGroup: any) => {
-    const newVal = prompt(`Imposta giacenza totale per ${typeGroup.producer} ${typeGroup.model} (Piombo ${typeGroup.leadNumber}):`, typeGroup.total.toString());
-    if (newVal !== null) {
-      const parsed = parseInt(newVal);
-      if (!isNaN(parsed)) {
-        const diff = parsed - typeGroup.total;
-        handleQuickAdjust(typeGroup, diff);
-      }
-    }
+    triggerConfirm(
+      'Imposta Giacenza',
+      `Imposta la giacenza totale per ${typeGroup.producer} ${typeGroup.model} (Piombo ${typeGroup.leadNumber}${typeGroup.grams ? ` • ${typeGroup.grams}g` : ''}).`,
+      () => {
+        const newVal = window.prompt(`Nuova giacenza totale:`, typeGroup.total.toString());
+        if (newVal !== null) {
+          const parsed = parseInt(newVal);
+          if (!isNaN(parsed)) {
+            const diff = parsed - typeGroup.total;
+            handleQuickAdjust(typeGroup, diff);
+          }
+        }
+      },
+      'Imposta',
+      'primary'
+    );
   };
 
   const resetForm = () => {
@@ -216,7 +224,8 @@ const Warehouse: React.FC<WarehouseProps> = ({
     const type = cartridgeTypes.find(t => 
       t.producer.toLowerCase() === c.producer.toLowerCase() && 
       t.model.toLowerCase() === c.model.toLowerCase() && 
-      t.leadNumber === c.leadNumber
+      t.leadNumber === c.leadNumber &&
+      t.grams === c.grams
     );
     setEditingCart(c);
     setSelectedTypeId(type?.id || '');
