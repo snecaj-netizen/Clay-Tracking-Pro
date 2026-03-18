@@ -282,16 +282,21 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-xl font-black text-white uppercase tracking-tight">Notifiche</h2>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            {isAdmin ? 'Centro di Controllo e Gestione' : 'I tuoi aggiornamenti'}
+          <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/20">
+              <i className="fas fa-bell text-white"></i>
+            </div>
+            Gestione Notifiche
+          </h2>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 ml-1">
+            {isAdmin ? 'Configura e monitora il sistema di avvisi' : 'I tuoi aggiornamenti e avvisi in tempo reale'}
           </p>
         </div>
         
         {isAdmin && (
-          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
             <button 
               onClick={() => setActiveTab('list')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
@@ -310,8 +315,8 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
 
       {activeTab === 'list' ? (
         <>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3 flex-wrap">
               {isAdmin && (
                 <button 
                   onClick={() => setShowSendForm(!showSendForm)}
@@ -531,15 +536,15 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
           {/* Global Controls */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-black text-white uppercase tracking-tight">Stato Globale</h3>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Attiva o disattiva l'intero sistema di notifiche</p>
               </div>
               <button 
                 onClick={() => setGlobalEnabled(!globalEnabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${globalEnabled ? 'bg-orange-600' : 'bg-slate-700'}`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none self-start sm:self-auto ${globalEnabled ? 'bg-orange-600' : 'bg-slate-700'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${globalEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
@@ -567,30 +572,30 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
           </div>
 
           {/* Admin Specific Settings */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6">
             <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">Impostazioni Personali Admin</h3>
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-bold text-white">Ricevi Notifiche di Sistema</p>
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Ricevi avvisi su nuove gare, sfide e attività</p>
                 </div>
                 <button 
                   onClick={() => setAdminNotificationsEnabled(!adminNotificationsEnabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${adminNotificationsEnabled ? 'bg-orange-600' : 'bg-slate-700'}`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none self-start sm:self-auto ${adminNotificationsEnabled ? 'bg-orange-600' : 'bg-slate-700'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${adminNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-bold text-white">Modalità Compatta</p>
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Visualizzazione densa della lista notifiche (solo admin)</p>
                 </div>
                 <button 
                   onClick={() => setAdminCompactMode(!adminCompactMode)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${adminCompactMode ? 'bg-orange-600' : 'bg-slate-700'}`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none self-start sm:self-auto ${adminCompactMode ? 'bg-orange-600' : 'bg-slate-700'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${adminCompactMode ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -624,15 +629,15 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
           </div>
 
           {/* Muted Entities */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <h3 className="text-lg font-black text-white uppercase tracking-tight">Sospensioni (Mute)</h3>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Società o Tiratori che non riceveranno/invieranno notifiche</p>
               </div>
               <button 
                 onClick={() => setShowMuteForm(!showMuteForm)}
-                className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all"
+                className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all self-start sm:self-auto"
               >
                 {showMuteForm ? 'Chiudi' : 'Aggiungi'}
               </button>
@@ -712,10 +717,10 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end mt-4">
             <button 
               onClick={handleSaveSettings}
-              className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-8 py-4 rounded-2xl transition-all shadow-lg shadow-orange-600/20"
+              className="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-8 py-4 rounded-2xl transition-all shadow-lg shadow-orange-600/20 active:scale-95"
             >
               Salva Configurazione
             </button>
