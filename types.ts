@@ -85,6 +85,14 @@ export interface Cartridge {
   imageUrl?: string;
 }
 
+export interface CartridgeType {
+  id: string;
+  producer: string;
+  model: string;
+  leadNumber: string;
+  imageUrl?: string;
+}
+
 export enum UserRole {
   ADMIN = 'admin',
   SHOOTER = 'user', // Renamed from 'Utente' to 'Tiratore' in UI, but keeping 'user' for DB compatibility if needed, or I can change it to 'shooter'
@@ -126,6 +134,7 @@ export interface SocietyEvent {
 export interface AppData {
   competitions: Competition[];
   cartridges: Cartridge[];
+  cartridgeTypes: CartridgeType[];
 }
 
 export enum ChallengeMode {

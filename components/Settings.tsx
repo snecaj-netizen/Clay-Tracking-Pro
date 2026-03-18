@@ -1,12 +1,13 @@
 
 import React, { useRef, useState } from 'react';
-import { Competition, Cartridge, AppData, User } from '../types';
+import { Competition, Cartridge, CartridgeType, AppData, User } from '../types';
 
 interface SettingsProps {
   user: User | null;
   token: string | null;
   competitions: Competition[];
   cartridges: Cartridge[];
+  cartridgeTypes: CartridgeType[];
   clientId: string;
   onClientIdChange: (id: string) => void;
   onImport: (data: AppData) => void;
@@ -20,7 +21,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
-  user, token, competitions, cartridges, clientId, onClientIdChange, onImport, 
+  user, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport, 
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive 
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +46,7 @@ const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleExport = () => {
-    const data: AppData = { competitions, cartridges };
+    const data: AppData = { competitions, cartridges, cartridgeTypes };
     const dataStr = JSON.stringify(data, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Discipline, Competition, CompetitionLevel, Cartridge, AppData } from './types';
+import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, AppData } from './types';
 import Dashboard from './components/Dashboard';
 import CompetitionForm from './components/CompetitionForm';
 import HistoryList from './components/HistoryList';
@@ -26,6 +26,7 @@ const App: React.FC = () => {
   
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
+  const [cartridgeTypes, setCartridgeTypes] = useState<CartridgeType[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
   const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications'>(
     user?.role === 'society' ? 'admin' : 'history'
@@ -94,15 +95,17 @@ const App: React.FC = () => {
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!token) return;
     try {
-      const [compsRes, cartsRes, socsRes] = await Promise.all([
+      const [compsRes, cartsRes, socsRes, cartTypesRes] = await Promise.all([
         fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal })
+        fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
+        fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal })
       ]);
 
       if (compsRes.ok) setCompetitions(await compsRes.json());
       if (cartsRes.ok) setCartridges(await cartsRes.json());
       if (socsRes.ok) setSocieties(await socsRes.json());
+      if (cartTypesRes.ok) setCartridgeTypes(await cartTypesRes.json());
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Error fetching data:', err);
@@ -287,6 +290,38 @@ const App: React.FC = () => {
     }
   };
 
+  const saveCartridgeType = async (type: CartridgeType) => {
+    try {
+      const res = await fetch('/api/cartridge-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(type)
+      });
+      if (res.ok) {
+        setCartridgeTypes(prev => {
+          const exists = prev.find(t => t.id === type.id);
+          return exists ? prev.map(t => t.id === type.id ? type : t) : [...prev, type];
+        });
+      }
+    } catch (err) {
+      console.error('Error saving cartridge type:', err);
+    }
+  };
+
+  const deleteCartridgeType = async (id: string) => {
+    try {
+      const res = await fetch(`/api/cartridge-types/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setCartridgeTypes(prev => prev.filter(t => t.id !== id));
+      }
+    } catch (err) {
+      console.error('Error deleting cartridge type:', err);
+    }
+  };
+
   const updateAllCartridges = async (carts: Cartridge[]) => {
     try {
       const res = await fetch('/api/cartridges/bulk', {
@@ -314,7 +349,8 @@ const App: React.FC = () => {
         // Normalizzazione dati se il formato è diverso
         const normalizedData: AppData = {
           competitions: Array.isArray(data.competitions) ? data.competitions : (Array.isArray(data) ? data : []),
-          cartridges: Array.isArray(data.cartridges) ? data.cartridges : []
+          cartridges: Array.isArray(data.cartridges) ? data.cartridges : [],
+          cartridgeTypes: Array.isArray(data.cartridgeTypes) ? data.cartridgeTypes : []
         };
 
         try {
@@ -427,9 +463,12 @@ const App: React.FC = () => {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Warehouse 
               cartridges={cartridges}
+              cartridgeTypes={cartridgeTypes}
               onSave={saveCartridge}
               onDelete={deleteCartridge}
               onUpdateAll={updateAllCartridges}
+              onSaveType={saveCartridgeType}
+              onDeleteType={deleteCartridgeType}
               triggerConfirm={triggerConfirm}
             />
           </div>
@@ -457,6 +496,7 @@ const App: React.FC = () => {
               token={token}
               competitions={competitions}
               cartridges={cartridges}
+              cartridgeTypes={cartridgeTypes}
               clientId=""
               onClientIdChange={() => {}}
               onImport={handleImport}
@@ -489,6 +529,7 @@ const App: React.FC = () => {
               token={token}
               competitions={competitions}
               cartridges={cartridges}
+              cartridgeTypes={cartridgeTypes}
               clientId=""
               onClientIdChange={() => {}}
               onImport={handleImport}

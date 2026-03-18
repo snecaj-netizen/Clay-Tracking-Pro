@@ -8,7 +8,7 @@ import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
-import { Competition, Cartridge, AppData, Discipline, getSeriesLayout } from '../types';
+import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout } from '../types';
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -58,6 +58,7 @@ interface AdminPanelProps {
   // Settings props
   competitions: Competition[];
   cartridges: Cartridge[];
+  cartridgeTypes: CartridgeType[];
   clientId: string;
   onClientIdChange: (id: string) => void;
   onImport: (data: AppData) => void;
@@ -85,7 +86,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  user: currentUser, token, competitions, cartridges, clientId, onClientIdChange, onImport,
+  user: currentUser, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs
 }) => {
@@ -1241,6 +1242,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             token={token}
             competitions={competitions}
             cartridges={cartridges}
+            cartridgeTypes={cartridgeTypes}
             clientId={clientId}
             onClientIdChange={onClientIdChange}
             onImport={onImport}

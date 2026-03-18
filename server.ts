@@ -119,6 +119,29 @@ const initDB = async () => {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS cartridge_types (
+        id TEXT PRIMARY KEY,
+        producer TEXT NOT NULL,
+        model TEXT NOT NULL,
+        leadnumber TEXT NOT NULL,
+        imageurl TEXT
+      );
+    `);
+
+    // Migrate existing cartridges to cartridge_types
+    try {
+      await pool.query(`
+        INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl)
+        SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber)
+          id, producer, model, leadnumber, imageurl
+        FROM cartridges
+        ON CONFLICT DO NOTHING;
+      `);
+    } catch (e) {
+      console.log("Error migrating cartridge types:", e);
+    }
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS teams (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
@@ -2027,6 +2050,51 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
     res.json({ success: true, rowCount: result.rowCount });
   } catch (err: any) {
     console.error('DELETE competition error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cartridge Types Routes
+app.get('/api/cartridge-types', authenticateToken, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM cartridge_types ORDER BY producer, model");
+    const types = rows.map((row: any) => ({
+      id: row.id,
+      producer: row.producer,
+      model: row.model,
+      leadNumber: row.leadnumber,
+      imageUrl: row.imageurl
+    }));
+    res.json(types);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/cartridge-types', authenticateToken, async (req: any, res) => {
+  const t = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl) 
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET 
+       producer = EXCLUDED.producer,
+       model = EXCLUDED.model,
+       leadnumber = EXCLUDED.leadnumber,
+       imageurl = EXCLUDED.imageurl`,
+      [t.id, t.producer, t.model, t.leadNumber, t.imageUrl || null]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/cartridge-types/:id', authenticateToken, async (req: any, res) => {
+  try {
+    await pool.query("DELETE FROM cartridge_types WHERE id=$1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
