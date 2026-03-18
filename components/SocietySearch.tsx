@@ -81,7 +81,7 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
-          className={`w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:border-orange-600 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
           {searchTerm && !disabled && (
@@ -98,12 +98,12 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
               <i className="fas fa-times"></i>
             </button>
           )}
-          <i className="fas fa-search text-slate-500"></i>
+          <i className="fas fa-search text-slate-500 text-xs"></i>
         </div>
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-2 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-50 w-full mt-2 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
           {filteredSocieties.length > 0 ? (
             filteredSocieties.map((soc) => (
               <button

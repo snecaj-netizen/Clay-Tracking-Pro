@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Discipline, Competition, CompetitionLevel, Cartridge, UsedCartridge, WeatherInfo, getSeriesLayout } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
+import ShooterSearch from './ShooterSearch';
 
 interface CompetitionFormProps {
   initialData?: Competition;
@@ -356,63 +357,58 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {currentUser?.role === 'admin' && (
           <div className="md:col-span-2 space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tiratore</label>
-            <div className="relative">
-              <select 
-                value={selectedUserId || ''} 
-                onChange={(e) => setSelectedUserId(parseInt(e.target.value))} 
-                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} {u.surname}</option>
-                ))}
-              </select>
-              <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
-            </div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
+            <ShooterSearch 
+              value={selectedUserId}
+              onChange={(_, id) => id && setSelectedUserId(id)}
+              shooters={users}
+              useId
+              required
+            />
           </div>
         )}
         <div className="md:col-span-2 space-y-2">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Titolo / Nome</label>
-          <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome</label>
+          <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tipo Evento</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipo Evento</label>
           <div className="relative">
-            <select value={eventType} onChange={(e) => setEventType(e.target.value as 'Gara' | 'Allenamento')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+            <select value={eventType} onChange={(e) => setEventType(e.target.value as 'Gara' | 'Allenamento')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
               <option value="Gara">Gara</option>
               <option value="Allenamento">Allenamento</option>
             </select>
-            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
           </div>
         </div>
 
         {!isTraining && (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tipologia</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia</label>
             <div className="relative">
-              <select value={level} onChange={(e) => setLevel(e.target.value as CompetitionLevel)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+              <select value={level} onChange={(e) => setLevel(e.target.value as CompetitionLevel)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                 <option value={CompetitionLevel.REGIONAL}>Regionale</option>
                 <option value={CompetitionLevel.NATIONAL}>Nazionale</option>
                 <option value={CompetitionLevel.INTERNATIONAL}>Internazionale</option>
               </select>
-              <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+              <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
             </div>
           </div>
         )}
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Disciplina</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
           <div className="relative">
-            <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+            <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
               {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
             </select>
-            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Campo / TAV</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV</label>
           <SocietySearch 
             value={location}
             onChange={setLocation}
@@ -426,7 +422,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         {isTraining ? (
           <div className="md:col-span-2 space-y-4 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Numero Serie</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Numero Serie</label>
               <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded">
                 TOTALE: {scores.reduce((a, b) => a + b, 0)} PIATTELLI
               </span>
@@ -443,13 +439,13 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           </div>
         ) : (
           <div className="md:col-span-2 space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Piattelli Gara</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Gara</label>
             <div className="flex flex-wrap gap-4">
               {(discipline === Discipline.EL ? [12, 24, 36] : 
                 discipline === Discipline.DT ? [150] :
                 discipline === Discipline.SK_ISSF ? [75, 125] :
                 [25, 50, 100, 200]).map(val => (
-                <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 min-w-[60px] py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border-2 border-slate-700'}`}>{val}</button>
+                <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 min-w-[60px] py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>{val}</button>
               ))}
             </div>
           </div>
@@ -457,19 +453,19 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{isMultiDayEligible ? 'Giorno 1 (Inizio)' : 'Data'}</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{isMultiDayEligible ? 'Giorno 1 (Inizio)' : 'Data'}</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
           </div>
           {isMultiDayEligible && (
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Giorno 2 (Fine)</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorno 2 (Fine)</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
           )}
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center justify-between">
             Meteo
             <button 
               type="button" 
@@ -489,7 +485,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 value={weatherTemp ?? ''} 
                 onChange={(e) => setWeatherTemp(e.target.value ? parseInt(e.target.value) : undefined)} 
                 onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
-                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
               />
             </div>
             <div className="w-full sm:w-2/3 grid grid-cols-3 gap-2">
@@ -510,10 +506,10 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       </div>
 
       <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800/50">
-        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Strozzatura Utilizzata</label>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block mb-2">Strozzatura Utilizzata</label>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prima Canna</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Prima Canna</label>
             <div className="relative">
               <select 
                 value={chokes.firstBarrel} 
@@ -526,7 +522,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Seconda Canna</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seconda Canna</label>
             <div className="relative">
               <select 
                 value={chokes.secondBarrel} 
@@ -543,7 +539,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
       <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800/50">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Cartucce Utilizzate</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Cartucce Utilizzate</label>
           {usedCartridges.length > 0 && <span className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20 uppercase">{usedCartridges.length} Selezionate</span>}
         </div>
         {groupedCartridges.length === 0 ? (
@@ -572,42 +568,42 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {isTraining ? (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Costo per Serie (€)</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo per Serie (€)</label>
             <input type="number" step="0.01" value={costPerSeries} onChange={(e) => setCostPerSeries(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
             <p className="text-[10px] text-slate-400 font-medium mt-1">Totale: € {(costPerSeries * scores.length).toFixed(2)}</p>
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Costo (€)</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
             <input type="number" step="0.01" value={cost} onChange={(e) => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
           </div>
         )}
         {!isTraining && (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Vincita (€)</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Vincita (€)</label>
             <input type="number" step="0.01" value={win} onChange={(e) => setWin(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
           </div>
         )}
         {!isTraining && date <= new Date().toISOString().split('T')[0] && (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Posizionamento</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Posizionamento</label>
             <input type="number" placeholder="Es: 1" value={position || ''} onChange={(e) => setPosition(e.target.value ? parseInt(e.target.value) : undefined)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
           </div>
         )}
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center gap-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Punteggi</label><div className="h-[1px] flex-1 bg-slate-800"></div></div>
+        <div className="flex items-center gap-2"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Punteggi</label><div className="h-[1px] flex-1 bg-slate-800"></div></div>
         <div className="flex flex-col gap-4">
           {scores.map((score, idx) => {
             const seriesLayout = getSeriesLayout(discipline);
             return (
             <div key={idx} className="bg-slate-950/30 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all">
               <div className="flex items-center justify-between gap-4">
-                <span className="text-xs font-bold text-slate-500 uppercase">Serie {idx + 1}</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="0" max="25" value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-800 border-2 ${isTraining ? 'border-blue-900/30' : 'border-slate-700'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
-                  <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
+                  <input type="number" min="0" max="25" value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
+                  <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
                     <i className="fas fa-list-ul"></i>
                   </button>
                 </div>
@@ -672,8 +668,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Note</label>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none h-24 resize-none" />
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none h-24 resize-none" />
       </div>
 
       <div className="flex gap-4 pt-4">

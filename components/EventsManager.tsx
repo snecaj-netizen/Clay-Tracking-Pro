@@ -725,36 +725,38 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       </div>
 
       {!showForm && showFilters && (
-        <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-700 animate-in zoom-in-95 duration-300`}>
+        <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
           {!(restrictToSociety && user?.role === 'society') && (
-            <div>
+            <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
               <SocietySearch 
                 value={filterSociety}
                 onChange={setFilterSociety}
                 societies={societies}
                 placeholder="Tutte le società"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
               />
             </div>
           )}
-          <div>
+          <div className="space-y-1.5">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
             <select 
               value={filterDiscipline} 
               onChange={e => setFilterDiscipline(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
             >
               <option value="">Tutte le discipline</option>
               {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-          <div>
+          <div className="space-y-1.5">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
             <input 
               type="month" 
               value={filterMonth} 
               onChange={e => setFilterMonth(e.target.value)} 
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+              style={{ colorScheme: 'dark' }}
             />
           </div>
           <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end`}>
@@ -769,7 +771,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       )}
 
       {showForm ? (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-700">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-white uppercase tracking-widest">{editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}</h3>
             <button type="button" onClick={resetForm} className="text-slate-400 hover:text-white">
@@ -779,13 +781,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Titolo / Nome Gara *</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome Gara *</label>
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tipologia *</label>
-              <select value={type} onChange={(e) => setType(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia *</label>
+              <select value={type} onChange={(e) => setType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
                 <option value="Regionale">Regionale</option>
                 <option value="Nazionale">Nazionale</option>
                 <option value="Internazionale">Internazionale</option>
@@ -794,16 +796,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Visibilità *</label>
-              <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Visibilità *</label>
+              <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
                 <option value="Gara di Società">Gara di Società (Solo propri tiratori)</option>
                 <option value="Pubblica">Pubblica (Tutti)</option>
               </select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Disciplina *</label>
-              <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina *</label>
+              <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
                 {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -811,7 +813,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Campo / TAV *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV *</label>
               {user?.role === 'admin' ? (
                 <SocietySearch 
                   value={location}
@@ -819,46 +821,47 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   societies={societies}
                   placeholder="Seleziona Società"
                   required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all"
                 />
               ) : (
-                <input type="text" value={location} disabled className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-400 cursor-not-allowed" />
+                <input type="text" value={location} disabled className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-400 cursor-not-allowed" />
               )}
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Piattelli Gara *</label>
-              <input type="number" required min="25" step="25" value={targets} onChange={(e) => setTargets(parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Gara *</label>
+              <input type="number" required min="25" step="25" value={targets} onChange={(e) => setTargets(parseInt(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Data Inizio *</label>
-              <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Inizio *</label>
+              <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Data Fine *</label>
-              <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine *</label>
+              <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Costo (€)</label>
-              <input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
+              <input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Link Iscrizione</label>
-              <input type="url" placeholder="https://..." value={registrationLink} onChange={(e) => setRegistrationLink(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Iscrizione</label>
+              <input type="url" placeholder="https://..." value={registrationLink} onChange={(e) => setRegistrationLink(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Locandina / Programma</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Locandina / Programma</label>
               <div className="flex items-center gap-4">
-                <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-4 py-3 text-center transition-all">
+                <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl px-4 py-3 text-center transition-all">
                   <span className="text-sm font-bold text-white"><i className="fas fa-upload mr-2"></i> Carica File (Max 5MB)</span>
                   <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="hidden" />
                 </label>
                 {posterUrl && (
-                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-700 flex items-center justify-center bg-slate-800">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center bg-slate-900">
                     {posterUrl.startsWith('data:application/pdf') ? (
                       <i className="fas fa-file-pdf text-2xl text-red-500"></i>
                     ) : (
@@ -870,8 +873,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             </div>
 
             <div className="col-span-full space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Note</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all resize-none"></textarea>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all resize-none"></textarea>
             </div>
           </div>
 

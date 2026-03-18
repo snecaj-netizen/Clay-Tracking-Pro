@@ -7,6 +7,7 @@ import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
+import ShooterSearch from './ShooterSearch';
 import { Competition, Cartridge, AppData, Discipline, getSeriesLayout } from '../types';
 
 // Fix Leaflet default icon issue
@@ -1288,15 +1289,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
-                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
@@ -1306,7 +1307,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={profilePassword} 
                     onChange={e => setProfilePassword(e.target.value)} 
                     placeholder="Lascia vuoto per non cambiare" 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
                   />
                   <button 
                     type="button"
@@ -1331,11 +1332,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
-                    <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
-                    <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                    <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                       <option value="">Seleziona...</option>
                       <option value="Eccellenza">Eccellenza</option>
                       <option value="1*">1*</option>
@@ -1345,7 +1346,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
-                    <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                    <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                       <option value="">Seleziona...</option>
                       <option value="Veterani">Veterani</option>
                       <option value="Master">Master</option>
@@ -1484,33 +1485,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">
                     Seleziona {newTeamSize} Tiratori ({selectedShooterIds.length}/{newTeamSize})
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-950 rounded-xl border border-slate-800">
-                    {shooters.map(shooter => {
-                      const shooterStats = teamStats.find(s => s.user_id === shooter.id && (!newTeamDiscipline || s.discipline === newTeamDiscipline));
-                      const avg = shooterStats ? Number(shooterStats.avg_score).toFixed(2) : '-';
-                      const isSelected = selectedShooterIds.includes(shooter.id);
-                      
-                      return (
-                        <button
-                          key={shooter.id}
-                          type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedShooterIds(prev => prev.filter(id => id !== shooter.id));
-                            } else if (selectedShooterIds.length < newTeamSize) {
-                              setSelectedShooterIds(prev => [...prev, shooter.id]);
-                            }
-                          }}
-                          className={`p-3 rounded-lg text-left text-xs font-bold transition-all border flex flex-col gap-1 ${isSelected ? 'bg-orange-600/20 border-orange-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                        >
-                          <span className="truncate">{shooter.surname} {shooter.name}</span>
-                          <span className={`text-[9px] font-black uppercase ${isSelected ? 'text-orange-400' : 'text-slate-500'}`}>
-                            Media {newTeamDiscipline || 'Tot'}: {avg}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <ShooterSearch 
+                    value={selectedShooterIds}
+                    onChange={(val) => {
+                      if (Array.isArray(val)) {
+                        if (val.length <= newTeamSize) {
+                          setSelectedShooterIds(val);
+                        } else {
+                          alert(`Puoi selezionare al massimo ${newTeamSize} tiratori.`);
+                        }
+                      }
+                    }}
+                    shooters={shooters}
+                    useId={true}
+                    multiple={true}
+                    placeholder={`Cerca e aggiungi tiratori...`}
+                  />
                 </div>
 
                 <div className="flex flex-row gap-2">
@@ -2207,16 +2197,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {showFilters && (
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300">
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
-                <input 
-                  type="text" 
-                  value={filterShooter} 
-                  onChange={handleFilterChange(setFilterShooter)} 
-                  placeholder="Cerca nome..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-                />
-              </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
+                  <ShooterSearch 
+                    value={filterShooter}
+                    onChange={handleFilterChange(setFilterShooter)}
+                    shooters={shooters}
+                    placeholder="Tutti"
+                  />
+                </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
                 <SocietySearch 
