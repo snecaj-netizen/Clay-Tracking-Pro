@@ -2537,18 +2537,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {/* User Management Dashboard */}
           {currentUser?.role === 'admin' && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
-              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center sm:block gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 sm:mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
                     <i className="fas fa-user-check text-green-500 text-xs"></i>
                   </div>
                   <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Utenti Online</span>
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-white">{dashboardStats.onlineUsersCount}</div>
               </div>
-              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center sm:block gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 sm:mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
                     <i className="fas fa-building text-blue-500 text-xs"></i>
                   </div>
                   <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Società Online</span>

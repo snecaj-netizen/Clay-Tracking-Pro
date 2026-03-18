@@ -88,18 +88,20 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       producer: string, 
       model: string, 
       leadNumber: string, 
+      grams?: number,
       imageUrl?: string,
       totalQuantity: number 
     }> = {};
 
     availableCartridges.forEach(cart => {
-      const key = `${cart.producer.toLowerCase().trim()}-${cart.model.toLowerCase().trim()}-${cart.leadNumber}`;
+      const key = `${cart.producer.toLowerCase().trim()}-${cart.model.toLowerCase().trim()}-${cart.leadNumber}-${cart.grams || 0}`;
       if (!groups[key]) {
         groups[key] = {
           id: cart.id,
           producer: cart.producer,
           model: cart.model,
           leadNumber: cart.leadNumber,
+          grams: cart.grams,
           imageUrl: cart.imageUrl,
           totalQuantity: 0
         };
@@ -306,12 +308,13 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       const exists = prev.find(uc => 
         uc.producer === group.producer && 
         uc.model === group.model && 
-        uc.leadNumber === group.leadNumber
+        uc.leadNumber === group.leadNumber &&
+        uc.grams === group.grams
       );
       if (exists) {
-        return prev.filter(uc => !(uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber));
+        return prev.filter(uc => !(uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber && uc.grams === group.grams));
       } else {
-        return [...prev, { cartridgeId: group.id, producer: group.producer, model: group.model, leadNumber: group.leadNumber, imageUrl: group.imageUrl }];
+        return [...prev, { cartridgeId: group.id, producer: group.producer, model: group.model, leadNumber: group.leadNumber, grams: group.grams, imageUrl: group.imageUrl }];
       }
     });
   };
@@ -580,15 +583,15 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {groupedCartridges.map(group => {
-                const selected = usedCartridges.some(uc => uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber);
+                const selected = usedCartridges.some(uc => uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber && uc.grams === group.grams);
                 return (
-                  <button key={`${group.producer}-${group.model}-${group.leadNumber}`} type="button" onClick={() => toggleCartridge(group)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                  <button key={`${group.producer}-${group.model}-${group.leadNumber}-${group.grams}`} type="button" onClick={() => toggleCartridge(group)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
                     <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
                       {group.imageUrl ? <img src={group.imageUrl} alt={group.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[10px]">{group.leadNumber}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{group.producer} {group.model}</p>
-                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {group.leadNumber} • {group.totalQuantity} Pz</p>
+                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {group.leadNumber} • {group.grams}g • {group.totalQuantity} Pz</p>
                     </div>
                     {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
                   </button>
@@ -600,7 +603,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {cartridgeTypes.map(type => {
-                const selected = usedCartridges.some(uc => uc.producer === type.producer && uc.model === type.model && uc.leadNumber === type.leadNumber);
+                const selected = usedCartridges.some(uc => uc.producer === type.producer && uc.model === type.model && uc.leadNumber === type.leadNumber && uc.grams === type.grams);
                 return (
                   <button key={type.id} type="button" onClick={() => toggleCartridge(type)} className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 flex items-center gap-3 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
                     <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
@@ -608,7 +611,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-[11px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{type.producer} {type.model}</p>
-                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {type.leadNumber}</p>
+                      <p className={`text-[9px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>Piombo: {type.leadNumber} • {type.grams}g</p>
                     </div>
                     {selected && <i className="fas fa-check-circle text-white text-xs"></i>}
                   </button>

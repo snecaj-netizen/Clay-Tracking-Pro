@@ -44,6 +44,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
   const [typeProducer, setTypeProducer] = useState('');
   const [typeModel, setTypeModel] = useState('');
   const [typeLeadNumber, setTypeLeadNumber] = useState('7.5');
+  const [typeGrams, setTypeGrams] = useState<number>(28);
   const [typeImageUrl, setTypeImageUrl] = useState('');
 
   const stats = useMemo(() => {
@@ -71,18 +72,20 @@ const Warehouse: React.FC<WarehouseProps> = ({
       producer: string, 
       model: string, 
       leadNumber: string, 
+      grams?: number,
       total: number,
       imageUrl?: string,
       cartridgeIds: string[]
     }> = {};
 
     cartridges.forEach(c => {
-      const key = `${c.producer.toLowerCase().trim()}-${c.model.toLowerCase().trim()}-${c.leadNumber}`;
+      const key = `${c.producer.toLowerCase().trim()}-${c.model.toLowerCase().trim()}-${c.leadNumber}-${c.grams || 0}`;
       if (!groups[key]) {
         groups[key] = {
           producer: c.producer,
           model: c.model,
           leadNumber: c.leadNumber,
+          grams: c.grams,
           total: 0,
           imageUrl: c.imageUrl,
           cartridgeIds: []
@@ -125,6 +128,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
       producer: type.producer,
       model: type.model,
       leadNumber: type.leadNumber,
+      grams: type.grams,
       quantity,
       initialQuantity,
       cost,
@@ -143,6 +147,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
       producer: typeProducer.trim(),
       model: typeModel.trim(),
       leadNumber: typeLeadNumber,
+      grams: typeGrams,
       imageUrl: typeImageUrl
     };
     onSaveType(newType);
@@ -201,6 +206,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
     setTypeProducer('');
     setTypeModel('');
     setTypeLeadNumber('7.5');
+    setTypeGrams(28);
     setTypeImageUrl('');
     setShowForm(false);
     setEditingType(null);
@@ -229,6 +235,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
     setTypeProducer(t.producer);
     setTypeModel(t.model);
     setTypeLeadNumber(t.leadNumber);
+    setTypeGrams(t.grams || 28);
     setTypeImageUrl(t.imageUrl || '');
     setShowForm(true);
     setActiveTab('types');
@@ -317,9 +324,15 @@ const Warehouse: React.FC<WarehouseProps> = ({
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Modello</label>
                   <input type="text" required value={typeModel} onChange={e => setTypeModel(e.target.value)} placeholder="Es: F2 Mach" className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Piombo</label>
-                  <input type="text" required value={typeLeadNumber} onChange={e => setTypeLeadNumber(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Piombo</label>
+                    <input type="text" required value={typeLeadNumber} onChange={e => setTypeLeadNumber(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Grammi</label>
+                    <input type="number" required value={typeGrams} onChange={e => setTypeGrams(parseInt(e.target.value) || 0)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -420,7 +433,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     </div>
                     <div>
                       <h4 className="font-bold text-white text-sm leading-tight uppercase">{type.producer}</h4>
-                      <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber}</p>
+                      <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber} • {type.grams}g</p>
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -446,7 +459,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
               </div>
             ) : (
               groupedStock.map(type => (
-                <div key={`${type.producer}-${type.model}-${type.leadNumber}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
+                <div key={`${type.producer}-${type.model}-${type.leadNumber}-${type.grams || 0}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
                   <div className="w-full sm:w-28 h-24 sm:h-full bg-slate-800 relative overflow-hidden flex-shrink-0">
                     {type.imageUrl ? (
                       <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" />
@@ -464,7 +477,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <h4 className="text-white font-black text-base sm:text-lg leading-tight uppercase truncate">{type.producer}</h4>
-                        <p className="text-orange-500 font-bold text-xs uppercase tracking-wider truncate">{type.model}</p>
+                        <p className="text-orange-500 font-bold text-xs uppercase tracking-wider truncate">{type.model} • {type.grams}g</p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="text-right">
@@ -535,7 +548,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                      {c.imageUrl ? <img src={c.imageUrl} alt={c.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
                   </div>
                   <div>
-                    <h4 className="font-bold text-white text-xs leading-tight">{c.producer} <span className="text-orange-500">{c.model}</span></h4>
+                    <h4 className="font-bold text-white text-xs leading-tight">{c.producer} <span className="text-orange-500">{c.model}</span> {c.grams && <span className="text-slate-500">• {c.grams}g</span>}</h4>
                     <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString()} {c.armory && `• ${c.armory}`}</p>
                   </div>
                 </div>

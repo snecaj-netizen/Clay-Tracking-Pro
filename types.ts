@@ -33,6 +33,7 @@ export interface UsedCartridge {
   producer: string;
   model: string;
   leadNumber: string;
+  grams?: number;
   imageUrl?: string;
 }
 
@@ -78,6 +79,7 @@ export interface Cartridge {
   producer: string;
   model: string;
   leadNumber: string;
+  grams?: number;
   quantity: number; // Current stock
   initialQuantity: number; // Purchased quantity
   cost: number;
@@ -90,6 +92,7 @@ export interface CartridgeType {
   producer: string;
   model: string;
   leadNumber: string;
+  grams?: number;
   imageUrl?: string;
   createdBy?: number;
 }

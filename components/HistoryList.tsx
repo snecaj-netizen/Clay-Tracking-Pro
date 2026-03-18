@@ -280,7 +280,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                         <div className="w-6 h-6 rounded-md bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-700">
                            {uc.imageUrl ? <img src={uc.imageUrl} alt={uc.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[7px] text-orange-600 font-black">{uc.leadNumber}</div>}
                         </div>
-                        <span className="text-[9px] text-slate-300 font-bold uppercase tracking-tight">{uc.producer} {uc.model}</span>
+                        <span className="text-[9px] text-slate-300 font-bold uppercase tracking-tight">{uc.producer} {uc.model} {uc.grams ? `• ${uc.grams}g` : ''}</span>
                       </div>
                     ))}
                   </div>
