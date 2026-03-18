@@ -181,22 +181,17 @@ const Warehouse: React.FC<WarehouseProps> = ({
   };
 
   const handleSetExact = (typeGroup: any) => {
-    triggerConfirm(
-      'Imposta Giacenza',
-      `Imposta la giacenza totale per ${typeGroup.producer} ${typeGroup.model} (Piombo ${typeGroup.leadNumber}${typeGroup.grams ? ` • ${typeGroup.grams}g` : ''}).`,
-      () => {
-        const newVal = window.prompt(`Nuova giacenza totale:`, typeGroup.total.toString());
-        if (newVal !== null) {
-          const parsed = parseInt(newVal);
-          if (!isNaN(parsed)) {
-            const diff = parsed - typeGroup.total;
-            handleQuickAdjust(typeGroup, diff);
-          }
+    const newVal = window.prompt(`Imposta la giacenza totale per ${typeGroup.producer} ${typeGroup.model} (Piombo ${typeGroup.leadNumber}${typeGroup.grams ? ` • ${typeGroup.grams}g` : ''}).\nNuova giacenza totale:`, typeGroup.total.toString());
+    
+    if (newVal !== null && newVal.trim() !== '') {
+      const parsed = parseInt(newVal);
+      if (!isNaN(parsed) && parsed >= 0) {
+        const diff = parsed - typeGroup.total;
+        if (diff !== 0) {
+          handleQuickAdjust(typeGroup, diff);
         }
-      },
-      'Imposta',
-      'primary'
-    );
+      }
+    }
   };
 
   const resetForm = () => {

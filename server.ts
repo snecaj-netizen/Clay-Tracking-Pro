@@ -352,10 +352,10 @@ const initDB = async () => {
         ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin']
       );
     } else {
-      // Force reset admin password to 'admin'
-      const salt = bcrypt.genSaltSync(10);
-      const hash = bcrypt.hashSync('admin', salt);
-      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
+      // Admin already exists, do not reset password every time
+      // const salt = bcrypt.genSaltSync(10);
+      // const hash = bcrypt.hashSync('admin', salt);
+      // await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
     }
 
     // Migrate existing societies from users, teams, events and competitions
@@ -364,28 +364,28 @@ const initDB = async () => {
         INSERT INTO societies (name, email)
         SELECT DISTINCT TRIM(society), ''
         FROM users
-        WHERE society IS NOT NULL AND society != ''
+        WHERE society IS NOT NULL AND TRIM(society) != ''
         ON CONFLICT (name) DO NOTHING;
       `);
       await pool.query(`
         INSERT INTO societies (name, email)
         SELECT DISTINCT TRIM(society), ''
         FROM teams
-        WHERE society IS NOT NULL AND society != ''
+        WHERE society IS NOT NULL AND TRIM(society) != ''
         ON CONFLICT (name) DO NOTHING;
       `);
       await pool.query(`
         INSERT INTO societies (name, email)
         SELECT DISTINCT TRIM(location), ''
         FROM events
-        WHERE location IS NOT NULL AND location != ''
+        WHERE location IS NOT NULL AND TRIM(location) != ''
         ON CONFLICT (name) DO NOTHING;
       `);
       await pool.query(`
         INSERT INTO societies (name, email)
         SELECT DISTINCT TRIM(location), ''
         FROM competitions
-        WHERE location IS NOT NULL AND location != ''
+        WHERE location IS NOT NULL AND TRIM(location) != ''
         ON CONFLICT (name) DO NOTHING;
       `);
     } catch (e) {
