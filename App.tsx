@@ -462,6 +462,7 @@ const App: React.FC = () => {
         {view === 'warehouse' && user?.role !== 'society' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Warehouse 
+              user={user}
               cartridges={cartridges}
               cartridgeTypes={cartridgeTypes}
               onSave={saveCartridge}

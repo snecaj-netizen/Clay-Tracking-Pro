@@ -91,6 +91,7 @@ export interface CartridgeType {
   model: string;
   leadNumber: string;
   imageUrl?: string;
+  createdBy?: number;
 }
 
 export enum UserRole {

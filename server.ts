@@ -124,16 +124,24 @@ const initDB = async () => {
         producer TEXT NOT NULL,
         model TEXT NOT NULL,
         leadnumber TEXT NOT NULL,
-        imageurl TEXT
+        imageurl TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
       );
     `);
+
+    // Ensure created_by column exists
+    try {
+      await pool.query("ALTER TABLE cartridge_types ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
+    } catch (e) {
+      console.log("Column created_by might already exist or error adding it:", e);
+    }
 
     // Migrate existing cartridges to cartridge_types
     try {
       await pool.query(`
-        INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl)
+        INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl, created_by)
         SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber)
-          id, producer, model, leadnumber, imageurl
+          id, producer, model, leadnumber, imageurl, user_id
         FROM cartridges
         ON CONFLICT DO NOTHING;
       `);
@@ -1835,8 +1843,8 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
   try {
     // Check ownership if not admin
     if (req.user.role === 'society') {
-      const { rows } = await pool.query("SELECT location FROM events WHERE id = $1", [req.params.id]);
-      if (rows.length === 0 || rows[0].location !== req.user.society) {
+      const { rows } = await pool.query("SELECT location, created_by FROM events WHERE id = $1", [req.params.id]);
+      if (rows.length === 0 || (rows[0].location !== req.user.society && rows[0].created_by !== req.user.id)) {
         return res.status(403).json({ error: 'Non autorizzato a modificare questo evento' });
       }
     }
@@ -1888,7 +1896,7 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
 
     // Check ownership if not admin
     if (req.user.role === 'society') {
-      if (event.location !== req.user.society) {
+      if (event.location !== req.user.society && event.created_by !== req.user.id) {
         return res.status(403).json({ error: 'Non autorizzato a eliminare questo evento' });
       }
     }
@@ -2063,7 +2071,8 @@ app.get('/api/cartridge-types', authenticateToken, async (req: any, res) => {
       producer: row.producer,
       model: row.model,
       leadNumber: row.leadnumber,
-      imageUrl: row.imageurl
+      imageUrl: row.imageurl,
+      createdBy: row.created_by
     }));
     res.json(types);
   } catch (err: any) {
@@ -2074,16 +2083,32 @@ app.get('/api/cartridge-types', authenticateToken, async (req: any, res) => {
 app.post('/api/cartridge-types', authenticateToken, async (req: any, res) => {
   const t = req.body;
   try {
-    await pool.query(
-      `INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl) 
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (id) DO UPDATE SET 
-       producer = EXCLUDED.producer,
-       model = EXCLUDED.model,
-       leadnumber = EXCLUDED.leadnumber,
-       imageurl = EXCLUDED.imageurl`,
-      [t.id, t.producer, t.model, t.leadNumber, t.imageUrl || null]
-    );
+    // Check if it's an update
+    const { rows: existing } = await pool.query("SELECT created_by FROM cartridge_types WHERE id = $1", [t.id]);
+    
+    if (existing.length > 0) {
+      // Update: Admin or Creator only
+      if (req.user.role !== 'admin' && existing[0].created_by !== req.user.id) {
+        return res.status(403).json({ error: 'Non autorizzato a modificare questo tipo di cartuccia' });
+      }
+      
+      await pool.query(
+        `UPDATE cartridge_types SET 
+         producer = $1,
+         model = $2,
+         leadnumber = $3,
+         imageurl = $4
+         WHERE id = $5`,
+        [t.producer, t.model, t.leadNumber, t.imageUrl || null, t.id]
+      );
+    } else {
+      // Create
+      await pool.query(
+        `INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl, created_by) 
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [t.id, t.producer, t.model, t.leadNumber, t.imageUrl || null, req.user.id]
+      );
+    }
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -2091,6 +2116,9 @@ app.post('/api/cartridge-types', authenticateToken, async (req: any, res) => {
 });
 
 app.delete('/api/cartridge-types/:id', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Solo l\'amministratore può eliminare i tipi di cartucce' });
+  }
   try {
     await pool.query("DELETE FROM cartridge_types WHERE id=$1", [req.params.id]);
     res.json({ success: true });

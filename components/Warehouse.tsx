@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Cartridge, CartridgeType } from '../types';
 
 interface WarehouseProps {
+  user: any;
   cartridges: Cartridge[];
   cartridgeTypes: CartridgeType[];
   onSave: (cart: Cartridge) => void;
@@ -13,6 +14,7 @@ interface WarehouseProps {
 }
 
 const Warehouse: React.FC<WarehouseProps> = ({ 
+  user,
   cartridges, 
   cartridgeTypes,
   onSave, 
@@ -422,8 +424,12 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => startEditType(type)} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
-                    <button onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
+                    {(user?.role === 'admin' || type.createdBy === user?.id) && (
+                      <button onClick={() => startEditType(type)} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
+                    )}
+                    {user?.role === 'admin' && (
+                      <button onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
+                    )}
                   </div>
                 </div>
               ))

@@ -900,7 +900,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         renderCalendarView()
       ) : (
         <div className="space-y-4">
-          {filteredEvents.length > 0 && (
+          {user?.role === 'admin' && filteredEvents.length > 0 && (
             <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-2xl border border-slate-800">
               <label className="flex items-center gap-2 cursor-pointer group px-2">
                 <div className="relative flex items-center justify-center">
@@ -955,25 +955,27 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   onClick={() => setSelectedEvent(ev)}
                   className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : ''} ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
                 >
-                  <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
-                    <label className="relative flex items-center justify-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="peer sr-only"
-                        checked={isSelected}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedEvents([...selectedEvents, ev.id]);
-                          } else {
-                            setSelectedEvents(selectedEvents.filter(id => id !== ev.id));
-                          }
-                        }}
-                      />
-                      <div className="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
-                        <i className="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
-                      </div>
-                    </label>
-                  </div>
+                  {user?.role === 'admin' && (
+                    <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
+                      <label className="relative flex items-center justify-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="peer sr-only"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedEvents([...selectedEvents, ev.id]);
+                            } else {
+                              setSelectedEvents(selectedEvents.filter(id => id !== ev.id));
+                            }
+                          }}
+                        />
+                        <div className="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
+                          <i className="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                        </div>
+                      </label>
+                    </div>
+                  )}
 
                   <div className="flex items-start justify-between gap-3 pr-8">
                     <div className="flex-1 min-w-0">
@@ -1151,7 +1153,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 )}
                 
                 <div className="flex gap-2 w-full sm:w-auto">
-                  {(user?.role === 'admin' || (user?.role === 'society' && selectedEvent.location === user.society)) && (
+                  {(user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
                     <>
                       <button 
                         onClick={() => {
