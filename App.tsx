@@ -170,6 +170,7 @@ const App: React.FC = () => {
     setPrefillCompetition(newComp);
     setPreviousView(view);
     setView('new');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCreateTeamFromEvent = (event: any) => {
@@ -410,7 +411,11 @@ const App: React.FC = () => {
             <Dashboard 
               competitions={competitions} 
               user={user} 
-              onAddClick={() => { setPreviousView('dashboard'); setView('new'); }} 
+              onAddClick={() => { 
+                setPreviousView('dashboard'); 
+                setView('new'); 
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }} 
               onCoachClick={() => { setPreviousView('dashboard'); setView('ai-coach'); }}
             />
           </div>
@@ -583,6 +588,7 @@ const App: React.FC = () => {
               setPreviousView(view);
               setEditingCompetition(null); 
               setView('new'); 
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }
           }}
           className={`fixed bottom-8 right-8 w-16 h-16 ${view === 'new' ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}

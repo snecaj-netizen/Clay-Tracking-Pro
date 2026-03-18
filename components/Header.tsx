@@ -47,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   const menuItems = user?.role === 'society' ? [
     { id: 'admin', tab: 'results', label: 'Risultati', icon: 'fa-poll' },
-    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
+    { id: 'events', label: 'Le tue Gare', icon: 'fa-calendar-alt' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
   ] : [
@@ -89,7 +89,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
           <div className="flex items-center gap-2 sm:gap-4">
             <button 
-              onClick={() => onNavigate('admin', 'profile')}
+              onClick={() => {
+                if (user?.role === 'society') {
+                  onNavigate('admin', 'results');
+                } else if (user?.role === 'admin') {
+                  onNavigate('admin', 'users');
+                } else {
+                  onNavigate('admin', 'profile');
+                }
+              }}
               className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
             >
               <div className="hidden sm:block text-right">
@@ -169,7 +177,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               ))}
               <div className="mt-2 px-4 py-3 bg-slate-900/30 rounded-xl border border-slate-800/50 flex items-center justify-between">
                 <button 
-                  onClick={() => { onNavigate('admin', 'profile'); setIsMenuOpen(false); }}
+                  onClick={() => { 
+                    if (user?.role === 'society') {
+                      onNavigate('admin', 'results');
+                    } else if (user?.role === 'admin') {
+                      onNavigate('admin', 'users');
+                    } else {
+                      onNavigate('admin', 'profile');
+                    }
+                    setIsMenuOpen(false); 
+                  }}
                   className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity active:scale-95 overflow-hidden pr-2"
                 >
                   {user?.avatar ? (

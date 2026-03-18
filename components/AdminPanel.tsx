@@ -1137,7 +1137,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                     >
-                      <i className="fas fa-calendar-alt w-5 text-center"></i> Gare
+                      <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}
                     </button>
                     <button 
                       onClick={() => { setActiveTab('halloffame'); setIsMobileMenuOpen(false); }}
@@ -1193,7 +1193,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('events')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">Gare</span><span className="md:hidden">Gare</span>
+                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue' : 'Gare'}</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1732,6 +1732,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   setEditingSociety(null);
                   setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
                   setShowSocietyForm(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }} className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-4 rounded-xl transition-all active:scale-95 text-xs uppercase flex items-center gap-2 shadow-lg shadow-orange-600/20">
                   <i className="fas fa-plus"></i> Nuova
                 </button>
