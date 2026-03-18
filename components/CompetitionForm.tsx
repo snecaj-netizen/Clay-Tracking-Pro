@@ -615,8 +615,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 );
               })}
             </div>
-            <div className="bg-orange-950/20 border border-orange-900/30 p-4 rounded-xl text-center">
-              <p className="text-[10px] text-orange-200 font-medium italic">Non trovi la tua cartuccia?</p>
+            <div className="bg-orange-900/30 border border-orange-900/50 p-4 rounded-xl text-center">
+              <p className="text-[10px] text-orange-500 font-medium italic">Non trovi la tua cartuccia?</p>
               <button 
                 type="button" 
                 onClick={onNavigateToWarehouse}

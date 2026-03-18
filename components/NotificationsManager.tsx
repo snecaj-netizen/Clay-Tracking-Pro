@@ -50,8 +50,58 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
     if (isAdmin) {
       fetchSocieties();
       fetchUsers();
+      fetchSettings();
     }
   }, [token, isAdmin]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/notification-settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalEnabled(data.global_enabled);
+        setRateLimit(data.rate_limit);
+        if (data.templates) setTemplates(data.templates);
+        if (data.muted_entities) setMutedEntities(data.muted_entities);
+        setAdminNotificationsEnabled(data.admin_notifications_enabled);
+        setAdminCompactMode(data.admin_compact_mode);
+      }
+    } catch (err) {
+      console.error('Error fetching notification settings:', err);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/notification-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          global_enabled: globalEnabled,
+          rate_limit: rateLimit,
+          templates,
+          muted_entities: mutedEntities,
+          admin_notifications_enabled: adminNotificationsEnabled,
+          admin_compact_mode: adminCompactMode
+        })
+      });
+
+      if (res.ok) {
+        alert('Impostazioni salvate con successo!');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Errore durante il salvataggio delle impostazioni');
+      }
+    } catch (err) {
+      console.error('Error saving notification settings:', err);
+      alert('Errore di rete durante il salvataggio');
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -664,7 +714,7 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
 
           <div className="flex justify-end">
             <button 
-              onClick={() => alert('Impostazioni salvate con successo!')}
+              onClick={handleSaveSettings}
               className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-8 py-4 rounded-2xl transition-all shadow-lg shadow-orange-600/20"
             >
               Salva Configurazione

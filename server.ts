@@ -299,6 +299,20 @@ const initDB = async () => {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS notification_settings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        global_enabled BOOLEAN DEFAULT TRUE,
+        rate_limit INTEGER DEFAULT 5,
+        templates JSONB DEFAULT '{"new_competition": "Nuova gara pubblicata: {competition_name} presso {society_name}!", "score_update": "Risultati aggiornati per {competition_name}. Controlla la tua posizione!", "new_challenge": "{shooter_name} ti ha sfidato! Accetta la sfida nel tuo profilo.", "challenge_completed": "Sfida completata! {winner_name} ha vinto contro {loser_name}."}'::jsonb,
+        muted_entities JSONB DEFAULT '[]'::jsonb,
+        admin_notifications_enabled BOOLEAN DEFAULT TRUE,
+        admin_compact_mode BOOLEAN DEFAULT FALSE,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -568,18 +582,27 @@ app.post('/api/notifications/bulk-delete', authenticateToken, async (req: any, r
 // Helper to send push notifications
 const sendPushNotification = async (userIds: (number | string)[], title: string, body: string, url: string, recipientType?: 'all' | 'society' | 'team') => {
   try {
-    // Get Admin ID
+    // Get Admin ID and settings
     const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
     const adminId = adminRows[0]?.id;
 
     if (!adminId) return;
 
+    const { rows: settingsRows } = await pool.query("SELECT * FROM notification_settings WHERE user_id = $1", [adminId]);
+    const settings = settingsRows[0] || { global_enabled: true, admin_notifications_enabled: true, muted_entities: [] };
+
+    if (!settings.global_enabled) return;
+
     // Ensure all IDs are numbers for reliable comparison
     const numericAdminId = Number(adminId);
     const numericUserIds = userIds.map(id => Number(id)).filter(id => !isNaN(id));
 
+    // Filter out muted entities
+    const mutedIds = (settings.muted_entities || []).map((e: any) => Number(e.id));
+    const filteredUserIds = numericUserIds.filter(id => !mutedIds.includes(id));
+
     // 1. Handle standard users (strictly excluding admin)
-    const standardUserIds = numericUserIds.filter(id => id !== numericAdminId);
+    const standardUserIds = filteredUserIds.filter(id => id !== numericAdminId);
     
     // Save standard notifications
     for (const userId of standardUserIds) {
@@ -614,7 +637,7 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
 
     const adminUrl = '/notifications';
 
-    if (shouldNotifyAdmin) {
+    if (shouldNotifyAdmin && settings.admin_notifications_enabled) {
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
         [numericAdminId, title, adminBody, adminUrl]
@@ -622,7 +645,9 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
     }
 
     // 3. Send Push Notifications
-    const allUserIdsToNotify = shouldNotifyAdmin ? [...new Set([...standardUserIds, numericAdminId])] : standardUserIds;
+    const allUserIdsToNotify = (shouldNotifyAdmin && settings.admin_notifications_enabled) 
+      ? [...new Set([...standardUserIds, numericAdminId])] 
+      : standardUserIds;
     const { rows: subscriptions } = await pool.query(
       "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
       [allUserIdsToNotify]
@@ -794,6 +819,63 @@ app.post('/api/admin/notifications/send', authenticateToken, requireAdmin, async
       }
       res.json({ message: 'Notification sent successfully' });
     }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/notification-settings', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM notification_settings WHERE user_id = $1", [req.user.id]);
+    if (rows.length === 0) {
+      // Create default settings if not exist
+      const { rows: newRows } = await pool.query(
+        "INSERT INTO notification_settings (user_id) VALUES ($1) RETURNING *",
+        [req.user.id]
+      );
+      return res.json(newRows[0]);
+    }
+    res.json(rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/notification-settings', authenticateToken, requireAdmin, async (req: any, res) => {
+  const { 
+    global_enabled, 
+    rate_limit, 
+    templates, 
+    muted_entities, 
+    admin_notifications_enabled, 
+    admin_compact_mode 
+  } = req.body;
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO notification_settings 
+        (user_id, global_enabled, rate_limit, templates, muted_entities, admin_notifications_enabled, admin_compact_mode, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id) DO UPDATE SET
+        global_enabled = EXCLUDED.global_enabled,
+        rate_limit = EXCLUDED.rate_limit,
+        templates = EXCLUDED.templates,
+        muted_entities = EXCLUDED.muted_entities,
+        admin_notifications_enabled = EXCLUDED.admin_notifications_enabled,
+        admin_compact_mode = EXCLUDED.admin_compact_mode,
+        updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [
+        req.user.id, 
+        global_enabled, 
+        rate_limit, 
+        JSON.stringify(templates), 
+        JSON.stringify(muted_entities), 
+        admin_notifications_enabled, 
+        admin_compact_mode
+      ]
+    );
+    res.json(rows[0]);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
