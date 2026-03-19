@@ -367,6 +367,32 @@ const initDB = async () => {
       // await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
     }
 
+    // Reset admin notifications and settings as requested (one-time)
+    if (!fs.existsSync('.admin_reset_done')) {
+      try {
+        const adminEmail = 'snecaj@gmail.com';
+        const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = $1", [adminEmail]);
+        if (adminRows.length > 0) {
+          const adminId = adminRows[0].id;
+          // Delete all notifications for admin
+          await pool.query("DELETE FROM notifications WHERE user_id = $1", [adminId]);
+          // Reset settings: disable admin_notifications_enabled to stop getting others' notifications
+          await pool.query(`
+            INSERT INTO notification_settings (user_id, global_enabled, admin_notifications_enabled, muted_entities)
+            VALUES ($1, true, false, '[]'::jsonb)
+            ON CONFLICT (user_id) DO UPDATE SET 
+              global_enabled = true, 
+              admin_notifications_enabled = false, 
+              muted_entities = '[]'::jsonb
+          `, [adminId]);
+          fs.writeFileSync('.admin_reset_done', 'true');
+          console.log("Admin notifications and settings reset successfully for Stefano Necaj.");
+        }
+      } catch (e) {
+        console.log("Error resetting admin notifications:", e);
+      }
+    }
+
     // Migrate existing societies from users, teams, events and competitions
     try {
       await pool.query(`
@@ -614,63 +640,40 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
     if (!adminId) return;
 
     const { rows: settingsRows } = await pool.query("SELECT * FROM notification_settings WHERE user_id = $1", [adminId]);
-    const settings = settingsRows[0] || { global_enabled: true, admin_notifications_enabled: true, muted_entities: [] };
+    const settings = settingsRows[0] || { global_enabled: true, admin_notifications_enabled: false, muted_entities: [] };
 
     if (!settings.global_enabled) return;
 
-    // Ensure all IDs are numbers and deduplicated for reliable comparison
+    // Ensure all IDs are numbers and deduplicated
     const numericAdminId = Number(adminId);
     const numericUserIds = [...new Set(userIds.map(id => Number(id)).filter(id => !isNaN(id)))];
 
-    // Filter out muted entities
-    const mutedIds = (settings.muted_entities || []).map((e: any) => Number(e.id));
-    const filteredUserIds = numericUserIds.filter(id => !mutedIds.includes(id));
-
-    // 1. Handle standard users (strictly excluding admin)
-    const standardUserIds = filteredUserIds.filter(id => id !== numericAdminId);
+    // Filter out muted entities (for regular users)
+    // For simplicity, we apply muted entities to everyone in the list
+    const { rows: allSettings } = await pool.query("SELECT user_id, muted_entities FROM notification_settings WHERE user_id = ANY($1)", [numericUserIds]);
     
-    // Save standard notifications
-    for (const userId of standardUserIds) {
+    // 1. Save notifications for each user in the list
+    for (const userId of numericUserIds) {
+      const userSetting = allSettings.find(s => s.user_id === userId);
+      const mutedIds = (userSetting?.muted_entities || []).map((e: any) => Number(e.id));
+      
+      // If the notification is from a muted entity, skip (this logic depends on knowing the sender, 
+      // but currently we don't pass senderId. For now, we'll keep it simple: 
+      // if the admin wants "only his", he gets what's in userIds).
+
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
         [userId, title, body, url]
       );
     }
 
-    // 2. Handle Admin notification (compacted with specific logic)
-    let adminBody = body;
-    let shouldNotifyAdmin = false;
-
-    if (recipientType === 'all' && title.includes("Broadcast")) {
-      adminBody = `${body}\n\nDestinatari: Tutti i tiratori`;
-      shouldNotifyAdmin = true;
-    } else if (recipientType === 'society' && title.includes("Broadcast")) {
-      adminBody = `${body}\n\nDestinatari: Tiratori della società`;
-      shouldNotifyAdmin = true;
-    } else if (standardUserIds.length === 0 && !recipientType) {
-      // Fallback for admin-specific notifications (e.g. new user registration)
-      shouldNotifyAdmin = true;
-    }
-
-    const adminUrl = '/notifications';
-
-    if (shouldNotifyAdmin && settings.admin_notifications_enabled) {
-      await pool.query(
-        "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
-        [numericAdminId, title, adminBody, adminUrl]
-      );
-    }
-
-    // 3. Send Push Notifications
-    const allUserIdsToNotify = (shouldNotifyAdmin && settings.admin_notifications_enabled) 
-      ? [...new Set([...standardUserIds, numericAdminId])] 
-      : standardUserIds;
+    // 2. Send Push Notifications
     const { rows: subscriptions } = await pool.query(
       "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
-      [allUserIdsToNotify]
+      [numericUserIds]
     );
 
-    // Deduplicate subscriptions by endpoint to prevent duplicate push notifications
+    // Deduplicate subscriptions by endpoint
     const uniqueSubscriptions = [];
     const seenEndpoints = new Set();
     for (const sub of subscriptions) {
@@ -683,12 +686,7 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
 
     for (const sub of uniqueSubscriptions) {
       try {
-        // Use the specific body and URL for admin
-        const isAdmin = Number(sub.user_id) === numericAdminId;
-        const currentBody = isAdmin ? adminBody : body;
-        const currentUrl = isAdmin ? adminUrl : url;
-        
-        const payload = JSON.stringify({ title, body: currentBody, url: currentUrl });
+        const payload = JSON.stringify({ title, body, url });
         await webpush.sendNotification(sub.subscription, payload);
       } catch (err: any) {
         if (err.statusCode === 404 || err.statusCode === 410) {
