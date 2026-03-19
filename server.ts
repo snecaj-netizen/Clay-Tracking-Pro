@@ -646,10 +646,23 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
 
     // Ensure all IDs are numbers and deduplicated
     const numericAdminId = Number(adminId);
-    const numericUserIds = [...new Set(userIds.map(id => Number(id)).filter(id => !isNaN(id)))];
+    let numericUserIds = [...new Set(userIds.map(id => Number(id)).filter(id => !isNaN(id)))];
+
+    // If admin notifications are enabled, and this is a system-wide or empty-target notification, add admin
+    if (settings.admin_notifications_enabled) {
+      if (numericUserIds.length === 0 || recipientType === 'all') {
+        if (!numericUserIds.includes(numericAdminId)) {
+          numericUserIds.push(numericAdminId);
+        }
+      }
+    }
+
+    // If admin notifications are DISABLED, and the admin is in the list but it's not "his" notification 
+    // (e.g. it's a broadcast or system event), we should technically filter him out unless it's explicitly for him.
+    // However, the current logic is: if he's in userIds, he gets it. 
+    // The "system" events now pass [] as userIds, so he won't get them if admin_notifications_enabled is false.
 
     // Filter out muted entities (for regular users)
-    // For simplicity, we apply muted entities to everyone in the list
     const { rows: allSettings } = await pool.query("SELECT user_id, muted_entities FROM notification_settings WHERE user_id = ANY($1)", [numericUserIds]);
     
     // 1. Save notifications for each user in the list
@@ -657,9 +670,7 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       const userSetting = allSettings.find(s => s.user_id === userId);
       const mutedIds = (userSetting?.muted_entities || []).map((e: any) => Number(e.id));
       
-      // If the notification is from a muted entity, skip (this logic depends on knowing the sender, 
-      // but currently we don't pass senderId. For now, we'll keep it simple: 
-      // if the admin wants "only his", he gets what's in userIds).
+      // Basic muted check (if we had senderId we'd check it here)
 
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
@@ -777,12 +788,26 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
 
 app.get('/api/admin/notifications', authenticateToken, requireAdmin, async (req: any, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT n.*, u.name as user_name, u.surname as user_surname 
-       FROM notifications n 
-       LEFT JOIN users u ON n.user_id = u.id 
-       ORDER BY n.created_at DESC LIMIT 200`
+    // Check admin settings
+    const { rows: settingsRows } = await pool.query(
+      "SELECT admin_notifications_enabled FROM notification_settings WHERE user_id = $1",
+      [req.user.id]
     );
+    const adminNotificationsEnabled = settingsRows[0]?.admin_notifications_enabled ?? true;
+
+    let query = `SELECT n.*, u.name as user_name, u.surname as user_surname 
+                 FROM notifications n 
+                 LEFT JOIN users u ON n.user_id = u.id`;
+    let params: any[] = [];
+
+    if (!adminNotificationsEnabled) {
+      query += ` WHERE n.user_id = $1`;
+      params.push(req.user.id);
+    }
+
+    query += ` ORDER BY n.created_at DESC LIMIT 200`;
+    
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

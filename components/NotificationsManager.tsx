@@ -31,6 +31,7 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
   
   // Admin Specific Settings
   const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState(true);
+  const [blockOtherUsersNotifications, setBlockOtherUsersNotifications] = useState(false);
   const [adminCompactMode, setAdminCompactMode] = useState(false);
   
   // Form states
@@ -66,6 +67,7 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
         if (data.templates) setTemplates(data.templates);
         if (data.muted_entities) setMutedEntities(data.muted_entities);
         setAdminNotificationsEnabled(data.admin_notifications_enabled);
+        setBlockOtherUsersNotifications(!data.admin_notifications_enabled);
         setAdminCompactMode(data.admin_compact_mode);
       }
     } catch (err) {
@@ -86,7 +88,7 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
           rate_limit: rateLimit,
           templates,
           muted_entities: mutedEntities,
-          admin_notifications_enabled: adminNotificationsEnabled,
+          admin_notifications_enabled: !blockOtherUsersNotifications,
           admin_compact_mode: adminCompactMode
         })
       });
@@ -577,14 +579,14 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold text-white">Ricevi Notifiche di Sistema</p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Ricevi avvisi su nuove gare, sfide e attività</p>
+                  <p className="text-sm font-bold text-white">Blocca Notifiche Altri Utenti</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Se attivo, visualizzerai e riceverai solo le notifiche che ti riguardano direttamente</p>
                 </div>
                 <button 
-                  onClick={() => setAdminNotificationsEnabled(!adminNotificationsEnabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none self-start sm:self-auto ${adminNotificationsEnabled ? 'bg-orange-600' : 'bg-slate-700'}`}
+                  onClick={() => setBlockOtherUsersNotifications(!blockOtherUsersNotifications)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none self-start sm:self-auto ${blockOtherUsersNotifications ? 'bg-red-600' : 'bg-slate-700'}`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${adminNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${blockOtherUsersNotifications ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
 
