@@ -191,6 +191,25 @@
             margin: 0;
             width: 250px !important;
         }
+
+        /* Date input fixes */
+        input[type="date"] {
+            position: relative;
+            min-width: 0;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            height: auto;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: auto;
+            filter: invert(1);
+        }
     </style>
 <!-- Google API Client & Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>

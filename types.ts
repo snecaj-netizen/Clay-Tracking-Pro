@@ -114,6 +114,7 @@ export interface User {
   society?: string;
   fitav_card?: string;
   avatar?: string;
+  birth_date?: string;
   is_logged_in?: boolean;
 }
 

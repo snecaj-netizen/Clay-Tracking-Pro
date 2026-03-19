@@ -69,6 +69,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS society TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS fitav_card TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP");
@@ -734,7 +735,7 @@ app.post('/api/auth/login', async (req, res) => {
     await pool.query("UPDATE users SET login_count = login_count + 1, last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, society: user.society }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card, avatar: user.avatar } });
+    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card, avatar: user.avatar, birth_date: user.birth_date } });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -742,19 +743,19 @@ app.post('/api/auth/login', async (req, res) => {
 
 // User Profile Routes
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
-  const { name, surname, email, password, category, qualification, society, fitav_card, avatar } = req.body;
+  const { name, surname, email, password, category, qualification, society, fitav_card, avatar, birth_date } = req.body;
   try {
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9 WHERE id = $10",
-        [name, surname, email, hash, category, qualification, society, fitav_card, avatar, req.user.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, birth_date = $10 WHERE id = $11",
+        [name, surname, email, hash, category, qualification, society, fitav_card, avatar, birth_date || null, req.user.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, fitav_card = $7, avatar = $8 WHERE id = $9",
-        [name, surname, email, category, qualification, society, fitav_card, avatar, req.user.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, fitav_card = $7, avatar = $8, birth_date = $9 WHERE id = $10",
+        [name, surname, email, category, qualification, society, fitav_card, avatar, birth_date || null, req.user.id]
       );
     }
     res.json({ success: true });
@@ -899,7 +900,7 @@ app.post('/api/admin/notification-settings', authenticateToken, requireAdmin, as
 // Admin Routes (Manage Users)
 app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, status, login_count, last_login, created_at FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, birth_date, status, login_count, last_login, created_at FROM users";
     let params: any[] = [];
     
     if (req.user.role === 'society') {
@@ -920,7 +921,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 });
 
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar } = req.body;
+  const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date } = req.body;
   
   if (req.user.role === 'society') {
     if (role && role !== 'user') {
@@ -936,8 +937,8 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
-      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null, 'active']
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id",
+      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null, birth_date || null, 'active']
     );
     
     // Notify Admin about new user
@@ -945,14 +946,14 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     const creatorName = req.user.role === 'society' ? `la società ${req.user.society}` : 'l\'amministratore';
     sendPushNotification([], "Nuovo Utente Registrato", `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorName}.`, `/admin?tab=users`);
 
-    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar, status: 'active' });
+    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar, birth_date, status: 'active' });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar, status } = req.body;
+  const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar, birth_date, status } = req.body;
   
   try {
     const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
@@ -980,13 +981,13 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10, status = $11 WHERE id = $12",
-        [name, surname, email, role, hash, category, qualification, society, fitav_card, avatar || null, status || 'active', req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10, birth_date = $11, status = $12 WHERE id = $13",
+        [name, surname, email, role, hash, category, qualification, society, fitav_card, avatar || null, birth_date || null, status || 'active', req.params.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, status = $10 WHERE id = $11",
-        [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, status || 'active', req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, birth_date = $10, status = $11 WHERE id = $12",
+        [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, birth_date || null, status || 'active', req.params.id]
       );
     }
     
