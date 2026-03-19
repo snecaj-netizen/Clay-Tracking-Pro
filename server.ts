@@ -795,7 +795,16 @@ app.get('/api/admin/notifications', authenticateToken, requireAdmin, async (req:
                  LEFT JOIN users u ON n.user_id = u.id`;
     let params: any[] = [];
 
+    // The user wants to see only their own notifications (Stefano Necaj / Admin)
+    // by default. We filter by user_id unless they explicitly want to monitor everything.
     if (!adminNotificationsEnabled) {
+      query += ` WHERE n.user_id = $1`;
+      params.push(req.user.id);
+    } else {
+      // Even if enabled, the user complained about seeing "Danilo Grassi" etc.
+      // So we'll show only notifications for the admin OR notifications that were sent to "all"
+      // But actually, the simplest fix for the user's request is to always filter by user_id
+      // and let the "Compact" notifications (which are sent TO the admin) be the way they monitor.
       query += ` WHERE n.user_id = $1`;
       params.push(req.user.id);
     }
