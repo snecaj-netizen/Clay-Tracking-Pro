@@ -255,6 +255,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [profileSuccess, setProfileSuccess] = useState('');
 
   const [statsFilterDiscipline, setStatsFilterDiscipline] = useState<string>('');
+  const [kpiFilter, setKpiFilter] = useState('total');
+  const [fetchedDashboardStats, setFetchedDashboardStats] = useState<any>(null);
+  const [isRefreshingStats, setIsRefreshingStats] = useState(false);
+
+  const fetchDashboardStats = useCallback(async () => {
+    if (currentUser?.role !== 'admin') return;
+    setIsRefreshingStats(true);
+    try {
+      const res = await fetch(`/api/admin/dashboard-stats?filter=${kpiFilter}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFetchedDashboardStats(data);
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+    } finally {
+      setIsRefreshingStats(false);
+    }
+  }, [kpiFilter, token, currentUser]);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
 
   const filteredTeamStats = useMemo(() => {
     if (!statsFilterDiscipline) return teamStats;
@@ -2545,51 +2570,104 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* User Management Dashboard */}
           {currentUser?.role === 'admin' && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
-              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center sm:block gap-3">
-                <div className="flex items-center gap-2 sm:gap-3 sm:mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                    <i className="fas fa-user-check text-green-500 text-xs"></i>
+            <div className="mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-600/20 flex items-center justify-center">
+                    <i className="fas fa-chart-pie text-orange-500"></i>
                   </div>
-                  <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Utenti Online</span>
+                  <div>
+                    <h3 className="text-sm font-black text-white uppercase tracking-tight">KPI Dashboard</h3>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Statistiche di utilizzo piattaforma</p>
+                  </div>
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-white">{dashboardStats.onlineUsersCount}</div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1">
+                    {[
+                      { id: 'day', label: 'Giorno' },
+                      { id: 'week', label: 'Settimana' },
+                      { id: 'month', label: 'Mese' },
+                      { id: 'year', label: 'Anno' },
+                      { id: 'total', label: 'Totale' }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setKpiFilter(f.id)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${
+                          kpiFilter === f.id 
+                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button 
+                    onClick={() => fetchDashboardStats()}
+                    disabled={isRefreshingStats}
+                    className={`w-9 h-9 rounded-xl border border-slate-800 flex items-center justify-center transition-all active:scale-90 ${
+                      isRefreshingStats ? 'bg-slate-800 text-slate-600' : 'bg-slate-950 text-slate-400 hover:text-orange-500 hover:border-orange-500/30'
+                    }`}
+                    title="Aggiorna Dati"
+                  >
+                    <i className={`fas fa-sync-alt text-xs ${isRefreshingStats ? 'animate-spin' : ''}`}></i>
+                  </button>
+                </div>
               </div>
-              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center sm:block gap-3">
-                <div className="flex items-center gap-2 sm:gap-3 sm:mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                    <i className="fas fa-building text-blue-500 text-xs"></i>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center sm:block gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                      <i className="fas fa-user-check text-green-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Utenti Online</span>
                   </div>
-                  <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Società Online</span>
-                </div>
-                <div className="text-xl sm:text-2xl font-black text-white">{dashboardStats.onlineSocietiesCount}</div>
-              </div>
-              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                    <i className="fas fa-star text-orange-500 text-xs"></i>
+                  <div className="text-xl sm:text-2xl font-black text-white">
+                    {(fetchedDashboardStats || dashboardStats).onlineUsersCount}
                   </div>
-                  <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore più Attivo</span>
                 </div>
-                <div className="text-sm font-bold text-white truncate">
-                  {dashboardStats.topUserName}
-                </div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                  {dashboardStats.topUserLogins} Accessi
-                </div>
-              </div>
-              <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <i className="fas fa-trophy text-purple-500 text-xs"></i>
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center sm:block gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                      <i className="fas fa-building text-blue-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Società Online</span>
                   </div>
-                  <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Società più Attiva</span>
+                  <div className="text-xl sm:text-2xl font-black text-white">
+                    {(fetchedDashboardStats || dashboardStats).onlineSocietiesCount}
+                  </div>
                 </div>
-                <div className="text-sm font-bold text-white truncate">
-                  {dashboardStats.topSocName}
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                      <i className="fas fa-star text-orange-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore più Attivo</span>
+                  </div>
+                  <div className="text-sm font-bold text-white truncate">
+                    {(fetchedDashboardStats || dashboardStats).topUserName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                    {(fetchedDashboardStats || dashboardStats).topUserLogins} Accessi
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                  {dashboardStats.topSocLogins} Accessi Totali
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <i className="fas fa-trophy text-purple-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Società più Attiva</span>
+                  </div>
+                  <div className="text-sm font-bold text-white truncate">
+                    {(fetchedDashboardStats || dashboardStats).topSocName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                    {(fetchedDashboardStats || dashboardStats).topSocLogins} Accessi
+                  </div>
                 </div>
               </div>
             </div>

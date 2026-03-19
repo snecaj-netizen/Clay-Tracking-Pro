@@ -78,6 +78,14 @@ const initDB = async () => {
     }
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS login_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS competitions (
         id TEXT PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -733,6 +741,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Update login count and last login
     await pool.query("UPDATE users SET login_count = login_count + 1, last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
+    await pool.query("INSERT INTO login_logs (user_id) VALUES ($1)", [user.id]);
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, society: user.society }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card, avatar: user.avatar, birth_date: user.birth_date } });
@@ -892,6 +901,74 @@ app.post('/api/admin/notification-settings', authenticateToken, requireAdmin, as
       ]
     );
     res.json(rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Dashboard Stats API
+app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    const { filter } = req.query;
+    let timeFilter = '';
+    
+    if (filter === 'day') {
+      timeFilter = "AND login_at >= CURRENT_DATE";
+    } else if (filter === 'week') {
+      timeFilter = "AND login_at >= CURRENT_DATE - INTERVAL '7 days'";
+    } else if (filter === 'month') {
+      timeFilter = "AND login_at >= CURRENT_DATE - INTERVAL '30 days'";
+    } else if (filter === 'year') {
+      timeFilter = "AND login_at >= CURRENT_DATE - INTERVAL '365 days'";
+    }
+
+    const now = Date.now();
+    let onlineUsersCount = 0;
+    const onlineSocieties = new Set<string>();
+
+    // Get all users to check online status and society
+    const usersRes = await pool.query("SELECT id, society FROM users");
+    usersRes.rows.forEach(u => {
+      const isOnline = activeUsers.has(u.id) && (now - activeUsers.get(u.id)!) < 5 * 60 * 1000;
+      if (isOnline) {
+        onlineUsersCount++;
+        if (u.society) onlineSocieties.add(u.society);
+      }
+    });
+    
+    let topUserQuery = `
+      SELECT u.name, u.surname, COUNT(l.id) as login_count
+      FROM users u
+      JOIN login_logs l ON u.id = l.user_id
+      WHERE u.role = 'user'
+      ${timeFilter}
+      GROUP BY u.id, u.name, u.surname
+      ORDER BY login_count DESC
+      LIMIT 1
+    `;
+    
+    let topSocQuery = `
+      SELECT u.society, COUNT(l.id) as login_count
+      FROM users u
+      JOIN login_logs l ON u.id = l.user_id
+      WHERE u.society IS NOT NULL
+      ${timeFilter}
+      GROUP BY u.society
+      ORDER BY login_count DESC
+      LIMIT 1
+    `;
+
+    const topUserRes = await pool.query(topUserQuery);
+    const topSocRes = await pool.query(topSocQuery);
+
+    res.json({
+      onlineUsersCount,
+      onlineSocietiesCount: onlineSocieties.size,
+      topUserName: topUserRes.rows[0] ? `${topUserRes.rows[0].name} ${topUserRes.rows[0].surname}` : '-',
+      topUserLogins: topUserRes.rows[0] ? parseInt(topUserRes.rows[0].login_count) : 0,
+      topSocName: topSocRes.rows[0] ? topSocRes.rows[0].society : '-',
+      topSocLogins: topSocRes.rows[0] ? parseInt(topSocRes.rows[0].login_count) : 0
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
