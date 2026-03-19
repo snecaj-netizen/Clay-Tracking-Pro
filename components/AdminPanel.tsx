@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import * as XLSX from 'xlsx';
 import Settings from './Settings';
 import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
@@ -762,6 +763,213 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setError(err.message);
     }
+  };
+
+  const handleExportSocietiesExcel = () => {
+    if (societies.length === 0) {
+      setError('Nessuna società da esportare.');
+      return;
+    }
+
+    const exportData = societies.map(s => ({
+      'Nome TAV': s.name,
+      'Email': s.email,
+      'Indirizzo': s.address,
+      'Città': s.city,
+      'Regione': s.region,
+      'CAP': s.zip_code,
+      'Telefono': s.phone,
+      'Cellulare': s.mobile,
+      'Sito Web': s.website,
+      'Contatto': s.contact_name,
+      'Orari Apertura': s.opening_hours,
+      'Link Google Maps': s.google_maps_link,
+      'Discipline': s.disciplines
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Società');
+    XLSX.writeFile(wb, 'esportazione_societa.xlsx');
+  };
+
+  const handleImportSocietiesExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        if (data.length === 0) {
+          setError('Il file Excel è vuoto.');
+          return;
+        }
+
+        const importedSocieties = data.map(row => ({
+          name: row['Nome TAV'] || 'Società senza nome',
+          email: row['Email'] || '',
+          address: row['Indirizzo'] || '',
+          city: row['Città'] || '',
+          region: row['Regione'] || '',
+          zip_code: row['CAP']?.toString() || '',
+          phone: row['Telefono']?.toString() || '',
+          mobile: row['Cellulare']?.toString() || '',
+          website: row['Sito Web'] || '',
+          contact_name: row['Contatto'] || '',
+          opening_hours: row['Orari Apertura'] || '',
+          google_maps_link: row['Link Google Maps'] || '',
+          disciplines: row['Discipline'] || ''
+        }));
+
+        triggerConfirm(
+          'Importa Società',
+          `Sei sicuro di voler importare ${importedSocieties.length} società dal file Excel?`,
+          async () => {
+            setLoading(true);
+            try {
+              for (const soc of importedSocieties) {
+                await fetch('/api/admin/societies', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify(soc)
+                });
+              }
+              fetchSocieties();
+              alert('Importazione completata con successo!');
+            } catch (err) {
+              console.error('Error importing societies:', err);
+              setError('Errore durante l\'importazione di alcune società.');
+            } finally {
+              setLoading(false);
+            }
+          },
+          'Importa',
+          'primary'
+        );
+      } catch (err) {
+        console.error('Error reading Excel file:', err);
+        setError('Errore nella lettura del file Excel.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset input
+  };
+
+  const handleExportUsersExcel = () => {
+    if (users.length === 0) {
+      setError('Nessun utente da esportare.');
+      return;
+    }
+
+    const exportData = users.map(u => ({
+      'Nome': u.name,
+      'Cognome': u.surname,
+      'Email': u.email,
+      'Ruolo': u.role,
+      'Categoria': u.category,
+      'Qualifica': u.qualification,
+      'Società': u.society,
+      'Tessera FITAV': u.fitav_card,
+      'Data di Nascita': u.birth_date
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Utenti');
+    XLSX.writeFile(wb, 'esportazione_utenti.xlsx');
+  };
+
+  const handleImportUsersExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        if (data.length === 0) {
+          setError('Il file Excel è vuoto.');
+          return;
+        }
+
+        const parseExcelDate = (dateVal: any) => {
+          if (!dateVal) return undefined;
+          if (dateVal instanceof Date) {
+            const d = new Date(dateVal.getTime() - dateVal.getTimezoneOffset() * 60000);
+            return d.toISOString().split('T')[0];
+          }
+          if (typeof dateVal === 'string') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return dateVal;
+            const parts = dateVal.split(/[\/\-]/);
+            if (parts.length === 3 && parts[2].length === 4) {
+              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+          }
+          return undefined;
+        };
+
+        const importedUsers = data.map(row => ({
+          name: row['Nome'] || 'Utente',
+          surname: row['Cognome'] || 'Senza Cognome',
+          email: row['Email'] || '',
+          role: row['Ruolo'] || 'user',
+          category: row['Categoria'] || '',
+          qualification: row['Qualifica'] || '',
+          society: row['Società'] || '',
+          fitav_card: row['Tessera FITAV']?.toString() || '',
+          birth_date: parseExcelDate(row['Data di Nascita']),
+          password: row['Tessera FITAV']?.toString() || 'Password123!'
+        }));
+
+        triggerConfirm(
+          'Importa Utenti',
+          `Sei sicuro di voler importare ${importedUsers.length} utenti dal file Excel? La password predefinita sarà il numero di tessera FITAV o 'Password123!'.`,
+          async () => {
+            setLoading(true);
+            try {
+              for (const u of importedUsers) {
+                await fetch('/api/admin/users', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify(u)
+                });
+              }
+              fetchUsers();
+              alert('Importazione completata con successo!');
+            } catch (err) {
+              console.error('Error importing users:', err);
+              setError('Errore durante l\'importazione di alcune utenti.');
+            } finally {
+              setLoading(false);
+            }
+          },
+          'Importa',
+          'primary'
+        );
+      } catch (err) {
+        console.error('Error reading Excel file:', err);
+        setError('Errore nella lettura del file Excel.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset input
   };
 
   const handleEditSociety = (soc: any) => {
@@ -1762,6 +1970,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h2>
             {currentUser?.role === 'admin' && !showSocietyForm && (
               <div className="flex gap-2">
+                <button 
+                  onClick={handleExportSocietiesExcel}
+                  className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+                  title="Esporta in Excel"
+                >
+                  <i className="fas fa-file-excel"></i>
+                  <span className="hidden sm:inline">Esporta</span>
+                </button>
+                <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
+                  <i className="fas fa-file-import"></i>
+                  <span className="hidden sm:inline">Importa</span>
+                  <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
+                </label>
                 <button onClick={() => {
                   setEditingSociety(null);
                   setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
@@ -2536,6 +2757,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
             </h2>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {currentUser?.role === 'admin' && !showUserForm && (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleExportUsersExcel}
+                    className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+                    title="Esporta in Excel"
+                  >
+                    <i className="fas fa-file-excel"></i>
+                    <span className="hidden sm:inline">Esporta</span>
+                  </button>
+                  <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
+                    <i className="fas fa-file-import"></i>
+                    <span className="hidden sm:inline">Importa</span>
+                    <input type="file" accept=".xlsx, .xls" onChange={handleImportUsersExcel} className="hidden" />
+                  </label>
+                </div>
+              )}
               <div className="relative">
                 <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                 <input 

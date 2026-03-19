@@ -348,27 +348,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     }
   };
 
-  const downloadExcelTemplate = () => {
-    const templateData = [
-      {
-        'Nome Gara': 'Esempio Gara',
-        'Tipologia': 'Regionale',
-        'Visibilità': 'Pubblica',
-        'Disciplina': 'Compak',
-        'Società': 'Nome Società',
-        'Piattelli': 50,
-        'Data Inizio': '2026-03-17',
-        'Data Fine': '2026-03-17',
-        'Costo': 25,
-        'Note': 'Note opzionali',
-        'Link Iscrizione': 'https://...'
-      }
-    ];
+  const handleExportExcel = () => {
+    if (filteredEvents.length === 0) {
+      alert('Nessun evento da esportare.');
+      return;
+    }
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    const exportData = filteredEvents.map(ev => ({
+      'Nome Gara': ev.name,
+      'Tipologia': ev.type,
+      'Visibilità': ev.visibility,
+      'Disciplina': ev.discipline,
+      'Società': ev.location,
+      'Piattelli': ev.targets,
+      'Data Inizio': ev.start_date,
+      'Data Fine': ev.end_date,
+      'Costo': ev.cost || '',
+      'Note': ev.notes || '',
+      'Link Iscrizione': ev.registration_link || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Modello Gare');
-    XLSX.writeFile(wb, 'modello_gare.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Eventi');
+    XLSX.writeFile(wb, 'esportazione_eventi.xlsx');
   };
 
   const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -688,12 +691,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           {user?.role === 'admin' && !showForm && (
             <div className="flex gap-2 mr-2">
               <button 
-                onClick={downloadExcelTemplate}
+                onClick={handleExportExcel}
                 className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
-                title="Scarica modello Excel"
+                title="Esporta in Excel"
               >
-                <i className="fas fa-file-download"></i>
-                <span className="hidden sm:inline">Modello</span>
+                <i className="fas fa-file-excel"></i>
+                <span className="hidden sm:inline">Esporta Excel</span>
               </button>
               <label className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
                 <i className="fas fa-file-import"></i>
