@@ -451,7 +451,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
               {(discipline === Discipline.EL ? [12, 24, 36] : 
                 discipline === Discipline.DT ? [150] :
                 discipline === Discipline.SK_ISSF ? [75, 125] :
-                [25, 50, 100, 200]).map(val => (
+                [25, 50, 75, 100, 200]).map(val => (
                 <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 min-w-[60px] py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>{val}</button>
               ))}
             </div>

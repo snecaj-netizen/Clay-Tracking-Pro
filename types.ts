@@ -17,6 +17,7 @@ export enum Discipline {
 
 export enum TargetCount {
   T50 = 50,
+  T75 = 75,
   T100 = 100,
   T200 = 200
 }

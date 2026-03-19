@@ -828,7 +828,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }));
 
         triggerConfirm(
-          'Importa Società',
+          'Importa',
           `Sei sicuro di voler importare ${importedSocieties.length} società dal file Excel?`,
           async () => {
             setLoading(true);
@@ -936,7 +936,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }));
 
         triggerConfirm(
-          'Importa Utenti',
+          'Importa',
           `Sei sicuro di voler importare ${importedUsers.length} utenti dal file Excel? La password predefinita sarà il numero di tessera FITAV o 'Password123!'.`,
           async () => {
             setLoading(true);
@@ -1973,14 +1973,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button 
                   onClick={handleExportSocietiesExcel}
                   className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
-                  title="Esporta in Excel"
+                  title="Esporta"
                 >
                   <i className="fas fa-file-excel"></i>
-                  <span className="hidden sm:inline">Esporta</span>
+                  <span>Esporta</span>
                 </button>
                 <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
                   <i className="fas fa-file-import"></i>
-                  <span className="hidden sm:inline">Importa</span>
+                  <span>Importa</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
                 </label>
                 <button onClick={() => {
@@ -2762,14 +2762,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <button 
                     onClick={handleExportUsersExcel}
                     className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
-                    title="Esporta in Excel"
+                    title="Esporta"
                   >
                     <i className="fas fa-file-excel"></i>
-                    <span className="hidden sm:inline">Esporta</span>
+                    <span>Esporta</span>
                   </button>
                   <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
                     <i className="fas fa-file-import"></i>
-                    <span className="hidden sm:inline">Importa</span>
+                    <span>Importa</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleImportUsersExcel} className="hidden" />
                   </label>
                 </div>

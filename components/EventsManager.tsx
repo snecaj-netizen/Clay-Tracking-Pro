@@ -428,7 +428,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         }));
 
         triggerConfirm(
-          'Importa Gare',
+          'Importa',
           `Sei sicuro di voler importare ${importedEvents.length} gare dal file Excel?`,
           async () => {
             setLoading(true);
@@ -693,14 +693,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               <button 
                 onClick={handleExportExcel}
                 className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
-                title="Esporta in Excel"
+                title="Esporta"
               >
                 <i className="fas fa-file-excel"></i>
-                <span className="hidden sm:inline">Esporta</span>
+                <span>Esporta</span>
               </button>
               <label className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
                 <i className="fas fa-file-import"></i>
-                <span className="hidden sm:inline">Importa</span>
+                <span>Importa</span>
                 <input type="file" accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
               </label>
             </div>

@@ -344,7 +344,7 @@ const App: React.FC = () => {
 
   const handleImport = async (data: any) => {
     triggerConfirm(
-      'Importazione Dati',
+      'Importa',
       'Questa operazione importerà i dati e potrebbe sovrascrivere quelli esistenti con lo stesso ID. Continuare?',
       async () => {
         // Normalizzazione dati se il formato è diverso

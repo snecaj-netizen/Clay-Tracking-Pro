@@ -462,7 +462,8 @@ initDB().then(() => {
         try {
           const userIds = await getTargetUserIds(broadcast.target_type, broadcast.target_id);
           if (userIds.length > 0) {
-            await sendPushNotification(userIds, broadcast.title, broadcast.body, '/dashboard');
+            const recipientType = broadcast.target_type === 'all_shooters' ? 'all' : (broadcast.target_type === 'shooters_of_society' ? 'society' : undefined);
+            await sendPushNotification(userIds, `Broadcast: ${broadcast.title}`, broadcast.body, '/dashboard', recipientType);
           }
           await pool.query("UPDATE scheduled_broadcasts SET sent = TRUE WHERE id = $1", [broadcast.id]);
         } catch (err) {
@@ -617,9 +618,9 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
 
     if (!settings.global_enabled) return;
 
-    // Ensure all IDs are numbers for reliable comparison
+    // Ensure all IDs are numbers and deduplicated for reliable comparison
     const numericAdminId = Number(adminId);
-    const numericUserIds = userIds.map(id => Number(id)).filter(id => !isNaN(id));
+    const numericUserIds = [...new Set(userIds.map(id => Number(id)).filter(id => !isNaN(id)))];
 
     // Filter out muted entities
     const mutedIds = (settings.muted_entities || []).map((e: any) => Number(e.id));
@@ -640,19 +641,11 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
     let adminBody = body;
     let shouldNotifyAdmin = false;
 
-    if (recipientType === 'all') {
+    if (recipientType === 'all' && title.includes("Broadcast")) {
       adminBody = `${body}\n\nDestinatari: Tutti i tiratori`;
       shouldNotifyAdmin = true;
-    } else if (recipientType === 'society') {
+    } else if (recipientType === 'society' && title.includes("Broadcast")) {
       adminBody = `${body}\n\nDestinatari: Tiratori della società`;
-      shouldNotifyAdmin = true;
-    } else if (recipientType === 'team' && standardUserIds.length > 0) {
-      const { rows: recipientRows } = await pool.query(
-        "SELECT name, surname FROM users WHERE id = ANY($1)",
-        [standardUserIds]
-      );
-      const recipientNames = recipientRows.map(r => `${r.name} ${r.surname}`).join(', ');
-      adminBody = `${body}\n\nInviato a: ${recipientNames}`;
       shouldNotifyAdmin = true;
     } else if (standardUserIds.length === 0 && !recipientType) {
       // Fallback for admin-specific notifications (e.g. new user registration)
@@ -677,7 +670,18 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       [allUserIdsToNotify]
     );
 
+    // Deduplicate subscriptions by endpoint to prevent duplicate push notifications
+    const uniqueSubscriptions = [];
+    const seenEndpoints = new Set();
     for (const sub of subscriptions) {
+      const endpoint = sub.subscription.endpoint;
+      if (!seenEndpoints.has(endpoint)) {
+        seenEndpoints.add(endpoint);
+        uniqueSubscriptions.push(sub);
+      }
+    }
+
+    for (const sub of uniqueSubscriptions) {
       try {
         // Use the specific body and URL for admin
         const isAdmin = Number(sub.user_id) === numericAdminId;
@@ -840,7 +844,8 @@ app.post('/api/admin/notifications/send', authenticateToken, requireAdmin, async
       // Send immediately
       const userIds = await getTargetUserIds(targetType, targetId);
       if (userIds.length > 0) {
-        await sendPushNotification(userIds, title, body, '/dashboard');
+        const recipientType = targetType === 'all_shooters' ? 'all' : (targetType === 'shooters_of_society' ? 'society' : undefined);
+        await sendPushNotification(userIds, `Broadcast: ${title}`, body, '/dashboard', recipientType);
       }
       res.json({ message: 'Notification sent successfully' });
     }

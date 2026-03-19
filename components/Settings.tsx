@@ -91,15 +91,15 @@ const Settings: React.FC<SettingsProps> = ({
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button onClick={handleExport} className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-600 transition-all">
-            <i className="fas fa-file-export text-orange-500"></i> Esporta JSON (Miei Dati)
+            <i className="fas fa-file-export text-orange-500"></i> Esporta
           </button>
           {user?.role === 'admin' && (
             <button onClick={handleExportAll} className="flex items-center justify-center gap-3 bg-orange-600/20 hover:bg-orange-600/30 text-orange-500 font-bold py-4 rounded-2xl border border-orange-600/30 transition-all">
-              <i className="fas fa-database"></i> Esporta Tutto (Admin)
+              <i className="fas fa-database"></i> Esporta
             </button>
           )}
           <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-600 transition-all">
-            <i className="fas fa-file-import text-blue-500"></i> Importa JSON
+            <i className="fas fa-file-import text-blue-500"></i> Importa
           </button>
           <input type="file" ref={fileInputRef} onChange={(e) => {
             const file = e.target.files?.[0];
