@@ -649,6 +649,8 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
     let numericUserIds = [...new Set(userIds.map(id => Number(id)).filter(id => !isNaN(id)))];
 
     // If admin notifications are enabled, and this is a system-wide or empty-target notification, add admin
+    // BUT: The user now wants a "compact" message for the admin.
+    // So we'll handle the admin separately if it's a system event.
     if (settings.admin_notifications_enabled) {
       if (numericUserIds.length === 0 || recipientType === 'all') {
         if (!numericUserIds.includes(numericAdminId)) {
@@ -656,11 +658,6 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
         }
       }
     }
-
-    // If admin notifications are DISABLED, and the admin is in the list but it's not "his" notification 
-    // (e.g. it's a broadcast or system event), we should technically filter him out unless it's explicitly for him.
-    // However, the current logic is: if he's in userIds, he gets it. 
-    // The "system" events now pass [] as userIds, so he won't get them if admin_notifications_enabled is false.
 
     // Filter out muted entities (for regular users)
     const { rows: allSettings } = await pool.query("SELECT user_id, muted_entities FROM notification_settings WHERE user_id = ANY($1)", [numericUserIds]);
@@ -670,8 +667,6 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       const userSetting = allSettings.find(s => s.user_id === userId);
       const mutedIds = (userSetting?.muted_entities || []).map((e: any) => Number(e.id));
       
-      // Basic muted check (if we had senderId we'd check it here)
-
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
         [userId, title, body, url]
@@ -1417,6 +1412,10 @@ app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, asyn
       }
     }
 
+    // Admin compact notification
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    await sendAdminCompactNotification('sfida', name, 'inserita', 'Gara di Società', societyName, from);
+
     res.json({ id });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -1445,6 +1444,13 @@ app.put('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, a
       "UPDATE challenges SET society_id = $1, name = $2, discipline = $3, mode = $4, start_date = $5, end_date = $6, prize = $7 WHERE id = $8",
       [societyId, name, discipline, mode, startDate, endDate, prize, req.params.id]
     );
+
+    // Admin compact notification
+    const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [societyId]);
+    const societyName = socRows[0]?.name;
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    await sendAdminCompactNotification('sfida', name, 'aggiornata', 'Gara di Società', societyName, from);
+
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -1453,17 +1459,25 @@ app.put('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, a
 
 app.delete('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    const { rows: challengeRows } = await pool.query("SELECT society_id FROM challenges WHERE id = $1", [req.params.id]);
+    const { rows: challengeRows } = await pool.query("SELECT name, society_id FROM challenges WHERE id = $1", [req.params.id]);
     if (challengeRows.length === 0) return res.status(404).json({ error: 'Sfida non trovata' });
+    const challenge = challengeRows[0];
 
     if (req.user.role === 'society') {
-      const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [challengeRows[0].society_id]);
+      const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [challenge.society_id]);
       if (socRows.length === 0 || socRows[0].name !== req.user.society) {
         return res.status(403).json({ error: 'Accesso negato' });
       }
     }
 
     await pool.query("DELETE FROM challenges WHERE id = $1", [req.params.id]);
+
+    // Admin compact notification
+    const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [challenge.society_id]);
+    const societyName = socRows[0]?.name;
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    await sendAdminCompactNotification('sfida', challenge.name, 'eliminata', 'Gara di Società', societyName, from);
+
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -2030,6 +2044,11 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
       sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events?id=${id}`, visibility === 'Pubblica' ? 'all' : 'society');
     }
 
+    // Admin compact notification
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    const targetSociety = visibility === 'Pubblica' ? null : (req.user.society || location);
+    await sendAdminCompactNotification('gara', name, 'inserita', visibility, targetSociety, from);
+
     res.status(201).json({ message: 'Evento creato' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -2080,6 +2099,11 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
       sendPushNotification(userIds, "Evento Aggiornato", `L'evento "${name}" ha subito delle modifiche.`, `/events?id=${req.params.id}`, visibility === 'Pubblica' ? 'all' : 'society');
     }
 
+    // Admin compact notification
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    const targetSociety = visibility === 'Pubblica' ? null : (req.user.society || location);
+    await sendAdminCompactNotification('gara', name, 'aggiornata', visibility, targetSociety, from);
+
     res.json({ message: 'Evento aggiornato' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -2125,13 +2149,35 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
       sendPushNotification(userIds, "Evento Annullato", `L'evento "${event.name}" è stato annullato.`, `/events`, event.visibility === 'Pubblica' ? 'all' : 'society');
     }
 
+    // Admin compact notification
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    const targetSociety = event.visibility === 'Pubblica' ? null : event.location;
+    await sendAdminCompactNotification('gara', event.name, 'eliminata', event.visibility, targetSociety, from);
+
     res.json({ message: 'Evento eliminato' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Competitions Routes
+// Helper for admin compact notifications
+const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: string, action: 'inserita' | 'aggiornata' | 'eliminata', visibility: string, targetSociety: string | null, from: string) => {
+  try {
+    const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
+    const adminId = adminRows[0]?.id;
+    if (!adminId) return;
+
+    const { rows: settingsRows } = await pool.query("SELECT admin_notifications_enabled FROM notification_settings WHERE user_id = $1", [adminId]);
+    if (settingsRows.length > 0 && !settingsRows[0].admin_notifications_enabled) return;
+
+    const targetDesc = visibility === 'Pubblica' ? 'tutti i tiratori' : `i tiratori della "${targetSociety || 'Società'}"`;
+    const body = `La ${entityType} "${name}" è stata ${action} ed inviata a ${targetDesc} da ${from}.`;
+    
+    await sendPushNotification([adminId], "Notifica Admin", body, entityType === 'gara' ? '/events' : '/challenges');
+  } catch (err) {
+    console.error("Error in sendAdminCompactNotification:", err);
+  }
+};
 app.get('/api/competitions', authenticateToken, async (req: any, res) => {
   try {
     let query = "SELECT * FROM competitions WHERE user_id = $1";
