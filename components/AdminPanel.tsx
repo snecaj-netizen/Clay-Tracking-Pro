@@ -1603,6 +1603,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <option value="Veterani">Veterani</option>
                       <option value="Master">Master</option>
                       <option value="Senior">Senior</option>
+                      <option value="Lady">Lady</option>
+                      <option value="Junior">Junior</option>
                     </select>
                   </div>
                 </>
@@ -3014,6 +3016,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <option value="Veterani">Veterani</option>
                         <option value="Master">Master</option>
                         <option value="Senior">Senior</option>
+                        <option value="Lady">Lady</option>
+                        <option value="Junior">Junior</option>
                       </select>
                     </div>
                   </>
