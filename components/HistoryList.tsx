@@ -1,20 +1,23 @@
 
 import React, { useState, useMemo } from 'react';
 import { Competition, CompetitionLevel, Discipline, getSeriesLayout } from '../types';
+import SeriesPopup from './SeriesPopup';
 
 interface HistoryListProps {
   competitions: Competition[];
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
+  onUpdate?: (comp: Competition) => void;
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   user?: any;
 }
 
-const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdit, triggerConfirm, user }) => {
+const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdit, onUpdate, triggerConfirm, user }) => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+  const [editingSeries, setEditingSeries] = useState<{ comp: Competition, index: number } | null>(null);
 
   const toggleDetails = (id: string) => {
     setExpandedDetails(prev => ({ ...prev, [id]: !prev[id] }));
@@ -338,9 +341,9 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                     return (
                       <button 
                         key={i} 
-                        onClick={() => hasDetails ? toggleDetails(comp.id) : undefined}
-                        className={`flex flex-col items-center bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-800/50 min-w-[42px] ${hasDetails ? 'cursor-pointer hover:bg-slate-800/80 hover:border-orange-500/50 transition-all active:scale-95' : 'cursor-default'}`}
-                        title={hasDetails ? "Clicca per vedere i dettagli" : ""}
+                        onClick={() => setEditingSeries({ comp, index: i })}
+                        className={`flex flex-col items-center bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-800/50 min-w-[42px] cursor-pointer hover:bg-slate-800/80 hover:border-orange-500/50 transition-all active:scale-95`}
+                        title="Clicca per inserire/modificare il risultato"
                       >
                         <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}</span>
                         <span className={`text-sm font-black ${s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
@@ -669,6 +672,17 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
       <div className="pt-2">
         {viewMode === 'list' ? renderListView() : renderCalendarView()}
       </div>
+
+      {editingSeries && (
+        <SeriesPopup
+          competition={editingSeries.comp}
+          seriesIndex={editingSeries.index}
+          onClose={() => setEditingSeries(null)}
+          onSave={(updatedComp) => {
+            if (onUpdate) onUpdate(updatedComp);
+          }}
+        />
+      )}
     </div>
   );
 };

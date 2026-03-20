@@ -203,7 +203,7 @@ const App: React.FC = () => {
   };
 
   const saveCompetition = async (comp: Competition) => {
-    const isEdit = !!editingCompetition;
+    const isEdit = !!comp.id;
     const method = isEdit ? 'PUT' : 'POST';
     const endpoint = isEdit ? `/api/competitions/${comp.id}` : '/api/competitions';
 
@@ -224,10 +224,12 @@ const App: React.FC = () => {
         // Show success toast
         triggerToast(isEdit ? 'Gara aggiornata con successo!' : 'Gara registrata con successo!', 'success');
         
-        // Redirect to history
-        setView('history');
-        setPreviousView(null);
-        setEditingCompetition(null);
+        // Redirect to history only if we were editing the whole competition
+        if (editingCompetition || !isEdit) {
+          setView('history');
+          setPreviousView(null);
+          setEditingCompetition(null);
+        }
       } else {
         const errorData = await res.json();
         console.error('Save error:', errorData);
@@ -483,6 +485,7 @@ const App: React.FC = () => {
                 setView('new');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+              onUpdate={saveCompetition}
               triggerConfirm={triggerConfirm}
               user={user}
             />
