@@ -2004,14 +2004,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span>Importa</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
                 </label>
-                <button onClick={() => {
-                  setEditingSociety(null);
-                  setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
-                  setShowSocietyForm(true);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }} className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-4 rounded-xl transition-all active:scale-95 text-xs uppercase flex items-center gap-2 shadow-lg shadow-orange-600/20">
-                  <i className="fas fa-plus"></i> Nuova
-                </button>
               </div>
             )}
           </div>
