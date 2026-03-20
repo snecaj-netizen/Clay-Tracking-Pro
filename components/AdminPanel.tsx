@@ -81,6 +81,7 @@ interface AdminPanelProps {
     society: string;
     date: string;
     location: string;
+    targets?: number;
   };
   onPrefillTeamUsed?: () => void;
   hideTabs?: boolean;
@@ -110,6 +111,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewTeamSociety(prefillTeam.society || '');
       setNewTeamLocation(prefillTeam.location || '');
       setNewTeamDate(prefillTeam.date || '');
+      setNewTeamTargets(prefillTeam.targets || 100);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (onPrefillTeamUsed) onPrefillTeamUsed();
     }
@@ -158,6 +160,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newTeamSociety, setNewTeamSociety] = useState(currentUser?.role === 'society' ? currentUser?.society || '' : '');
   const [newTeamLocation, setNewTeamLocation] = useState('');
   const [newTeamDate, setNewTeamDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newTeamTargets, setNewTeamTargets] = useState(100);
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [editingScore, setEditingScore] = useState<{teamId: number, userId: number, score: number} | null>(null);
@@ -506,6 +509,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           society: newTeamSociety,
           location: newTeamLocation,
           date: newTeamDate,
+          targets: newTeamTargets,
           memberIds: selectedShooterIds
         }),
       });
@@ -517,6 +521,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewTeamDiscipline('');
       setNewTeamLocation('');
       setNewTeamDate(new Date().toISOString().split('T')[0]);
+      setNewTeamTargets(100);
       if (currentUser?.role === 'society' && currentUser?.society) {
         setNewTeamSociety(currentUser.society);
       } else {
@@ -569,6 +574,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewTeamSociety(team.society || '');
     setNewTeamLocation(team.location || '');
     setNewTeamDate(team.date || new Date().toISOString().split('T')[0]);
+    setNewTeamTargets(team.targets || 100);
     setSelectedShooterIds(team.members ? team.members.map((m: any) => m.id) : []);
     setShowTeamForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -648,6 +654,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               society: newTeamSociety,
               location: newTeamLocation,
               date: newTeamDate,
+              targets: newTeamTargets,
               memberIds: selectedShooterIds
             }),
           });
@@ -665,6 +672,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           setNewTeamDiscipline('');
           setNewTeamLocation('');
           setNewTeamDate(new Date().toISOString().split('T')[0]);
+          setNewTeamTargets(100);
           if (currentUser?.role === 'society' && currentUser?.society) {
             setNewTeamSociety(currentUser.society);
           } else {
@@ -1709,6 +1717,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                   </div>
                   <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Totale Piattelli</label>
+                    <input 
+                      type="number" 
+                      required 
+                      value={newTeamTargets} 
+                      onChange={e => setNewTeamTargets(parseInt(e.target.value))} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" 
+                    />
+                  </div>
+                  <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Dimensione Squadra</label>
                     <div className="flex gap-2">
                       {[3, 6].map(size => (
@@ -1774,6 +1792,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         setNewTeamDiscipline('');
                         setNewTeamLocation('');
                         setNewTeamDate(new Date().toISOString().split('T')[0]);
+                        setNewTeamTargets(100);
                         if (currentUser?.role === 'society' && currentUser?.society) {
                           setNewTeamSociety(currentUser.society);
                         } else {

@@ -11,6 +11,7 @@ import AdminPanel from './components/AdminPanel';
 import EventsManager from './components/EventsManager';
 import AICoachPage from './components/AICoachPage';
 import ConfirmModal from './components/ConfirmModal';
+import Toast from './components/Toast';
 import NotificationsManager from './components/NotificationsManager';
 
 const App: React.FC = () => {
@@ -34,7 +35,7 @@ const App: React.FC = () => {
   const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
-  const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string } | null>(null);
+  const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(null);
   
@@ -89,6 +90,21 @@ const App: React.FC = () => {
   const triggerConfirm = (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => {
     console.log('Triggering confirm modal:', { title, message });
     setConfirmConfig({ isOpen: true, title, message, onConfirm, confirmText, variant });
+  };
+
+  // Toast state
+  const [toastConfig, setToastConfig] = useState<{
+    isOpen: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    message: '',
+    type: 'success',
+  });
+
+  const triggerToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastConfig({ isOpen: true, message, type });
   };
 
   // Fetch data from API
@@ -179,9 +195,11 @@ const App: React.FC = () => {
       discipline: event.discipline,
       society: user?.role === 'society' ? user.society : event.location,
       location: event.location,
-      date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0]
+      date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      targets: Number(event.targets) || 100
     });
     setView('admin');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const saveCompetition = async (comp: Competition) => {
@@ -202,7 +220,12 @@ const App: React.FC = () => {
         } else {
           setCompetitions(prev => !isEdit ? [comp, ...prev] : prev.map(c => c.id === comp.id ? comp : c));
         }
-        setView(previousView || 'history');
+        
+        // Show success toast
+        triggerToast(isEdit ? 'Gara aggiornata con successo!' : 'Gara registrata con successo!', 'success');
+        
+        // Redirect to history
+        setView('history');
         setPreviousView(null);
         setEditingCompetition(null);
       } else {
@@ -617,6 +640,13 @@ const App: React.FC = () => {
         onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
         confirmText={confirmConfig.confirmText}
         variant={confirmConfig.variant}
+      />
+
+      <Toast 
+        isOpen={toastConfig.isOpen}
+        message={toastConfig.message}
+        type={toastConfig.type}
+        onClose={() => setToastConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

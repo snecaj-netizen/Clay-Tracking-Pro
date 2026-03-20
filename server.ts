@@ -178,6 +178,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS discipline TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS date TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location TEXT");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS targets INTEGER DEFAULT 100");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_name TEXT");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL");
     } catch (e) {
@@ -1667,14 +1668,14 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
 });
 
 app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date } = req.body;
+  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date, targets } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const society = req.user.role === 'society' ? req.user.society : bodySociety;
     const { rows } = await client.query(
-      "INSERT INTO teams (name, size, society, competition_name, discipline, date, location, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
-      [name, size, society, competition_name, discipline, date, req.body.location, req.user.id]
+      "INSERT INTO teams (name, size, society, competition_name, discipline, date, location, targets, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+      [name, size, society, competition_name, discipline, date, req.body.location, targets || 100, req.user.id]
     );
     const teamId = rows[0].id;
 
@@ -1709,7 +1710,7 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
 
 app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { id } = req.params;
-  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date } = req.body;
+  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date, targets } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1734,8 +1735,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
     console.log(`Syncing team ${teamId}: oldMembers=${oldMemberIds}, newMembers=${numericMemberIds}`);
 
     await client.query(
-      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4, society = $5, date = $6, location = $7 WHERE id = $8",
-      [name, size, competition_name, discipline, society, date, req.body.location, teamId]
+      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4, society = $5, date = $6, location = $7, targets = $8 WHERE id = $9",
+      [name, size, competition_name, discipline, society, date, req.body.location, targets || 100, teamId]
     );
 
     // Update members
@@ -1908,6 +1909,10 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
       } else {
         // Create new
         const compId = `team_comp_${Date.now()}_${userId}`;
+        const teamTargets = team.targets || 100;
+        const numSeries = Math.ceil(teamTargets / 25);
+        const initialScores = Array(numSeries).fill(0);
+
         await client.query(
           `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id) 
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
@@ -1920,9 +1925,9 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
             team.discipline || '', 
             'Nazionale', // Default level
             0, // Initial score
-            100, // Default targets
+            teamTargets, 
             0, // Initial average
-            JSON.stringify([0, 0, 0, 0]), // Default 4 series of 25
+            JSON.stringify(initialScores), 
             team.name,
             teamId
           ]

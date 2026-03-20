@@ -37,8 +37,27 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [eventType, setEventType] = useState<'Gara' | 'Allenamento'>(
     (data?.level === CompetitionLevel.TRAINING || data?.discipline === Discipline.TRAINING) ? 'Allenamento' : 'Gara'
   );
-  const [scores, setScores] = useState<number[]>(data?.scores || [25, 25]);
-  const [detailedScores, setDetailedScores] = useState<boolean[][]>(data?.detailedScores || []);
+  const [scores, setScores] = useState<number[]>(() => {
+    if (initialData?.scores) return initialData.scores;
+    if (prefillData?.scores) return prefillData.scores;
+    
+    // New competition or training
+    const d = initialData || prefillData;
+    const disc = d?.discipline || Discipline.CK;
+    const targets = d?.totalTargets || 50;
+    const seriesLayoutObj = getSeriesLayout(disc);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+    const numSeries = Math.ceil(targets / targetsPerSeries);
+    return Array(numSeries).fill(0);
+  });
+  const [detailedScores, setDetailedScores] = useState<boolean[][]>(() => {
+    if (data?.detailedScores) return data.detailedScores;
+    
+    const seriesLayoutObj = getSeriesLayout(discipline);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+    const numSeries = Math.ceil(totalTargets / targetsPerSeries);
+    return Array.from({ length: numSeries }, () => []);
+  });
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
   const [cartridgeSource, setCartridgeSource] = useState<'warehouse' | 'types'>('warehouse');
@@ -128,14 +147,14 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
       if (scores.length !== numSeries) {
         setScores(prev => {
-          const newScores = Array(numSeries).fill(targetsPerSeries);
+          const newScores = Array(numSeries).fill(0);
           for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
             newScores[i] = prev[i];
           }
           return newScores;
         });
         setDetailedScores(prev => {
-          const newDetailed = Array(numSeries).fill([]);
+          const newDetailed = Array.from({ length: numSeries }, () => []);
           for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
             newDetailed[i] = prev[i] || [];
           }
@@ -435,12 +454,20 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <button type="button" onClick={() => scores.length > 1 && setScores(scores.slice(0, -1))} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">-</button>
+              <button type="button" onClick={() => {
+                if (scores.length > 1) {
+                  setScores(scores.slice(0, -1));
+                  setDetailedScores(detailedScores.slice(0, -1));
+                }
+              }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">-</button>
               <div className="flex-[2] text-center text-3xl font-black text-white">{scores.length}</div>
               <button type="button" onClick={() => {
                 const layoutObj = getSeriesLayout(discipline);
                 const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
-                if (scores.length < 12) setScores([...scores, tps]);
+                if (scores.length < 12) {
+                  setScores([...scores, 0]);
+                  setDetailedScores([...detailedScores, []]);
+                }
               }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">+</button>
             </div>
           </div>
