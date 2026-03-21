@@ -360,84 +360,149 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     };
   }, [users, allResults]);
 
-  const fetchSocieties = useCallback(async (signal?: AbortSignal) => {
+  const fetchSocieties = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     try {
       const res = await fetch('/api/societies', {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
-      if (!res.ok) throw new Error('Failed to fetch societies');
+      if (res.status === 401 || res.status === 403) {
+        setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+        return;
+      }
+      if (!res.ok) throw new Error('Errore nel caricamento delle società');
       const data = await res.json();
       setSocieties(data);
+      setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      setError(err.message);
+      if (isBackground && (err.message === 'Failed to fetch' || !navigator.onLine)) {
+        console.warn('Background fetch failed:', err.message);
+        return;
+      }
+      setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
   }, [token]);
 
-  const fetchUsers = useCallback(async (signal?: AbortSignal) => {
+  const fetchUsers = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
-      if (!res.ok) throw new Error('Failed to fetch users');
+      if (res.status === 401 || res.status === 403) {
+        setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+        return;
+      }
+      if (!res.ok) throw new Error('Errore nel caricamento degli utenti');
       const data = await res.json();
       setUsers(data);
+      setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      setError(err.message);
+      if (isBackground && (err.message === 'Failed to fetch' || !navigator.onLine)) {
+        console.warn('Background fetch failed:', err.message);
+        return;
+      }
+      setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
   }, [currentUser?.role, token]);
 
-  const fetchTeamStats = useCallback(async (signal?: AbortSignal) => {
+  const fetchTeamStats = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/team-stats', {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
-      if (!res.ok) throw new Error('Failed to fetch team stats');
+      if (res.status === 401 || res.status === 403) {
+        setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+        return;
+      }
+      if (!res.ok) throw new Error('Errore nel caricamento delle statistiche');
       const data = await res.json();
       setTeamStats(data);
+      setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      setError(err.message);
+      if (isBackground && (err.message === 'Failed to fetch' || !navigator.onLine)) {
+        console.warn('Background fetch failed:', err.message);
+        return;
+      }
+      setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
   }, [currentUser?.role, token]);
 
-  const fetchAllResults = useCallback(async (signal?: AbortSignal) => {
+  const fetchAllResults = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/admin/all-results', {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
-      if (!res.ok) throw new Error('Failed to fetch all results');
+      if (res.status === 401 || res.status === 403) {
+        setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+        return;
+      }
+      if (!res.ok) throw new Error('Errore nel caricamento dei risultati');
       const data = await res.json();
       setAllResults(data);
+      setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      setError(err.message);
+      if (isBackground && (err.message === 'Failed to fetch' || !navigator.onLine)) {
+        console.warn('Background fetch failed:', err.message);
+        return;
+      }
+      setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
   }, [currentUser?.role, token]);
 
-  const fetchTeams = useCallback(async (signal?: AbortSignal) => {
+  const fetchTeams = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const res = await fetch('/api/teams', {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
-      if (!res.ok) throw new Error('Failed to fetch teams');
+      if (res.status === 401 || res.status === 403) {
+        setError('Sessione scaduta. Effettua nuovamente l\'accesso.');
+        return;
+      }
+      if (!res.ok) throw new Error('Errore nel caricamento delle squadre');
       const data = await res.json();
       setTeams(data);
+      setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      setError(err.message);
+      if (isBackground && (err.message === 'Failed to fetch' || !navigator.onLine)) {
+        console.warn('Background fetch failed:', err.message);
+        return;
+      }
+      setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
   }, [currentUser?.role, token]);
+
+  const handleRetry = useCallback(() => {
+    setError('');
+    const controller = new AbortController();
+    setLoading(true);
+    const promises = [fetchSocieties(controller.signal)];
+    if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
+      promises.push(
+        fetchTeamStats(controller.signal), 
+        fetchAllResults(controller.signal), 
+        fetchTeams(controller.signal), 
+        fetchUsers(controller.signal)
+      );
+    }
+    Promise.all(promises).finally(() => {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    });
+  }, [currentUser?.role, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams, fetchUsers]);
 
   useEffect(() => {
     if (!token) return;
@@ -463,7 +528,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     if (activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
       const controller = new AbortController();
-      const interval = setInterval(() => fetchUsers(controller.signal), 30000); // Refresh every 30 seconds
+      const interval = setInterval(() => fetchUsers(controller.signal, true), 30000); // Refresh every 30 seconds
       return () => {
         clearInterval(interval);
         controller.abort();
@@ -1551,7 +1616,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </h2>
 
           {profileSuccess && <div className="bg-emerald-950/50 text-emerald-500 p-3 rounded-xl text-sm mb-4 border border-emerald-900/50">{profileSuccess}</div>}
-          {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50">{error}</div>}
+          {error && (
+            <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-exclamation-circle"></i>
+                <span>{error}</span>
+              </div>
+              <button 
+                onClick={handleRetry}
+                className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-black uppercase hover:bg-red-500 transition-colors shrink-0"
+              >
+                Riprova
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             <div className="flex flex-col items-center mb-6">
@@ -2866,7 +2944,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
 
-          {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4">{error}</div>}
+          {error && (
+            <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-exclamation-circle"></i>
+                <span>{error}</span>
+              </div>
+              <button 
+                onClick={handleRetry}
+                className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-black uppercase hover:bg-red-500 transition-colors shrink-0"
+              >
+                Riprova
+              </button>
+            </div>
+          )}
 
           {/* User Management Dashboard */}
           {currentUser?.role === 'admin' && showDashboard && (

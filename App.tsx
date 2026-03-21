@@ -40,6 +40,7 @@ const App: React.FC = () => {
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Handle deep links from notifications
   useEffect(() => {
@@ -110,6 +111,7 @@ const App: React.FC = () => {
   // Fetch data from API
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!token) return;
+    setError(null);
     try {
       const [compsRes, cartsRes, socsRes, cartTypesRes] = await Promise.all([
         fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
@@ -118,6 +120,14 @@ const App: React.FC = () => {
         fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal })
       ]);
 
+      if (compsRes.status === 401 || compsRes.status === 403) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        setToken(null);
+        setUser(null);
+        return;
+      }
+
       if (compsRes.ok) setCompetitions(await compsRes.json());
       if (cartsRes.ok) setCartridges(await cartsRes.json());
       if (socsRes.ok) setSocieties(await socsRes.json());
@@ -125,6 +135,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Error fetching data:', err);
+      setError('Errore di connessione. Controlla la tua rete.');
     } finally {
       setLoading(false);
     }
@@ -418,7 +429,23 @@ const App: React.FC = () => {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><i className="fas fa-spinner fa-spin text-4xl text-orange-600"></i></div>;
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
+        {error ? (
+          <>
+            <div className="text-red-500 text-sm font-bold">{error}</div>
+            <button 
+              onClick={() => { setLoading(true); fetchData(); }}
+              className="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-black uppercase shadow-lg shadow-orange-600/20"
+            >
+              Riprova
+            </button>
+          </>
+        ) : (
+          <i className="fas fa-spinner fa-spin text-4xl text-orange-600"></i>
+        )}
+      </div>
+    );
   }
 
   return (
