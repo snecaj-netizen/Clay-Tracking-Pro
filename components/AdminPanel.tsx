@@ -298,8 +298,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [teamStats]);
 
   const dashboardStats = useMemo(() => {
-    const onlineUsers = users.filter(u => u.is_logged_in);
-    const onlineSocieties = new Set(onlineUsers.filter(u => u.society).map(u => u.society));
+    const onlineUsers = users.filter(u => u.is_logged_in && u.role === 'user');
+    const onlineSocieties = new Set(users.filter(u => u.is_logged_in && u.role === 'society' && u.society).map(u => u.society));
     
     const topUser = [...users]
       .filter(u => u.role === 'user' && (u.login_count || 0) > 0)

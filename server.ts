@@ -960,12 +960,12 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
     const onlineSocieties = new Set<string>();
 
     // Get all users to check online status and society
-    const usersRes = await pool.query("SELECT id, society FROM users");
+    const usersRes = await pool.query("SELECT id, society, role FROM users");
     usersRes.rows.forEach(u => {
       const isOnline = activeUsers.has(u.id) && (now - activeUsers.get(u.id)!) < 5 * 60 * 1000;
       if (isOnline) {
-        onlineUsersCount++;
-        if (u.society) onlineSocieties.add(u.society);
+        if (u.role === 'user') onlineUsersCount++;
+        if (u.role === 'society' && u.society) onlineSocieties.add(u.society);
       }
     });
     
