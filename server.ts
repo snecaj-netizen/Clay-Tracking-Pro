@@ -984,7 +984,7 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
       SELECT u.society, COUNT(l.id) as login_count
       FROM users u
       JOIN login_logs l ON u.id = l.user_id
-      WHERE u.society IS NOT NULL
+      WHERE u.role = 'society' AND u.society IS NOT NULL
       ${timeFilter}
       GROUP BY u.society
       ORDER BY login_count DESC
