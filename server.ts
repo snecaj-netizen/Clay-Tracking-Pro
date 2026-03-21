@@ -991,8 +991,57 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
       LIMIT 1
     `;
 
+    // New Activity KPIs
+    let compTimeFilter = '';
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (filter === 'day') {
+      compTimeFilter = `AND c.date >= '${todayStr}'`;
+    } else if (filter === 'week') {
+      compTimeFilter = "AND c.date >= TO_CHAR(CURRENT_DATE - INTERVAL '7 days', 'YYYY-MM-DD')";
+    } else if (filter === 'month') {
+      compTimeFilter = "AND c.date >= TO_CHAR(CURRENT_DATE - INTERVAL '30 days', 'YYYY-MM-DD')";
+    } else if (filter === 'year') {
+      compTimeFilter = "AND c.date >= TO_CHAR(CURRENT_DATE - INTERVAL '365 days', 'YYYY-MM-DD')";
+    }
+
+    let topUserByResultsQuery = `
+      SELECT u.name, u.surname, COUNT(c.id) as count
+      FROM users u
+      JOIN competitions c ON u.id = c.user_id
+      WHERE u.role = 'user'
+      ${compTimeFilter}
+      GROUP BY u.id, u.name, u.surname
+      ORDER BY count DESC
+      LIMIT 1
+    `;
+
+    let topSocByResultsQuery = `
+      SELECT u.society, COUNT(c.id) as count
+      FROM users u
+      JOIN competitions c ON u.id = c.user_id
+      WHERE u.society IS NOT NULL
+      ${compTimeFilter}
+      GROUP BY u.society
+      ORDER BY count DESC
+      LIMIT 1
+    `;
+
+    let topUserByTargetsQuery = `
+      SELECT u.name, u.surname, SUM(c.totaltargets) as total
+      FROM users u
+      JOIN competitions c ON u.id = c.user_id
+      WHERE u.role = 'user'
+      ${compTimeFilter}
+      GROUP BY u.id, u.name, u.surname
+      ORDER BY total DESC
+      LIMIT 1
+    `;
+
     const topUserRes = await pool.query(topUserQuery);
     const topSocRes = await pool.query(topSocQuery);
+    const topUserByResultsRes = await pool.query(topUserByResultsQuery);
+    const topSocByResultsRes = await pool.query(topSocByResultsQuery);
+    const topUserByTargetsRes = await pool.query(topUserByTargetsQuery);
 
     res.json({
       onlineUsersCount,
@@ -1000,7 +1049,14 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
       topUserName: topUserRes.rows[0] ? `${topUserRes.rows[0].name} ${topUserRes.rows[0].surname}` : '-',
       topUserLogins: topUserRes.rows[0] ? parseInt(topUserRes.rows[0].login_count) : 0,
       topSocName: topSocRes.rows[0] ? topSocRes.rows[0].society : '-',
-      topSocLogins: topSocRes.rows[0] ? parseInt(topSocRes.rows[0].login_count) : 0
+      topSocLogins: topSocRes.rows[0] ? parseInt(topSocRes.rows[0].login_count) : 0,
+      // New fields
+      topUserByResultsName: topUserByResultsRes.rows[0] ? `${topUserByResultsRes.rows[0].name} ${topUserByResultsRes.rows[0].surname}` : '-',
+      topUserResultsCount: topUserByResultsRes.rows[0] ? parseInt(topUserByResultsRes.rows[0].count) : 0,
+      topSocByResultsName: topSocByResultsRes.rows[0] ? topSocByResultsRes.rows[0].society : '-',
+      topSocResultsCount: topSocByResultsRes.rows[0] ? parseInt(topSocByResultsRes.rows[0].count) : 0,
+      topUserByTargetsName: topUserByTargetsRes.rows[0] ? `${topUserByTargetsRes.rows[0].name} ${topUserByTargetsRes.rows[0].surname}` : '-',
+      topUserTargetsTotal: topUserByTargetsRes.rows[0] ? parseInt(topUserByTargetsRes.rows[0].total) : 0
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

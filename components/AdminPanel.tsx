@@ -262,6 +262,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [kpiFilter, setKpiFilter] = useState('total');
   const [fetchedDashboardStats, setFetchedDashboardStats] = useState<any>(null);
   const [isRefreshingStats, setIsRefreshingStats] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   const fetchDashboardStats = useCallback(async () => {
     if (currentUser?.role !== 'admin') return;
@@ -282,8 +283,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [kpiFilter, token, currentUser]);
 
   useEffect(() => {
-    fetchDashboardStats();
-  }, [fetchDashboardStats]);
+    if (showDashboard) {
+      fetchDashboardStats();
+    }
+  }, [fetchDashboardStats, showDashboard]);
 
   const filteredTeamStats = useMemo(() => {
     if (!statsFilterDiscipline) return teamStats;
@@ -313,15 +316,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       .filter(([_, count]) => count > 0)
       .sort((a, b) => b[1] - a[1])[0];
 
+    // Activity-based stats (local calculation if needed)
+    const userResultCounts: {[key: number]: number} = {};
+    const userTargetCounts: {[key: number]: number} = {};
+    allResults.forEach(r => {
+      if (r.user_id) {
+        userResultCounts[r.user_id] = (userResultCounts[r.user_id] || 0) + 1;
+        userTargetCounts[r.user_id] = (userTargetCounts[r.user_id] || 0) + (r.totalTargets || 0);
+      }
+    });
+
+    const topUserByResultsId = Object.entries(userResultCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    const topUserByResults = users.find(u => u.id === Number(topUserByResultsId));
+
+    const topUserByTargetsId = Object.entries(userTargetCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    const topUserByTargets = users.find(u => u.id === Number(topUserByTargetsId));
+
+    const socResultCounts: {[key: string]: number} = {};
+    allResults.forEach(r => {
+      if (r.society) {
+        socResultCounts[r.society] = (socResultCounts[r.society] || 0) + 1;
+      }
+    });
+    const topSocByResultsEntry = Object.entries(socResultCounts)
+      .sort((a, b) => b[1] - a[1])[0];
+
     return {
       onlineUsersCount: onlineUsers.length,
       onlineSocietiesCount: onlineSocieties.size,
       topUserName: topUser ? `${topUser.name} ${topUser.surname}` : '-',
       topUserLogins: topUser ? topUser.login_count : 0,
       topSocName: topSocEntry ? topSocEntry[0] : '-',
-      topSocLogins: topSocEntry ? topSocEntry[1] : 0
+      topSocLogins: topSocEntry ? topSocEntry[1] : 0,
+      // New fields
+      topUserByResultsName: topUserByResults ? `${topUserByResults.name} ${topUserByResults.surname}` : '-',
+      topUserResultsCount: topUserByResultsId ? userResultCounts[Number(topUserByResultsId)] : 0,
+      topSocByResultsName: topSocByResultsEntry ? topSocByResultsEntry[0] : '-',
+      topSocResultsCount: topSocByResultsEntry ? topSocByResultsEntry[1] : 0,
+      topUserByTargetsName: topUserByTargets ? `${topUserByTargets.name} ${topUserByTargets.surname}` : '-',
+      topUserTargetsTotal: topUserByTargetsId ? userTargetCounts[Number(topUserByTargetsId)] : 0
     };
-  }, [users]);
+  }, [users, allResults]);
 
   const fetchSocieties = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -1993,13 +2030,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="flex gap-2">
                 <button 
                   onClick={handleExportSocietiesExcel}
-                  className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+                  className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700"
                   title="Esporta"
                 >
                   <i className="fas fa-file-excel"></i>
                   <span>Esporta</span>
                 </button>
-                <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
+                <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer">
                   <i className="fas fa-file-import"></i>
                   <span>Importa</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
@@ -2126,26 +2163,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onChange={(e) => setSocietySearch(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-10 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
               />
-              {societySearch && (
-                <button 
-                  onClick={() => setSocietySearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white transition-colors"
-                  title="Pulisci ricerca"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              )}
+                  {societySearch && (
+                    <button 
+                      onClick={() => setSocietySearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
+                      title="Pulisci ricerca"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  )}
             </div>
             <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
               <button
                 onClick={() => setSocietyViewMode('list')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-list mr-2"></i> Lista
               </button>
               <button
                 onClick={() => setSocietyViewMode('map')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-map-marked-alt mr-2"></i> Mappa
               </button>
@@ -2773,14 +2810,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               {currentUser?.role === 'admin' && !showUserForm && (
                 <div className="flex gap-2">
                   <button 
+                    onClick={() => setShowDashboard(!showDashboard)}
+                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border ${
+                      showDashboard 
+                        ? 'bg-orange-600/10 text-orange-500 border-orange-500/30' 
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border-slate-700'
+                    }`}
+                    title={showDashboard ? "Nascondi Dashboard" : "Mostra Dashboard"}
+                  >
+                    <i className={`fas ${showDashboard ? 'fa-chart-line' : 'fa-chart-bar'}`}></i>
+                    <span>Dashboard</span>
+                  </button>
+                  <button 
                     onClick={handleExportUsersExcel}
-                    className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+                    className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700"
                     title="Esporta"
                   >
                     <i className="fas fa-file-excel"></i>
                     <span>Esporta</span>
                   </button>
-                  <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
+                  <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer">
                     <i className="fas fa-file-import"></i>
                     <span>Importa</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleImportUsersExcel} className="hidden" />
@@ -2820,8 +2869,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {error && <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4">{error}</div>}
 
           {/* User Management Dashboard */}
-          {currentUser?.role === 'admin' && (
-            <div className="mb-8">
+          {currentUser?.role === 'admin' && showDashboard && (
+            <div className="mb-8 animate-in fade-in zoom-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-orange-600/20 flex items-center justify-center">
@@ -2855,17 +2904,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </button>
                     ))}
                   </div>
-                  
-                  <button 
-                    onClick={() => fetchDashboardStats()}
-                    disabled={isRefreshingStats}
-                    className={`w-9 h-9 rounded-xl border border-slate-800 flex items-center justify-center transition-all active:scale-90 ${
-                      isRefreshingStats ? 'bg-slate-800 text-slate-600' : 'bg-slate-950 text-slate-400 hover:text-orange-500 hover:border-orange-500/30'
-                    }`}
-                    title="Aggiorna Dati"
-                  >
-                    <i className={`fas fa-sync-alt text-xs ${isRefreshingStats ? 'animate-spin' : ''}`}></i>
-                  </button>
                 </div>
               </div>
 
@@ -2897,7 +2935,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
                       <i className="fas fa-star text-orange-500 text-xs"></i>
                     </div>
-                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore più Attivo</span>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Tiratore (Accessi)</span>
                   </div>
                   <div className="text-sm font-bold text-white truncate">
                     {(fetchedDashboardStats || dashboardStats).topUserName}
@@ -2911,13 +2949,65 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
                       <i className="fas fa-trophy text-purple-500 text-xs"></i>
                     </div>
-                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Società più Attiva</span>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Società (Accessi)</span>
                   </div>
                   <div className="text-sm font-bold text-white truncate">
                     {(fetchedDashboardStats || dashboardStats).topSocName}
                   </div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
                     {(fetchedDashboardStats || dashboardStats).topSocLogins} Accessi
+                  </div>
+                </div>
+              </div>
+
+              {/* Second row of KPIs for Activity */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <i className="fas fa-bullseye text-emerald-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Tiratore (Gare)</span>
+                  </div>
+                  <div className="text-sm font-bold text-white truncate">
+                    {(fetchedDashboardStats || dashboardStats).topUserByResultsName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                    {(fetchedDashboardStats || dashboardStats).topUserResultsCount} Gare Inserite
+                  </div>
+                </div>
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                      <i className="fas fa-landmark text-indigo-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Società (Gare)</span>
+                  </div>
+                  <div className="text-sm font-bold text-white truncate">
+                    {(fetchedDashboardStats || dashboardStats).topSocByResultsName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                    {(fetchedDashboardStats || dashboardStats).topSocResultsCount} Gare Totali
+                  </div>
+                </div>
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <i className="fas fa-chart-line text-amber-500 text-xs"></i>
+                    </div>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Volume Attività (Piattelli)</span>
+                  </div>
+                  <div className="text-sm font-bold text-white truncate">
+                    {(fetchedDashboardStats || dashboardStats).topUserByTargetsName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                    {(fetchedDashboardStats || dashboardStats).topUserTargetsTotal} Piattelli Sparati
+                  </div>
+                </div>
+                <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Activity KPI</div>
+                    <div className="text-[10px] text-slate-700 italic">Monitoraggio Attivo</div>
                   </div>
                 </div>
               </div>
@@ -2982,7 +3072,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button 
                       type="button" 
                       onClick={() => setShowPassword(!showPassword)} 
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                     </button>
