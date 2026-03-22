@@ -20,10 +20,15 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
     setIsGenerating(true);
 
     try {
+      // Piccola attesa per il rendering
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       const canvas = await html2canvas(cardRef.current, {
         useCORS: true,
-        scale: 2,
-        backgroundColor: '#0f172a', // slate-950
+        scale: 3,
+        backgroundColor: '#ffffff',
+        logging: false,
+        allowTaint: true,
       });
 
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
@@ -41,7 +46,6 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
             : `Ho completato la gara ${competition.name} con un punteggio di ${competition.totalScore}/${competition.totalTargets}! 🎯`,
         });
       } else {
-        // Download image
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -61,83 +65,77 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="w-full max-w-md animate-in zoom-in-95 duration-300">
-        {/* Preview Area */}
-        <div className="mb-6 overflow-hidden rounded-3xl border border-slate-800 shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="w-full max-w-md my-auto animate-in zoom-in-95 duration-300 py-4">
+        {/* Card Container */}
+        <div className="mb-6 overflow-hidden rounded-[2.5rem] shadow-2xl bg-white">
           <div 
             ref={cardRef}
-            className="relative bg-slate-950 p-8 flex flex-col items-center text-center w-full"
-            style={{ minHeight: '520px', width: '100%', maxWidth: '400px', margin: '0 auto' }}
+            className="p-8 text-center bg-white relative"
+            style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center' }}
           >
-            {/* Background Decorative Elements */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
-              <div className="absolute -top-24 -left-24 w-64 h-64 bg-orange-600 rounded-full blur-[100px]"></div>
-              <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-600 rounded-full blur-[100px]"></div>
-            </div>
-
-            {/* App Logo & Name */}
-            <div className="relative z-10 flex items-center justify-center gap-4 mb-10 w-full">
-              <div className="bg-orange-600 w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center shrink-0">
-                <i className="fas fa-bullseye text-2xl text-white"></i>
+            {/* Header */}
+            <div className="mb-8" style={{ textAlign: 'center' }}>
+              <div className="inline-flex items-center justify-center gap-3" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/20" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+                  <i className="fas fa-bullseye text-white text-xl"></i>
+                </div>
+                <span className="text-xl font-black tracking-tighter text-slate-900" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: '8px' }}>
+                  Clay Tracker <span className="text-orange-600">Pro</span>
+                </span>
               </div>
-              <h1 className="text-2xl font-black tracking-tight text-white">
-                Clay Tracker <span className="text-orange-600">Pro</span>
-              </h1>
             </div>
 
-            {/* User Info */}
-            <div className="relative z-10 mb-8 w-full">
-              <div className="w-24 h-24 mx-auto rounded-full border-4 border-orange-600/30 overflow-hidden shadow-2xl mb-4 flex items-center justify-center bg-slate-900">
+            {/* User */}
+            <div className="mb-8" style={{ textAlign: 'center' }}>
+              <div className="w-24 h-24 mx-auto rounded-full border-4 border-orange-100 overflow-hidden mb-4 shadow-xl bg-slate-50" style={{ margin: '0 auto 16px auto' }}>
                 {user.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" />
                 ) : (
-                  <div className="text-slate-500 text-3xl">
+                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-3xl">
                     <i className="fas fa-user"></i>
                   </div>
                 )}
               </div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight w-full text-center">
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight m-0" style={{ margin: 0 }}>
                 {user.name} {user.surname}
               </h2>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2 w-full text-center">Tiratore</p>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1">Tiratore</div>
             </div>
 
-            {/* Score Display */}
-            <div className="relative z-10 w-full bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8 mb-8 backdrop-blur-sm shadow-inner flex flex-col items-center justify-center">
-              {isPerfectSeries ? (
-                <div className="flex flex-col items-center justify-center w-full">
-                  <div className="text-7xl font-black text-orange-500 mb-2 drop-shadow-[0_0_15px_rgba(249,115,22,0.4)] text-center">25/25</div>
-                  <div className="text-xs font-black text-orange-400 uppercase tracking-[0.3em] text-center">Serie Perfetta! 🎯</div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center w-full">
-                  <div className="text-6xl font-black text-white mb-2 text-center">
-                    {competition.totalScore}<span className="text-slate-600 text-3xl">/{competition.totalTargets}</span>
-                  </div>
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center">Punteggio Totale</div>
-                </div>
+            {/* Score */}
+            <div className="bg-slate-50 rounded-[2rem] p-10 mb-8 border border-slate-100" style={{ textAlign: 'center' }}>
+              <div className="text-7xl font-black text-slate-900 leading-none" style={{ lineHeight: 1 }}>
+                {isPerfectSeries ? (
+                  <span className="text-orange-600">25/25</span>
+                ) : (
+                  <>
+                    {competition.totalScore}<span className="text-slate-300 text-3xl">/{competition.totalTargets}</span>
+                  </>
+                )}
+              </div>
+              {isPerfectSeries && (
+                <div className="text-xs font-black text-orange-500 uppercase tracking-[0.3em] mt-3">Serie Perfetta! 🎯</div>
               )}
             </div>
 
-            {/* Competition Details */}
-            <div className="relative z-10 space-y-4 pb-4 w-full flex flex-col items-center">
-              <h3 className="text-xl font-black text-white leading-tight px-4 w-full text-center">{competition.name}</h3>
-              <div className="flex items-center justify-center gap-5 text-slate-400 text-[10px] font-black uppercase tracking-widest w-full">
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-map-marker-alt text-orange-600"></i>
-                  <span>{competition.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-calendar-alt text-orange-600"></i>
-                  <span>{new Date(competition.date).toLocaleDateString('it-IT')}</span>
-                </div>
+            {/* Details */}
+            <div className="space-y-4" style={{ textAlign: 'center' }}>
+              <h3 className="text-xl font-black text-slate-900 leading-tight px-4 m-0" style={{ margin: '0 0 16px 0' }}>{competition.name}</h3>
+              <div className="flex items-center justify-center gap-6 text-slate-500 text-[11px] font-bold uppercase tracking-widest" style={{ display: 'block', marginBottom: '24px' }}>
+                <span style={{ display: 'inline-block', margin: '0 12px' }}>
+                  <i className="fas fa-map-marker-alt text-orange-600 mr-2"></i>
+                  {competition.location}
+                </span>
+                <span style={{ display: 'inline-block', margin: '0 12px' }}>
+                  <i className="fas fa-calendar-alt text-orange-600 mr-2"></i>
+                  {new Date(competition.date).toLocaleDateString('it-IT')}
+                </span>
               </div>
-              <div className="mt-6 inline-flex items-center justify-center px-6 py-2.5 bg-orange-600/10 border border-orange-600/20 rounded-full text-[12px] font-black text-orange-500 uppercase tracking-[0.3em] shadow-lg">
+              <div className="inline-block px-8 py-3 bg-orange-600 text-white rounded-full text-[12px] font-black uppercase tracking-[0.2em] shadow-lg shadow-orange-600/20" style={{ display: 'inline-block' }}>
                 {competition.discipline}
               </div>
             </div>
-
           </div>
         </div>
 
@@ -153,21 +151,21 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
             ) : (
               <>
                 <i className="fas fa-share-alt"></i>
-                <span className="text-xs uppercase tracking-widest">Condividi Immagine</span>
+                <span className="text-xs uppercase tracking-widest">Condividi Risultato</span>
               </>
             )}
           </button>
           <button 
             onClick={() => handleShare('download')}
             disabled={isGenerating}
-            className="bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border border-slate-700 disabled:opacity-50"
+            className="bg-white hover:bg-slate-50 text-slate-900 font-black py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border border-slate-200 disabled:opacity-50"
           >
             <i className="fas fa-download text-xs"></i>
             <span className="text-[10px] uppercase tracking-widest">Salva</span>
           </button>
           <button 
             onClick={onClose}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-400 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all border border-slate-700"
+            className="bg-slate-800 hover:bg-slate-700 text-white font-black py-3.5 rounded-2xl text-[10px] uppercase tracking-widest transition-all"
           >
             Chiudi
           </button>
