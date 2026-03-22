@@ -214,33 +214,36 @@ const App: React.FC = () => {
   };
 
   const saveCompetition = async (comp: Competition) => {
-    const isEdit = !!comp.id;
+    const isEdit = !!editingCompetition;
     const method = isEdit ? 'PUT' : 'POST';
-    const endpoint = isEdit ? `/api/competitions/${comp.id}` : '/api/competitions';
+    const compId = isEdit ? editingCompetition.id : crypto.randomUUID();
+    const endpoint = isEdit ? `/api/competitions/${compId}` : '/api/competitions';
+    
+    // Ensure the competition object has the correct ID
+    const compToSave = { ...comp, id: compId };
 
     try {
       const res = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(comp)
+        body: JSON.stringify(compToSave)
       });
       if (res.ok) {
-        if (comp.userId && comp.userId !== user?.id) {
-          // If the admin created/edited a competition for another user, don't add it to their own list
-          setCompetitions(prev => prev.filter(c => c.id !== comp.id));
+        // If the admin created/edited a competition for another user, don't add it to their own list
+        if (compToSave.userId && compToSave.userId !== user?.id) {
+          setCompetitions(prev => prev.filter(c => c.id !== compToSave.id));
         } else {
-          setCompetitions(prev => !isEdit ? [comp, ...prev] : prev.map(c => c.id === comp.id ? comp : c));
+          setCompetitions(prev => !isEdit ? [compToSave, ...prev] : prev.map(c => c.id === compToSave.id ? compToSave : c));
         }
         
         // Show success toast
         triggerToast(isEdit ? 'Gara aggiornata con successo!' : 'Gara registrata con successo!', 'success');
         
-        // Redirect to history only if we were editing the whole competition
-        if (editingCompetition || !isEdit) {
-          setView('history');
-          setPreviousView(null);
-          setEditingCompetition(null);
-        }
+        // Always close the form and redirect
+        setView(previousView || 'history');
+        setPreviousView(null);
+        setEditingCompetition(null);
+        setPrefillCompetition(null);
       } else {
         const errorData = await res.json();
         console.error('Save error:', errorData);

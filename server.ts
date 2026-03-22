@@ -2386,9 +2386,10 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
   const c = req.body;
   
   try {
+    let result;
     if (req.user.role === 'admin') {
       const targetUserId = c.userId || req.user.id;
-      await pool.query(
+      result = await pool.query(
         `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19 WHERE id=$20`,
         [
           targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
@@ -2402,7 +2403,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
         ]
       );
     } else {
-      await pool.query(
+      result = await pool.query(
         `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18 WHERE id=$19 AND user_id=$20`,
         [
           c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
@@ -2416,6 +2417,11 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
         ]
       );
     }
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Gara non trovata o non autorizzato.' });
+    }
+    
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

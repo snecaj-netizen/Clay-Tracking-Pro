@@ -346,7 +346,6 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const averagePerSeries = totalScore / completedSeriesCount;
     
     const newComp: Competition = {
-      id: initialData?.id || crypto.randomUUID(),
       userId: selectedUserId,
       name: name.trim() || (isTraining ? 'Allenamento' : 'Gara senza nome'),
       location: location.trim() || 'Luogo non specificato',
@@ -368,6 +367,9 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       usedCartridges,
       weather: weatherTemp !== undefined ? { temp: weatherTemp, icon: weatherIcon } : undefined
     };
+    if (initialData?.id) {
+      newComp.id = initialData.id;
+    }
     onSubmit(newComp);
   };
 
