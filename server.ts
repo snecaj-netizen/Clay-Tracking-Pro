@@ -110,14 +110,14 @@ const initDB = async () => {
         chokes TEXT,
         team_name TEXT
       );
-      
-      // Check if chokes column exists, if not add it
-      try {
-        await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS chokes TEXT");
-      } catch (e) {
-        console.log("Column chokes might already exist");
-      }
     `);
+
+    // Check if chokes column exists, if not add it
+    try {
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS chokes TEXT");
+    } catch (e) {
+      console.log("Column chokes might already exist or ALTER TABLE failed:", e);
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS cartridges (
@@ -1894,8 +1894,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
       for (const userId of addedMemberIds) {
         const compId = `team_comp_${Date.now()}_${userId}`;
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
           [
             compId, 
             userId, 
@@ -1907,7 +1907,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
             0, 100, 0, 
             JSON.stringify([0, 0, 0, 0]), 
             name,
-            teamId
+            teamId,
+            null // chokes
           ]
         );
       }
@@ -2032,8 +2033,8 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
         const initialScores = Array(numSeries).fill(0);
 
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
           [
             compId, 
             userId, 
@@ -2047,7 +2048,8 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
             0, // Initial average
             JSON.stringify(initialScores), 
             team.name,
-            teamId
+            teamId,
+            null // chokes
           ]
         );
       }
@@ -2631,10 +2633,10 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
       for (const c of competitions) {
         const userId = (req.user.role === 'admin' && c.user_id) ? c.user_id : req.user.id;
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+          `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
            ON CONFLICT (id) DO UPDATE SET 
-           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20
+           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21
            WHERE competitions.user_id = $2`,
           [
             c.id, userId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
@@ -2643,7 +2645,8 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
             JSON.stringify(c.scores),
             c.detailedScores ? JSON.stringify(c.detailedScores) : null,
             c.seriesImages ? JSON.stringify(c.seriesImages) : null,
-            c.usedCartridges ? JSON.stringify(c.usedCartridges) : null
+            c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
+            c.chokes ? JSON.stringify(c.chokes) : null
           ]
         );
       }
