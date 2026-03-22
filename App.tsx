@@ -602,9 +602,18 @@ const App: React.FC = () => {
               syncStatus="idle"
               lastSync={null}
               triggerConfirm={triggerConfirm}
-              onEditCompetition={(comp) => {
+              onEditCompetition={(comp, userId) => {
                 setPreviousView('admin');
-                setEditingCompetition(comp || null);
+                if (comp) {
+                  setEditingCompetition(comp);
+                  setPrefillCompetition(null);
+                } else if (userId) {
+                  setEditingCompetition(null);
+                  setPrefillCompetition({ userId } as any);
+                } else {
+                  setEditingCompetition(null);
+                  setPrefillCompetition(null);
+                }
                 setView('new');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}

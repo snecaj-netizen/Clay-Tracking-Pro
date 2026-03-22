@@ -2424,9 +2424,14 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
 
 app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => {
   if (req.user.role === 'society') return res.status(403).json({ error: 'Le società non possono eliminare gare.' });
-  console.log(`DELETE competition request: id=${req.params.id}, user_id=${req.user.id}`);
+  console.log(`DELETE competition request: id=${req.params.id}, user_id=${req.user.id}, role=${req.user.role}`);
   try {
-    const result = await pool.query("DELETE FROM competitions WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+    let result;
+    if (req.user.role === 'admin') {
+      result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
+    } else {
+      result = await pool.query("DELETE FROM competitions WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+    }
     console.log(`DELETE competition result: rowCount=${result.rowCount}`);
     res.json({ success: true, rowCount: result.rowCount });
   } catch (err: any) {

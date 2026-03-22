@@ -1139,7 +1139,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     }}
                     className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2"
                   >
-                    <i className="fas fa-plus"></i> Aggiungi alle mie gare
+                    <i className="fas fa-plus"></i> {user?.role === 'admin' ? 'Aggiungi a un tiratore' : 'Aggiungi alle mie gare'}
                   </button>
                 )}
 
