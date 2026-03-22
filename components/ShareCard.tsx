@@ -87,7 +87,44 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
             </div>
 
             {/* User */}
-            <div className="mb-8" style={{ textAlign: 'center' }}>
+            <div className="mb-8" style={{ textAlign: 'center', position: 'relative' }}>
+              {/* Medal Badge */}
+              {competition.position && competition.position >= 1 && competition.position <= 3 && (
+                <div 
+                  style={{ 
+                    position: 'absolute', 
+                    top: '-10px', 
+                    right: 'calc(50% - 70px)', 
+                    zIndex: 20,
+                    backgroundColor: competition.position === 1 ? '#fbbf24' : competition.position === 2 ? '#94a3b8' : '#b45309',
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    border: '3px solid white'
+                  }}
+                >
+                  <i className={`fas fa-medal text-white ${competition.position === 1 ? 'text-xl' : 'text-lg'}`}></i>
+                  <span style={{ 
+                    position: 'absolute', 
+                    bottom: '-12px', 
+                    backgroundColor: 'white', 
+                    color: competition.position === 1 ? '#b45309' : competition.position === 2 ? '#475569' : '#78350f',
+                    fontSize: '9px',
+                    fontWeight: '900',
+                    padding: '2px 6px',
+                    borderRadius: '6px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {competition.position === 1 ? '1° POSTO' : competition.position === 2 ? '2° POSTO' : '3° POSTO'}
+                  </span>
+                </div>
+              )}
+
               <div className="w-24 h-24 mx-auto rounded-full border-4 border-orange-100 overflow-hidden mb-4 shadow-xl bg-slate-50" style={{ margin: '0 auto 16px auto' }}>
                 {user.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" />
