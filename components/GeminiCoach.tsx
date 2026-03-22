@@ -29,11 +29,11 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
   };
 
   const getCoachAdvice = async (signal?: AbortSignal) => {
-    // Filtriamo solo le sessioni concluse per l'analisi
-    const completedOnes = competitions.filter(c => c.totalScore > 0);
+    // Includiamo sia le gare concluse che quelle future/in corso
+    const relevantComps = competitions.filter(c => c.totalTargets > 0);
     
-    if (completedOnes.length === 0) {
-      setAdvice("Ho bisogno di almeno un risultato salvato per poterti dare dei consigli tecnici.");
+    if (relevantComps.length === 0) {
+      setAdvice("Ho bisogno di almeno una gara (conclusa o futura) salvata per poterti dare dei consigli tecnici.");
       return;
     }
 
@@ -77,28 +77,45 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
 
       const ai = new GoogleGenAI({ apiKey });
       
-      // Sort and take last 5 completed sessions
-      const lastFive = [...completedOnes]
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      // Sort and take last 8 sessions (mix of past and future)
+      const lastEight = [...relevantComps]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 5)
+        .slice(0, 8)
         .reverse();
       
-      const resultsSummary = lastFive.map(c => {
+      const resultsSummary = lastEight.map(c => {
         const score = c.totalScore || 0;
         const targets = c.totalTargets || 25;
+        const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
+        const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
+        
+        if (isUpcoming) {
+          return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Obiettivo: ${targets} piattelli.`;
+        }
+
         const layoutObj = getSeriesLayout(c.discipline as Discipline);
         const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
         const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / tps));
-        return `- ${c.name} (${c.discipline}): ${score}/${targets} (Media: ${avg.toFixed(1)})`;
+        return `- ${status} ${c.date}: ${c.name} (${c.discipline}): ${score}/${targets} (Media: ${avg.toFixed(1)})`;
       }).join('\n');
 
       const prompt = `
         Agisci come un coach esperto internazionale di Tiro a Volo.
-        Analizza i miei ultimi risultati reali:
+        Data odierna: ${todayStr}
+
+        Analizza i miei risultati recenti e le mie prossime gare:
         ${resultsSummary}
         
         Considerando che le discipline sono CK (Compak), SP (Sporting), ES (English Sporting), PC (Percorso Caccia), SK (Skeet), FO (Fossa Olimpica), FU (Fossa Universale), TC (Tiro Combinato), EL (Elica), SK ISSF (Skeet ISSF), TR1 (Trap 1) e DT (Double Trap).
-        Fornisci 3 consigli tecnici brevi e motivazionali in italiano per migliorare la mia media. 
+        
+        Fornisci 3 consigli tecnici brevi e motivazionali in italiano:
+        1. Se ci sono gare FUTURE, dai un consiglio specifico su come prepararsi o affrontarle.
+        2. Se ci sono gare CONCLUSE, analizza un trend o un punto di miglioramento.
+        3. Un consiglio generale di mental coaching o tecnica.
+
         Sii specifico ma conciso. Usa un tono professionale e incoraggiante.
         Formatta la risposta con punti elenco.
       `;

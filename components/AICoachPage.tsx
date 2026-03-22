@@ -131,34 +131,51 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== CompetitionLevel.TRAINING)
         : competitions;
 
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
       const lastComps = [...filteredComps]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 30); // More data for society
 
       const context = isSociety ? `
         Sei un Consulente Tecnico AI per una Società di Tiro a Volo.
+        Data odierna: ${todayStr}
+        
         Dati della Società:
         - Nome: ${user?.name}
         - Ruolo: Gestore Società
-        - Risultati recenti delle GARE dei tiratori (ultimi 30):
-        ${lastComps.map(c => `- ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Strozzature: ${c.chokes ? `${c.chokes.firstBarrel}/${c.chokes.secondBarrel}` : 'N.D.'}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
+        - Gare recenti e future (ultime 30):
+        ${lastComps.map(c => {
+          const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
+          const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
+          return `- ${status} ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Note: ${c.notes || 'Nessuna'}`;
+        }).join('\n')}
         
-        Obiettivo: Analizzare le performance di squadra esclusivamente nelle GARE, identificare i tiratori più competitivi, suggerire strategie per le prossime competizioni o convocazioni basate sui risultati agonistici.
+        Obiettivo: Analizzare le performance di squadra nelle GARE concluse e fornire consigli/strategie per quelle FUTURE. 
+        Identificare i tiratori più competitivi, suggerire strategie per le prossime competizioni o convocazioni basate sui risultati agonistici.
         Rispondi in modo professionale, strategico e orientato alla crescita della società. Usa il Markdown.
       ` : `
         Sei un Coach esperto di Tiro a Volo (Trap, Skeet, Sporting, Compak, Elica, Skeet ISSF, Trap 1, Double Trap).
+        Data odierna: ${todayStr}
+
         Dati dell'utente:
         - Nome: ${user?.name} ${user?.surname}
         - Ruolo: ${user?.role}
-        - Ultimi 15 risultati:
-        ${lastComps.slice(0, 15).map(c => `- ${c.date}: ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Media: ${c.averagePerSeries.toFixed(2)}, Strozzature: ${c.chokes ? `${c.chokes.firstBarrel}/${c.chokes.secondBarrel}` : 'N.D.'}, Note: ${c.notes || 'Nessuna'}`).join('\n')}
+        - Ultimi 20 risultati (gare concluse e future):
+        ${lastComps.slice(0, 20).map(c => {
+          const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
+          const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
+          return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Media: ${c.averagePerSeries.toFixed(2)}, Note: ${c.notes || 'Nessuna'}`;
+        }).join('\n')}
         
         Magazzino Cartucce:
         ${cartridges.map(c => `- ${c.producer} ${c.model} (${c.leadNumber}), Qta: ${c.quantity}`).join('\n')}
 
         Rispondi in modo professionale, tecnico e motivazionale. Usa il Markdown per la formattazione.
-        Se l'utente chiede consigli su una gara specifica, analizza le note e i punteggi di quella gara.
-        Se chiede consigli per l'allenamento, suggerisci esercizi basati sulle sue debolezze.
+        Se l'utente chiede consigli su una gara specifica (conclusa), analizza le note e i punteggi.
+        Se l'utente ha una gara FUTURA in programma, fornisci consigli su come affrontarla, quale attrezzatura/cartucce usare e su cosa concentrarsi.
+        Se chiede consigli per l'allenamento, suggerisci esercizi basati sulle sue debolezze emerse dalle gare passate.
       `;
 
       const chat = ai.chats.create({
