@@ -210,9 +210,13 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
 
             {/* Event Details Section */}
             <div className="w-full flex flex-col items-center">
-              <h3 className="text-xl font-black text-slate-900 leading-snug mb-6 max-w-[320px] pb-1">
+              <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 max-w-[320px]">
                 {competition.name}
               </h3>
+              
+              <div className="text-[11px] font-black text-orange-600 uppercase tracking-[0.3em] mb-6">
+                {competition.discipline}
+              </div>
               
               <div className="grid grid-cols-2 gap-4 w-full mb-8">
                 <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 min-h-[80px] justify-center">
@@ -229,10 +233,6 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
                     {new Date(competition.date).toLocaleDateString('it-IT')}
                   </span>
                 </div>
-              </div>
-
-              <div className="px-10 py-3.5 bg-slate-900 text-white rounded-2xl text-[12px] font-black uppercase tracking-[0.25em] shadow-xl leading-normal">
-                {competition.discipline}
               </div>
             </div>
 
