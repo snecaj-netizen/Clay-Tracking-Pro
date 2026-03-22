@@ -294,7 +294,7 @@ const initDB = async () => {
         user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         global_enabled BOOLEAN DEFAULT TRUE,
         rate_limit INTEGER DEFAULT 5,
-        templates JSONB DEFAULT '{"new_competition": "Nuova gara pubblicata: {competition_name} presso {society_name}!", "score_update": "Risultati aggiornati per {competition_name}. Controlla la tua posizione!", "new_challenge": "{shooter_name} ti ha sfidato! Accetta la sfida nel tuo profilo.", "challenge_completed": "Sfida completata! {winner_name} ha vinto contro {loser_name}."}'::jsonb,
+        templates JSONB DEFAULT '{"new_competition": "Nuova gara pubblicata: {competition_name} presso {society_name}!", "score_update": "Risultati aggiornati per {competition_name}. Controlla la tua posizione!", "new_challenge": "{shooter_name} ti ha sfidato! Accetta la sfida nel tuo profilo.", "challenge_completed": "Sfida completata! {winner_name} ha vinto contro {loser_name}!", "competition_reminder": "Com''è andata oggi a {competition_name}? Inserisci il risultato per vedere come cambia la tua media!"}'::jsonb,
         muted_entities JSONB DEFAULT '[]'::jsonb,
         admin_notifications_enabled BOOLEAN DEFAULT TRUE,
         admin_compact_mode BOOLEAN DEFAULT FALSE,
@@ -499,6 +499,60 @@ initDB().then(() => {
       }
     } catch (err) {
       console.error("Error in cron job for scheduled broadcasts:", err);
+    }
+  });
+
+  // Setup cron job for competition reminders (at 8 PM)
+  cron.schedule('0 20 * * *', async () => {
+    try {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+
+      // Find events that are happening today
+      const { rows: events } = await pool.query(
+        "SELECT * FROM events WHERE start_date <= $1 AND end_date >= $1",
+        [todayStr]
+      );
+
+      if (events.length === 0) return;
+
+      // Get users who already entered a competition result for today
+      const { rows: activeUsersToday } = await pool.query(
+        "SELECT DISTINCT user_id FROM competitions WHERE date = $1",
+        [todayStr]
+      );
+      const activeUserIds = new Set(activeUsersToday.map(u => u.user_id));
+
+      for (const event of events) {
+        let userIds: number[] = [];
+        
+        // Determine target users based on visibility
+        if (event.visibility === 'Pubblica') {
+          const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+          userIds = users.map(u => u.id);
+        } else {
+          // For society events, target users of that society
+          const { rows: creators } = await pool.query("SELECT society FROM users WHERE id = $1", [event.created_by]);
+          if (creators.length > 0 && creators[0].society) {
+            const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user' AND society = $1", [creators[0].society]);
+            userIds = users.map(u => u.id);
+          }
+        }
+
+        const usersToNotify = userIds.filter(id => !activeUserIds.has(id));
+
+        if (usersToNotify.length > 0) {
+          await sendPushNotification(
+            usersToNotify, 
+            "Com'è andata oggi?", 
+            `Com'è andata oggi a ${event.name}? Inserisci il risultato per vedere come cambia la tua media!`, 
+            `/dashboard`,
+            event.visibility === 'Pubblica' ? 'all' : 'society'
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Error in cron job for competition reminders:", err);
     }
   });
 });

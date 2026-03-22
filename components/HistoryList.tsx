@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Competition, CompetitionLevel, Discipline, getSeriesLayout } from '../types';
 import SeriesPopup from './SeriesPopup';
+import ShareCard from './ShareCard';
 
 interface HistoryListProps {
   competitions: Competition[];
@@ -18,6 +19,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [editingSeries, setEditingSeries] = useState<{ comp: Competition, index: number } | null>(null);
+  const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean, index?: number } | null>(null);
 
   const toggleDetails = (id: string) => {
     setExpandedDetails(prev => ({ ...prev, [id]: !prev[id] }));
@@ -325,8 +327,15 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                 <div className="flex sm:flex-col gap-2">
                   {user?.role !== 'society' && (
                     <>
-                      <button onClick={() => onEdit(comp)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-edit"></i></button>
-                      <button onClick={() => { triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id), 'Elimina', 'danger'); }} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white active:scale-90 transition-all"><i className="fas fa-trash-alt"></i></button>
+                      <button onClick={() => onEdit(comp)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white active:scale-90 transition-all" title="Modifica"><i className="fas fa-edit"></i></button>
+                      <button 
+                        onClick={() => setShareData({ comp })} 
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white active:scale-90 transition-all"
+                        title="Condividi Risultato"
+                      >
+                        <i className="fas fa-share-alt"></i>
+                      </button>
+                      <button onClick={() => { triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id), 'Elimina', 'danger'); }} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white active:scale-90 transition-all" title="Elimina"><i className="fas fa-trash-alt"></i></button>
                     </>
                   )}
                 </div>
@@ -342,11 +351,23 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                       <button 
                         key={i} 
                         onClick={() => setEditingSeries({ comp, index: i })}
-                        className={`flex flex-col items-center bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-800/50 min-w-[42px] cursor-pointer hover:bg-slate-800/80 hover:border-orange-500/50 transition-all active:scale-95`}
+                        className={`relative flex flex-col items-center bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-800/50 min-w-[42px] cursor-pointer hover:bg-slate-800/80 hover:border-orange-500/50 transition-all active:scale-95 group/series`}
                         title="Clicca per inserire/modificare il risultato"
                       >
                         <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}</span>
-                        <span className={`text-sm font-black ${s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
+                        <span className={`text-sm font-black ${s === 25 ? 'text-orange-500' : s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
+                        {s === 25 && (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShareData({ comp, isPerfect: true, index: i });
+                            }}
+                            className="absolute -top-2 -right-2 w-5 h-5 bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover/series:opacity-100 transition-opacity active:scale-95 z-20"
+                            title="Condividi 25/25"
+                          >
+                            <i className="fas fa-share-alt text-[8px]"></i>
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -680,7 +701,18 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
           onClose={() => setEditingSeries(null)}
           onSave={(updatedComp) => {
             if (onUpdate) onUpdate(updatedComp);
+            setEditingSeries(null);
           }}
+        />
+      )}
+
+      {shareData && (
+        <ShareCard
+          competition={shareData.comp}
+          user={user}
+          isPerfectSeries={shareData.isPerfect}
+          seriesIndex={shareData.index}
+          onClose={() => setShareData(null)}
         />
       )}
     </div>

@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Competition, Discipline } from '../types';
 import StatsCharts from './StatsCharts';
+import ShareCard from './ShareCard';
 
 interface DashboardProps {
   competitions: Competition[];
@@ -11,6 +12,8 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoachClick, user }) => {
+  const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
+  
   // Filtriamo solo le gare REALI (punteggio > 0) per le statistiche
   const upcomingCompetitions = React.useMemo(() => {
     const now = new Date();
@@ -111,13 +114,22 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Gara /25</p>
             <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl relative group">
             <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
             {compStats?.bestPlacementComp ? (
               <div>
-                <div className="flex items-baseline gap-1">
-                  <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
-                  <span className="text-xs font-bold text-slate-400 uppercase">Posto</span>
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline gap-1">
+                    <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
+                    <span className="text-xs font-bold text-slate-400 uppercase">Posto</span>
+                  </div>
+                  <button 
+                    onClick={() => setShareData({ comp: compStats.bestPlacementComp! })}
+                    className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 active:scale-90"
+                    title="Condividi"
+                  >
+                    <i className="fas fa-share-alt text-xs"></i>
+                  </button>
                 </div>
                 <div className="mt-1">
                   <p className="text-[10px] font-bold text-orange-500 uppercase truncate" title={compStats.bestPlacementComp.name}>
@@ -260,6 +272,14 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
           </div>
         </div>
       </div>
+      {shareData && (
+        <ShareCard
+          competition={shareData.comp}
+          user={user}
+          isPerfectSeries={shareData.isPerfect}
+          onClose={() => setShareData(null)}
+        />
+      )}
     </div>
   );
 };

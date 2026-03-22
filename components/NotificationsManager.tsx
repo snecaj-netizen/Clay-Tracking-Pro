@@ -22,7 +22,8 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
     new_competition: "Nuova gara pubblicata: {competition_name} presso {society_name}!",
     score_update: "Risultati aggiornati per {competition_name}. Controlla la tua posizione!",
     new_challenge: "{shooter_name} ti ha sfidato! Accetta la sfida nel tuo profilo.",
-    challenge_completed: "Sfida completata! {winner_name} ha vinto contro {loser_name}."
+    challenge_completed: "Sfida completata! {winner_name} ha vinto contro {loser_name}!",
+    competition_reminder: "Com'è andata oggi a {competition_name}? Inserisci il risultato per vedere come cambia la tua media!"
   });
   const [rateLimit, setRateLimit] = useState(5); // max per day
   const [showMuteForm, setShowMuteForm] = useState(false);
