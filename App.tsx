@@ -194,6 +194,7 @@ const App: React.FC = () => {
              event.type === 'Internazionale' ? CompetitionLevel.INTERNATIONAL : 
              CompetitionLevel.REGIONAL
     };
+    setEditingCompetition(null);
     setPrefillCompetition(newComp);
     setPreviousView(view);
     setView('new');
@@ -213,10 +214,20 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const saveCompetition = async (comp: Competition) => {
-    const isEdit = !!editingCompetition;
+    const isEdit = !!editingCompetition && !!editingCompetition.id;
     const method = isEdit ? 'PUT' : 'POST';
-    const compId = isEdit ? editingCompetition.id : crypto.randomUUID();
+    const compId = isEdit ? editingCompetition.id : (comp.id || generateUUID());
     const endpoint = isEdit ? `/api/competitions/${compId}` : '/api/competitions';
     
     // Ensure the competition object has the correct ID

@@ -346,6 +346,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const averagePerSeries = totalScore / completedSeriesCount;
     
     const newComp: Competition = {
+      id: initialData?.id || '',
       userId: selectedUserId,
       name: name.trim() || (isTraining ? 'Allenamento' : 'Gara senza nome'),
       location: location.trim() || 'Luogo non specificato',
