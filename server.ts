@@ -1275,7 +1275,8 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         u.surname as user_surname,
         u.society,
         u.category,
-        u.qualification
+        u.qualification,
+        u.avatar
       FROM competitions c
       JOIN users u ON c.user_id = u.id
     `;
@@ -1298,6 +1299,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       society: row.society,
       category: row.category,
       qualification: row.qualification,
+      avatar: row.avatar,
       name: row.name,
       date: row.date,
       endDate: row.enddate,

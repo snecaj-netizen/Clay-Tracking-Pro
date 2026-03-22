@@ -9,7 +9,8 @@ import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
-import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout } from '../types';
+import ShareCard from './ShareCard';
+import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -186,6 +187,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterYear, setFilterYear] = useState('');
   const [resultsPage, setResultsPage] = useState(1);
   const [selectedShooterResults, setSelectedShooterResults] = useState<any | null>(null);
+  const [shareData, setShareData] = useState<{ comp: Competition, user: User } | null>(null);
   const resultsPerPage = 50;
 
   const filterOptions = React.useMemo(() => {
@@ -1364,6 +1366,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           society: r.society,
           category: r.category,
           qualification: r.qualification,
+          avatar: r.avatar,
           results: []
         });
       }
@@ -2840,39 +2843,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   </div>
                                 </div>
                                 
-                                {currentUser?.role === 'admin' && (
+                                { (currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                                   <div className="flex gap-2">
                                     <button 
-                                      onClick={() => onEditCompetition && onEditCompetition(r)}
-                                      className="w-9 h-9 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
-                                      title="Modifica"
-                                    >
-                                      <i className="fas fa-edit text-xs"></i>
-                                    </button>
-                                    <button 
                                       onClick={() => {
-                                        triggerConfirm(
-                                          'Elimina Gara',
-                                          `Sei sicuro di voler eliminare la gara "${r.name}"?`,
-                                          () => {
-                                            if (onDeleteCompetition) {
-                                              onDeleteCompetition(r.id);
-                                              setAllResults(prev => prev.filter(res => res.id !== r.id));
-                                              setSelectedShooterResults((prev: any) => ({
-                                                ...prev,
-                                                results: prev.results.filter((res: any) => res.id !== r.id)
-                                              }));
-                                            }
-                                          },
-                                          'Elimina',
-                                          'danger'
-                                        );
+                                        const userForShare: User = {
+                                          id: selectedShooterResults.userId,
+                                          name: selectedShooterResults.userName,
+                                          surname: selectedShooterResults.userSurname,
+                                          email: '',
+                                          role: UserRole.SHOOTER,
+                                          society: selectedShooterResults.society,
+                                          category: selectedShooterResults.category,
+                                          qualification: selectedShooterResults.qualification,
+                                          avatar: selectedShooterResults.avatar
+                                        };
+                                        setShareData({ comp: r, user: userForShare });
                                       }}
-                                      className="w-9 h-9 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
-                                      title="Elimina"
+                                      className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/5"
+                                      title="Condividi"
                                     >
-                                      <i className="fas fa-trash-alt text-xs"></i>
+                                      <i className="fas fa-share-alt text-xs"></i>
                                     </button>
+                                    
+                                    {currentUser?.role === 'admin' && (
+                                      <>
+                                        <button 
+                                          onClick={() => onEditCompetition && onEditCompetition(r)}
+                                          className="w-9 h-9 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
+                                          title="Modifica"
+                                        >
+                                          <i className="fas fa-edit text-xs"></i>
+                                        </button>
+                                        <button 
+                                          onClick={() => {
+                                            triggerConfirm(
+                                              'Elimina Gara',
+                                              `Sei sicuro di voler eliminare la gara "${r.name}"?`,
+                                              () => {
+                                                if (onDeleteCompetition) {
+                                                  onDeleteCompetition(r.id);
+                                                  setAllResults(prev => prev.filter(res => res.id !== r.id));
+                                                  setSelectedShooterResults((prev: any) => ({
+                                                    ...prev,
+                                                    results: prev.results.filter((res: any) => res.id !== r.id)
+                                                  }));
+                                                }
+                                              },
+                                              'Elimina',
+                                              'danger'
+                                            );
+                                          }}
+                                          className="w-9 h-9 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
+                                          title="Elimina"
+                                        >
+                                          <i className="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -3364,6 +3392,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
         </button>
+      )}
+      {shareData && (
+        <ShareCard 
+          competition={shareData.comp} 
+          user={shareData.user} 
+          onClose={() => setShareData(null)} 
+        />
       )}
     </div>
   );
