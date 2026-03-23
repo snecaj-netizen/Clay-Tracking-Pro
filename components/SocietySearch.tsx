@@ -28,9 +28,10 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
   useEffect(() => {
     if (useId) {
       const soc = societies.find(s => s.id === value);
-      setSearchTerm(soc ? soc.name : '');
+      setSearchTerm(soc ? `${soc.name}${soc.code ? ` (${soc.code})` : ''}` : '');
     } else {
-      setSearchTerm(value as string);
+      const soc = societies.find(s => s.name === value);
+      setSearchTerm(soc ? `${soc.name}${soc.code ? ` (${soc.code})` : ''}` : (value as string));
     }
   }, [value, societies, useId]);
 
@@ -41,9 +42,10 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
         // Reset search term to current value if no selection was made
         if (useId) {
           const soc = societies.find(s => s.id === value);
-          setSearchTerm(soc ? soc.name : '');
+          setSearchTerm(soc ? `${soc.name}${soc.code ? ` (${soc.code})` : ''}` : '');
         } else {
-          setSearchTerm(value as string);
+          const soc = societies.find(s => s.name === value);
+          setSearchTerm(soc ? `${soc.name}${soc.code ? ` (${soc.code})` : ''}` : (value as string));
         }
       }
     }
@@ -53,9 +55,10 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
     };
   }, [value, societies, useId]);
 
-  const filteredSocieties = societies.filter(soc => 
-    soc.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSocieties = societies.filter(soc => {
+    const displayName = `${soc.name}${soc.code ? ` (${soc.code})` : ''}`.toLowerCase();
+    return displayName.includes(searchTerm.toLowerCase());
+  });
 
   const handleSelect = (soc: any) => {
     if (useId) {
@@ -63,7 +66,7 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
     } else {
       onChange(soc.name, soc.id);
     }
-    setSearchTerm(soc.name);
+    setSearchTerm(`${soc.name}${soc.code ? ` (${soc.code})` : ''}`);
     setIsOpen(false);
   };
 
@@ -113,7 +116,7 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
                 onClick={() => handleSelect(soc)}
               >
                 <div className="flex items-center justify-between">
-                  <span>{soc.name}</span>
+                  <span>{soc.name} {soc.code ? <span className="text-orange-500 font-bold ml-1">({soc.code})</span> : ''}</span>
                   {soc.city && <span className="text-[10px] opacity-50 uppercase">{soc.city}</span>}
                 </div>
               </button>

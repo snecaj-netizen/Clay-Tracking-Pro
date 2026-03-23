@@ -197,6 +197,7 @@ const initDB = async () => {
       CREATE TABLE IF NOT EXISTS societies (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
+        code TEXT UNIQUE,
         email TEXT,
         address TEXT,
         city TEXT,
@@ -208,6 +209,14 @@ const initDB = async () => {
         contact_name TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
+      -- Add code column if it doesn't exist
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='societies' AND column_name='code') THEN 
+          ALTER TABLE societies ADD COLUMN code TEXT UNIQUE; 
+        END IF; 
+      END $$;
     `);
 
     // Add columns if they don't exist (for existing databases)
@@ -824,6 +833,11 @@ app.post('/api/auth/login', async (req, res) => {
 // User Profile Routes
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { name, surname, email, password, category, qualification, society, fitav_card, avatar, birth_date } = req.body;
+  
+  if (req.user.role === 'society' && !fitav_card) {
+    return res.status(400).json({ error: 'Il Codice Società è obbligatorio' });
+  }
+
   try {
     if (password) {
       const salt = bcrypt.genSaltSync(10);
@@ -1151,6 +1165,10 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date } = req.body;
   
+  if (role === 'society' && !fitav_card) {
+    return res.status(400).json({ error: 'Il Codice Società (Tessera Fitav) è obbligatorio per gli utenti società' });
+  }
+
   if (req.user.role === 'society') {
     if (role && role !== 'user') {
       return res.status(403).json({ error: 'Societies can only create shooters' });
@@ -1180,9 +1198,80 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   }
 });
 
+app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const { users } = req.body;
+  if (!Array.isArray(users)) return res.status(400).json({ error: 'Invalid data format' });
+
+  const results = { created: 0, updated: 0, errors: 0 };
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    
+    // Cache societies for faster lookup
+    const { rows: societies } = await client.query("SELECT name, code FROM societies");
+    const societyMap = new Map(societies.map(s => [s.code?.toLowerCase(), s.name]));
+
+    for (const u of users) {
+      if (!u.email) {
+        results.errors++;
+        continue;
+      }
+
+      try {
+        let societyName = u.society;
+        if (u.society_code) {
+          const foundName = societyMap.get(u.society_code.toString().toLowerCase());
+          if (foundName) societyName = foundName;
+        }
+
+        // If society is importing, force their own society
+        if (req.user.role === 'society') {
+          societyName = req.user.society;
+        }
+
+        const { rows: existing } = await client.query("SELECT id FROM users WHERE email = $1", [u.email]);
+        
+        if (existing.length > 0) {
+          // Update profile
+          await client.query(
+            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, fitav_card = $6, birth_date = $7 WHERE id = $8",
+            [u.name, u.surname, u.category, u.qualification, societyName, u.fitav_card, u.birth_date || null, existing[0].id]
+          );
+          results.updated++;
+        } else {
+          // Create new
+          const salt = bcrypt.genSaltSync(10);
+          const hash = bcrypt.hashSync(u.password || u.fitav_card || 'Password123!', salt);
+          await client.query(
+            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, birth_date, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')",
+            [u.name, u.surname, u.email, hash, u.role || 'user', u.category, u.qualification, societyName, u.fitav_card, u.birth_date || null]
+          );
+          results.created++;
+        }
+      } catch (err) {
+        console.error('Error importing user:', u.email, err);
+        results.errors++;
+      }
+    }
+    
+    await client.query('COMMIT');
+    res.json(results);
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar, birth_date, status } = req.body;
   
+  if (role === 'society' && !fitav_card) {
+    return res.status(400).json({ error: 'Il Codice Società (Tessera Fitav) è obbligatorio per gli utenti società' });
+  }
+
   try {
     const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
     if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -1427,11 +1516,16 @@ app.get('/api/societies', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link } = req.body;
+  const { name, code, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link } = req.body;
+  
+  if (!name || !code) {
+    return res.status(400).json({ error: 'Nome e Codice Società sono obbligatori' });
+  }
+
   try {
     const { rows } = await pool.query(
-      "INSERT INTO societies (name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null]
+      "INSERT INTO societies (name, code, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id",
+      [name, code, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null]
     );
     res.json(rows[0]);
   } catch (err: any) {
@@ -1440,7 +1534,12 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
 });
 
 app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link } = req.body;
+  const { name, code, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link } = req.body;
+  
+  if (!name || !code) {
+    return res.status(400).json({ error: 'Nome e Codice Società sono obbligatori' });
+  }
+
   try {
     if (req.user.role === 'society') {
       const { rows } = await pool.query("SELECT name FROM societies WHERE id = $1", [req.params.id]);
@@ -1453,8 +1552,8 @@ app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, as
     }
 
     await pool.query(
-      "UPDATE societies SET name = $1, email = $2, address = $3, city = $4, region = $5, zip_code = $6, phone = $7, mobile = $8, website = $9, contact_name = $10, logo = $11, opening_hours = $12, disciplines = $13, lat = $14, lng = $15, google_maps_link = $16 WHERE id = $17",
-      [name, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null, req.params.id]
+      "UPDATE societies SET name = $1, code = $2, email = $3, address = $4, city = $5, region = $6, zip_code = $7, phone = $8, mobile = $9, website = $10, contact_name = $11, logo = $12, opening_hours = $13, disciplines = $14, lat = $15, lng = $16, google_maps_link = $17 WHERE id = $18",
+      [name, code, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null, req.params.id]
     );
     res.json({ success: true });
   } catch (err: any) {

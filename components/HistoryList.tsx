@@ -6,6 +6,7 @@ import ShareCard from './ShareCard';
 
 interface HistoryListProps {
   competitions: Competition[];
+  societies: any[];
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
   onUpdate?: (comp: Competition) => void;
@@ -13,7 +14,7 @@ interface HistoryListProps {
   user?: any;
 }
 
-const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdit, onUpdate, triggerConfirm, user }) => {
+const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDelete, onEdit, onUpdate, triggerConfirm, user }) => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -276,6 +277,9 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                 <div className="flex items-center gap-1 text-slate-400 text-sm font-medium mt-1">
                   <i className={`fas fa-map-marker-alt ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-600'} text-xs`}></i>
                   {comp.location}
+                  {societies.find(s => s.name === comp.location)?.code && (
+                    <span className="text-orange-500 ml-1">({societies.find(s => s.name === comp.location)?.code})</span>
+                  )}
                 </div>
                 
                 {comp.usedCartridges && comp.usedCartridges.length > 0 && (
@@ -583,7 +587,12 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
                         <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium truncate">
                           <span className="flex items-center gap-1.5 truncate">
                             <i className="fas fa-map-marker-alt text-slate-500"></i>
-                            <span className="truncate">{comp.location}</span>
+                            <span className="truncate">
+                              {comp.location}
+                              {societies.find(s => s.name === comp.location)?.code && (
+                                <span className="text-orange-500 ml-1">({societies.find(s => s.name === comp.location)?.code})</span>
+                              )}
+                            </span>
                           </span>
                           {comp.weather && (
                             <span className="flex items-center gap-1.5 shrink-0">
@@ -709,6 +718,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, onDelete, onEdi
       {shareData && (
         <ShareCard
           competition={shareData.comp}
+          societies={societies}
           user={user}
           isPerfectSeries={shareData.isPerfect}
           seriesIndex={shareData.index}

@@ -136,6 +136,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [societyViewMode, setSocietyViewMode] = useState<'list' | 'map'>('list');
   const [editingSociety, setEditingSociety] = useState<any>(null);
   const [socName, setSocName] = useState('');
+  const [socCode, setSocCode] = useState('');
   const [socEmail, setSocEmail] = useState('');
   const [socAddress, setSocAddress] = useState('');
   const [socCity, setSocCity] = useState('');
@@ -839,6 +840,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     const body = { 
       name: socName, 
+      code: socCode,
       email: socEmail, 
       address: socAddress, 
       city: socCity, 
@@ -869,7 +871,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!res.ok) throw new Error('Errore durante il salvataggio della società');
       
       setEditingSociety(null);
-      setSocName(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
+      setSocName(''); setSocCode(''); setSocEmail(''); setSocAddress(''); setSocCity(''); setSocRegion(''); setSocZip(''); setSocPhone(''); setSocMobile(''); setSocWebsite(''); setSocOpeningHours(''); setSocGoogleMapsLink(''); setSocDisciplines([]); setSocContactName(''); setSocLogo('');
       setShowSocietyForm(false);
       fetchSocieties();
     } catch (err: any) {
@@ -1000,6 +1002,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     XLSX.writeFile(wb, 'esportazione_utenti.xlsx');
   };
 
+  const handleDownloadTemplate = () => {
+    const template = [
+      {
+        'Nome': 'Mario',
+        'Cognome': 'Rossi',
+        'Email': 'mario.rossi@example.com',
+        'Ruolo': 'user',
+        'Categoria': 'Eccellenza',
+        'Qualifica': 'Skeet',
+        'Società': 'TAV Roma',
+        'Codice Società': 'RM01',
+        'Tessera FITAV': '12345',
+        'Data di Nascita': '1980-01-01'
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Modello Utenti");
+    XLSX.writeFile(wb, "modello_import_utenti.xlsx");
+  };
+
   const handleImportUsersExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1042,6 +1065,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           category: row['Categoria'] || '',
           qualification: row['Qualifica'] || '',
           society: row['Società'] || '',
+          society_code: row['Codice Società']?.toString() || '',
           fitav_card: row['Tessera FITAV']?.toString() || '',
           birth_date: parseExcelDate(row['Data di Nascita']),
           password: row['Tessera FITAV']?.toString() || 'Password123!'
@@ -1049,25 +1073,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
         triggerConfirm(
           'Importa',
-          `Sei sicuro di voler importare ${importedUsers.length} utenti dal file Excel? La password predefinita sarà il numero di tessera FITAV o 'Password123!'.`,
+          `Sei sicuro di voler importare/aggiornare ${importedUsers.length} utenti dal file Excel? Gli utenti esistenti verranno aggiornati.`,
           async () => {
             setLoading(true);
             try {
-              for (const u of importedUsers) {
-                await fetch('/api/admin/users', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify(u)
-                });
-              }
+              const res = await fetch('/api/admin/users/import', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ users: importedUsers })
+              });
+              
+              if (!res.ok) throw new Error('Errore durante l\'importazione');
+              
+              const results = await res.json();
               fetchUsers();
-              alert('Importazione completata con successo!');
+              alert(`Importazione completata! Creati: ${results.created}, Aggiornati: ${results.updated}, Errori: ${results.errors}`);
             } catch (err) {
               console.error('Error importing users:', err);
-              setError('Errore durante l\'importazione di alcune utenti.');
+              setError('Errore durante l\'importazione.');
             } finally {
               setLoading(false);
             }
@@ -1087,6 +1113,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleEditSociety = (soc: any) => {
     setEditingSociety(soc);
     setSocName(soc.name || '');
+    setSocCode(soc.code || '');
     setSocEmail(soc.email || '');
     setSocAddress(soc.address || '');
     setSocCity(soc.city || '');
@@ -1698,12 +1725,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   disabled={currentUser?.role === 'society'}
                 />
               </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  {currentUser?.role === 'society' ? 'Codice Società' : 'Tessera Fitav'}
+                </label>
+                <input type="text" required={currentUser?.role === 'society'} value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+              </div>
               {currentUser?.role !== 'society' && (
                 <>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
-                    <input type="text" value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                  </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
                     <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
@@ -1947,6 +1976,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       {team.society && (
                         <span className="text-[8px] font-black bg-emerald-600/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase">
                           {team.society}
+                          {societies.find(s => s.name === team.society)?.code && (
+                            <span className="ml-1">({societies.find(s => s.name === team.society)?.code})</span>
+                          )}
                         </span>
                       )}
                     </div>
@@ -2083,7 +2115,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   {filteredTeamStats.map((s, idx) => (
                     <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                       <td className="py-3 px-4 text-sm text-white font-bold">{s.surname} {s.name}</td>
-                      <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{s.society || '-'}</td>
+                      <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">
+                        {s.society ? (
+                          <>
+                            {s.society}
+                            {societies.find(soc => soc.name === s.society)?.code && (
+                              <span className="text-orange-500 ml-1">({societies.find(soc => soc.name === s.society)?.code})</span>
+                            )}
+                          </>
+                        ) : '-'}
+                      </td>
                       <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">
                         {s.category || '-'} / {s.qualification || '-'}
                       </td>
@@ -2148,9 +2189,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
                   <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Società (Obbligatorio)</label>
+                  <input type="text" required value={socCode} onChange={e => setSocCode(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
@@ -2289,7 +2334,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors flex items-center gap-2">
-                      {soc.name}
+                      {soc.name} {soc.code ? <span className="text-orange-500 font-bold ml-1">({soc.code})</span> : ''}
                       {currentUser?.role === 'admin' && (
                         <span 
                           className={`w-2 h-2 rounded-full ${soc.google_maps_link ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]'}`} 
@@ -2359,7 +2404,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       <Popup className="custom-popup">
                       <div className="text-center">
-                        <h3 className="font-black text-white">{soc.name}</h3>
+                        <h3 className="font-black text-white">{soc.name} {soc.code ? <span className="text-orange-500 font-bold ml-1">({soc.code})</span> : ''}</h3>
                         <p className="text-xs text-slate-400 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
                         <div className="flex items-center justify-center gap-2 mt-2">
                           <button 
@@ -2756,7 +2801,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         {selectedShooterResults.userSurname || ''} {selectedShooterResults.userName || ''}
                       </h2>
                       <p className="text-xs font-black text-orange-500 uppercase tracking-[0.2em] mt-1">
-                        {selectedShooterResults.society || 'Nessuna Società'}
+                        {selectedShooterResults.society ? (
+                          <>
+                            {selectedShooterResults.society}
+                            {societies.find(soc => soc.name === selectedShooterResults.society)?.code && (
+                              <span className="ml-1">({societies.find(soc => soc.name === selectedShooterResults.society)?.code})</span>
+                            )}
+                          </>
+                        ) : 'Nessuna Società'}
                       </p>
                     </div>
                   </div>
@@ -2923,19 +2975,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
             </h2>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {currentUser?.role === 'admin' && !showUserForm && (
+              {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !showUserForm && (
                 <div className="flex gap-2">
+                  {currentUser?.role === 'admin' && (
+                    <button 
+                      onClick={() => setShowDashboard(!showDashboard)}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border ${
+                        showDashboard 
+                          ? 'bg-orange-600/10 text-orange-500 border-orange-500/30' 
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border-slate-700'
+                      }`}
+                      title={showDashboard ? "Nascondi Dashboard" : "Mostra Dashboard"}
+                    >
+                      <i className={`fas ${showDashboard ? 'fa-chart-line' : 'fa-chart-bar'}`}></i>
+                      <span>Dashboard</span>
+                    </button>
+                  )}
                   <button 
-                    onClick={() => setShowDashboard(!showDashboard)}
-                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border ${
-                      showDashboard 
-                        ? 'bg-orange-600/10 text-orange-500 border-orange-500/30' 
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border-slate-700'
-                    }`}
-                    title={showDashboard ? "Nascondi Dashboard" : "Mostra Dashboard"}
+                    onClick={handleDownloadTemplate}
+                    className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700"
+                    title="Scarica Modello"
                   >
-                    <i className={`fas ${showDashboard ? 'fa-chart-line' : 'fa-chart-bar'}`}></i>
-                    <span>Dashboard</span>
+                    <i className="fas fa-file-download"></i>
+                    <span>Modello</span>
                   </button>
                   <button 
                     onClick={handleExportUsersExcel}
@@ -3245,8 +3307,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav</label>
-                  <input type="text" value={fitavCard} onChange={e => setFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Tessera Fitav'}
+                  </label>
+                  <input type="text" required={role === 'society'} value={fitavCard} onChange={e => setFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
               </div>
               <div className="flex gap-2">
@@ -3268,7 +3332,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     Nome {userSortConfig?.key === 'name' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
                   </th>
                   <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('fitav_card')}>
-                    Tessera Fitav {userSortConfig?.key === 'fitav_card' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                    Tessera / Codice {userSortConfig?.key === 'fitav_card' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
                   </th>
                   <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('society')}>
                     Società {userSortConfig?.key === 'society' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
@@ -3310,7 +3374,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.fitav_card || '-'}</td>
-                    <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.society || '-'}</td>
+                    <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">
+                      {u.society ? (
+                        <>
+                          {u.society}
+                          {societies.find(s => s.name === u.society)?.code && (
+                            <span className="text-orange-500 ml-1">({societies.find(s => s.name === u.society)?.code})</span>
+                          )}
+                        </>
+                      ) : '-'}
+                    </td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.category || '-'} / {u.qualification || '-'}</td>
                     <td className="py-3 px-4 text-sm text-slate-400">{u.email}</td>
                     <td className="py-3 px-4">
@@ -3371,6 +3444,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             if (!showSocietyForm) {
               setEditingSociety(null);
               setSocName('');
+              setSocCode('');
               setSocEmail('');
               setSocAddress('');
               setSocCity('');

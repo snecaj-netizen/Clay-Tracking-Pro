@@ -364,7 +364,11 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
               
               <h4 className="text-xl font-black text-white uppercase italic leading-tight mb-2 group-hover:text-orange-500 transition-colors">{c.name}</h4>
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-6">
-                <i className="fas fa-map-marker-alt mr-1 text-orange-500"></i> {c.societyName}
+                <i className="fas fa-map-marker-alt mr-1 text-orange-500"></i> 
+                {c.societyName}
+                {societies.find(s => s.name === c.societyName)?.code && (
+                  <span className="text-orange-500 ml-1">({societies.find(s => s.name === c.societyName)?.code})</span>
+                )}
               </p>
               
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800/50">
@@ -420,7 +424,13 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">{selectedChallenge.name}</h2>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-slate-400 text-[11px] font-bold uppercase tracking-widest">
-                  <span><i className="fas fa-map-marker-alt text-orange-500 mr-2"></i> {selectedChallenge.societyName}</span>
+                  <span>
+                    <i className="fas fa-map-marker-alt text-orange-500 mr-2"></i> 
+                    {selectedChallenge.societyName}
+                    {societies.find(s => s.name === selectedChallenge.societyName)?.code && (
+                      <span className="text-orange-500 ml-1">({societies.find(s => s.name === selectedChallenge.societyName)?.code})</span>
+                    )}
+                  </span>
                   <span><i className="fas fa-calendar-alt text-orange-500 mr-2"></i> {new Date(selectedChallenge.startDate).toLocaleDateString()} - {new Date(selectedChallenge.endDate).toLocaleDateString()}</span>
                   <span><i className="fas fa-trophy text-emerald-500 mr-2"></i> {selectedChallenge.prize}</span>
                 </div>
@@ -475,7 +485,13 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                 <div className="text-center py-20 bg-slate-900/20 rounded-3xl border border-dashed border-slate-800">
                   <i className="fas fa-bullseye text-slate-800 text-4xl mb-4"></i>
                   <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Nessun risultato trovato per questa sfida</p>
-                  <p className="text-[10px] text-slate-600 mt-2 italic">Nota: Partecipano solo i tiratori iscritti a {selectedChallenge.societyName} che hanno gareggiato presso la stessa società.</p>
+                  <p className="text-[10px] text-slate-600 mt-2 italic">
+                    Nota: Partecipano solo i tiratori iscritti a {selectedChallenge.societyName}
+                    {societies.find(s => s.name === selectedChallenge.societyName)?.code && (
+                      <span className="ml-1">({societies.find(s => s.name === selectedChallenge.societyName)?.code})</span>
+                    )}
+                    {' '}che hanno gareggiato presso la stessa società.
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3">

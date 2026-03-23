@@ -5,13 +5,14 @@ import { Competition, User } from '../types';
 
 interface ShareCardProps {
   competition: Competition;
+  societies: any[];
   user: User;
   onClose: () => void;
   isPerfectSeries?: boolean;
   seriesIndex?: number;
 }
 
-const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPerfectSeries, seriesIndex }) => {
+const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onClose, isPerfectSeries, seriesIndex }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -224,6 +225,9 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, user, onClose, isPer
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Località</span>
                   <span className="text-[11px] font-bold text-slate-700 w-full px-1 leading-[1.4] break-words pb-1">
                     {competition.location}
+                    {societies.find(s => s.name === competition.location)?.code && (
+                      <span className="text-orange-600 ml-1">({societies.find(s => s.name === competition.location)?.code})</span>
+                    )}
                   </span>
                 </div>
                 <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 min-h-[80px] justify-center">

@@ -641,7 +641,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                             </span>
                           </div>
                           <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
-                          <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
+                          <p className="text-[10px] text-slate-400 mt-1 truncate">
+                            <i className="fas fa-map-marker-alt mr-1"></i>
+                            {ev.location}
+                            {societies.find(s => s.name === ev.location)?.code && (
+                              <span className="text-orange-500 ml-1">({societies.find(s => s.name === ev.location)?.code})</span>
+                            )}
+                          </p>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-lg font-black text-white leading-none">{ev.targets}</div>
@@ -1001,7 +1007,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         </span>
                       </div>
                       <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
-                      <p className="text-[10px] text-slate-400 mt-1 truncate"><i className="fas fa-map-marker-alt mr-1"></i>{ev.location}</p>
+                      <p className="text-[10px] text-slate-400 mt-1 truncate">
+                        <i className="fas fa-map-marker-alt mr-1"></i>
+                        {ev.location}
+                        {societies.find(s => s.name === ev.location)?.code && (
+                          <span className="text-orange-500 ml-1">({societies.find(s => s.name === ev.location)?.code})</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   
@@ -1054,7 +1066,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedEvent.name}</h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1 flex items-center gap-2">
-                  <i className="fas fa-map-marker-alt text-orange-500"></i> {selectedEvent.location}
+                  <i className="fas fa-map-marker-alt text-orange-500"></i> 
+                  {selectedEvent.location}
+                  {societies.find(s => s.name === selectedEvent.location)?.code && (
+                    <span className="text-orange-500 ml-1">({societies.find(s => s.name === selectedEvent.location)?.code})</span>
+                  )}
                 </p>
               </div>
             </div>

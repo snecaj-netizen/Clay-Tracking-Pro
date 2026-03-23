@@ -6,12 +6,13 @@ import ShareCard from './ShareCard';
 
 interface DashboardProps {
   competitions: Competition[];
+  societies: any[];
   onAddClick: () => void;
   onCoachClick: () => void;
   user?: any;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoachClick, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ competitions, societies, onAddClick, onCoachClick, user }) => {
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
   // Filtriamo solo le gare REALI (punteggio > 0) per le statistiche
@@ -231,6 +232,9 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
                       <p className="text-xs text-slate-400 flex items-center gap-1.5">
                         <i className="fas fa-location-dot text-slate-500"></i>
                         {comp.location}
+                        {societies.find(s => s.name === comp.location)?.code && (
+                          <span className="text-orange-500 ml-1">({societies.find(s => s.name === comp.location)?.code})</span>
+                        )}
                       </p>
                     </div>
                     <div className="text-right">
@@ -275,6 +279,7 @@ const Dashboard: React.FC<DashboardProps> = ({ competitions, onAddClick, onCoach
       {shareData && (
         <ShareCard
           competition={shareData.comp}
+          societies={societies}
           user={user}
           isPerfectSeries={shareData.isPerfect}
           onClose={() => setShareData(null)}
