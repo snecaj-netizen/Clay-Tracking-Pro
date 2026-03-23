@@ -907,6 +907,107 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     XLSX.writeFile(wb, 'esportazione_societa.xlsx');
   };
 
+  const handleUpdateSocietiesCodesExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        if (data.length === 0) {
+          setError('Il file Excel è vuoto.');
+          return;
+        }
+
+        const updates: { id: string, data: any }[] = [];
+        const notFound: string[] = [];
+
+        data.forEach(row => {
+          const name = row['Nome TAV'] || row['Nome'] || row['Società'];
+          const code = row['Codice Società'] || row['Codice'] || row['Code'];
+
+          if (name && code) {
+            const society = societies.find(s => s.name.toLowerCase().trim() === String(name).toLowerCase().trim());
+            if (society) {
+              updates.push({
+                id: society.id,
+                data: {
+                  ...society,
+                  code: String(code).trim()
+                }
+              });
+            } else {
+              notFound.push(String(name));
+            }
+          }
+        });
+
+        if (updates.length === 0) {
+          setError('Nessuna corrispondenza trovata tra i nomi nel file e le società esistenti.');
+          return;
+        }
+
+        let message = `Trovate ${updates.length} società da aggiornare.`;
+        if (notFound.length > 0) {
+          message += `\nAttenzione: ${notFound.length} società non trovate nel sistema.`;
+        }
+
+        triggerConfirm(
+          'Aggiorna Codici',
+          `${message}\n\nSei sicuro di voler procedere con l'aggiornamento?`,
+          async () => {
+            setLoading(true);
+            let successCount = 0;
+            let errorCount = 0;
+            
+            try {
+              for (const update of updates) {
+                try {
+                  const res = await fetch(`/api/admin/societies/${update.id}`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(update.data)
+                  });
+                  if (res.ok) {
+                    successCount++;
+                  } else {
+                    errorCount++;
+                  }
+                } catch (err) {
+                  errorCount++;
+                }
+              }
+              fetchSocieties();
+              alert(`Aggiornamento completato!\nSocietà aggiornate: ${successCount}\nErrori: ${errorCount}`);
+            } catch (err) {
+              console.error('Error updating society codes:', err);
+              setError('Errore durante l\'aggiornamento dei codici.');
+            } finally {
+              setLoading(false);
+            }
+          },
+          'Aggiorna',
+          'primary'
+        );
+      } catch (err) {
+        console.error('Error parsing Excel:', err);
+        setError('Errore durante la lettura del file Excel.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
+  };
+
   const handleImportSocietiesExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2158,6 +2259,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <i className="fas fa-file-excel"></i>
                   <span>Esporta</span>
                 </button>
+                <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer" title="Aggiorna i codici delle società esistenti da un file Excel">
+                  <i className="fas fa-sync-alt"></i>
+                  <span>Aggiorna Codici</span>
+                  <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
+                </label>
                 <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer">
                   <i className="fas fa-file-import"></i>
                   <span>Importa</span>
@@ -3470,6 +3576,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {shareData && (
         <ShareCard 
           competition={shareData.comp} 
+          societies={societies}
           user={shareData.user} 
           onClose={() => setShareData(null)} 
         />
