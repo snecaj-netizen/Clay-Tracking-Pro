@@ -416,7 +416,18 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia</label>
             <div className="relative">
-              <select value={level} onChange={(e) => setLevel(e.target.value as CompetitionLevel)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+              <select value={level} onChange={(e) => {
+                const newLevel = e.target.value as CompetitionLevel;
+                setLevel(newLevel);
+                if (newLevel === CompetitionLevel.INTERNATIONAL) {
+                  setTotalTargets(200);
+                  if (date) {
+                    const d = new Date(date);
+                    d.setDate(d.getDate() + 3);
+                    setEndDate(d.toISOString().split('T')[0]);
+                  }
+                }
+              }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                 <option value={CompetitionLevel.REGIONAL}>Regionale</option>
                 <option value={CompetitionLevel.NATIONAL}>Nazionale</option>
                 <option value={CompetitionLevel.INTERNATIONAL}>Internazionale</option>
@@ -490,12 +501,20 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{isMultiDayEligible ? 'Giorno 1 (Inizio)' : 'Data'}</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{isMultiDayEligible ? 'Data Inizio' : 'Data'}</label>
+            <input type="date" value={date} onChange={(e) => {
+              const newDate = e.target.value;
+              setDate(newDate);
+              if (level === CompetitionLevel.INTERNATIONAL && newDate) {
+                const d = new Date(newDate);
+                d.setDate(d.getDate() + 3);
+                setEndDate(d.toISOString().split('T')[0]);
+              }
+            }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
           </div>
           {isMultiDayEligible && (
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorno 2 (Fine)</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine</label>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
           )}
@@ -720,11 +739,24 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         <div className="flex flex-col gap-4">
           {scores.map((score, idx) => {
             const seriesLayout = getSeriesLayout(discipline);
+            const targetsPerSeries = seriesLayout.layout.reduce((a, b) => a + b, 0);
+            const seriesPerDay = Math.max(1, Math.floor(50 / targetsPerSeries));
+            const showDayLabel = level === CompetitionLevel.INTERNATIONAL && totalTargets >= 200 && idx % seriesPerDay === 0;
+            const dayNumber = Math.floor(idx / seriesPerDay) + 1;
+
             return (
-            <div key={idx} className="bg-slate-950/30 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
-                <div className="flex items-center gap-3">
+            <React.Fragment key={idx}>
+              {showDayLabel && (
+                <div className="mt-2 mb-1 flex items-center gap-2">
+                  <div className="h-[1px] flex-1 bg-orange-900/30"></div>
+                  <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Giorno {dayNumber}</span>
+                  <div className="h-[1px] flex-1 bg-orange-900/30"></div>
+                </div>
+              )}
+              <div className="bg-slate-950/30 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
+                  <div className="flex items-center gap-3">
                   <input type="number" min="0" max="25" value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
                   <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
                     <i className="fas fa-list-ul"></i>
@@ -786,6 +818,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 </div>
               )}
             </div>
+            </React.Fragment>
           )})}
         </div>
       </div>

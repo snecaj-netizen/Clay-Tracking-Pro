@@ -525,48 +525,33 @@ initDB().then(() => {
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
 
-      // Find events that are happening today
-      const { rows: events } = await pool.query(
-        "SELECT * FROM events WHERE start_date <= $1 AND end_date >= $1",
+      // Find competitions scheduled for today that have no score (totalscore = 0)
+      // We check if today is the last day of the competition (enddate if exists, otherwise date)
+      const { rows: pendingCompetitions } = await pool.query(
+        "SELECT user_id, name FROM competitions WHERE COALESCE(NULLIF(enddate, ''), date) = $1 AND totalscore = 0",
         [todayStr]
       );
 
-      if (events.length === 0) return;
+      if (pendingCompetitions.length === 0) return;
 
-      // Get users who already entered a competition result for today
-      const { rows: activeUsersToday } = await pool.query(
-        "SELECT DISTINCT user_id FROM competitions WHERE date = $1",
-        [todayStr]
-      );
-      const activeUserIds = new Set(activeUsersToday.map(u => u.user_id));
-
-      for (const event of events) {
-        let userIds: number[] = [];
-        
-        // Determine target users based on visibility
-        if (event.visibility === 'Pubblica') {
-          const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
-          userIds = users.map(u => u.id);
-        } else {
-          // For society events, target users of that society
-          const { rows: creators } = await pool.query("SELECT society FROM users WHERE id = $1", [event.created_by]);
-          if (creators.length > 0 && creators[0].society) {
-            const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user' AND society = $1", [creators[0].society]);
-            userIds = users.map(u => u.id);
-          }
+      // Group by user to avoid multiple notifications if they have multiple empty competitions today
+      const userNotifications = new Map<number, string[]>();
+      for (const comp of pendingCompetitions) {
+        if (!userNotifications.has(comp.user_id)) {
+          userNotifications.set(comp.user_id, []);
         }
+        userNotifications.get(comp.user_id)!.push(comp.name);
+      }
 
-        const usersToNotify = userIds.filter(id => !activeUserIds.has(id));
-
-        if (usersToNotify.length > 0) {
-          await sendPushNotification(
-            usersToNotify, 
-            "Com'è andata oggi?", 
-            `Com'è andata oggi a ${event.name}? Inserisci il risultato per vedere come cambia la tua media!`, 
-            `/dashboard`,
-            event.visibility === 'Pubblica' ? 'all' : 'society'
-          );
-        }
+      for (const [userId, compNames] of userNotifications.entries()) {
+        const names = compNames.join(', ');
+        await sendPushNotification(
+          [userId], 
+          "Com'è andata oggi?", 
+          `Com'è andata oggi a ${names}? Inserisci il risultato per vedere come cambia la tua media!`, 
+          `/history`,
+          'all'
+        );
       }
     } catch (err) {
       console.error("Error in cron job for competition reminders:", err);
