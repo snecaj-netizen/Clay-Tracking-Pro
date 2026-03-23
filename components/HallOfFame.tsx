@@ -189,21 +189,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Sfide e Contest tra Tiratori</p>
         </div>
         {(user?.role === 'admin' || user?.role === 'society') && (
-          <button 
-            onClick={() => {
-              if (showForm) resetForm();
-              setShowForm(!showForm);
-              if (!showForm && user?.role === 'society') {
-                // Pre-select society for society users
-                const mySoc = societies.find(s => s.name === user.society);
-                if (mySoc) setSocietyId(mySoc.id);
-              }
-            }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${showForm ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20'}`}
-          >
-            <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'}`}></i>
-            {showForm ? 'Annulla' : 'Crea Sfida'}
-          </button>
+          <div className="hidden sm:block">
+            {/* Placeholder to maintain layout if needed, or just remove the button */}
+          </div>
         )}
       </div>
 
@@ -538,6 +526,27 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
           </div>
         </div>,
         document.body
+      )}
+      {/* Floating Add Button for Challenges */}
+      {(user?.role === 'admin' || user?.role === 'society') && (
+        <button 
+          onClick={() => {
+            if (showForm) {
+              resetForm();
+              setShowForm(false);
+            } else {
+              setShowForm(true);
+              if (user?.role === 'society') {
+                const mySoc = societies.find(s => s.name === user.society);
+                if (mySoc) setSocietyId(mySoc.id);
+              }
+            }
+          }}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${showForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          title={showForm ? 'Chiudi' : 'Crea Sfida'}
+        >
+          <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
+        </button>
       )}
     </div>
   );

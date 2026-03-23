@@ -1871,21 +1871,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                 <i className="fas fa-users text-orange-500"></i> Gestione Squadre
               </h2>
-              <button 
-                onClick={() => {
-                  setShowTeamForm(!showTeamForm);
-                  if (!showTeamForm) window.scrollTo({ top: 0, behavior: 'smooth' });
-                  if (!showTeamForm && currentUser?.role === 'society' && currentUser?.society) {
-                    setNewTeamSociety(currentUser.society);
-                  } else if (!showTeamForm) {
-                    setNewTeamSociety('');
-                  }
-                }}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${showTeamForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
-              >
-                <i className={`fas ${showTeamForm ? 'fa-times' : 'fa-plus'}`}></i>
-                {showTeamForm ? 'Chiudi' : 'Nuova Squadra'}
-              </button>
             </div>
 
             {showTeamForm && (
@@ -2250,23 +2235,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}
             </h2>
             {currentUser?.role === 'admin' && !showSocietyForm && (
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
                 <button 
                   onClick={handleExportSocietiesExcel}
-                  className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700"
+                  className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
                   title="Esporta"
                 >
                   <i className="fas fa-file-excel"></i>
-                  <span>Esporta</span>
+                  <span className="hidden sm:inline">Esporta</span>
                 </button>
-                <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer" title="Aggiorna i codici delle società esistenti da un file Excel">
+                <label className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
                   <i className="fas fa-sync-alt"></i>
-                  <span>Aggiorna Codici</span>
+                  <span className="hidden sm:inline">Aggiorna Codici</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
                 </label>
-                <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer">
+                <label className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
                   <i className="fas fa-file-import"></i>
-                  <span>Importa</span>
+                  <span className="hidden sm:inline">Importa</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
                 </label>
               </div>
@@ -2712,22 +2697,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-list-ol text-orange-500"></i> Tutti i Risultati
             </h2>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-start sm:justify-end">
-              {currentUser?.role === 'admin' && (
-                <button 
-                  onClick={() => onEditCompetition && onEditCompetition()}
-                  className="px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 shrink-0"
-                >
-                  <i className="fas fa-plus text-base"></i>
-                  <span>Aggiungi Gara</span>
-                </button>
-              )}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
               <button 
                 onClick={() => setShowFilters(!showFilters)}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
               >
                 <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
-                <span>Filtri</span>
+                <span className="hidden sm:inline">Filtri</span>
                 {hasActiveFilters && (
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
                 )}
@@ -3082,11 +3058,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h2>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !showUserForm && (
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
                   {currentUser?.role === 'admin' && (
                     <button 
                       onClick={() => setShowDashboard(!showDashboard)}
-                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border ${
+                      className={`px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 border shrink-0 ${
                         showDashboard 
                           ? 'bg-orange-600/10 text-orange-500 border-orange-500/30' 
                           : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border-slate-700'
@@ -3094,33 +3070,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       title={showDashboard ? "Nascondi Dashboard" : "Mostra Dashboard"}
                     >
                       <i className={`fas ${showDashboard ? 'fa-chart-line' : 'fa-chart-bar'}`}></i>
-                      <span>Dashboard</span>
+                      <span className="hidden sm:inline">Dashboard</span>
                     </button>
                   )}
                   <button 
                     onClick={handleDownloadTemplate}
-                    className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700"
+                    className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
                     title="Scarica Modello"
                   >
                     <i className="fas fa-file-download"></i>
-                    <span>Modello</span>
+                    <span className="hidden sm:inline">Modello</span>
                   </button>
                   <button 
                     onClick={handleExportUsersExcel}
-                    className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700"
+                    className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
                     title="Esporta"
                   >
                     <i className="fas fa-file-excel"></i>
-                    <span>Esporta</span>
+                    <span className="hidden sm:inline">Esporta</span>
                   </button>
-                  <label className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer">
+                  <label className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
                     <i className="fas fa-file-import"></i>
-                    <span>Importa</span>
+                    <span className="hidden sm:inline">Importa</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleImportUsersExcel} className="hidden" />
                   </label>
                 </div>
               )}
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                 <input 
                   type="text" 
@@ -3130,23 +3106,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
                 />
               </div>
-              <button 
-                onClick={() => { 
-                  setShowUserForm(!showUserForm); 
-                  setEditingUser(null); 
-                  if (!showUserForm) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    if (currentUser?.role === 'society') {
-                      setSociety(currentUser.society);
-                      setRole('user');
-                    }
-                  }
-                }}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${showUserForm ? 'bg-slate-800 text-slate-400' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'}`}
-              >
-                <i className={`fas ${showUserForm ? 'fa-times' : 'fa-user-plus'}`}></i>
-                {showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
-              </button>
             </div>
           </div>
 
@@ -3542,6 +3501,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </table>
           </div>
         </div>
+      )}
+      {/* Floating Add Button for Competitions */}
+      {activeTab === 'results' && currentUser?.role === 'admin' && (
+        <button 
+          onClick={() => onEditCompetition && onEditCompetition()}
+          className="fixed bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
+          title="Aggiungi Gara"
+        >
+          <i className="fas fa-plus text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
+        </button>
+      )}
+      {/* Floating Add Button for Teams */}
+      {activeTab === 'team' && (currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+        <button 
+          onClick={() => {
+            if (showTeamForm) {
+              setShowTeamForm(false);
+            } else {
+              setShowTeamForm(true);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              if (currentUser?.role === 'society' && currentUser?.society) {
+                setNewTeamSociety(currentUser.society);
+              } else {
+                setNewTeamSociety('');
+              }
+            }
+          }}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${showTeamForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          title={showTeamForm ? 'Chiudi' : 'Nuova Squadra'}
+        >
+          <i className={`fas ${showTeamForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
+        </button>
+      )}
+      {/* Floating Add Button for Users */}
+      {activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+        <button 
+          onClick={() => { 
+            if (showUserForm) {
+              setShowUserForm(false);
+              setEditingUser(null);
+            } else {
+              setEditingUser(null);
+              setShowUserForm(true);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              if (currentUser?.role === 'society') {
+                setSociety(currentUser.society);
+                setRole('user');
+              }
+            }
+          }}
+          className={`fixed bottom-8 right-8 w-16 h-16 ${showUserForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          title={showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
+        >
+          <i className={`fas ${showUserForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
+        </button>
       )}
       {/* Floating Add Button for Societies */}
       {activeTab === 'societies' && currentUser?.role === 'admin' && (

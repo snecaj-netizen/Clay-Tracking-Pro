@@ -693,28 +693,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
           <i className="fas fa-calendar-alt text-orange-500"></i> Gestione Eventi
         </h2>
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
           {user?.role === 'admin' && !showForm && (
-            <div className="flex gap-2 mr-2">
+            <div className="flex gap-1.5 sm:gap-2 mr-1 sm:mr-2 shrink-0">
               <button 
                 onClick={handleExportExcel}
-                className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 shrink-0"
                 title="Esporta"
               >
                 <i className="fas fa-file-excel"></i>
-                <span>Esporta</span>
+                <span className="hidden sm:inline">Esporta</span>
               </button>
-              <label className="px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer">
+              <label className="px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer shrink-0">
                 <i className="fas fa-file-import"></i>
-                <span>Importa</span>
+                <span className="hidden sm:inline">Importa</span>
                 <input type="file" accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
               </label>
             </div>
           )}
           {!showForm && (
             <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 shrink-0">
-              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list text-sm"></i> <span>Lista</span></button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt text-sm"></i> <span>Calendario</span></button>
+              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list text-sm"></i> <span className="hidden sm:inline">Lista</span></button>
+              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt text-sm"></i> <span className="hidden sm:inline">Calendario</span></button>
             </div>
           )}
           {!showForm && (
@@ -723,7 +723,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-600'}`}
             >
               <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
-              <span>Filtri</span>
+              <span className="hidden sm:inline">Filtri</span>
               {hasActiveFilters && (
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
               )}
