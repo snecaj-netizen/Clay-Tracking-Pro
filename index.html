@@ -26,6 +26,23 @@
     <style>
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
         
+        /* Chart Variables */
+        :root {
+            --chart-grid: #1e293b;
+            --chart-text: #64748b;
+            --chart-tooltip-bg: #0f172a;
+            --chart-tooltip-border: #1e293b;
+            --chart-tooltip-label: #94a3b8;
+        }
+
+        html.light-theme {
+            --chart-grid: #e2e8f0;
+            --chart-text: #64748b;
+            --chart-tooltip-bg: #ffffff;
+            --chart-tooltip-border: #e2e8f0;
+            --chart-tooltip-label: #475569;
+        }
+
         /* Light Theme Overrides */
         html.light-theme body { background-color: #f8fafc !important; color: #0f172a !important; }
         html.light-theme .bg-slate-950 { background-color: #f8fafc !important; }

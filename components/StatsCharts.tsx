@@ -46,24 +46,30 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
               <XAxis 
                 dataKey="date" 
-                stroke="#64748b" 
+                stroke="var(--chart-text)" 
                 fontSize={10} 
                 tickLine={false} 
                 axisLine={false}
               />
               <YAxis 
-                stroke="#64748b" 
+                stroke="var(--chart-text)" 
                 fontSize={10} 
                 tickLine={false} 
                 axisLine={false} 
                 domain={[0, 25]}
               />
               <Tooltip 
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                contentStyle={{ 
+                  backgroundColor: 'var(--chart-tooltip-bg)', 
+                  border: '1px solid var(--chart-tooltip-border)', 
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+                }}
                 itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
+                labelStyle={{ color: 'var(--chart-tooltip-label)', fontWeight: 'bold', marginBottom: '4px' }}
               />
               <Line 
                 type="monotone" 
@@ -83,16 +89,16 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={disciplineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
               <XAxis 
                 dataKey="name" 
-                stroke="#64748b" 
+                stroke="var(--chart-text)" 
                 fontSize={10} 
                 tickLine={false} 
                 axisLine={false}
               />
               <YAxis 
-                stroke="#64748b" 
+                stroke="var(--chart-text)" 
                 fontSize={10} 
                 tickLine={false} 
                 axisLine={false}
@@ -100,7 +106,14 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
               />
               <Tooltip 
                 cursor={{ fill: 'transparent' }}
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                contentStyle={{ 
+                  backgroundColor: 'var(--chart-tooltip-bg)', 
+                  border: '1px solid var(--chart-tooltip-border)', 
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+                }}
+                itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
+                labelStyle={{ color: 'var(--chart-tooltip-label)', fontWeight: 'bold', marginBottom: '4px' }}
               />
               <Bar dataKey="avg" radius={[8, 8, 0, 0]} barSize={40}>
                 {disciplineData.map((entry, index) => (
