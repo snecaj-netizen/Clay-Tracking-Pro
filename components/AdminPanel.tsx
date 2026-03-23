@@ -1593,7 +1593,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                  activeTab === 'halloffame' ? 'Hall of Fame' :
                  activeTab === 'notifications' ? 'Notifiche' :
                  activeTab === 'team' ? 'Squadre' :
-                 activeTab === 'users' ? (currentUser?.role === 'society' ? 'Tiratori' : 'Utenti') :
+                 activeTab === 'users' ? (currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti') :
                  activeTab === 'profile' ? 'Profilo' :
                  (currentUser?.role === 'admin' ? 'Avanzate' : 'Backup')}
               </span>
@@ -1634,7 +1634,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                     >
-                      <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
+                      <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti'}
                     </button>
                   </>
                 )}
@@ -1696,7 +1696,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('users')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : 'Ut.'}</span>
+                <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : 'Ut.'}</span>
               </button>
             )}
             <button 

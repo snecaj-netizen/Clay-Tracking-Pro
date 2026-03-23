@@ -154,7 +154,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           return newScores;
         });
         setDetailedScores(prev => {
-          const newDetailed = Array.from({ length: numSeries }, () => []);
+          const newDetailed: boolean[][] = Array.from({ length: numSeries }, () => []);
           for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
             newDetailed[i] = prev[i] || [];
           }
