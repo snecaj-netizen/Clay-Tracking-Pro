@@ -139,26 +139,53 @@ const initDB = async () => {
         producer TEXT NOT NULL,
         model TEXT NOT NULL,
         leadnumber TEXT NOT NULL,
+        grams INTEGER,
         imageurl TEXT,
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
       );
     `);
 
-    // Ensure created_by column exists
+    // Ensure columns exist
     try {
       await pool.query("ALTER TABLE cartridge_types ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE cartridge_types ADD COLUMN IF NOT EXISTS grams INTEGER");
+      await pool.query("ALTER TABLE cartridges ADD COLUMN IF NOT EXISTS grams INTEGER");
     } catch (e) {
-      console.log("Column created_by might already exist or error adding it:", e);
+      console.log("Error adding columns to cartridge tables:", e);
+    }
+
+    // Cleanup duplicates in cartridge_types before adding constraint
+    try {
+      await pool.query(`
+        DELETE FROM cartridge_types a USING cartridge_types b
+        WHERE a.id > b.id 
+          AND LOWER(TRIM(a.producer)) = LOWER(TRIM(b.producer))
+          AND LOWER(TRIM(a.model)) = LOWER(TRIM(b.model))
+          AND a.leadnumber = b.leadnumber
+          AND (a.grams = b.grams OR (a.grams IS NULL AND b.grams IS NULL))
+      `);
+      
+      // Add unique constraint if it doesn't exist
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_cartridge_type') THEN
+            ALTER TABLE cartridge_types ADD CONSTRAINT unique_cartridge_type UNIQUE (producer, model, leadnumber, grams);
+          END IF;
+        END $$;
+      `);
+    } catch (e) {
+      console.log("Error cleaning up or adding constraint to cartridge_types:", e);
     }
 
     // Migrate existing cartridges to cartridge_types
     try {
       await pool.query(`
-        INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl, created_by)
-        SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber)
-          id, producer, model, leadnumber, imageurl, user_id
+        INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by)
+        SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber, grams)
+          id, producer, model, leadnumber, grams, imageurl, user_id
         FROM cartridges
-        ON CONFLICT DO NOTHING;
+        ON CONFLICT (producer, model, leadnumber, grams) DO NOTHING;
       `);
     } catch (e) {
       console.log("Error migrating cartridge types:", e);
@@ -2549,6 +2576,7 @@ app.get('/api/cartridge-types', authenticateToken, async (req: any, res) => {
       producer: row.producer,
       model: row.model,
       leadNumber: row.leadnumber,
+      grams: row.grams,
       imageUrl: row.imageurl,
       createdBy: row.created_by
     }));
@@ -2575,16 +2603,26 @@ app.post('/api/cartridge-types', authenticateToken, async (req: any, res) => {
          producer = $1,
          model = $2,
          leadnumber = $3,
-         imageurl = $4
-         WHERE id = $5`,
-        [t.producer, t.model, t.leadNumber, t.imageUrl || null, t.id]
+         grams = $4,
+         imageurl = $5
+         WHERE id = $6`,
+        [t.producer, t.model, t.leadNumber, t.grams, t.imageUrl || null, t.id]
       );
     } else {
-      // Create
+      // Create - check for existing by fields first to avoid constraint violation
+      const { rows: duplicate } = await pool.query(
+        "SELECT id FROM cartridge_types WHERE LOWER(TRIM(producer)) = LOWER(TRIM($1)) AND LOWER(TRIM(model)) = LOWER(TRIM($2)) AND leadnumber = $3 AND (grams = $4 OR (grams IS NULL AND $4 IS NULL))",
+        [t.producer, t.model, t.leadNumber, t.grams]
+      );
+
+      if (duplicate.length > 0) {
+        return res.json({ success: true, id: duplicate[0].id, message: 'Tipo già esistente' });
+      }
+
       await pool.query(
-        `INSERT INTO cartridge_types (id, producer, model, leadnumber, imageurl, created_by) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [t.id, t.producer, t.model, t.leadNumber, t.imageUrl || null, req.user.id]
+        `INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [t.id, t.producer, t.model, t.leadNumber, t.grams, t.imageUrl || null, req.user.id]
       );
     }
     res.json({ success: true });
@@ -2615,6 +2653,7 @@ app.get('/api/cartridges', authenticateToken, async (req: any, res) => {
       producer: row.producer,
       model: row.model,
       leadNumber: row.leadnumber,
+      grams: row.grams,
       quantity: row.quantity,
       initialQuantity: row.initialquantity,
       cost: row.cost,
@@ -2631,9 +2670,9 @@ app.post('/api/cartridges', authenticateToken, async (req: any, res) => {
   const c = req.body;
   try {
     await pool.query(
-      `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, quantity, initialquantity, cost, armory, imageurl) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
+      `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
     );
     res.json({ success: true });
   } catch (err: any) {
@@ -2651,19 +2690,20 @@ app.post('/api/cartridges/bulk', authenticateToken, async (req: any, res) => {
     await client.query('BEGIN');
     for (const c of cartridges) {
       await client.query(
-        `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, quantity, initialquantity, cost, armory, imageurl) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (id) DO UPDATE SET 
          purchasedate = EXCLUDED.purchasedate,
          producer = EXCLUDED.producer,
          model = EXCLUDED.model,
          leadnumber = EXCLUDED.leadnumber,
+         grams = EXCLUDED.grams,
          quantity = EXCLUDED.quantity,
          initialquantity = EXCLUDED.initialquantity,
          cost = EXCLUDED.cost,
          armory = EXCLUDED.armory,
          imageurl = EXCLUDED.imageurl`,
-        [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
+        [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
       );
     }
     await client.query('COMMIT');
@@ -2680,8 +2720,8 @@ app.put('/api/cartridges/:id', authenticateToken, async (req: any, res) => {
   const c = req.body;
   try {
     await pool.query(
-      `UPDATE cartridges SET purchasedate=$1, producer=$2, model=$3, leadnumber=$4, quantity=$5, initialquantity=$6, cost=$7, armory=$8, imageurl=$9 WHERE id=$10 AND user_id=$11`,
-      [c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, req.params.id, req.user.id]
+      `UPDATE cartridges SET purchasedate=$1, producer=$2, model=$3, leadnumber=$4, grams=$5, quantity=$6, initialquantity=$7, cost=$8, armory=$9, imageurl=$10 WHERE id=$11 AND user_id=$12`,
+      [c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, req.params.id, req.user.id]
     );
     res.json({ success: true });
   } catch (err: any) {

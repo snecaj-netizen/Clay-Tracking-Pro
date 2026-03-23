@@ -348,10 +348,7 @@ const App: React.FC = () => {
         body: JSON.stringify(type)
       });
       if (res.ok) {
-        setCartridgeTypes(prev => {
-          const exists = prev.find(t => t.id === type.id);
-          return exists ? prev.map(t => t.id === type.id ? type : t) : [...prev, type];
-        });
+        fetchData(); // Re-fetch to get the canonical list from server
       }
     } catch (err) {
       console.error('Error saving cartridge type:', err);
@@ -365,7 +362,7 @@ const App: React.FC = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        setCartridgeTypes(prev => prev.filter(t => t.id !== id));
+        fetchData();
       }
     } catch (err) {
       console.error('Error deleting cartridge type:', err);
