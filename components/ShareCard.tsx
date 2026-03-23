@@ -12,7 +12,7 @@ interface ShareCardProps {
   seriesIndex?: number;
 }
 
-const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onClose, isPerfectSeries, seriesIndex }) => {
+const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onClose, isPerfectSeries, seriesIndex: _seriesIndex }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 

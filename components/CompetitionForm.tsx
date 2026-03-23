@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, WeatherInfo, getSeriesLayout } from '../types';
+import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
@@ -27,7 +27,7 @@ const WEATHER_OPTIONS = [
   { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
 ];
 
-const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, knownLocations = [], availableCartridges = [], cartridgeTypes = [], societies = [], currentUser, onSubmit, onCancel, onNavigateToWarehouse }) => {
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, availableCartridges = [], cartridgeTypes = [], societies = [], currentUser, onSubmit, onCancel, onNavigateToWarehouse }) => {
   const data = initialData || prefillData;
   const [name, setName] = useState(data?.name || '');
   const [location, setLocation] = useState(data?.location || '');
@@ -200,7 +200,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       }
 
       if (!apiKey) {
-        const rawKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+        const rawKey = process.env.GEMINI_API_KEY;
         apiKey = typeof rawKey === 'string' ? rawKey.trim() : rawKey;
       } else {
         apiKey = apiKey.trim();
@@ -476,8 +476,6 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
               }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">-</button>
               <div className="flex-[2] text-center text-3xl font-black text-white">{scores.length}</div>
               <button type="button" onClick={() => {
-                const layoutObj = getSeriesLayout(discipline);
-                const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
                 if (scores.length < 12) {
                   setScores([...scores, 0]);
                   setDetailedScores([...detailedScores, []]);

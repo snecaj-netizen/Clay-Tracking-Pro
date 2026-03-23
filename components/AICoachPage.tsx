@@ -183,13 +183,11 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         config: {
           systemInstruction: context,
         },
+        history: messages.map(m => ({
+          role: m.role,
+          parts: [{ text: m.text }]
+        }))
       });
-
-      // Include history for better conversation
-      const history = messages.map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }]
-      }));
 
       const response = await chat.sendMessage({
         message: userMessage.text,

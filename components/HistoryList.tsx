@@ -360,6 +360,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
                       >
                         <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}</span>
                         <span className={`text-sm font-black ${s === 25 ? 'text-orange-500' : s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
+                        {hasDetails && <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-orange-500 rounded-full shadow-[0_0_5px_rgba(249,115,22,0.5)]"></div>}
                         {s === 25 && (
                           <div 
                             onClick={(e) => {

@@ -4,7 +4,6 @@ import Dashboard from './components/Dashboard';
 import CompetitionForm from './components/CompetitionForm';
 import HistoryList from './components/HistoryList';
 import Header from './components/Header';
-import Settings from './components/Settings';
 import Warehouse from './components/Warehouse';
 import Auth from './components/Auth';
 import AdminPanel from './components/AdminPanel';
@@ -20,7 +19,7 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('auth_user');
       return saved ? JSON.parse(saved) : null;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   });

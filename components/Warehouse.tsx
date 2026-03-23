@@ -29,7 +29,6 @@ const Warehouse: React.FC<WarehouseProps> = ({
   const [editingType, setEditingType] = useState<CartridgeType | null>(null);
   const [activeTab, setActiveTab] = useState<'types' | 'inventory' | 'history'>('types');
   const [filterYear, setFilterYear] = useState<string>('ALL');
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const typeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Cartridge Stock Form states

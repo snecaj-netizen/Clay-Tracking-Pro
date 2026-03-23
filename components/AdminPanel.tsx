@@ -264,12 +264,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [statsFilterDiscipline, setStatsFilterDiscipline] = useState<string>('');
   const [kpiFilter, setKpiFilter] = useState('total');
   const [fetchedDashboardStats, setFetchedDashboardStats] = useState<any>(null);
-  const [isRefreshingStats, setIsRefreshingStats] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
 
   const fetchDashboardStats = useCallback(async () => {
     if (currentUser?.role !== 'admin') return;
-    setIsRefreshingStats(true);
     try {
       const res = await fetch(`/api/admin/dashboard-stats?filter=${kpiFilter}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -280,8 +278,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
-    } finally {
-      setIsRefreshingStats(false);
     }
   }, [kpiFilter, token, currentUser]);
 
@@ -982,7 +978,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   } else {
                     errorCount++;
                   }
-                } catch (err) {
+                } catch (_) {
                   errorCount++;
                 }
               }
@@ -1532,7 +1528,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const totalPages = Math.ceil(groupedShooters.length / resultsPerPage);
   const paginatedShooters = groupedShooters.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
-  const paginatedResults = filteredResults.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
 
   const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement> | string) => {
     const value = typeof e === 'string' ? e : e.target.value;
@@ -2643,6 +2638,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
+                    {currentUser?.role === 'admin' && !users.some(u => u.role === 'society' && u.society === selectedSociety.name) && (
+                      <button 
+                        onClick={() => {
+                          const soc = selectedSociety;
+                          setSelectedSociety(null);
+                          setActiveTab('users');
+                          setShowUserForm(true);
+                          setEditingUser(null);
+                          setName(soc.name);
+                          setSurname('TAV');
+                          setEmail(soc.email || '');
+                          setRole('society');
+                          setSociety(soc.name);
+                          setFitavCard(soc.code || '');
+                          setPassword('');
+                          setCategory('');
+                          setQualification('');
+                          setUserAvatar(soc.logo || '');
+                          setBirthDate('');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }} 
+                        className="w-full py-4 rounded-2xl bg-blue-600/20 text-blue-500 font-black text-xs uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center justify-center gap-2 border border-blue-600/30 shadow-lg mb-2"
+                      >
+                        <i className="fas fa-user-plus"></i> Crea Account Società
+                      </button>
+                    )}
                     {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === selectedSociety.name)) && (
                       <button 
                         onClick={() => {

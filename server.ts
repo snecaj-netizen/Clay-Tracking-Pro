@@ -9,9 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-import nodemailer from 'nodemailer';
 import webpush from 'web-push';
 import cron from 'node-cron';
 
@@ -73,7 +71,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP");
-    } catch (e) {
+    } catch (_) {
       console.log("Columns already exist or error adding them");
     }
 
@@ -235,7 +233,7 @@ const initDB = async () => {
     try {
       await pool.query("ALTER TABLE societies ALTER COLUMN email DROP NOT NULL");
       await pool.query("ALTER TABLE societies ADD CONSTRAINT societies_name_key UNIQUE (name)");
-    } catch (e) {
+    } catch (_) {
       // Ignore if constraint already exists
     }
 
@@ -716,14 +714,8 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       }
     }
 
-    // Filter out muted entities (for regular users)
-    const { rows: allSettings } = await pool.query("SELECT user_id, muted_entities FROM notification_settings WHERE user_id = ANY($1)", [numericUserIds]);
-    
     // 1. Save notifications for each user in the list
     for (const userId of numericUserIds) {
-      const userSetting = allSettings.find(s => s.user_id === userId);
-      const mutedIds = (userSetting?.muted_entities || []).map((e: any) => Number(e.id));
-      
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
         [userId, title, body, url]
@@ -838,7 +830,7 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
       );
     }
     res.json({ success: true });
-  } catch (err: any) {
+  } catch (_) {
     res.status(400).json({ error: 'Email already in use or other error' });
   }
 });
@@ -1767,12 +1759,11 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
             }
           });
         }
-      } catch (e) {}
+      } catch (_) {}
     });
 
     const ranking = Object.values(shooterStats).map(stats => {
       let value = 0;
-      let sortAsc = false;
 
       switch (challenge.mode) {
         case 'Miglior Risultato':

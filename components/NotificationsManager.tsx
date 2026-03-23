@@ -31,7 +31,6 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
   const [muteType, setMuteType] = useState<'society' | 'shooter'>('society');
   
   // Admin Specific Settings
-  const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState(true);
   const [blockOtherUsersNotifications, setBlockOtherUsersNotifications] = useState(false);
   const [adminCompactMode, setAdminCompactMode] = useState(false);
   

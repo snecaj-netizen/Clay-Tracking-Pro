@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Competition } from '../types';
 import NotificationBell from './NotificationBell';
 
 interface HeaderProps {

@@ -77,7 +77,7 @@ const Settings: React.FC<SettingsProps> = ({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (_) {
       alert("Errore durante l'esportazione");
     }
   };
@@ -109,7 +109,7 @@ const Settings: React.FC<SettingsProps> = ({
               try {
                 const json = JSON.parse(re.target?.result as string);
                 if (json && typeof json === 'object') onImport(json);
-              } catch (err) { alert("File non valido"); }
+              } catch (_) { alert("File non valido"); }
             };
             reader.readAsText(file);
           }} accept=".json" className="hidden" />
