@@ -2917,14 +2917,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => onEditCompetition && onEditCompetition(undefined, selectedShooterResults.userId)}
-                      className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20"
-                      title="Aggiungi Gara a questo tiratore"
-                    >
-                      <i className="fas fa-plus text-[10px]"></i>
-                      <span>Aggiungi Gara</span>
-                    </button>
-                    <button 
                       onClick={() => setSelectedShooterResults(null)}
                       className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
                     >

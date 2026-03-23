@@ -1764,6 +1764,7 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
 
     const ranking = Object.values(shooterStats).map(stats => {
       let value = 0;
+      let sortAsc = false;
 
       switch (challenge.mode) {
         case 'Miglior Risultato':
