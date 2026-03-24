@@ -92,7 +92,7 @@ const InstallPrompt: React.FC = () => {
           <div className="bg-slate-900/95 [.light-theme_&]:bg-white backdrop-blur-xl border border-slate-800 [.light-theme_&]:border-slate-300 rounded-3xl p-5 shadow-2xl shadow-orange-600/10 flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg shadow-orange-600/20 flex-shrink-0">
               <img 
-                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMDAiIGZpbGw9IiNlYTU4MGMiLz48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjE2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIvPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNDAiLz48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIwIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==" 
+                src="/app-logo.svg" 
                 alt="App Logo" 
                 className="w-full h-full object-cover"
               />
