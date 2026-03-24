@@ -653,10 +653,11 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
           <div className="flex items-center gap-3 self-start sm:self-auto">
             <button 
               onClick={() => setShowFilters(!showFilters)} 
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all relative ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+              className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 shrink-0 border transition-all relative ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
               title="Filtri"
             >
               <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
+              <span className="text-[10px] font-black uppercase tracking-widest hidden xs:inline">Filtri</span>
               {(hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
                 <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50"></span>
               )}
@@ -664,17 +665,19 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
             <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
               <button 
                 onClick={() => setViewMode('list')} 
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                title="Lista"
+                className={`h-9 px-3 flex items-center justify-center gap-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                title="Elenco"
               >
                 <i className="fas fa-list text-sm"></i>
+                <span className="text-[10px] font-black uppercase tracking-widest hidden xs:inline">Elenco</span>
               </button>
               <button 
                 onClick={() => setViewMode('calendar')} 
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                className={`h-9 px-3 flex items-center justify-center gap-2 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                 title="Calendario"
               >
                 <i className="fas fa-calendar-alt text-sm"></i>
+                <span className="text-[10px] font-black uppercase tracking-widest hidden xs:inline">Calendario</span>
               </button>
             </div>
           </div>
