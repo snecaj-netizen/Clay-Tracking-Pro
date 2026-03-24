@@ -1772,17 +1772,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 </label>
               </div>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Foto Profilo (Max 2MB)</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                Foto Profilo (Max 2MB)
+              </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
@@ -1790,7 +1792,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
-                <input type="date" value={profileBirthDate} onChange={e => setProfileBirthDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                <input type="date" value={profileBirthDate} onChange={e => setProfileBirthDate(e.target.value)} disabled={currentUser?.role === 'user'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'user' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
@@ -1818,14 +1820,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   onChange={setProfileSociety}
                   societies={societies}
                   placeholder="Seleziona..."
-                  disabled={currentUser?.role === 'society'}
+                  disabled={currentUser?.role !== 'admin'}
                 />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   {currentUser?.role === 'society' ? 'Codice Società' : 'Tessera Fitav'}
                 </label>
-                <input type="text" required={currentUser?.role === 'society'} value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                <input type="text" required={currentUser?.role === 'society'} value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
               </div>
               {currentUser?.role !== 'society' && (
                 <>
@@ -3331,15 +3333,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                  <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                  <input 
+                    type="text" 
+                    required 
+                    value={name} 
+                    onChange={e => setName(e.target.value)} 
+                    disabled={currentUser?.role === 'society' && !!editingUser}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                  <input type="text" required value={surname} onChange={e => setSurname(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                  <input 
+                    type="text" 
+                    required 
+                    value={surname} 
+                    onChange={e => setSurname(e.target.value)} 
+                    disabled={currentUser?.role === 'society' && !!editingUser}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
-                  <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                  <input 
+                    type="date" 
+                    value={birthDate} 
+                    onChange={e => setBirthDate(e.target.value)} 
+                    disabled={currentUser?.role === 'society' && !!editingUser}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
@@ -3392,14 +3414,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={setSociety}
                     societies={societies}
                     placeholder="Seleziona..."
-                    disabled={currentUser?.role === 'society'}
+                    disabled={currentUser?.role === 'society' && !!editingUser}
                   />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                     {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Tessera Fitav'}
                   </label>
-                  <input type="text" required={role === 'society'} value={fitavCard} onChange={e => setFitavCard(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <input 
+                    type="text" 
+                    required={role === 'society'} 
+                    value={fitavCard} 
+                    onChange={e => setFitavCard(e.target.value)} 
+                    disabled={currentUser?.role === 'society' && !!editingUser}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
               </div>
               <div className="flex gap-2">
