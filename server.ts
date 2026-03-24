@@ -183,8 +183,9 @@ const initDB = async () => {
       await pool.query(`
         INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by)
         SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber, grams)
-          id, producer, model, leadnumber, grams, imageurl, user_id
+          id, TRIM(producer), TRIM(model), leadnumber, grams, imageurl, user_id
         FROM cartridges
+        WHERE id NOT IN (SELECT id FROM cartridge_types)
         ON CONFLICT (producer, model, leadnumber, grams) DO NOTHING;
       `);
     } catch (e) {
