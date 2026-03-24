@@ -439,14 +439,26 @@ const Warehouse: React.FC<WarehouseProps> = ({
                       <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber} • {type.grams}g</p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    {(user?.role === 'admin' || type.createdBy === user?.id) && (
-                      <button onClick={() => startEditType(type)} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
-                    )}
-                    {user?.role === 'admin' && (
-                      <button onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
-                    )}
-                  </div>
+                    <div className="flex gap-1">
+                      {(user?.role === 'admin' || type.createdBy === user?.id) && (
+                        <button 
+                          onClick={() => startEditType(type)} 
+                          className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
+                          title="Modifica"
+                        >
+                          <i className="fas fa-edit text-xs"></i>
+                        </button>
+                      )}
+                      {user?.role === 'admin' && (
+                        <button 
+                          onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} 
+                          className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
+                          title="Elimina"
+                        >
+                          <i className="fas fa-trash text-xs"></i>
+                        </button>
+                      )}
+                    </div>
                 </div>
               ))
             )}
@@ -560,10 +572,22 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">Pz</span></p>
                     <p className="text-[9px] text-blue-500 font-bold">€{c.cost.toFixed(2)}</p>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => startEdit(c)} className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
-                    <button onClick={() => triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id), 'Elimina', 'danger')} className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
-                  </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => startEdit(c)} 
+                        className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
+                        title="Modifica"
+                      >
+                        <i className="fas fa-edit text-xs"></i>
+                      </button>
+                      <button 
+                        onClick={() => triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id), 'Elimina', 'danger')} 
+                        className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
+                        title="Elimina"
+                      >
+                        <i className="fas fa-trash text-xs"></i>
+                      </button>
+                    </div>
                 </div>
               </div>
             ))}

@@ -101,12 +101,14 @@
         html.light-theme .text-emerald-400 { color: #059669 !important; }
         html.light-theme .bg-emerald-600\/20 { background-color: #d1fae5 !important; }
         
-        html.light-theme .bg-orange-900\/30 { background-color: #ffedd5 !important; }
-        html.light-theme .bg-orange-900\/40 { background-color: #ffedd5 !important; }
-        html.light-theme .bg-orange-600\/20 { background-color: #ffedd5 !important; }
-        html.light-theme .text-orange-500 { color: #ea580c !important; }
-        html.light-theme .text-orange-400 { color: #f97316 !important; }
-        html.light-theme .border-orange-900\/50 { border-color: #fdba74 !important; }
+        html.light-theme .bg-orange-900\/30 { background-color: #fed7aa !important; }
+        html.light-theme .bg-orange-900\/40 { background-color: #fed7aa !important; }
+        html.light-theme .bg-orange-600\/10 { background-color: #fed7aa !important; }
+        html.light-theme .bg-orange-600\/20 { background-color: #fdba74 !important; }
+        html.light-theme .text-orange-500 { color: #c2410c !important; }
+        html.light-theme .text-orange-400 { color: #ea580c !important; }
+        html.light-theme .border-orange-500\/50 { border-color: #f97316 !important; }
+        html.light-theme .border-orange-900\/50 { border-color: #f97316 !important; }
         
         html.light-theme .bg-blue-900\/40 { background-color: #dbeafe !important; }
         html.light-theme .bg-blue-600\/20 { background-color: #dbeafe !important; }
@@ -162,6 +164,25 @@
         html.light-theme .floating-add-btn.bg-orange-600 i,
         html.light-theme .floating-add-btn.bg-orange-500 i { color: #ffffff !important; }
 
+        /* Force icon visibility in light theme */
+        html.light-theme i { 
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        html.light-theme .bg-orange-600\/10 i,
+        html.light-theme .text-orange-500 i,
+        html.light-theme .border-orange-500\/50 i,
+        html.light-theme button.bg-orange-600\/10 i,
+        html.light-theme .fa-filter,
+        html.light-theme .fa-filter-slash { 
+            color: #c2410c !important; 
+        }
+        
+        html.light-theme .text-slate-500 i {
+            color: #475569 !important;
+        }
+        
         /* Hide scrollbar for Chrome, Safari and Opera */
         .no-scrollbar::-webkit-scrollbar {
             display: none;

@@ -2224,182 +2224,190 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       ) : activeTab === 'societies' ? (
-        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}
-            </h2>
-            {currentUser?.role === 'admin' && !showSocietyForm && (
-              <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-                <button 
-                  onClick={handleExportSocietiesExcel}
-                  className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
-                  title="Esporta"
-                >
-                  <i className="fas fa-file-excel"></i>
-                  <span className="hidden sm:inline">Esporta</span>
-                </button>
-                <label className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
-                  <i className="fas fa-sync-alt"></i>
-                  <span className="hidden sm:inline">Aggiorna Codici</span>
-                  <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
-                </label>
-                <label className="px-2.5 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
-                  <i className="fas fa-file-import"></i>
-                  <span className="hidden sm:inline">Importa</span>
-                  <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
-                </label>
+        <div className="space-y-2">
+          <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}
+                </h2>
+                {currentUser?.role === 'admin' && !showSocietyForm && (
+                  <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                    <button 
+                      onClick={handleExportSocietiesExcel}
+                      className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
+                      title="Esporta"
+                    >
+                      <i className="fas fa-file-excel"></i>
+                      <span>Esporta</span>
+                    </button>
+                    <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
+                      <i className="fas fa-sync-alt"></i>
+                      <span>Aggiorna Codici</span>
+                      <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
+                    </label>
+                    <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
+                      <i className="fas fa-file-import"></i>
+                      <span>Importa</span>
+                      <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
+                    </label>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {showSocietyForm && (
-            <form onSubmit={handleSocietySubmit} className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300 space-y-4">
-              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingSociety ? 'Modifica Società' : 'Nuova Società'}</h3>
-              
-              <div className="flex flex-col items-center mb-6">
-                <div className="relative group">
-                  <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
-                    {socLogo ? (
-                      <img src={socLogo} alt="Logo Società" className="w-full h-full object-cover" />
-                    ) : (
-                      <i className="fas fa-building text-4xl text-slate-500"></i>
+              {!showSocietyForm && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input 
+                      type="text" 
+                      placeholder="Cerca società per nome, città o regione..." 
+                      value={societySearch}
+                      onChange={(e) => setSocietySearch(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-10 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                    />
+                    {societySearch && (
+                      <button 
+                        onClick={() => setSocietySearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
+                        title="Pulisci ricerca"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
                     )}
                   </div>
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
-                    <i className="fas fa-camera text-white text-xl"></i>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleSocietyLogoChange} />
-                  </label>
-                </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo Società (Max 2MB)</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
-                  <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-                </div>
-                <div className="sm:col-span-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Società (Obbligatorio)</label>
-                  <input type="text" required value={socCode} onChange={e => setSocCode(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
-                  <input type="email" value={socEmail} onChange={e => setSocEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
-                  <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Google Maps (Opzionale)</label>
-                  <input type="url" value={socGoogleMapsLink} onChange={e => setSocGoogleMapsLink(e.target.value)} placeholder="https://goo.gl/maps/..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
-                  <input type="text" value={socContactName} onChange={e => setSocContactName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
-                  <input type="text" value={socAddress} onChange={e => setSocAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-1">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Città</label>
-                    <input type="text" value={socCity} onChange={e => setSocCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Regione</label>
-                    <input type="text" value={socRegion} onChange={e => setSocRegion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CAP</label>
-                    <input type="text" value={socZip} onChange={e => setSocZip(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono Fisso</label>
-                  <input type="tel" value={socPhone} onChange={e => setSocPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
-                  <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
-                  <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                </div>
-                
-                <div className="sm:col-span-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Discipline Disponibili</label>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                    {Object.keys(Discipline).filter(k => k !== 'TRAINING').map(key => (
-                      <label key={key} className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-all ${socDisciplines.includes(key) ? 'bg-orange-600/20 border-orange-600 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
-                        <input 
-                          type="checkbox" 
-                          className="hidden" 
-                          checked={socDisciplines.includes(key)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSocDisciplines([...socDisciplines, key]);
-                            } else {
-                              setSocDisciplines(socDisciplines.filter(d => d !== key));
-                            }
-                          }}
-                        />
-                        <span className="text-xs font-black">{key}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                  {editingSociety ? 'Salva Modifiche' : 'Crea Società'}
-                </button>
-                <button type="button" onClick={() => setShowSocietyForm(false)} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                  Annulla
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Society Search and View Toggle */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-              <input 
-                type="text" 
-                placeholder="Cerca società per nome, città o regione..." 
-                value={societySearch}
-                onChange={(e) => setSocietySearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-10 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
-              />
-                  {societySearch && (
-                    <button 
-                      onClick={() => setSocietySearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
-                      title="Pulisci ricerca"
+                  <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
+                    <button
+                      onClick={() => setSocietyViewMode('list')}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
                     >
-                      <i className="fas fa-times"></i>
+                      <i className="fas fa-list mr-2"></i> Lista
                     </button>
-                  )}
-            </div>
-            <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
-              <button
-                onClick={() => setSocietyViewMode('list')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
-              >
-                <i className="fas fa-list mr-2"></i> Lista
-              </button>
-              <button
-                onClick={() => setSocietyViewMode('map')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
-              >
-                <i className="fas fa-map-marked-alt mr-2"></i> Mappa
-              </button>
+                    <button
+                      onClick={() => setSocietyViewMode('map')}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
+                    >
+                      <i className="fas fa-map-marked-alt mr-2"></i> Mappa
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          <div className="pt-4">
+            {showSocietyForm && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 mb-8">
+                <form onSubmit={handleSocietySubmit} className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingSociety ? 'Modifica Società' : 'Nuova Società'}</h3>
+                  
+                  <div className="flex flex-col items-center mb-6">
+                    <div className="relative group">
+                      <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
+                        {socLogo ? (
+                          <img src={socLogo} alt="Logo Società" className="w-full h-full object-cover" />
+                        ) : (
+                          <i className="fas fa-building text-4xl text-slate-500"></i>
+                        )}
+                      </div>
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                        <i className="fas fa-camera text-white text-xl"></i>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleSocietyLogoChange} />
+                      </label>
+                    </div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo Società (Max 2MB)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-1">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
+                      <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                    </div>
+                    <div className="sm:col-span-1">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Società (Obbligatorio)</label>
+                      <input type="text" required value={socCode} onChange={e => setSocCode(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
+                      <input type="email" value={socEmail} onChange={e => setSocEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
+                      <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Google Maps (Opzionale)</label>
+                      <input type="url" value={socGoogleMapsLink} onChange={e => setSocGoogleMapsLink(e.target.value)} placeholder="https://goo.gl/maps/..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
+                      <input type="text" value={socContactName} onChange={e => setSocContactName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
+                      <input type="text" value={socAddress} onChange={e => setSocAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Città</label>
+                        <input type="text" value={socCity} onChange={e => setSocCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Regione</label>
+                        <input type="text" value={socRegion} onChange={e => setSocRegion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CAP</label>
+                        <input type="text" value={socZip} onChange={e => setSocZip(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono Fisso</label>
+                      <input type="tel" value={socPhone} onChange={e => setSocPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
+                      <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
+                      <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Discipline Disponibili</label>
+                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                        {Object.keys(Discipline).filter(k => k !== 'TRAINING').map(key => (
+                          <label key={key} className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-all ${socDisciplines.includes(key) ? 'bg-orange-600/20 border-orange-600 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
+                            <input 
+                              type="checkbox" 
+                              className="hidden" 
+                              checked={socDisciplines.includes(key)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSocDisciplines([...socDisciplines, key]);
+                                } else {
+                                  setSocDisciplines(socDisciplines.filter(d => d !== key));
+                                }
+                              }}
+                            />
+                            <span className="text-xs font-black">{key}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
+                      {editingSociety ? 'Salva Modifiche' : 'Crea Società'}
+                    </button>
+                    <button type="button" onClick={() => setShowSocietyForm(false)} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
+                      Annulla
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
 
           {societyViewMode === 'list' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2693,6 +2701,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             document.body
           )}
         </div>
+      </div>
       ) : activeTab === 'events' ? (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <EventsManager 

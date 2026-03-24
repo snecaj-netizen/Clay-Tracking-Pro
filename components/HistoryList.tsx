@@ -331,15 +331,27 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
                 <div className="flex sm:flex-col gap-2">
                   {user?.role !== 'society' && (
                     <>
-                      <button onClick={() => onEdit(comp)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white active:scale-90 transition-all" title="Modifica"><i className="fas fa-edit"></i></button>
+                      <button 
+                        onClick={() => onEdit(comp)} 
+                        className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all active:scale-90" 
+                        title="Modifica"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
                       <button 
                         onClick={() => setShareData({ comp })} 
-                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white active:scale-90 transition-all"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-800 bg-slate-900 text-slate-500 hover:text-blue-500 hover:border-slate-700 transition-all active:scale-90"
                         title="Condividi Risultato"
                       >
                         <i className="fas fa-share-alt"></i>
                       </button>
-                      <button onClick={() => { triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id), 'Elimina', 'danger'); }} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white active:scale-90 transition-all" title="Elimina"><i className="fas fa-trash-alt"></i></button>
+                      <button 
+                        onClick={() => { triggerConfirm('Elimina Gara', 'Sei sicuro di voler eliminare questa gara?', () => onDelete(comp.id), 'Elimina', 'danger'); }} 
+                        className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all active:scale-90" 
+                        title="Elimina"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
                     </>
                   )}
                 </div>
@@ -641,16 +653,29 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
           <div className="flex items-center gap-3 self-start sm:self-auto">
             <button 
               onClick={() => setShowFilters(!showFilters)} 
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all relative ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+              title="Filtri"
             >
-              <i className="fas fa-filter"></i> Filtri
+              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
               {(hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
-                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50"></span>
               )}
             </button>
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <button onClick={() => setViewMode('list')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list"></i> Lista</button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt"></i> Calendario</button>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+              <button 
+                onClick={() => setViewMode('list')} 
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                title="Lista"
+              >
+                <i className="fas fa-list text-sm"></i>
+              </button>
+              <button 
+                onClick={() => setViewMode('calendar')} 
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                title="Calendario"
+              >
+                <i className="fas fa-calendar-alt text-sm"></i>
+              </button>
             </div>
           </div>
         </div>

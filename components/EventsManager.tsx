@@ -688,108 +688,134 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-        <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-          <i className="fas fa-calendar-alt text-orange-500"></i> Gestione Eventi
-        </h2>
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-          {user?.role === 'admin' && !showForm && (
-            <div className="flex gap-1.5 sm:gap-2 mr-1 sm:mr-2 shrink-0">
+    <div className="space-y-2">
+      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+              <i className="fas fa-calendar-alt text-orange-500"></i> Gestione Eventi
+            </h2>
+            
+            {!showForm && (
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                {user?.role === 'admin' && (
+                  <>
+                    <button 
+                      onClick={handleExportExcel}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-black uppercase transition-all active:scale-95"
+                      title="Esporta Excel"
+                    >
+                      <i className="fas fa-file-excel"></i> Esporta
+                    </button>
+                    <label className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-black uppercase transition-all active:scale-95 cursor-pointer" title="Importa Excel">
+                      <i className="fas fa-file-import"></i> Importa
+                      <input type="file" accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
+                    </label>
+                  </>
+                )}
+                {/* Mobile only Filtri */}
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`sm:hidden flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+                >
+                  <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
+                  {hasActiveFilters && (
+                    <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {!showForm && (
+            <div className="flex flex-wrap items-center gap-3">
               <button 
-                onClick={handleExportExcel}
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 shrink-0"
-                title="Esporta"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
               >
-                <i className="fas fa-file-excel"></i>
-                <span className="hidden sm:inline">Esporta</span>
+                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
+                {hasActiveFilters && (
+                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                )}
               </button>
-              <label className="px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:text-white border border-slate-700 cursor-pointer shrink-0">
-                <i className="fas fa-file-import"></i>
-                <span className="hidden sm:inline">Importa</span>
-                <input type="file" accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
-              </label>
+
+              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button 
+                  onClick={() => setViewMode('list')} 
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                >
+                  <i className="fas fa-list"></i> Elenco
+                </button>
+                <button 
+                  onClick={() => setViewMode('calendar')} 
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                >
+                  <i className="fas fa-calendar-alt"></i> Calendario
+                </button>
+              </div>
             </div>
           )}
-          {!showForm && (
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 shrink-0">
-              <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-list text-sm"></i> <span className="hidden sm:inline">Lista</span></button>
-              <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}><i className="fas fa-calendar-alt text-sm"></i> <span className="hidden sm:inline">Calendario</span></button>
-            </div>
-          )}
-          {!showForm && (
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-600'}`}
-            >
-              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
-              <span className="hidden sm:inline">Filtri</span>
-              {hasActiveFilters && (
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-              )}
-            </button>
-          )}
-          {/* Button removed and replaced by floating button */}
         </div>
       </div>
 
-      {!showForm && showFilters && (
-        <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
-          {!(restrictToSociety && user?.role === 'society') && (
+      <div className="pt-4">
+        {!showForm && showFilters && (
+          <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
+            {!(restrictToSociety && user?.role === 'society') && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
+                <SocietySearch 
+                  value={filterSociety}
+                  onChange={setFilterSociety}
+                  societies={societies}
+                  placeholder="Tutte le società"
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
-              <SocietySearch 
-                value={filterSociety}
-                onChange={setFilterSociety}
-                societies={societies}
-                placeholder="Tutte le società"
-              />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+              <div className="relative group">
+                <select 
+                  value={filterDiscipline} 
+                  onChange={e => setFilterDiscipline(e.target.value)} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                >
+                  <option value="">Tutte le discipline</option>
+                  {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
+              </div>
             </div>
-          )}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
-            <div className="relative group">
-              <select 
-                value={filterDiscipline} 
-                onChange={e => setFilterDiscipline(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
+              <div className="relative group">
+                <input 
+                  type="month" 
+                  value={filterMonth} 
+                  onChange={e => setFilterMonth(e.target.value)} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                  style={{ colorScheme: 'dark' }}
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-calendar-alt text-xs"></i>
+                </div>
+              </div>
+            </div>
+            <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end`}>
+              <button 
+                onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
+                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
               >
-                <option value="">Tutte le discipline</option>
-                {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
-              </div>
+                Resetta Filtri
+              </button>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
-            <div className="relative group">
-              <input 
-                type="month" 
-                value={filterMonth} 
-                onChange={e => setFilterMonth(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-                style={{ colorScheme: 'dark' }}
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-calendar-alt text-xs"></i>
-              </div>
-            </div>
-          </div>
-          <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end`}>
-            <button 
-              onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
-              className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
-            >
-              Resetta Filtri
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {showForm ? (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
+        {showForm ? (
+          <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-white uppercase tracking-widest">{editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}</h3>
             <button type="button" onClick={resetForm} className="text-slate-400 hover:text-white">
@@ -1146,16 +1172,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-6 border-t border-slate-800">
                 {onParticipate && user?.role !== 'society' && (
                   <button 
                     onClick={() => {
                       onParticipate(selectedEvent);
                       setSelectedEvent(null);
                     }}
-                    className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2"
+                    className="w-14 h-14 rounded-2xl bg-orange-600 text-white hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center active:scale-90"
+                    title={user?.role === 'admin' ? 'Aggiungi a un tiratore' : 'Aggiungi alle mie gare'}
                   >
-                    <i className="fas fa-plus"></i> {user?.role === 'admin' ? 'Aggiungi a un tiratore' : 'Aggiungi alle mie gare'}
+                    <i className="fas fa-calendar-plus text-xl"></i>
                   </button>
                 )}
 
@@ -1165,38 +1192,37 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       onCreateTeam(selectedEvent);
                       setSelectedEvent(null);
                     }}
-                    className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+                    className="w-14 h-14 rounded-2xl bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center active:scale-90"
+                    title="Crea Squadra"
                   >
-                    <i className="fas fa-users"></i> Crea Squadra
+                    <i className="fas fa-users text-xl"></i>
                   </button>
                 )}
                 
-                <div className="flex gap-2 w-full sm:w-auto">
-                  {(user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
-                    <>
-                      <button 
-                        onClick={() => {
-                          handleEdit(selectedEvent);
-                          setSelectedEvent(null);
-                        }} 
-                        className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700"
-                        title="Modifica"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                      <button 
-                        onClick={() => {
-                          handleDelete(selectedEvent.id);
-                          setSelectedEvent(null);
-                        }} 
-                        className="w-12 h-12 rounded-2xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all border border-red-900/30"
-                        title="Elimina"
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                    </>
-                  )}
-                </div>
+                {(user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
+                  <>
+                    <button 
+                      onClick={() => {
+                        handleEdit(selectedEvent);
+                        setSelectedEvent(null);
+                      }} 
+                      className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90"
+                      title="Modifica"
+                    >
+                      <i className="fas fa-edit text-xl"></i>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleDelete(selectedEvent.id);
+                        setSelectedEvent(null);
+                      }} 
+                      className="w-14 h-14 rounded-2xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all border border-red-900/30 active:scale-90"
+                      title="Elimina"
+                    >
+                      <i className="fas fa-trash-alt text-xl"></i>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1220,6 +1246,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         </button>
       )}
     </div>
+  </div>
   );
 };
 
