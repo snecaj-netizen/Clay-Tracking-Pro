@@ -12,6 +12,7 @@ import AICoachPage from './components/AICoachPage';
 import ConfirmModal from './components/ConfirmModal';
 import Toast from './components/Toast';
 import NotificationsManager from './components/NotificationsManager';
+import InstallPrompt from './components/InstallPrompt';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -701,6 +702,8 @@ const App: React.FC = () => {
         type={toastConfig.type}
         onClose={() => setToastConfig(prev => ({ ...prev, isOpen: false }))}
       />
+
+      <InstallPrompt />
     </div>
   );
 };
