@@ -11,8 +11,8 @@ self.addEventListener('push', function(event) {
   const title = data.title || 'Clay Tracker Pro';
   const options = {
     body: data.body || 'Hai una nuova notifica',
-    icon: '/vite.svg',
-    badge: '/vite.svg',
+    icon: 'https://img.icons8.com/color/192/target.png',
+    badge: 'https://img.icons8.com/color/192/target.png',
     data: {
       url: data.url || '/'
     }
