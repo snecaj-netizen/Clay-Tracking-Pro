@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout } from '../types';
+import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout, SocietyEvent } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
@@ -94,6 +94,82 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [chokes, setChokes] = useState(data?.chokes || { firstBarrel: '1*', secondBarrel: '1*' });
   const [usedCartridges, setUsedCartridges] = useState<UsedCartridge[]>(data?.usedCartridges || []);
   
+  // Event selection states
+  const [events, setEvents] = useState<SocietyEvent[]>([]);
+  const [showEventSelector, setShowEventSelector] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch('/api/events', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data);
+        }
+      } catch (err) {
+        console.error('Error fetching events:', err);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  const handleSelectEvent = (event: SocietyEvent) => {
+    setName(event.name);
+    setLocation(event.location);
+    setDiscipline(event.discipline as Discipline);
+    setDate(event.start_date.split('T')[0]);
+    if (event.end_date) {
+      setEndDate(event.end_date.split('T')[0]);
+    }
+    setTotalTargets(Number(event.targets) || 50);
+    
+    if (event.cost) {
+      setCost(parseFloat(event.cost) || 0);
+    }
+    if (event.notes) {
+      setNotes(event.notes);
+    }
+    
+    // Map event type to competition level
+    if (event.type === 'Regionale') setLevel(CompetitionLevel.REGIONAL);
+    else if (event.type === 'Nazionale') setLevel(CompetitionLevel.NATIONAL);
+    else if (event.type === 'Internazionale') setLevel(CompetitionLevel.INTERNATIONAL);
+    
+    setShowEventSelector(false);
+  };
+
+  const filteredEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return events.filter(e => 
+      e.name.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      e.location.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      e.discipline.toLowerCase().includes(eventSearch.toLowerCase())
+    ).sort((a, b) => {
+      const dateA = new Date(a.start_date);
+      const dateB = new Date(b.start_date);
+      
+      const isPastA = dateA < today;
+      const isPastB = dateB < today;
+
+      // If one is past and other is future, future comes first
+      if (isPastA && !isPastB) return 1;
+      if (!isPastA && isPastB) return -1;
+
+      // If both are future, sort by date ASC (closest first)
+      if (!isPastA && !isPastB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+
+      // If both are past, sort by date DESC (most recent first)
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [events, eventSearch]);
+
   // Weather states
   const [weatherTemp, setWeatherTemp] = useState<number | undefined>(data?.weather?.temp);
   const [weatherIcon, setWeatherIcon] = useState<string | undefined>(data?.weather?.icon);
@@ -396,10 +472,6 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
             />
           </div>
         )}
-        <div className="md:col-span-2 space-y-2">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome</label>
-          <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-        </div>
 
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipo Evento</label>
@@ -411,6 +483,105 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
             <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
           </div>
         </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome</label>
+          <div className="flex gap-2">
+            <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+            {!isTraining && (
+              <button 
+                type="button"
+                onClick={() => setShowEventSelector(true)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 rounded-xl text-[10px] font-black uppercase transition-all border border-slate-700 whitespace-nowrap flex items-center gap-2"
+                title="Carica gara da Eventi"
+              >
+                <i className="fas fa-cloud-download-alt"></i>
+                <span className="hidden sm:inline">Carica da Eventi</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showEventSelector && (
+          <div 
+            className="md:col-span-2 fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+            onClick={() => setShowEventSelector(false)}
+          >
+            <div 
+              className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 cursor-default"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Seleziona Evento</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Scegli una gara dall'elenco eventi</p>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setShowEventSelector(false)}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white transition-all"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              
+              <div className="p-4 border-b border-slate-800">
+                <div className="relative">
+                  <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                  <input 
+                    type="text" 
+                    placeholder="Cerca per nome, luogo o disciplina..." 
+                    value={eventSearch}
+                    onChange={e => setEventSearch(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                {filteredEvents.length === 0 ? (
+                  <div className="text-center py-12">
+                    <i className="fas fa-calendar-times text-slate-800 text-4xl mb-4"></i>
+                    <p className="text-slate-500 font-bold uppercase text-xs">Nessun evento trovato</p>
+                  </div>
+                ) : (
+                  filteredEvents.map(event => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => handleSelectEvent(event)}
+                      className="w-full text-left p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-orange-500/50 hover:bg-slate-900 transition-all group"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[8px] font-black bg-orange-600/20 text-orange-500 px-1.5 py-0.5 rounded uppercase">
+                              {event.type}
+                            </span>
+                            <span className="text-[8px] font-black bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">
+                              {event.discipline}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-bold ml-auto">
+                              {new Date(event.start_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-black text-white group-hover:text-orange-500 transition-colors truncate">{event.name}</h4>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium mt-1">
+                            <i className="fas fa-map-marker-alt text-orange-600"></i>
+                            {event.location}
+                          </div>
+                        </div>
+                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-slate-600 group-hover:text-orange-500 group-hover:bg-orange-500/10 transition-all">
+                          <i className="fas fa-chevron-right text-xs"></i>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {!isTraining && (
           <div className="space-y-2">

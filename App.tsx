@@ -191,7 +191,9 @@ const App: React.FC = () => {
       level: event.type === 'Regionale' ? CompetitionLevel.REGIONAL : 
              event.type === 'Nazionale' ? CompetitionLevel.NATIONAL : 
              event.type === 'Internazionale' ? CompetitionLevel.INTERNATIONAL : 
-             CompetitionLevel.REGIONAL
+             CompetitionLevel.REGIONAL,
+      cost: event.cost ? parseFloat(event.cost) : 0,
+      notes: event.notes || ''
     };
     setEditingCompetition(null);
     setPrefillCompetition(newComp);
