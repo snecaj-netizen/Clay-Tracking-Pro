@@ -74,20 +74,23 @@ const Warehouse: React.FC<WarehouseProps> = ({
       grams?: number,
       total: number,
       imageUrl?: string,
-      cartridgeIds: string[]
+      cartridgeIds: string[],
+      typeId?: string
     }> = {};
 
     cartridges.forEach(c => {
-      const key = `${c.producer.toLowerCase().trim()}-${c.model.toLowerCase().trim()}-${c.leadNumber}-${c.grams || 0}`;
+      const key = c.typeId || `${c.producer.toLowerCase().trim()}-${c.model.toLowerCase().trim()}-${c.leadNumber}-${c.grams || 0}`;
       if (!groups[key]) {
+        const typeInfo = c.typeId ? cartridgeTypes.find(t => t.id === c.typeId) : null;
         groups[key] = {
-          producer: c.producer,
-          model: c.model,
-          leadNumber: c.leadNumber,
-          grams: c.grams,
+          producer: typeInfo?.producer || c.producer,
+          model: typeInfo?.model || c.model,
+          leadNumber: typeInfo?.leadNumber || c.leadNumber,
+          grams: typeInfo?.grams !== undefined ? typeInfo.grams : c.grams,
           total: 0,
-          imageUrl: c.imageUrl,
-          cartridgeIds: []
+          imageUrl: typeInfo?.imageUrl || c.imageUrl,
+          cartridgeIds: [],
+          typeId: c.typeId
         };
       }
       groups[key].total += c.quantity;
@@ -96,7 +99,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
     });
 
     return Object.values(groups).sort((a, b) => a.producer.localeCompare(b.producer));
-  }, [cartridges]);
+  }, [cartridges, cartridgeTypes]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isType: boolean = false) => {
     const file = e.target.files?.[0];
@@ -133,7 +136,8 @@ const Warehouse: React.FC<WarehouseProps> = ({
       cost,
       armory: armory.trim(),
       purchaseDate,
-      imageUrl: type.imageUrl
+      imageUrl: type.imageUrl,
+      typeId: type.id
     };
     onSave(newCart);
     resetForm();
@@ -215,12 +219,14 @@ const Warehouse: React.FC<WarehouseProps> = ({
   };
 
   const startEdit = (c: Cartridge) => {
-    const type = cartridgeTypes.find(t => 
-      t.producer.toLowerCase() === c.producer.toLowerCase() && 
-      t.model.toLowerCase() === c.model.toLowerCase() && 
-      t.leadNumber === c.leadNumber &&
-      t.grams === c.grams
-    );
+    const type = c.typeId 
+      ? cartridgeTypes.find(t => t.id === c.typeId)
+      : cartridgeTypes.find(t => 
+          t.producer.toLowerCase() === c.producer.toLowerCase() && 
+          t.model.toLowerCase() === c.model.toLowerCase() && 
+          t.leadNumber === c.leadNumber &&
+          t.grams === c.grams
+        );
     setEditingCart(c);
     setSelectedTypeId(type?.id || '');
     setQuantity(c.quantity);
@@ -474,7 +480,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
               </div>
             ) : (
               groupedStock.map(type => (
-                <div key={`${type.producer}-${type.model}-${type.leadNumber}-${type.grams || 0}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
+                <div key={type.typeId || `${type.producer}-${type.model}-${type.leadNumber}-${type.grams || 0}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
                   <div className="w-full sm:w-28 h-24 sm:h-full bg-slate-800 relative overflow-hidden flex-shrink-0">
                     {type.imageUrl ? (
                       <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" />
@@ -556,41 +562,49 @@ const Warehouse: React.FC<WarehouseProps> = ({
             {[...cartridges]
               .filter(c => filterYear === 'ALL' || new Date(c.purchaseDate).getFullYear().toString() === filterYear)
               .sort((a,b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
-              .map(c => (
-              <div key={c.id} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
-                     {c.imageUrl ? <img src={c.imageUrl} alt={c.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs leading-tight">{c.producer} <span className="text-orange-500">{c.model}</span> {c.grams && <span className="text-slate-500">• {c.grams}g</span>}</h4>
-                    <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString()} {c.armory && `• ${c.armory}`}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">Pz</span></p>
-                    <p className="text-[9px] text-blue-500 font-bold">€{c.cost.toFixed(2)}</p>
-                  </div>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => startEdit(c)} 
-                        className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
-                        title="Modifica"
-                      >
-                        <i className="fas fa-edit text-xs"></i>
-                      </button>
-                      <button 
-                        onClick={() => triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id), 'Elimina', 'danger')} 
-                        className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
-                        title="Elimina"
-                      >
-                        <i className="fas fa-trash text-xs"></i>
-                      </button>
+              .map(c => {
+                const typeInfo = c.typeId ? cartridgeTypes.find(t => t.id === c.typeId) : null;
+                const displayProducer = typeInfo?.producer || c.producer;
+                const displayModel = typeInfo?.model || c.model;
+                const displayGrams = typeInfo?.grams !== undefined ? typeInfo.grams : c.grams;
+                const displayImageUrl = typeInfo?.imageUrl || c.imageUrl;
+
+                return (
+                  <div key={c.id} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
+                         {displayImageUrl ? <img src={displayImageUrl} alt={displayModel} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white text-xs leading-tight">{displayProducer} <span className="text-orange-500">{displayModel}</span> {displayGrams && <span className="text-slate-500">• {displayGrams}g</span>}</h4>
+                        <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString()} {c.armory && `• ${c.armory}`}</p>
+                      </div>
                     </div>
-                </div>
-              </div>
-            ))}
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">Pz</span></p>
+                        <p className="text-[9px] text-blue-500 font-bold">€{c.cost.toFixed(2)}</p>
+                      </div>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => startEdit(c)} 
+                            className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
+                            title="Modifica"
+                          >
+                            <i className="fas fa-edit text-xs"></i>
+                          </button>
+                          <button 
+                            onClick={() => triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id), 'Elimina', 'danger')} 
+                            className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
+                            title="Elimina"
+                          >
+                            <i className="fas fa-trash text-xs"></i>
+                          </button>
+                        </div>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>

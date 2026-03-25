@@ -76,6 +76,7 @@ export interface Competition {
 
 export interface Cartridge {
   id: string;
+  typeId?: string; // Link to CartridgeType
   purchaseDate: string;
   producer: string;
   model: string;

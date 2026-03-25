@@ -150,6 +150,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE cartridge_types ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
       await pool.query("ALTER TABLE cartridge_types ADD COLUMN IF NOT EXISTS grams INTEGER");
       await pool.query("ALTER TABLE cartridges ADD COLUMN IF NOT EXISTS grams INTEGER");
+      await pool.query("ALTER TABLE cartridges ADD COLUMN IF NOT EXISTS type_id TEXT REFERENCES cartridge_types(id) ON DELETE SET NULL");
     } catch (e) {
       console.log("Error adding columns to cartridge tables:", e);
     }
@@ -187,6 +188,18 @@ const initDB = async () => {
         FROM cartridges
         WHERE id NOT IN (SELECT id FROM cartridge_types)
         ON CONFLICT (producer, model, leadnumber, grams) DO NOTHING;
+      `);
+
+      // Link existing cartridges to their types
+      await pool.query(`
+        UPDATE cartridges c
+        SET type_id = t.id
+        FROM cartridge_types t
+        WHERE c.type_id IS NULL
+          AND LOWER(TRIM(c.producer)) = LOWER(TRIM(t.producer))
+          AND LOWER(TRIM(c.model)) = LOWER(TRIM(t.model))
+          AND c.leadnumber = t.leadnumber
+          AND (c.grams = t.grams OR (c.grams IS NULL AND t.grams IS NULL))
       `);
     } catch (e) {
       console.log("Error migrating cartridge types:", e);
@@ -2659,7 +2672,8 @@ app.get('/api/cartridges', authenticateToken, async (req: any, res) => {
       initialQuantity: row.initialquantity,
       cost: row.cost,
       armory: row.armory,
-      imageUrl: row.imageurl
+      imageUrl: row.imageurl,
+      typeId: row.type_id
     }));
     res.json(carts);
   } catch (err: any) {
@@ -2671,9 +2685,9 @@ app.post('/api/cartridges', authenticateToken, async (req: any, res) => {
   const c = req.body;
   try {
     await pool.query(
-      `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-      [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
+      `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl, type_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null]
     );
     res.json({ success: true });
   } catch (err: any) {
@@ -2691,8 +2705,8 @@ app.post('/api/cartridges/bulk', authenticateToken, async (req: any, res) => {
     await client.query('BEGIN');
     for (const c of cartridges) {
       await client.query(
-        `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl, type_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO UPDATE SET 
          purchasedate = EXCLUDED.purchasedate,
          producer = EXCLUDED.producer,
@@ -2703,8 +2717,9 @@ app.post('/api/cartridges/bulk', authenticateToken, async (req: any, res) => {
          initialquantity = EXCLUDED.initialquantity,
          cost = EXCLUDED.cost,
          armory = EXCLUDED.armory,
-         imageurl = EXCLUDED.imageurl`,
-        [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
+         imageurl = EXCLUDED.imageurl,
+         type_id = EXCLUDED.type_id`,
+        [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null]
       );
     }
     await client.query('COMMIT');
@@ -2721,8 +2736,8 @@ app.put('/api/cartridges/:id', authenticateToken, async (req: any, res) => {
   const c = req.body;
   try {
     await pool.query(
-      `UPDATE cartridges SET purchasedate=$1, producer=$2, model=$3, leadnumber=$4, grams=$5, quantity=$6, initialquantity=$7, cost=$8, armory=$9, imageurl=$10 WHERE id=$11 AND user_id=$12`,
-      [c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, req.params.id, req.user.id]
+      `UPDATE cartridges SET purchasedate=$1, producer=$2, model=$3, leadnumber=$4, grams=$5, quantity=$6, initialquantity=$7, cost=$8, armory=$9, imageurl=$10, type_id=$11 WHERE id=$12 AND user_id=$13`,
+      [c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null, req.params.id, req.user.id]
     );
     res.json({ success: true });
   } catch (err: any) {
