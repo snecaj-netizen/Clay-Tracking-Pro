@@ -2584,7 +2584,12 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
 // Cartridge Types Routes
 app.get('/api/cartridge-types', authenticateToken, async (req: any, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM cartridge_types ORDER BY producer, model");
+    const { rows } = await pool.query(`
+      SELECT ct.*, u.name as creator_name, u.surname as creator_surname 
+      FROM cartridge_types ct
+      LEFT JOIN users u ON ct.created_by = u.id
+      ORDER BY ct.producer, ct.model
+    `);
     const types = rows.map((row: any) => ({
       id: row.id,
       producer: row.producer,
@@ -2592,7 +2597,9 @@ app.get('/api/cartridge-types', authenticateToken, async (req: any, res) => {
       leadNumber: row.leadnumber,
       grams: row.grams,
       imageUrl: row.imageurl,
-      createdBy: row.created_by
+      createdBy: row.created_by,
+      createdByName: row.creator_name,
+      createdBySurname: row.creator_surname
     }));
     res.json(types);
   } catch (err: any) {

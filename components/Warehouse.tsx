@@ -443,6 +443,11 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <div>
                       <h4 className="font-bold text-white text-sm leading-tight uppercase">{type.producer}</h4>
                       <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber} • {type.grams}g</p>
+                      {user?.role === 'admin' && type.createdByName && (
+                        <p className="text-[9px] text-slate-500 font-medium mt-0.5 italic">
+                          Caricata da: {type.createdByName} {type.createdBySurname}
+                        </p>
+                      )}
                     </div>
                   </div>
                     <div className="flex gap-1">

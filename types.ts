@@ -97,6 +97,8 @@ export interface CartridgeType {
   grams?: number;
   imageUrl?: string;
   createdBy?: number;
+  createdByName?: string;
+  createdBySurname?: string;
 }
 
 export enum UserRole {
