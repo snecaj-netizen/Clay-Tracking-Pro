@@ -106,7 +106,8 @@ const initDB = async () => {
         seriesimages TEXT,
         usedcartridges TEXT,
         chokes TEXT,
-        team_name TEXT
+        team_name TEXT,
+        team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL
       );
     `);
 
@@ -125,11 +126,13 @@ const initDB = async () => {
         producer TEXT NOT NULL,
         model TEXT NOT NULL,
         leadnumber TEXT NOT NULL,
+        grams INTEGER,
         quantity INTEGER NOT NULL,
         initialquantity INTEGER NOT NULL,
         cost REAL NOT NULL,
         armory TEXT,
-        imageurl TEXT
+        imageurl TEXT,
+        type_id TEXT REFERENCES cartridge_types(id) ON DELETE SET NULL
       );
     `);
 
@@ -2786,12 +2789,12 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
 
     if (competitions && Array.isArray(competitions)) {
       for (const c of competitions) {
-        const userId = (req.user.role === 'admin' && c.user_id) ? c.user_id : req.user.id;
+        const userId = (req.user.role === 'admin' && c.userId) ? c.userId : req.user.id;
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+          `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, team_name, team_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
            ON CONFLICT (id) DO UPDATE SET 
-           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21
+           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21, team_name=$22, team_id=$23
            WHERE competitions.user_id = $2`,
           [
             c.id, userId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
@@ -2801,7 +2804,9 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
             c.detailedScores ? JSON.stringify(c.detailedScores) : null,
             c.seriesImages ? JSON.stringify(c.seriesImages) : null,
             c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
-            c.chokes ? JSON.stringify(c.chokes) : null
+            c.chokes ? JSON.stringify(c.chokes) : null,
+            c.teamName || null,
+            c.teamId || null
           ]
         );
       }
@@ -2809,14 +2814,14 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
     
     if (cartridges && Array.isArray(cartridges)) {
       for (const c of cartridges) {
-        const userId = (req.user.role === 'admin' && c.user_id) ? c.user_id : req.user.id;
+        const userId = (req.user.role === 'admin' && c.userId) ? c.userId : req.user.id;
         await client.query(
-          `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, quantity, initialquantity, cost, armory, imageurl, type_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl, type_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
            ON CONFLICT (id) DO UPDATE SET 
-           purchasedate=$3, producer=$4, model=$5, leadnumber=$6, quantity=$7, initialquantity=$8, cost=$9, armory=$10, imageurl=$11, type_id=$12
+           purchasedate=$3, producer=$4, model=$5, leadnumber=$6, grams=$7, quantity=$8, initialquantity=$9, cost=$10, armory=$11, imageurl=$12, type_id=$13
            WHERE cartridges.user_id = $2`,
-          [c.id, userId, c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null]
+          [c.id, userId, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null]
         );
       }
     }
