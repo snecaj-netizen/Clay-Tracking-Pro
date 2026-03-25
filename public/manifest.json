@@ -8,15 +8,15 @@
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "https://placehold.jp/ea580c/ffffff/192x192.png?text=%E2%A6%BF&css=%7B%22font-size%22%3A%22120px%22%7D",
+      "src": "/icon.svg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "https://placehold.jp/ea580c/ffffff/512x512.png?text=%E2%A6%BF&css=%7B%22font-size%22%3A%22350px%22%7D",
+      "src": "/icon.svg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
