@@ -128,10 +128,17 @@ const App: React.FC = () => {
         return;
       }
 
-      if (compsRes.ok) setCompetitions(await compsRes.json());
-      if (cartsRes.ok) setCartridges(await cartsRes.json());
-      if (socsRes.ok) setSocieties(await socsRes.json());
-      if (cartTypesRes.ok) setCartridgeTypes(await cartTypesRes.json());
+      const [comps, carts, socs, types] = await Promise.all([
+        compsRes.ok ? compsRes.json() : Promise.resolve([]),
+        cartsRes.ok ? cartsRes.json() : Promise.resolve([]),
+        socsRes.ok ? socsRes.json() : Promise.resolve([]),
+        cartTypesRes.ok ? cartTypesRes.json() : Promise.resolve([])
+      ]);
+
+      setCompetitions(comps);
+      setCartridges(carts);
+      setSocieties(socs);
+      setCartridgeTypes(types);
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Error fetching data:', err);

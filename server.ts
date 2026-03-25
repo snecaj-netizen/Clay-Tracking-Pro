@@ -154,8 +154,15 @@ const initDB = async () => {
       await pool.query("ALTER TABLE cartridge_types ADD COLUMN IF NOT EXISTS grams INTEGER");
       await pool.query("ALTER TABLE cartridges ADD COLUMN IF NOT EXISTS grams INTEGER");
       await pool.query("ALTER TABLE cartridges ADD COLUMN IF NOT EXISTS type_id TEXT REFERENCES cartridge_types(id) ON DELETE SET NULL");
+      
+      // Add indexes for performance
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_user_id ON competitions(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_cartridges_user_id ON cartridges(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_cartridge_types_created_by ON cartridge_types(created_by)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_login_logs_user_id ON login_logs(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_users_society ON users(society)");
     } catch (e) {
-      console.log("Error adding columns to cartridge tables:", e);
+      console.log("Error adding columns or indexes to tables:", e);
     }
 
     // Cleanup duplicates in cartridge_types before adding constraint
