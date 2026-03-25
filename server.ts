@@ -179,18 +179,20 @@ const initDB = async () => {
       console.log("Error cleaning up or adding constraint to cartridge_types:", e);
     }
 
-    // Migrate existing cartridges to cartridge_types
+    // Migrate existing cartridges to cartridge_types ONLY if table is empty
     try {
-      await pool.query(`
-        INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by)
-        SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber, grams)
-          id, TRIM(producer), TRIM(model), leadnumber, grams, imageurl, user_id
-        FROM cartridges
-        WHERE id NOT IN (SELECT id FROM cartridge_types)
-        ON CONFLICT (producer, model, leadnumber, grams) DO NOTHING;
-      `);
+      const { rows: typeCount } = await pool.query("SELECT count(*) FROM cartridge_types");
+      if (parseInt(typeCount[0].count) === 0) {
+        await pool.query(`
+          INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by)
+          SELECT DISTINCT ON (LOWER(TRIM(producer)), LOWER(TRIM(model)), leadnumber, grams)
+            id, TRIM(producer), TRIM(model), leadnumber, grams, imageurl, user_id
+          FROM cartridges
+          ON CONFLICT (producer, model, leadnumber, grams) DO NOTHING;
+        `);
+      }
 
-      // Link existing cartridges to their types
+      // Link existing cartridges to their types (always safe to run)
       await pool.query(`
         UPDATE cartridges c
         SET type_id = t.id
@@ -2765,11 +2767,23 @@ app.delete('/api/cartridges/:id', authenticateToken, async (req: any, res) => {
 });
 
 app.post('/api/import', authenticateToken, async (req: any, res) => {
-  const { competitions, cartridges } = req.body;
+  const { competitions, cartridges, cartridgeTypes } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
+    if (cartridgeTypes && Array.isArray(cartridgeTypes)) {
+      for (const t of cartridgeTypes) {
+        await client.query(
+          `INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (id) DO UPDATE SET 
+           producer=$2, model=$3, leadnumber=$4, grams=$5, imageurl=$6, created_by=$7`,
+          [t.id, t.producer, t.model, t.leadNumber, t.grams, t.imageUrl || null, t.createdBy || req.user.id]
+        );
+      }
+    }
+
     if (competitions && Array.isArray(competitions)) {
       for (const c of competitions) {
         const userId = (req.user.role === 'admin' && c.user_id) ? c.user_id : req.user.id;
@@ -2797,12 +2811,12 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
       for (const c of cartridges) {
         const userId = (req.user.role === 'admin' && c.user_id) ? c.user_id : req.user.id;
         await client.query(
-          `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, quantity, initialquantity, cost, armory, imageurl) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, quantity, initialquantity, cost, armory, imageurl, type_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
            ON CONFLICT (id) DO UPDATE SET 
-           purchasedate=$3, producer=$4, model=$5, leadnumber=$6, quantity=$7, initialquantity=$8, cost=$9, armory=$10, imageurl=$11
+           purchasedate=$3, producer=$4, model=$5, leadnumber=$6, quantity=$7, initialquantity=$8, cost=$9, armory=$10, imageurl=$11, type_id=$12
            WHERE cartridges.user_id = $2`,
-          [c.id, userId, c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null]
+          [c.id, userId, c.purchaseDate, c.producer, c.model, c.leadNumber, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null]
         );
       }
     }

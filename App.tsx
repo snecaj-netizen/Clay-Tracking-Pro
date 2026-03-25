@@ -366,9 +366,14 @@ const App: React.FC = () => {
       });
       if (res.ok) {
         fetchData();
+        triggerToast('Tipo cartuccia eliminato con successo!');
+      } else {
+        const data = await res.json();
+        triggerToast(data.error || 'Errore nell\'eliminazione del tipo cartuccia.', 'error');
       }
     } catch (err) {
       console.error('Error deleting cartridge type:', err);
+      triggerToast('Errore di rete nell\'eliminazione.', 'error');
     }
   };
 
