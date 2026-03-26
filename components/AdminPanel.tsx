@@ -228,10 +228,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (newTeamSociety && s.society !== newTeamSociety) return;
       
       if (!unique.has(s.user_id)) {
-        unique.set(s.user_id, { id: s.user_id, name: s.name, surname: s.surname, society: s.society });
+        unique.set(s.user_id, { 
+          id: s.user_id, 
+          name: s.name, 
+          surname: s.surname, 
+          society: s.society,
+          category: s.category,
+          qualification: s.qualification
+        });
       }
     });
-    return Array.from(unique.values()) as { id: number, name: string, surname: string, society: string }[];
+    return Array.from(unique.values()) as { id: number, name: string, surname: string, society: string, category?: string, qualification?: string }[];
   }, [teamStats, newTeamSociety]);
 
   // Form state for Admin User Management
