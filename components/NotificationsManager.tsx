@@ -31,7 +31,6 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
   const [muteType, setMuteType] = useState<'society' | 'shooter'>('society');
   
   // Admin Specific Settings
-  const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState(true);
   const [blockOtherUsersNotifications, setBlockOtherUsersNotifications] = useState(false);
   const [adminCompactMode, setAdminCompactMode] = useState(false);
   
@@ -67,7 +66,6 @@ export default function NotificationsManager({ token, userRole, triggerConfirm }
         setRateLimit(data.rate_limit);
         if (data.templates) setTemplates(data.templates);
         if (data.muted_entities) setMutedEntities(data.muted_entities);
-        setAdminNotificationsEnabled(data.admin_notifications_enabled);
         setBlockOtherUsersNotifications(!data.admin_notifications_enabled);
         setAdminCompactMode(data.admin_compact_mode);
       }

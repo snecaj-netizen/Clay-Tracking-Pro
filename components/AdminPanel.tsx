@@ -3129,15 +3129,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   )}
                 </div>
               )}
-              <div className="relative flex-1 sm:flex-none">
-                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                <input 
-                  type="text" 
-                  placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
-                  value={userSearchTerm}
-                  onChange={(e) => setUserSearchTerm(e.target.value)}
-                  className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
-                />
+              <div className="relative flex-1 sm:flex-none flex items-center gap-3">
+                <div className="relative flex-1">
+                  <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                  <input 
+                    type="text" 
+                    placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
+                  />
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
+                  {sortedUsers.length} {sortedUsers.length === 1 ? 'Utente' : 'Utenti'}
+                </span>
               </div>
             </div>
           </div>
