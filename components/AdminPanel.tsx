@@ -10,6 +10,8 @@ import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import ShareCard from './ShareCard';
+import FAQSection from './FAQSection';
+import { motion, AnimatePresence } from 'motion/react';
 import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
 
 // Fix Leaflet default icon issue
@@ -86,6 +88,7 @@ interface AdminPanelProps {
   };
   onPrefillTeamUsed?: () => void;
   hideTabs?: boolean;
+  onReplayTour?: () => void;
 }
 
 // User Search Input Component to avoid re-rendering the whole AdminPanel on every keystroke
@@ -122,7 +125,7 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs
+  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
@@ -174,6 +177,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
+  const [profileSubTab, setProfileSubTab] = useState<'details' | 'help'>('details');
   
   // Society Form State
   const [showSocietyForm, setShowSocietyForm] = useState(false);
@@ -1801,186 +1805,221 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         />
       ) : activeTab === 'profile' ? (
         <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-            <i className="fas fa-user-circle text-orange-500"></i> Il Tuo Profilo
-          </h2>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+              <i className="fas fa-user-circle text-orange-500"></i> Il Tuo Profilo
+            </h2>
 
-          {profileSuccess && <div className="bg-emerald-950/50 text-emerald-500 p-3 rounded-xl text-sm mb-4 border border-emerald-900/50">{profileSuccess}</div>}
-          {error && (
-            <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <i className="fas fa-exclamation-circle"></i>
-                <span>{error}</span>
-              </div>
-              <button 
-                onClick={handleRetry}
-                className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-black uppercase hover:bg-red-500 transition-colors shrink-0"
+            {/* Sub-navigation */}
+            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800">
+              <button
+                onClick={() => setProfileSubTab('details')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  profileSubTab === 'details' 
+                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
               >
-                Riprova
+                Dati Profilo
+              </button>
+              <button
+                onClick={() => setProfileSubTab('help')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  profileSubTab === 'help' 
+                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Guida & FAQ
               </button>
             </div>
-          )}
+          </div>
 
-          <form onSubmit={handleProfileUpdate} className="space-y-4">
-            <div className="flex flex-col items-center mb-6">
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 overflow-hidden flex items-center justify-center mb-2">
-                  {profileAvatar ? (
-                    <img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <i className="fas fa-user text-4xl text-slate-500"></i>
-                  )}
-                </div>
-                <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
-                  <i className="fas fa-camera text-white text-xl"></i>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                </label>
-              </div>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                Foto Profilo (Max 2MB)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
-                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
-                <input type="date" value={profileBirthDate} onChange={e => setProfileBirthDate(e.target.value)} disabled={currentUser?.role === 'user'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'user' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
-                <div className="relative">
-                  <input 
-                    type={showProfilePassword ? "text" : "password"} 
-                    value={profilePassword} 
-                    onChange={e => setProfilePassword(e.target.value)} 
-                    placeholder="Lascia vuoto per non cambiare" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" 
-                  />
+          {profileSubTab === 'details' ? (
+            <div className="animate-in fade-in slide-in-from-left-4 duration-300">
+              {profileSuccess && <div className="bg-emerald-950/50 text-emerald-500 p-3 rounded-xl text-sm mb-4 border border-emerald-900/50">{profileSuccess}</div>}
+              {error && (
+                <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-exclamation-circle"></i>
+                    <span>{error}</span>
+                  </div>
                   <button 
-                    type="button"
-                    onClick={() => setShowProfilePassword(!showProfilePassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    onClick={handleRetry}
+                    className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-black uppercase hover:bg-red-500 transition-colors shrink-0"
                   >
-                    <i className={`fas ${showProfilePassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    Riprova
                   </button>
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                <SocietySearch 
-                  value={profileSociety}
-                  onChange={setProfileSociety}
-                  societies={societies}
-                  placeholder="Seleziona..."
-                  disabled={currentUser?.role !== 'admin'}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                  {currentUser?.role === 'society' ? 'Codice Società' : 'Tessera Fitav'}
-                </label>
-                <input type="text" required={currentUser?.role === 'society'} value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-              </div>
-              {currentUser?.role !== 'society' && (
-                <>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
-                    <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                      <option value="">Seleziona...</option>
-                      <option value="Eccellenza">Eccellenza</option>
-                      <option value="1*">1*</option>
-                      <option value="2*">2*</option>
-                      <option value="3*">3*</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
-                    <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                      <option value="">Seleziona...</option>
-                      <option value="Veterani">Veterani</option>
-                      <option value="Master">Master</option>
-                      <option value="Senior">Senior</option>
-                      <option value="Lady">Lady</option>
-                      <option value="Junior">Junior</option>
-                    </select>
-                  </div>
-                </>
               )}
-            </div>
-            <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-8 rounded-xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-600/20">
-              Aggiorna Profilo
-            </button>
-          </form>
 
-          {/* Installation Guide Section */}
-          <div className="mt-12 pt-8 border-t border-slate-800/50">
-            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
-              <i className="fas fa-mobile-alt text-orange-500"></i> Guida all'installazione
-            </h3>
-            <p className="text-sm text-slate-400 mb-6">
-              Clay Tracker Pro è una "Web App". Puoi installarla sul tuo telefono per usarla come una vera applicazione, senza dover passare dal browser ogni volta.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-500">
-                    <i className="fab fa-apple text-lg"></i>
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="flex flex-col items-center mb-6">
+                  <div className="relative group">
+                    <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 overflow-hidden flex items-center justify-center mb-2">
+                      {profileAvatar ? (
+                        <img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <i className="fas fa-user text-4xl text-slate-500"></i>
+                      )}
+                    </div>
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                      <i className="fas fa-camera text-white text-xl"></i>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                    </label>
                   </div>
-                  <h4 className="font-bold text-white">iPhone / iPad (Safari)</h4>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    Foto Profilo (Max 2MB)
+                  </span>
                 </div>
-                <ul className="space-y-3 text-xs text-slate-400">
-                  <li className="flex gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                    <span>Tocca il tasto <span className="text-white font-bold">Condividi</span> <i className="fas fa-share-square text-blue-400 mx-0.5"></i> in basso al centro.</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
-                    <span>Scorri l'elenco e tocca <span className="text-white font-bold">"Aggiungi alla schermata Home"</span>.</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
-                    <span>Tocca <span className="text-white font-bold">"Aggiungi"</span> in alto a destra.</span>
-                  </li>
-                </ul>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
+                    <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
+                    <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
+                    <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
+                    <input type="date" value={profileBirthDate} onChange={e => setProfileBirthDate(e.target.value)} disabled={currentUser?.role === 'user'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'user' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
+                    <div className="relative">
+                      <input 
+                        type={showProfilePassword ? "text" : "password"} 
+                        value={profilePassword} 
+                        onChange={e => setProfilePassword(e.target.value)} 
+                        placeholder="Lascia vuoto per non cambiare" 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" 
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowProfilePassword(!showProfilePassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                      >
+                        <i className={`fas ${showProfilePassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
+                    <SocietySearch 
+                      value={profileSociety}
+                      onChange={setProfileSociety}
+                      societies={societies}
+                      placeholder="Seleziona..."
+                      disabled={currentUser?.role !== 'admin'}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      {currentUser?.role === 'society' ? 'Codice Società' : 'Tessera Fitav'}
+                    </label>
+                    <input type="text" required={currentUser?.role === 'society'} value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                  </div>
+                  {currentUser?.role !== 'society' && (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
+                        <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                          <option value="">Seleziona...</option>
+                          <option value="Eccellenza">Eccellenza</option>
+                          <option value="1*">1*</option>
+                          <option value="2*">2*</option>
+                          <option value="3*">3*</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
+                        <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                          <option value="">Seleziona...</option>
+                          <option value="Veterani">Veterani</option>
+                          <option value="Master">Master</option>
+                          <option value="Senior">Senior</option>
+                          <option value="Lady">Lady</option>
+                          <option value="Junior">Junior</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-8 rounded-xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-600/20">
+                  Aggiorna Profilo
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+              {/* Installation Guide Section */}
+              <div className="mb-12">
+                <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+                  <i className="fas fa-mobile-alt text-orange-500"></i> Guida all'installazione
+                </h3>
+                <p className="text-sm text-slate-400 mb-6">
+                  Clay Tracker Pro è una "Web App". Puoi installarla sul tuo telefono per usarla come una vera applicazione, senza dover passare dal browser ogni volta.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/50">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-500">
+                        <i className="fab fa-apple text-lg"></i>
+                      </div>
+                      <h4 className="font-bold text-white">iPhone / iPad (Safari)</h4>
+                    </div>
+                    <ul className="space-y-3 text-xs text-slate-400">
+                      <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                        <span>Tocca il tasto <span className="text-white font-bold">Condividi</span> <i className="fas fa-share-square text-blue-400 mx-0.5"></i> in basso al centro.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                        <span>Scorri l'elenco e tocca <span className="text-white font-bold">"Aggiungi alla schermata Home"</span>.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                        <span>Tocca <span className="text-white font-bold">"Aggiungi"</span> in alto a destra.</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/50">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-500">
+                        <i className="fab fa-android text-lg"></i>
+                      </div>
+                      <h4 className="font-bold text-white">Android (Chrome)</h4>
+                    </div>
+                    <ul className="space-y-3 text-xs text-slate-400">
+                      <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                        <span>Tocca i <span className="text-white font-bold">tre puntini</span> <i className="fas fa-ellipsis-v text-green-400 mx-0.5"></i> in alto a destra.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                        <span>Seleziona <span className="text-white font-bold">"Installa applicazione"</span> o "Aggiungi a schermata Home".</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                        <span>Conferma cliccando su <span className="text-white font-bold">"Installa"</span>.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-500">
-                    <i className="fab fa-android text-lg"></i>
-                  </div>
-                  <h4 className="font-bold text-white">Android (Chrome)</h4>
-                </div>
-                <ul className="space-y-3 text-xs text-slate-400">
-                  <li className="flex gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                    <span>Tocca i <span className="text-white font-bold">tre puntini</span> <i className="fas fa-ellipsis-v text-green-400 mx-0.5"></i> in alto a destra.</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
-                    <span>Seleziona <span className="text-white font-bold">"Installa applicazione"</span> o "Aggiungi a schermata Home".</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
-                    <span>Conferma cliccando su <span className="text-white font-bold">"Installa"</span>.</span>
-                  </li>
-                </ul>
-              </div>
+              {/* FAQ Section */}
+              <FAQSection role={currentUser?.role || 'user'} onReplayTour={onReplayTour} />
             </div>
-          </div>
+          )}
         </div>
       ) : activeTab === 'team' ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

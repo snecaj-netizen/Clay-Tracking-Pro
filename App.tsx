@@ -13,6 +13,7 @@ import ConfirmModal from './components/ConfirmModal';
 import Toast from './components/Toast';
 import NotificationsManager from './components/NotificationsManager';
 import InstallPrompt from './components/InstallPrompt';
+import OnboardingTour from './components/OnboardingTour';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -41,6 +42,20 @@ const App: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    if (user && !localStorage.getItem(`tour_completed_${user.id}`)) {
+      setShowTour(true);
+    }
+  }, [user]);
+
+  const handleCloseTour = () => {
+    if (user) {
+      localStorage.setItem(`tour_completed_${user.id}`, 'true');
+    }
+    setShowTour(false);
+  };
 
   // Handle deep links from notifications
   useEffect(() => {
@@ -606,6 +621,7 @@ const App: React.FC = () => {
               initialTab="societies"
               onUserUpdate={handleUserUpdate}
               hideTabs={true}
+              onReplayTour={() => setShowTour(true)}
             />
           </div>
         )}
@@ -649,6 +665,7 @@ const App: React.FC = () => {
               prefillTeam={prefillTeamData || undefined}
               onPrefillTeamUsed={() => setPrefillTeamData(null)}
               initialTab={initialAdminTab as any}
+              onReplayTour={() => setShowTour(true)}
             />
           </div>
         )}
@@ -716,6 +733,9 @@ const App: React.FC = () => {
       />
 
       <InstallPrompt />
+      {showTour && user && (
+        <OnboardingTour role={user.role} onClose={handleCloseTour} />
+      )}
     </div>
   );
 };
