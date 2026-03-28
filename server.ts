@@ -161,6 +161,8 @@ const initDB = async () => {
       await pool.query("CREATE INDEX IF NOT EXISTS idx_cartridge_types_created_by ON cartridge_types(created_by)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_login_logs_user_id ON login_logs(user_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_users_society ON users(society)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_users_name_surname ON users(name, surname)");
     } catch (e) {
       console.log("Error adding columns or indexes to tables:", e);
     }
@@ -1420,8 +1422,45 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
   }
 });
 
+app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  try {
+    let whereClause = "";
+    let params: any[] = [];
+    if (req.user.role === 'society') {
+      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'";
+      params.push(req.user.society);
+    }
+
+    const disciplinesQuery = `SELECT DISTINCT discipline FROM competitions c ${whereClause} ORDER BY discipline`;
+    const locationsQuery = `SELECT DISTINCT location FROM competitions c ${whereClause} ORDER BY location`;
+    const yearsQuery = `SELECT DISTINCT EXTRACT(YEAR FROM date) as year FROM competitions c ${whereClause} ORDER BY year DESC`;
+
+    const [disciplinesRes, locationsRes, yearsRes] = await Promise.all([
+      pool.query(disciplinesQuery, params),
+      pool.query(locationsQuery, params),
+      pool.query(yearsQuery, params)
+    ]);
+
+    res.json({
+      disciplines: disciplinesRes.rows.map(r => r.discipline).filter(Boolean),
+      locations: locationsRes.rows.map(r => r.location).filter(Boolean),
+      years: yearsRes.rows.map(r => r.year.toString()).filter(Boolean)
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string);
+    const search = req.query.search as string;
+    const society = req.query.society as string;
+    const discipline = req.query.discipline as string;
+    const location = req.query.location as string;
+    const year = req.query.year as string;
+
     let query = `
       SELECT 
         c.*, 
@@ -1434,14 +1473,58 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       FROM competitions c
       JOIN users u ON c.user_id = u.id
     `;
+    let countQuery = "SELECT COUNT(*) FROM competitions c JOIN users u ON c.user_id = u.id";
     let params: any[] = [];
+    let whereClauses: string[] = [];
 
     if (req.user.role === 'society') {
-      query += " WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' ";
+      whereClauses.push("u.society = $" + (params.length + 1) + " AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'");
       params.push(req.user.society);
     }
 
+    if (search) {
+      const searchParam = "%" + search.toLowerCase() + "%";
+      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + " OR LOWER(u.surname) LIKE $" + (params.length + 1) + " OR LOWER(c.name) LIKE $" + (params.length + 1) + " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
+      params.push(searchParam);
+    }
+
+    if (society) {
+      whereClauses.push("u.society = $" + (params.length + 1));
+      params.push(society);
+    }
+
+    if (discipline) {
+      whereClauses.push("c.discipline = $" + (params.length + 1));
+      params.push(discipline);
+    }
+
+    if (location) {
+      whereClauses.push("c.location = $" + (params.length + 1));
+      params.push(location);
+    }
+
+    if (year) {
+      whereClauses.push("EXTRACT(YEAR FROM c.date) = $" + (params.length + 1));
+      params.push(parseInt(year));
+    }
+
+    if (whereClauses.length > 0) {
+      const wherePart = " WHERE " + whereClauses.join(" AND ");
+      query += wherePart;
+      countQuery += wherePart;
+    }
+
+    // Get total count
+    const countRes = await pool.query(countQuery, params);
+    const total = parseInt(countRes.rows[0].count);
+
     query += " ORDER BY c.date DESC ";
+
+    if (limit) {
+      const offset = (page - 1) * limit;
+      query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limit, offset);
+    }
 
     const { rows } = await pool.query(query, params);
     
@@ -1474,7 +1557,12 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
       teamName: row.team_name
     }));
-    res.json(comps);
+
+    if (limit) {
+      res.json({ results: comps, total });
+    } else {
+      res.json(comps);
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

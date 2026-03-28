@@ -18,27 +18,27 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
   const shooterSteps: TourStep[] = [
     {
       title: "Benvenuto su Clay Tracker Pro!",
-      description: "L'app definitiva per monitorare le tue prestazioni nel tiro a volo. Sei pronto a migliorare il tuo punteggio e scalare le classifiche?",
+      description: "L'app definitiva per monitorare le tue prestazioni nel tiro a volo. Sei pronto a migliorare il tuo punteggio e scalare le classifiche? Qui potrai gestire ogni aspetto della tua attività sportiva.",
       icon: "fa-bullseye"
     },
     {
       title: "Gare e Allenamenti",
-      description: "Inserisci i tuoi risultati in pochi secondi. Puoi aggiungere una gara da zero o iscriverti agli eventi organizzati dalle società nella sezione 'Eventi' per pre-compilare i dati.",
+      description: "Inserisci i tuoi risultati in pochi secondi. Puoi aggiungere una gara da zero o iscriverti agli eventi organizzati dalle società nella sezione 'Eventi' per pre-compilare i dati. Monitora i tuoi progressi nel tempo!",
       icon: "fa-list-ul"
     },
     {
       title: "Magazzino Cartucce",
-      description: "Tieni traccia delle tue scorte e delle spese. Inserisci i carichi nel 'Magazzino' e l'app scaricherà automaticamente le cartucce usate in ogni gara.",
+      description: "Tieni traccia delle tue scorte e delle spese. Inserisci i carichi nel 'Magazzino' e l'app scaricherà automaticamente le cartucce usate in ogni gara. Non restare mai senza munizioni!",
       icon: "fa-box-open"
     },
     {
       title: "Statistiche e Coach AI",
-      description: "Analizza i tuoi progressi con grafici dettagliati. Il Coach AI analizzerà i tuoi dati per darti consigli tecnici su come correggere i tuoi errori più frequenti.",
+      description: "Analizza i tuoi progressi con grafici dettagliati. Il Coach AI analizzerà i tuoi dati per darti consigli tecnici personalizzati su come correggere i tuoi errori più frequenti e ottimizzare la tua tecnica.",
       icon: "fa-user-tie"
     },
     {
       title: "Profilo e Sicurezza",
-      description: "Personalizza il tuo profilo e installa l'app. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta e cambia la password per maggiore sicurezza. Conserva le tue credenziali in un luogo sicuro!",
+      description: "Personalizza il tuo profilo e installa l'app. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta (cambiala se necessario) e imposta una nuova password per maggiore sicurezza. Conserva le tue credenziali in un luogo sicuro!",
       icon: "fa-user-shield"
     }
   ];
@@ -46,27 +46,27 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
   const societySteps: TourStep[] = [
     {
       title: "Benvenuto, Società!",
-      description: "Gestisci la tua attività di tiro a volo in modo digitale e professionale. Semplifica la vita ai tuoi tiratori e alla tua segreteria.",
+      description: "Gestisci la tua attività di tiro a volo in modo digitale e professionale. Semplifica la vita ai tuoi tiratori e alla tua segreteria con strumenti avanzati di gestione e comunicazione.",
       icon: "fa-building"
     },
     {
       title: "Risultati in Tempo Reale",
-      description: "Monitora le prestazioni di tutti i tuoi tiratori iscritti. Avrai statistiche aggregate, medie e classifiche interne sempre aggiornate in tempo reale.",
+      description: "Monitora le prestazioni di tutti i tuoi tiratori iscritti. Avrai statistiche aggregate, medie e classifiche interne sempre aggiornate in tempo reale per ogni disciplina.",
       icon: "fa-poll"
     },
     {
       title: "Organizzazione Eventi",
-      description: "Crea gare ed eventi caricando la locandina. I tiratori riceveranno una notifica push e potranno iscriversi con un semplice tocco.",
+      description: "Crea gare ed eventi caricando la locandina. I tiratori riceveranno una notifica push istantanea e potranno iscriversi con un semplice tocco, facilitando l'organizzazione.",
       icon: "fa-calendar-plus"
     },
     {
       title: "Gestione Squadre",
-      description: "Componi le squadre per le competizioni ufficiali. Seleziona i tiratori dai tuoi iscritti, assegna i pettorali e condividi la formazione istantaneamente.",
+      description: "Componi le squadre per le competizioni ufficiali in pochi clic. Seleziona i tiratori dai tuoi iscritti, assegna i pettorali e condividi la formazione istantaneamente con tutti.",
       icon: "fa-users"
     },
     {
       title: "Anagrafica e Sicurezza",
-      description: "Gestisci i tuoi iscritti e il tuo profilo. ⚠️ RICORDA: Per proteggere i tuoi dati, verifica la tua email e imposta una password complessa, conservandola in un luogo sicuro.",
+      description: "Gestisci i tuoi iscritti e il tuo profilo. ⚠️ IMPORTANTE: Per proteggere i dati della società, verifica che la tua email sia corretta e imposta una password complessa, conservandola in un luogo sicuro.",
       icon: "fa-id-card"
     }
   ];

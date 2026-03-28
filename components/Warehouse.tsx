@@ -540,10 +540,34 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     </div>
 
                     <div className="grid grid-cols-4 gap-1.5 mt-4 sm:mt-2">
-                      <button onClick={() => handleQuickAdjust(type, -250)} disabled={type.total < 250 || updatingGroupId !== null} className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">-250</button>
-                      <button onClick={() => handleQuickAdjust(type, -25)} disabled={type.total < 25 || updatingGroupId !== null} className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">-25</button>
-                      <button onClick={() => handleQuickAdjust(type, 25)} disabled={updatingGroupId !== null} className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">+25</button>
-                      <button onClick={() => handleQuickAdjust(type, 250)} disabled={updatingGroupId !== null} className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">+250</button>
+                      <button 
+                        onClick={() => handleQuickAdjust(type, -250)} 
+                        disabled={type.total < 250 || updatingGroupId !== null} 
+                        className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                      >
+                        {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '-250'}
+                      </button>
+                      <button 
+                        onClick={() => handleQuickAdjust(type, -25)} 
+                        disabled={type.total < 25 || updatingGroupId !== null} 
+                        className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                      >
+                        {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '-25'}
+                      </button>
+                      <button 
+                        onClick={() => handleQuickAdjust(type, 25)} 
+                        disabled={updatingGroupId !== null} 
+                        className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                      >
+                        {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '+25'}
+                      </button>
+                      <button 
+                        onClick={() => handleQuickAdjust(type, 250)} 
+                        disabled={updatingGroupId !== null} 
+                        className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                      >
+                        {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '+250'}
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -116,7 +116,7 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
         placeholder={placeholder} 
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
+        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600 font-bold"
       />
       {localValue && (
         <button
@@ -124,9 +124,10 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
             setLocalValue('');
             onChange('');
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-orange-500 hover:bg-orange-500/10 rounded-full transition-all"
+          title="Resetta ricerca"
         >
-          <i className="fas fa-times-circle text-xs"></i>
+          <i className="fas fa-times-circle text-sm"></i>
         </button>
       )}
     </div>
@@ -185,6 +186,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [teams, setTeams] = useState<any[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
@@ -246,39 +248,58 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterLocation, setFilterLocation] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [resultsPage, setResultsPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(20);
+  const [totalResults, setTotalResults] = useState(0);
+  const resultsPageRef = React.useRef(resultsPage);
+  const resultsPerPageRef = React.useRef(resultsPerPage);
+  
+  const filterShooterRef = React.useRef(filterShooter);
+  const filterSocietyRef = React.useRef(filterSociety);
+  const filterDisciplineRef = React.useRef(filterDiscipline);
+  const filterLocationRef = React.useRef(filterLocation);
+  const filterYearRef = React.useRef(filterYear);
+
+  useEffect(() => { resultsPageRef.current = resultsPage; }, [resultsPage]);
+  useEffect(() => { resultsPerPageRef.current = resultsPerPage; }, [resultsPerPage]);
+  useEffect(() => { filterShooterRef.current = filterShooter; }, [filterShooter]);
+  useEffect(() => { filterSocietyRef.current = filterSociety; }, [filterSociety]);
+  useEffect(() => { filterDisciplineRef.current = filterDiscipline; }, [filterDiscipline]);
+  useEffect(() => { filterLocationRef.current = filterLocation; }, [filterLocation]);
+  useEffect(() => { filterYearRef.current = filterYear; }, [filterYear]);
+
   const [selectedShooterResults, setSelectedShooterResults] = useState<any | null>(null);
   const [shareData, setShareData] = useState<{ comp: Competition, user: User } | null>(null);
-  const resultsPerPage = 50;
 
-  const filterOptions = React.useMemo(() => {
-    const societies = new Set<string>();
-    const disciplines = new Set<string>();
-    const locations = new Set<string>();
-    const years = new Set<string>();
+  const [filterOptions, setFilterOptions] = useState<{
+    disciplines: string[];
+    locations: string[];
+    years: string[];
+  }>({
+    disciplines: [],
+    locations: [],
+    years: []
+  });
 
-    allResults.forEach(r => {
-      if (r.society) societies.add(r.society);
-      if (r.discipline) disciplines.add(r.discipline);
-      if (r.location) locations.add(r.location);
-      if (r.date) {
-        // Handle both YYYY-MM-DD and DD/MM/YYYY if possible, but usually it's ISO from DB
-        const dateParts = r.date.split(/[-/]/);
-        if (dateParts.length === 3) {
-          // If YYYY-MM-DD
-          if (dateParts[0].length === 4) years.add(dateParts[0]);
-          // If DD/MM/YYYY
-          else if (dateParts[2].length === 4) years.add(dateParts[2]);
-        }
+  const fetchFilterOptions = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch('/api/admin/filter-options', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFilterOptions(data);
       }
-    });
+    } catch (err) {
+      console.error('Error fetching filter options:', err);
+    }
+  }, [token]);
 
-    return {
-      societies: Array.from(societies).sort(),
-      disciplines: Array.from(disciplines).sort(),
-      locations: Array.from(locations).sort(),
-      years: Array.from(years).sort((a, b) => b.localeCompare(a))
-    };
-  }, [allResults]);
+  useEffect(() => {
+    if (activeTab === 'results') {
+      fetchFilterOptions();
+    }
+  }, [activeTab, fetchFilterOptions]);
 
   const shooters = React.useMemo(() => {
     const unique = new Map();
@@ -426,6 +447,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [users, allResults]);
 
   const fetchSocieties = useCallback(async (signal?: AbortSignal, isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const res = await fetch('/api/societies', {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -446,11 +468,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
+    } finally {
+      if (!isBackground) setLoading(false);
     }
   }, [token]);
 
   const fetchUsers = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
+    if (!isBackground) setLoading(true);
+    else setBackgroundLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page: usersPageRef.current.toString(),
@@ -484,6 +510,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
+    } finally {
+      if (!isBackground) setLoading(false);
+      else setBackgroundLoading(false);
     }
   }, [currentUser?.role, token]);
 
@@ -498,6 +527,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchTeamStats = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
+    if (!isBackground) setLoading(true);
+    else setBackgroundLoading(true);
     try {
       const res = await fetch('/api/admin/team-stats', {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -518,13 +549,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
+    } finally {
+      if (!isBackground) setLoading(false);
+      else setBackgroundLoading(false);
     }
   }, [currentUser?.role, token]);
 
   const fetchAllResults = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
+    if (!isBackground) setLoading(true);
+    else setBackgroundLoading(true);
     try {
-      const res = await fetch('/api/admin/all-results', {
+      const queryParams = new URLSearchParams({
+        page: resultsPageRef.current.toString(),
+        limit: resultsPerPageRef.current.toString(),
+        search: filterShooterRef.current,
+        society: filterSocietyRef.current,
+        discipline: filterDisciplineRef.current,
+        location: filterLocationRef.current,
+        year: filterYearRef.current
+      });
+      
+      const res = await fetch(`/api/admin/all-results?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
@@ -534,7 +580,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       if (!res.ok) throw new Error('Errore nel caricamento dei risultati');
       const data = await res.json();
-      setAllResults(data);
+      
+      if (data.results) {
+        setAllResults(data.results);
+        setTotalResults(data.total);
+      } else {
+        setAllResults(data);
+        setTotalResults(data.length);
+      }
       setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
@@ -543,11 +596,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
+    } finally {
+      if (!isBackground) setLoading(false);
+      else setBackgroundLoading(false);
     }
   }, [currentUser?.role, token]);
 
   const fetchTeams = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
+    if (!isBackground) setLoading(true);
     try {
       const res = await fetch('/api/teams', {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -568,6 +625,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
+    } finally {
+      if (!isBackground) setLoading(false);
     }
   }, [currentUser?.role, token]);
 
@@ -594,23 +653,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     if (!token) return;
     const controller = new AbortController();
-    setLoading(true);
-    const promises = [fetchSocieties(controller.signal)];
-    if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
-      promises.push(
-        fetchTeamStats(controller.signal), 
-        fetchAllResults(controller.signal), 
-        fetchTeams(controller.signal), 
-        fetchUsers(controller.signal)
-      );
-    }
-    Promise.all(promises).finally(() => {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-      }
-    });
+    fetchSocieties(controller.signal);
     return () => controller.abort();
-  }, [token, currentUser?.role, currentUser?.society, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams]);
+  }, [token, fetchSocieties]);
+
+  useEffect(() => {
+    if (activeTab === 'team' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
+      const controller = new AbortController();
+      fetchTeams(controller.signal);
+      return () => controller.abort();
+    }
+  }, [activeTab, currentUser?.role, fetchTeams]);
+
+  useEffect(() => {
+    if (activeTab === 'results' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
+      const controller = new AbortController();
+      fetchAllResults(controller.signal);
+      return () => controller.abort();
+    }
+  }, [activeTab, currentUser?.role, fetchAllResults, resultsPage, resultsPerPage, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
+
+  useEffect(() => {
+    if ((activeTab === 'results' || activeTab === 'team') && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
+      const controller = new AbortController();
+      fetchTeamStats(controller.signal, activeTab === 'results');
+      return () => controller.abort();
+    }
+  }, [activeTab, currentUser?.role, fetchTeamStats]);
 
   useEffect(() => {
     if (activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
@@ -1603,10 +1672,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     });
   }, [filteredResults]);
 
-  if (loading && (activeTab === 'users' || activeTab === 'team' || activeTab === 'results')) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
+  const isTabLoading = loading && (
+    (activeTab === 'users' && users.length === 0) ||
+    (activeTab === 'team' && teamStats.length === 0) ||
+    (activeTab === 'results' && allResults.length === 0)
+  );
 
-  const totalPages = Math.ceil(groupedShooters.length / resultsPerPage);
-  const paginatedShooters = groupedShooters.slice((resultsPage - 1) * resultsPerPage, resultsPage * resultsPerPage);
+  if (isTabLoading) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
+
+  const totalPages = Math.ceil(totalResults / resultsPerPage);
+  const paginatedShooters = groupedShooters;
 
   const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement> | string) => {
     const value = typeof e === 'string' ? e : e.target.value;
@@ -3248,16 +3323,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center justify-between sm:justify-start gap-4">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                 <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
-              </div>
+                {(loading || backgroundLoading) && <i className="fas fa-circle-notch fa-spin text-orange-500 text-xs ml-2"></i>}
+              </h2>
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
                 {totalUsers} {totalUsers === 1 ? 'Utente' : 'Utenti'}
               </span>
-            </h2>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:justify-end">
               {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !showUserForm && (
                 <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
                   {currentUser?.role === 'admin' && (
