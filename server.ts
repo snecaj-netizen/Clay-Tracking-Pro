@@ -2026,7 +2026,9 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
         const compId = `team_comp_${Date.now()}_${userId}`;
         await client.query(
           `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           ON CONFLICT (id) DO UPDATE SET 
+           name = EXCLUDED.name, date = EXCLUDED.date, location = EXCLUDED.location, discipline = EXCLUDED.discipline, team_name = EXCLUDED.team_name`,
           [
             compId, 
             userId, 
@@ -2165,7 +2167,9 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
 
         await client.query(
           `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           ON CONFLICT (id) DO UPDATE SET 
+           name = EXCLUDED.name, date = EXCLUDED.date, location = EXCLUDED.location, discipline = EXCLUDED.discipline, team_name = EXCLUDED.team_name`,
           [
             compId, 
             userId, 
@@ -2279,7 +2283,12 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
   try {
     await pool.query(
       `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       ON CONFLICT (id) DO UPDATE SET 
+       name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
+       discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
+       start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, cost = EXCLUDED.cost, 
+       notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link`,
       [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id]
     );
 
@@ -2507,7 +2516,13 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
   try {
     await pool.query(
       `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+       ON CONFLICT (id) DO UPDATE SET 
+       user_id = EXCLUDED.user_id, name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, location = EXCLUDED.location, 
+       discipline = EXCLUDED.discipline, level = EXCLUDED.level, totalscore = EXCLUDED.totalscore, totaltargets = EXCLUDED.totaltargets, 
+       averageperseries = EXCLUDED.averageperseries, position = EXCLUDED.position, cost = EXCLUDED.cost, win = EXCLUDED.win, 
+       notes = EXCLUDED.notes, weather = EXCLUDED.weather, scores = EXCLUDED.scores, detailedscores = EXCLUDED.detailedscores, 
+       seriesimages = EXCLUDED.seriesimages, usedcartridges = EXCLUDED.usedcartridges, chokes = EXCLUDED.chokes`,
       [
         c.id, targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
         c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -2654,7 +2669,10 @@ app.post('/api/cartridge-types', authenticateToken, async (req: any, res) => {
 
       await pool.query(
         `INSERT INTO cartridge_types (id, producer, model, leadnumber, grams, imageurl, created_by) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (id) DO UPDATE SET 
+         producer = EXCLUDED.producer, model = EXCLUDED.model, leadnumber = EXCLUDED.leadnumber, 
+         grams = EXCLUDED.grams, imageurl = EXCLUDED.imageurl`,
         [t.id, t.producer, t.model, t.leadNumber, t.grams, t.imageUrl || null, req.user.id]
       );
     }
@@ -2705,7 +2723,12 @@ app.post('/api/cartridges', authenticateToken, async (req: any, res) => {
   try {
     await pool.query(
       `INSERT INTO cartridges (id, user_id, purchasedate, producer, model, leadnumber, grams, quantity, initialquantity, cost, armory, imageurl, type_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (id) DO UPDATE SET 
+       purchasedate = EXCLUDED.purchasedate, producer = EXCLUDED.producer, model = EXCLUDED.model, 
+       leadnumber = EXCLUDED.leadnumber, grams = EXCLUDED.grams, quantity = EXCLUDED.quantity, 
+       initialquantity = EXCLUDED.initialquantity, cost = EXCLUDED.cost, armory = EXCLUDED.armory, 
+       imageurl = EXCLUDED.imageurl, type_id = EXCLUDED.type_id`,
       [c.id, req.user.id, c.purchaseDate, c.producer, c.model, c.leadNumber, c.grams, c.quantity, c.initialQuantity, c.cost, c.armory || null, c.imageUrl || null, c.typeId || null]
     );
     res.json({ success: true });
@@ -2801,8 +2824,7 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
           `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, team_name, team_id) 
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
            ON CONFLICT (id) DO UPDATE SET 
-           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21, team_name=$22, team_id=$23
-           WHERE competitions.user_id = $2`,
+           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21, team_name=$22, team_id=$23`,
           [
             c.id, userId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
             c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
