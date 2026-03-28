@@ -7,6 +7,8 @@ const InstallPrompt: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
+  const [showSteps, setShowSteps] = useState(false);
+
   useEffect(() => {
     // Detect iOS
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -100,14 +102,41 @@ const InstallPrompt: React.FC = () => {
             
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight">
-                {isIOS ? 'Aggiungi alla Home' : "Installa l'App"}
+                {isIOS ? 'Installa come App' : "Scarica l'App"}
               </h4>
-              <p className="text-[10px] text-slate-400 [.light-theme_&]:text-slate-700 font-medium leading-tight mt-0.5">
+              <div className="text-[10px] text-slate-400 [.light-theme_&]:text-slate-700 font-medium leading-tight mt-1">
                 {isIOS 
-                  ? "Tocca l'icona di condivisione e seleziona 'Aggiungi alla schermata Home' per installare l'app."
-                  : "Aggiungi Clay Tracker Pro alla tua home per un accesso rapido e notifiche in tempo reale."
+                  ? (
+                    <div className="space-y-2">
+                      <p>Per usare l'app a tutto schermo e riceve notifiche:</p>
+                      {showSteps ? (
+                        <div className="bg-slate-950/50 [.light-theme_&]:bg-slate-100 p-2 rounded-xl space-y-1.5 border border-slate-800/50 [.light-theme_&]:border-slate-200">
+                          <div className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-orange-600 text-white flex items-center justify-center text-[8px] font-bold shrink-0 mt-0.5">1</span>
+                            <span>Tocca il tasto <i className="fas fa-share-square text-orange-500"></i> (Condividi) in basso.</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-orange-600 text-white flex items-center justify-center text-[8px] font-bold shrink-0 mt-0.5">2</span>
+                            <span>Scorri e seleziona <span className="text-white [.light-theme_&]:text-slate-900 font-bold">"Aggiungi alla schermata Home"</span>.</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-orange-600 text-white flex items-center justify-center text-[8px] font-bold shrink-0 mt-0.5">3</span>
+                            <span>Tocca <span className="text-white [.light-theme_&]:text-slate-900 font-bold">"Aggiungi"</span> in alto a destra.</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => setShowSteps(true)}
+                          className="text-orange-500 font-bold underline underline-offset-2 hover:text-orange-400 transition-colors"
+                        >
+                          Scopri come fare (3 semplici passi)
+                        </button>
+                      )}
+                    </div>
+                  )
+                  : "Aggiungi Clay Tracker Pro al tuo telefono per aprirla in un attimo, ricevere notifiche e usarla come una vera applicazione."
                 }
-              </p>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -123,7 +152,7 @@ const InstallPrompt: React.FC = () => {
                 onClick={handleDismiss}
                 className="text-[10px] text-slate-500 [.light-theme_&]:text-slate-500 font-bold uppercase hover:text-slate-300 [.light-theme_&]:hover:text-slate-800 transition-colors text-center"
               >
-                {isIOS ? 'Ho capito' : 'Dopo'}
+                {isIOS ? 'Chiudi' : 'Dopo'}
               </button>
             </div>
           </div>

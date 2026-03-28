@@ -108,6 +108,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               Sei un tiratore e vuoi utilizzare l'App?<br/>
               <span className="text-orange-500 font-semibold mt-1 block">Chiedi alla tua Società le credenziali di accesso!</span>
             </p>
+            <p className="text-slate-500 text-[10px] mt-4 italic">
+              Tip: Puoi installare Clay Tracker Pro come un'app sul tuo telefono per un accesso più rapido.
+            </p>
           </div>
         </div>
       </div>

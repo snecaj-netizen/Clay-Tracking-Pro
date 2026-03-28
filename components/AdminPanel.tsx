@@ -1923,6 +1923,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               Aggiorna Profilo
             </button>
           </form>
+
+          {/* Installation Guide Section */}
+          <div className="mt-12 pt-8 border-t border-slate-800/50">
+            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+              <i className="fas fa-mobile-alt text-orange-500"></i> Guida all'installazione
+            </h3>
+            <p className="text-sm text-slate-400 mb-6">
+              Clay Tracker Pro è una "Web App". Puoi installarla sul tuo telefono per usarla come una vera applicazione, senza dover passare dal browser ogni volta.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-500">
+                    <i className="fab fa-apple text-lg"></i>
+                  </div>
+                  <h4 className="font-bold text-white">iPhone / iPad (Safari)</h4>
+                </div>
+                <ul className="space-y-3 text-xs text-slate-400">
+                  <li className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                    <span>Tocca il tasto <span className="text-white font-bold">Condividi</span> <i className="fas fa-share-square text-blue-400 mx-0.5"></i> in basso al centro.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                    <span>Scorri l'elenco e tocca <span className="text-white font-bold">"Aggiungi alla schermata Home"</span>.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                    <span>Tocca <span className="text-white font-bold">"Aggiungi"</span> in alto a destra.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-500">
+                    <i className="fab fa-android text-lg"></i>
+                  </div>
+                  <h4 className="font-bold text-white">Android (Chrome)</h4>
+                </div>
+                <ul className="space-y-3 text-xs text-slate-400">
+                  <li className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                    <span>Tocca i <span className="text-white font-bold">tre puntini</span> <i className="fas fa-ellipsis-v text-green-400 mx-0.5"></i> in alto a destra.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                    <span>Seleziona <span className="text-white font-bold">"Installa applicazione"</span> o "Aggiungi a schermata Home".</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                    <span>Conferma cliccando su <span className="text-white font-bold">"Installa"</span>.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       ) : activeTab === 'team' ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
