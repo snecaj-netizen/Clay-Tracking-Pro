@@ -400,19 +400,22 @@ const App: React.FC = () => {
   };
 
   const updateAllCartridges = async (carts: Cartridge[]) => {
+    const previousCarts = [...cartridges];
+    setCartridges(carts); // Optimistic update
+    
     try {
       const res = await fetch('/api/cartridges/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(carts)
       });
-      if (res.ok) {
-        setCartridges(carts);
-      } else {
+      if (!res.ok) {
+        setCartridges(previousCarts); // Rollback on error
         const errorData = await res.json();
         alert(`Errore nell'aggiornamento massivo: ${errorData.error || res.statusText}`);
       }
     } catch (err) {
+      setCartridges(previousCarts); // Rollback on network error
       console.error('Error bulk updating cartridges:', err);
       alert('Errore di rete nell\'aggiornamento massivo.');
     }

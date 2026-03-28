@@ -29,6 +29,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
   const [editingType, setEditingType] = useState<CartridgeType | null>(null);
   const [activeTab, setActiveTab] = useState<'types' | 'inventory' | 'history'>('types');
   const [filterYear, setFilterYear] = useState<string>('ALL');
+  const [updatingGroupId, setUpdatingGroupId] = useState<string | null>(null);
   const typeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Cartridge Stock Form states
@@ -157,7 +158,10 @@ const Warehouse: React.FC<WarehouseProps> = ({
     resetTypeForm();
   };
 
-  const handleQuickAdjust = (typeGroup: any, amount: number) => {
+  const handleQuickAdjust = async (typeGroup: any, amount: number) => {
+    const groupId = typeGroup.typeId || `${typeGroup.producer.toLowerCase().trim()}-${typeGroup.model.toLowerCase().trim()}-${typeGroup.leadNumber}-${typeGroup.grams || 0}`;
+    setUpdatingGroupId(groupId);
+    
     let remainingAmount = amount;
     const newCartridges = [...cartridges];
 
@@ -180,7 +184,12 @@ const Warehouse: React.FC<WarehouseProps> = ({
         }
       }
     }
-    onUpdateAll(newCartridges);
+    
+    try {
+      await onUpdateAll(newCartridges);
+    } finally {
+      setUpdatingGroupId(null);
+    }
   };
 
   const handleSetExact = (typeGroup: any) => {
@@ -506,13 +515,23 @@ const Warehouse: React.FC<WarehouseProps> = ({
                         <p className="text-orange-500 font-bold text-xs uppercase tracking-wider truncate">{type.model} • {type.grams}g</p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right">
-                          <span className="text-xl sm:text-2xl font-black text-white block leading-none">{type.total}</span>
-                          <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pezzi</span>
+                        <div className="text-right relative">
+                          {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? (
+                            <div className="flex flex-col items-end">
+                              <i className="fas fa-circle-notch fa-spin text-orange-500 text-xl mb-1"></i>
+                              <span className="text-[7px] text-orange-500 font-black uppercase tracking-tighter">Aggiornamento...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-xl sm:text-2xl font-black text-white block leading-none">{type.total}</span>
+                              <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pezzi</span>
+                            </>
+                          )}
                         </div>
                         <button 
                           onClick={() => handleSetExact(type)} 
-                          className="bg-slate-800 hover:bg-orange-600 text-slate-400 hover:text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all border border-slate-700 active:scale-95 shrink-0"
+                          disabled={updatingGroupId !== null}
+                          className="bg-slate-800 hover:bg-orange-600 text-slate-400 hover:text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all border border-slate-700 active:scale-95 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Modifica giacenza esatta"
                         >
                           <i className="fas fa-pencil-alt text-xs"></i>
@@ -521,10 +540,10 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     </div>
 
                     <div className="grid grid-cols-4 gap-1.5 mt-4 sm:mt-2">
-                      <button onClick={() => handleQuickAdjust(type, -250)} disabled={type.total < 250} className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20">-250</button>
-                      <button onClick={() => handleQuickAdjust(type, -25)} disabled={type.total < 25} className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20">-25</button>
-                      <button onClick={() => handleQuickAdjust(type, 25)} className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800">+25</button>
-                      <button onClick={() => handleQuickAdjust(type, 250)} className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800">+250</button>
+                      <button onClick={() => handleQuickAdjust(type, -250)} disabled={type.total < 250 || updatingGroupId !== null} className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">-250</button>
+                      <button onClick={() => handleQuickAdjust(type, -25)} disabled={type.total < 25 || updatingGroupId !== null} className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">-25</button>
+                      <button onClick={() => handleQuickAdjust(type, 25)} disabled={updatingGroupId !== null} className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">+25</button>
+                      <button onClick={() => handleQuickAdjust(type, 250)} disabled={updatingGroupId !== null} className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed">+250</button>
                     </div>
                   </div>
                 </div>
