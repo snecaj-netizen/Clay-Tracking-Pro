@@ -1204,7 +1204,17 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const countRes = await pool.query(countQuery, params);
     const total = parseInt(countRes.rows[0].count);
     
-    query += " ORDER BY created_at DESC";
+    const now = Date.now();
+    const activeUserIds = Array.from(activeUsers.entries())
+      .filter(([_, lastSeen]) => (now - lastSeen) < 5 * 60 * 1000)
+      .map(([id, _]) => id);
+
+    if (activeUserIds.length > 0) {
+      query += ` ORDER BY CASE WHEN id = ANY($${params.length + 1}) THEN 0 ELSE 1 END, created_at DESC`;
+      params.push(activeUserIds);
+    } else {
+      query += " ORDER BY created_at DESC";
+    }
     
     if (limit) {
       const offset = (page - 1) * limit;
@@ -1213,7 +1223,6 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     }
     
     const { rows } = await pool.query(query, params);
-    const now = Date.now();
     const usersWithStatus = rows.map(user => ({
       ...user,
       is_logged_in: activeUsers.has(user.id) && (now - activeUsers.get(user.id)!) < 5 * 60 * 1000
@@ -1416,7 +1425,12 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     `;
 
     const { rows } = await pool.query(query, params);
-    res.json(rows);
+    const now = Date.now();
+    const rowsWithStatus = rows.map(row => ({
+      ...row,
+      is_logged_in: activeUsers.has(row.user_id) && (now - activeUsers.get(row.user_id)!) < 5 * 60 * 1000
+    }));
+    res.json(rowsWithStatus);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

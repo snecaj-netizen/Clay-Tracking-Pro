@@ -314,11 +314,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           surname: s.surname, 
           society: s.society,
           category: s.category,
-          qualification: s.qualification
+          qualification: s.qualification,
+          is_logged_in: s.is_logged_in
         });
       }
     });
-    return Array.from(unique.values()) as { id: number, name: string, surname: string, society: string, category?: string, qualification?: string }[];
+    return (Array.from(unique.values()) as { id: number, name: string, surname: string, society: string, category?: string, qualification?: string, is_logged_in?: boolean }[])
+      .sort((a, b) => {
+        if (a.is_logged_in && !b.is_logged_in) return -1;
+        if (!a.is_logged_in && b.is_logged_in) return 1;
+        return a.surname.localeCompare(b.surname);
+      });
   }, [teamStats, newTeamSociety]);
 
   // Form state for Admin User Management
