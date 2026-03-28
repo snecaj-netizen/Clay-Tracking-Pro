@@ -1172,12 +1172,42 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
 // Admin Routes (Manage Users)
 app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string);
+    const search = req.query.search as string;
+    
     let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, birth_date, status, login_count, last_login, created_at FROM users";
+    let countQuery = "SELECT COUNT(*) FROM users";
     let params: any[] = [];
+    let whereClauses: string[] = [];
     
     if (req.user.role === 'society') {
-      query += " WHERE LOWER(TRIM(society)) = LOWER(TRIM($1))";
+      whereClauses.push("LOWER(TRIM(society)) = LOWER(TRIM($" + (params.length + 1) + "))");
       params.push(req.user.society);
+    }
+    
+    if (search) {
+      const searchParam = "%" + search.toLowerCase() + "%";
+      whereClauses.push("(LOWER(name) LIKE $" + (params.length + 1) + " OR LOWER(surname) LIKE $" + (params.length + 1) + " OR LOWER(email) LIKE $" + (params.length + 1) + " OR LOWER(society) LIKE $" + (params.length + 1) + " OR LOWER(fitav_card) LIKE $" + (params.length + 1) + ")");
+      params.push(searchParam);
+    }
+    
+    if (whereClauses.length > 0) {
+      const wherePart = " WHERE " + whereClauses.join(" AND ");
+      query += wherePart;
+      countQuery += wherePart;
+    }
+    
+    // Get total count
+    const countRes = await pool.query(countQuery, params);
+    const total = parseInt(countRes.rows[0].count);
+    
+    query += " ORDER BY created_at DESC";
+    
+    if (limit) {
+      const offset = (page - 1) * limit;
+      query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limit, offset);
     }
     
     const { rows } = await pool.query(query, params);
@@ -1186,7 +1216,12 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
       ...user,
       is_logged_in: activeUsers.has(user.id) && (now - activeUsers.get(user.id)!) < 5 * 60 * 1000
     }));
-    res.json(usersWithStatus);
+    
+    if (limit) {
+      res.json({ users: usersWithStatus, total });
+    } else {
+      res.json(usersWithStatus);
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -122,6 +122,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPerPage, setUsersPerPage] = useState(25);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -393,7 +396,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const fetchUsers = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
-      const res = await fetch('/api/admin/users', {
+      const queryParams = new URLSearchParams({
+        page: usersPage.toString(),
+        limit: usersPerPage.toString(),
+        search: userSearchTerm
+      });
+      
+      const res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
@@ -403,7 +412,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       if (!res.ok) throw new Error('Errore nel caricamento degli utenti');
       const data = await res.json();
-      setUsers(data);
+      
+      if (data.users) {
+        setUsers(data.users);
+        setTotalUsers(data.total);
+      } else {
+        setUsers(data);
+        setTotalUsers(data.length);
+      }
       setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
@@ -413,7 +429,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
-  }, [currentUser?.role, token]);
+  }, [currentUser?.role, token, usersPage, usersPerPage, userSearchTerm]);
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      const timer = setTimeout(() => {
+        fetchUsers();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [fetchUsers, activeTab]);
 
   const fetchTeamStats = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
@@ -1400,17 +1425,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    if (!userSearchTerm) return true;
-    const search = userSearchTerm.toLowerCase();
-    const fullName = `${u.name} ${u.surname}`.toLowerCase();
-    return fullName.includes(search) || 
-           (u.society && u.society.toLowerCase().includes(search)) || 
-           (u.fitav_card && u.fitav_card.toLowerCase().includes(search));
-  });
-
   const sortedUsers = React.useMemo(() => {
-    let sortableUsers = [...filteredUsers];
+    let sortableUsers = [...users];
     
     // Always prioritize logged in users first
     sortableUsers.sort((a, b) => {
@@ -1440,7 +1456,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     });
     
     return sortableUsers;
-  }, [filteredUsers, userSortConfig]);
+  }, [users, userSortConfig]);
 
   const requestUserSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -3136,13 +3152,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="text" 
                     placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
                     value={userSearchTerm}
-                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      setUserSearchTerm(e.target.value);
+                      setUsersPage(1);
+                    }}
                     className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
                   />
                 </div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
-                  {sortedUsers.length} {sortedUsers.length === 1 ? 'Utente' : 'Utenti'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={usersPerPage}
+                    onChange={(e) => {
+                      setUsersPerPage(Number(e.target.value));
+                      setUsersPage(1);
+                    }}
+                    className="bg-slate-900 border border-slate-800 rounded-lg py-1 px-2 text-[10px] font-black text-slate-400 uppercase focus:outline-none focus:border-orange-500/50"
+                  >
+                    <option value={25}>25 / pag</option>
+                    <option value={50}>50 / pag</option>
+                    <option value={100}>100 / pag</option>
+                  </select>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
+                    {totalUsers} {totalUsers === 1 ? 'Utente' : 'Utenti'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -3555,7 +3588,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </td>
                   </tr>
                 ))}
-                {filteredUsers.length === 0 && (
+                {sortedUsers.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-500 text-sm italic">
                       Nessun utente trovato.
@@ -3565,6 +3598,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </tbody>
             </table>
           </div>
+
+          {/* User Pagination Controls */}
+          {totalUsers > usersPerPage && (
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                Pagina {usersPage} di {Math.ceil(totalUsers / usersPerPage)}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setUsersPage(prev => Math.max(1, prev - 1))}
+                  disabled={usersPage === 1}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, Math.ceil(totalUsers / usersPerPage)) }, (_, i) => {
+                    const totalPages = Math.ceil(totalUsers / usersPerPage);
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (usersPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (usersPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = usersPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setUsersPage(pageNum)}
+                        className={`w-10 h-10 rounded-xl text-xs font-black transition-all border ${
+                          usersPage === pageNum 
+                            ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setUsersPage(prev => Math.min(Math.ceil(totalUsers / usersPerPage), prev + 1))}
+                  disabled={usersPage === Math.ceil(totalUsers / usersPerPage)}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700"
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {/* Floating Add Button for Competitions */}
