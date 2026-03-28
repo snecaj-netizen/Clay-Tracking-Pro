@@ -37,9 +37,9 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
       icon: "fa-user-tie"
     },
     {
-      title: "Profilo e Installazione",
-      description: "Personalizza il tuo profilo e installa l'app sulla home del tuo telefono per un accesso istantaneo, proprio come una vera applicazione nativa.",
-      icon: "fa-mobile-alt"
+      title: "Profilo e Sicurezza",
+      description: "Personalizza il tuo profilo e installa l'app. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta e cambia la password per maggiore sicurezza. Conserva le tue credenziali in un luogo sicuro!",
+      icon: "fa-user-shield"
     }
   ];
 
@@ -65,8 +65,8 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
       icon: "fa-users"
     },
     {
-      title: "Anagrafica e Supporto",
-      description: "Gestisci i profili dei tuoi iscritti, aggiorna le loro categorie e qualifiche, e fornisci supporto diretto tramite la sezione FAQ dedicata.",
+      title: "Anagrafica e Sicurezza",
+      description: "Gestisci i tuoi iscritti e il tuo profilo. ⚠️ RICORDA: Per proteggere i tuoi dati, verifica la tua email e imposta una password complessa, conservandola in un luogo sicuro.",
       icon: "fa-id-card"
     }
   ];
