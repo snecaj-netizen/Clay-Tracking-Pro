@@ -116,8 +116,19 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
         placeholder={placeholder} 
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
+        className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
       />
+      {localValue && (
+        <button
+          onClick={() => {
+            setLocalValue('');
+            onChange('');
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          <i className="fas fa-times-circle text-xs"></i>
+        </button>
+      )}
     </div>
   );
 };
@@ -3238,8 +3249,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
+            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
+              </div>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
+                {totalUsers} {totalUsers === 1 ? 'Utente' : 'Utenti'}
+              </span>
             </h2>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !showUserForm && (
@@ -3283,7 +3299,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   )}
                 </div>
               )}
-              <div className="relative flex-1 sm:flex-none flex items-center gap-3">
+              <div className="relative flex-1 flex items-center gap-3">
                 <UserSearchInput 
                   placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
                   value={userSearchTerm}
@@ -3292,7 +3308,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     setUsersPage(1);
                   }}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <select
                     value={usersPerPage}
                     onChange={(e) => {
@@ -3305,9 +3321,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <option value={50}>50 / pag</option>
                     <option value={100}>100 / pag</option>
                   </select>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
-                    {totalUsers} {totalUsers === 1 ? 'Utente' : 'Utenti'}
-                  </span>
                 </div>
               </div>
             </div>
@@ -3496,19 +3509,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="md:col-span-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
-                  <select 
-                    value={role} 
-                    onChange={e => setRole(e.target.value)} 
-                    disabled={currentUser?.role === 'society'}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <option value="user">Tiratore</option>
-                    <option value="society">Società</option>
-                    <option value="admin">Amministratore</option>
-                  </select>
-                </div>
+                {currentUser?.role !== 'society' && (
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
+                    <select 
+                      value={role} 
+                      onChange={e => setRole(e.target.value)} 
+                      disabled={currentUser?.role === 'society'}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="user">Tiratore</option>
+                      <option value="society">Società</option>
+                      <option value="admin">Amministratore</option>
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
                   <input 
@@ -3639,9 +3654,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('email')}>
                     Email {userSortConfig?.key === 'email' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
                   </th>
-                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('role')}>
-                    Ruolo {userSortConfig?.key === 'role' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
-                  </th>
+                  {currentUser?.role !== 'society' && (
+                    <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('role')}>
+                      Ruolo {userSortConfig?.key === 'role' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                    </th>
+                  )}
                   <th className="py-3 px-4 text-right">Azioni</th>
                 </tr>
               </thead>
@@ -3682,11 +3699,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.category || '-'} / {u.qualification || '-'}</td>
                     <td className="py-3 px-4 text-sm text-slate-400">{u.email}</td>
-                    <td className="py-3 px-4">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${u.role === 'admin' ? 'bg-orange-500/20 text-orange-500' : u.role === 'society' ? 'bg-blue-500/20 text-blue-500' : 'bg-slate-800 text-slate-400'}`}>
-                        {u.role === 'user' ? 'Tiratore' : u.role === 'society' ? 'Società' : 'Admin'}
-                      </span>
-                    </td>
+                    {currentUser?.role !== 'society' && (
+                      <td className="py-3 px-4">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${u.role === 'admin' ? 'bg-orange-500/20 text-orange-500' : u.role === 'society' ? 'bg-blue-500/20 text-blue-500' : 'bg-slate-800 text-slate-400'}`}>
+                          {u.role === 'user' ? 'Tiratore' : u.role === 'society' ? 'Società' : 'Admin'}
+                        </span>
+                      </td>
+                    )}
                     <td className="py-3 px-4 flex justify-end gap-3">
                       {currentUser?.role === 'admin' && (
                         <button 
@@ -3723,7 +3742,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 ))}
                 {sortedUsers.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-500 text-sm italic">
+                    <td colSpan={currentUser?.role === 'society' ? 6 : 7} className="py-8 text-center text-slate-500 text-sm italic">
                       Nessun utente trovato.
                     </td>
                   </tr>
