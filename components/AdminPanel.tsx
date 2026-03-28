@@ -88,6 +88,37 @@ interface AdminPanelProps {
   hideTabs?: boolean;
 }
 
+// User Search Input Component to avoid re-rendering the whole AdminPanel on every keystroke
+const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder: string }) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localValue !== value) {
+        onChange(localValue);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localValue, onChange, value]);
+
+  return (
+    <div className="relative flex-1">
+      <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+      <input 
+        type="text" 
+        placeholder={placeholder} 
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
+      />
+    </div>
+  );
+};
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
@@ -120,11 +151,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const [showUserForm, setShowUserForm] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
+
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [usersPage, setUsersPage] = useState(1);
   const [usersPerPage, setUsersPerPage] = useState(25);
   const [totalUsers, setTotalUsers] = useState(0);
+
+  const usersPageRef = React.useRef(usersPage);
+  const usersPerPageRef = React.useRef(usersPerPage);
+  const userSearchTermRef = React.useRef(userSearchTerm);
+
+  useEffect(() => { usersPageRef.current = usersPage; }, [usersPage]);
+  useEffect(() => { usersPerPageRef.current = usersPerPage; }, [usersPerPage]);
+  useEffect(() => { userSearchTermRef.current = userSearchTerm; }, [userSearchTerm]);
+
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -397,9 +438,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       const queryParams = new URLSearchParams({
-        page: usersPage.toString(),
-        limit: usersPerPage.toString(),
-        search: userSearchTerm
+        page: usersPageRef.current.toString(),
+        limit: usersPerPageRef.current.toString(),
+        search: userSearchTermRef.current
       });
       
       const res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
@@ -429,16 +470,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       setError(err.message === 'Failed to fetch' ? 'Errore di connessione. Controlla la tua rete.' : err.message);
     }
-  }, [currentUser?.role, token, usersPage, usersPerPage, userSearchTerm]);
+  }, [currentUser?.role, token]);
 
   useEffect(() => {
     if (activeTab === 'users') {
       const timer = setTimeout(() => {
         fetchUsers();
-      }, 300);
+      }, 100); // Small delay to ensure refs are updated if triggered by state change
       return () => clearTimeout(timer);
     }
-  }, [fetchUsers, activeTab]);
+  }, [fetchUsers, activeTab, usersPage, usersPerPage, userSearchTerm]);
 
   const fetchTeamStats = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
@@ -554,7 +595,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
     });
     return () => controller.abort();
-  }, [token, currentUser?.role, currentUser?.society, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams, fetchUsers]);
+  }, [token, currentUser?.role, currentUser?.society, fetchSocieties, fetchTeamStats, fetchAllResults, fetchTeams]);
 
   useEffect(() => {
     if (activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
@@ -3146,19 +3187,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               )}
               <div className="relative flex-1 sm:flex-none flex items-center gap-3">
-                <div className="relative flex-1">
-                  <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                  <input 
-                    type="text" 
-                    placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
-                    value={userSearchTerm}
-                    onChange={(e) => {
-                      setUserSearchTerm(e.target.value);
-                      setUsersPage(1);
-                    }}
-                    className="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600"
-                  />
-                </div>
+                <UserSearchInput 
+                  placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
+                  value={userSearchTerm}
+                  onChange={(val) => {
+                    setUserSearchTerm(val);
+                    setUsersPage(1);
+                  }}
+                />
                 <div className="flex items-center gap-2">
                   <select
                     value={usersPerPage}
