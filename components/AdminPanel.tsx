@@ -63,6 +63,7 @@ interface AdminPanelProps {
   competitions: Competition[];
   cartridges: Cartridge[];
   cartridgeTypes: CartridgeType[];
+  societies?: any[];
   clientId: string;
   onClientIdChange: (id: string) => void;
   onImport: (data: AppData) => void;
@@ -77,6 +78,8 @@ interface AdminPanelProps {
   onEditCompetition?: (comp?: Competition, userId?: number) => void;
   onDeleteCompetition?: (id: string) => void;
   initialTab?: Tab;
+  initialSocietyName?: string;
+  onCloseSocietyDetail?: () => void;
   onUserUpdate?: (user: any) => void;
   prefillTeam?: {
     competition_name: string;
@@ -135,9 +138,9 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
 };
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  user: currentUser, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport,
+  user: currentUser, token, competitions, cartridges, cartridgeTypes, societies: initialSocieties, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour
+  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
@@ -164,6 +167,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, [prefillTeam, onPrefillTeamUsed]);
 
+  const handleCloseSocietyDetail = () => {
+    setSelectedSociety(null);
+    if (initialSocietyName && onCloseSocietyDetail) {
+      onCloseSocietyDetail();
+    }
+  };
+
   const [showUserForm, setShowUserForm] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
 
@@ -184,7 +194,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
-  const [societies, setSocieties] = useState<any[]>([]);
+  const [societies, setSocieties] = useState<any[]>(initialSocieties || []);
   const [loading, setLoading] = useState(true);
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState('');
@@ -212,7 +222,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [socGoogleMapsLink, setSocGoogleMapsLink] = useState('');
   const [socDisciplines, setSocDisciplines] = useState<string[]>([]);
   const [societySearch, setSocietySearch] = useState('');
-  const [selectedSociety, setSelectedSociety] = useState<any>(null);
+  const [selectedSociety, setSelectedSociety] = useState<any>(() => {
+    if (initialSocietyName && initialSocieties && initialSocieties.length > 0) {
+      return initialSocieties.find(s => s.name === initialSocietyName) || null;
+    }
+    return null;
+  });
+  
+  useEffect(() => {
+    if (initialSocietyName && societies.length > 0) {
+      const soc = societies.find(s => s.name === initialSocietyName);
+      if (soc) {
+        setSelectedSociety(soc);
+        setActiveTab('societies');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [initialSocietyName, societies]);
   
   // Team Creation State
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -2791,7 +2817,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {selectedSociety && createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedSociety(null)}>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleCloseSocietyDetail}>
               <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
                 <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
                   {/* Decorative background elements */}
@@ -2799,7 +2825,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
                   
                   <button 
-                    onClick={() => setSelectedSociety(null)} 
+                    onClick={handleCloseSocietyDetail} 
                     className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg z-20"
                   >
                     <i className="fas fa-times text-lg"></i>

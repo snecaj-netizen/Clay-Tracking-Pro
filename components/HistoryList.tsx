@@ -10,11 +10,12 @@ interface HistoryListProps {
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
   onUpdate?: (comp: Competition) => void;
+  onSocietyClick?: (name: string) => void;
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   user?: any;
 }
 
-const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDelete, onEdit, onUpdate, triggerConfirm, user }) => {
+const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDelete, onEdit, onUpdate, onSocietyClick, triggerConfirm, user }) => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -276,7 +277,12 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
                 )}
                 <div className="flex items-center gap-1 text-slate-400 text-sm font-medium mt-1">
                   <i className={`fas fa-map-marker-alt ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-600'} text-xs`}></i>
-                  {comp.location}
+                  <button 
+                    onClick={() => onSocietyClick?.(comp.location)}
+                    className="hover:text-orange-500 transition-colors text-left"
+                  >
+                    {comp.location}
+                  </button>
                   {societies.find(s => s.name === comp.location)?.code && (
                     <span className="text-orange-500 ml-1">({societies.find(s => s.name === comp.location)?.code})</span>
                   )}
@@ -600,12 +606,15 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
                         <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium truncate">
                           <span className="flex items-center gap-1.5 truncate">
                             <i className="fas fa-map-marker-alt text-slate-500"></i>
-                            <span className="truncate">
+                            <button 
+                              onClick={() => onSocietyClick?.(comp.location)}
+                              className="truncate hover:text-orange-500 transition-colors text-left"
+                            >
                               {comp.location}
                               {societies.find(s => s.name === comp.location)?.code && (
                                 <span className="text-orange-500 ml-1">({societies.find(s => s.name === comp.location)?.code})</span>
                               )}
-                            </span>
+                            </button>
                           </span>
                           {comp.weather && (
                             <span className="flex items-center gap-1.5 shrink-0">

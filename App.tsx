@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(null);
+  const [initialSocietyName, setInitialSocietyName] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -464,7 +465,30 @@ const App: React.FC = () => {
     } else {
       setInitialAdminTab(null);
     }
+    
+    if (newView !== 'societies' && newView !== 'admin') {
+      setInitialSocietyName(null);
+    }
+    
+    setPreviousView(null);
     setView(newView);
+  };
+
+  const handleSocietyClick = (name: string) => {
+    setInitialSocietyName(name);
+    setPreviousView(view);
+    setView('societies');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCloseSocietyDetail = () => {
+    if (previousView) {
+      setView(previousView);
+      setPreviousView(null);
+    } else {
+      setView('history');
+    }
+    setInitialSocietyName(null);
   };
 
   if (!token) {
@@ -558,6 +582,7 @@ const App: React.FC = () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onUpdate={saveCompetition}
+              onSocietyClick={handleSocietyClick}
               triggerConfirm={triggerConfirm}
               user={user}
             />
@@ -622,7 +647,10 @@ const App: React.FC = () => {
               }}
               onDeleteCompetition={deleteCompetition}
               initialTab="societies"
+              initialSocietyName={initialSocietyName || undefined}
+              onCloseSocietyDetail={handleCloseSocietyDetail}
               onUserUpdate={handleUserUpdate}
+              societies={societies}
               hideTabs={true}
               onReplayTour={() => setShowTour(true)}
             />
@@ -665,6 +693,9 @@ const App: React.FC = () => {
               }}
               onDeleteCompetition={deleteCompetition}
               onUserUpdate={handleUserUpdate}
+              initialSocietyName={initialSocietyName || undefined}
+              onCloseSocietyDetail={handleCloseSocietyDetail}
+              societies={societies}
               prefillTeam={prefillTeamData || undefined}
               onPrefillTeamUsed={() => setPrefillTeamData(null)}
               initialTab={initialAdminTab as any}
