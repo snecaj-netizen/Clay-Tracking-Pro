@@ -1477,6 +1477,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setShowUserForm(false);
       setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard(''); setUserAvatar(''); setBirthDate('');
       fetchUsers();
+      if (role === 'society' || editingUser?.role === 'society') {
+        fetchSocieties();
+      }
     } catch (err: any) {
       setError(err.message);
     }
@@ -1488,12 +1491,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       'Sei sicuro di voler eliminare questo utente e tutti i suoi dati? L\'azione è irreversibile.',
       async () => {
         try {
+          const userToDelete = users.find(u => u.id === id);
           const res = await fetch(`/api/admin/users/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (!res.ok) throw new Error('Errore durante l\'eliminazione');
           fetchUsers();
+          if (userToDelete?.role === 'society') {
+            fetchSocieties();
+          }
         } catch (err: any) {
           setError(err.message);
         }
@@ -2927,7 +2934,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
-                    {currentUser?.role === 'admin' && !users.some(u => u.role === 'society' && u.society === selectedSociety.name) && (
+                    {currentUser?.role === 'admin' && !selectedSociety.has_account && (
                       <button 
                         onClick={() => {
                           const soc = selectedSociety;

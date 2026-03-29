@@ -1675,7 +1675,12 @@ app.get('/api/admin/export-all', authenticateToken, requireAdmin, async (req, re
 // Societies Routes
 app.get('/api/societies', authenticateToken, async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM societies ORDER BY name ASC");
+    const { rows } = await pool.query(`
+      SELECT s.*, 
+             EXISTS(SELECT 1 FROM users u WHERE u.role = 'society' AND u.society = s.name) as has_account
+      FROM societies s 
+      ORDER BY s.name ASC
+    `);
     res.json(rows);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
