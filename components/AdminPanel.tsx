@@ -3723,8 +3723,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="tel" 
                       value={phone} 
                       onChange={e => setPhone(e.target.value)} 
-                      disabled={currentUser?.role === 'society' && !!editingUser}
-                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" 
                     />
                   </div>
                 </div>
@@ -4072,8 +4071,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         onClick={() => {
                           setSelectedUser(null);
                           editUser(selectedUser);
+                          setShowUserForm(true);
                         }} 
-                        className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg"
+                        disabled={currentUser?.role === 'society' && selectedUser.role === 'admin'}
+                        className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={currentUser?.role === 'society' && selectedUser.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
                       >
                         <i className="fas fa-edit"></i> Modifica
                       </button>
@@ -4082,10 +4084,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <button 
                         onClick={() => {
                           setSelectedUser(null);
-                          handleDeleteUser(selectedUser.id);
+                          handleDelete(selectedUser.id);
                         }} 
-                        disabled={selectedUser.email === 'snecaj@gmail.com'}
+                        disabled={selectedUser.email === 'snecaj@gmail.com' || currentUser?.role === 'society'}
                         className="flex-1 py-4 rounded-2xl bg-red-900/30 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-900/50 transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (selectedUser.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
                       >
                         <i className="fas fa-trash-alt"></i> Elimina
                       </button>
