@@ -199,6 +199,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
   const [profileSubTab, setProfileSubTab] = useState<'details' | 'help'>('details');
   
@@ -3818,7 +3819,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 {sortedUsers.map(u => (
                   <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-3 px-4 text-sm text-white font-bold">
-                      <div className="flex items-center gap-3">
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer hover:text-orange-500 transition-colors"
+                        onClick={() => setSelectedUser(u)}
+                      >
                         <div 
                           className={`w-8 h-8 rounded-full bg-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center ${
                             u.is_logged_in 
@@ -3958,6 +3962,139 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           )}
+
+          {selectedUser && createPortal(
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedUser(null)}>
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
+                  {/* Decorative background elements */}
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
+                  
+                  <button 
+                    onClick={() => setSelectedUser(null)} 
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg z-20"
+                  >
+                    <i className="fas fa-times text-lg"></i>
+                  </button>
+                  
+                  <div className="relative z-10 w-full pr-10 sm:pr-0">
+                    <div className="flex items-end gap-4 translate-y-6">
+                      <div 
+                        className={`w-24 h-24 rounded-2xl bg-slate-900 border-4 border-slate-950 flex items-center justify-center shadow-xl overflow-hidden ${
+                          selectedUser.is_logged_in 
+                            ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+                            : ''
+                        }`}
+                      >
+                        {selectedUser.avatar ? (
+                          <img src={selectedUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <i className="fas fa-user text-3xl text-slate-600"></i>
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedUser.name} {selectedUser.surname}</h2>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${selectedUser.role === 'admin' ? 'bg-orange-500/20 text-orange-500' : selectedUser.role === 'society' ? 'bg-blue-500/20 text-blue-500' : 'bg-slate-800 text-slate-400'}`}>
+                            {selectedUser.role === 'user' ? 'Tiratore' : selectedUser.role === 'society' ? 'Società' : 'Admin'}
+                          </span>
+                          {selectedUser.is_logged_in && (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase bg-green-500/20 text-green-500 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6 pt-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedUser.email && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Email</p>
+                        <p className="text-sm font-bold text-white break-all">{selectedUser.email}</p>
+                      </div>
+                    )}
+                    {selectedUser.phone && (
+                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Telefono</p>
+                        <p className="text-sm font-bold text-white">{selectedUser.phone}</p>
+                      </div>
+                    )}
+                    {selectedUser.birth_date && (
+                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Data di Nascita</p>
+                        <p className="text-sm font-bold text-white">
+                          {new Date(selectedUser.birth_date).toLocaleDateString('it-IT')}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.society && (
+                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Società</p>
+                        <p className="text-sm font-bold text-white flex items-center gap-2">
+                          <i className="fas fa-building text-orange-500"></i>
+                          {selectedUser.society}
+                          {societies.find(s => s.name === selectedUser.society)?.code && (
+                            <span className="text-slate-400">({societies.find(s => s.name === selectedUser.society)?.code})</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.fitav_card && (
+                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                          {selectedUser.role === 'society' ? 'Codice Società' : 'Tessera FITAV'}
+                        </p>
+                        <p className="text-sm font-bold text-white uppercase">{selectedUser.fitav_card}</p>
+                      </div>
+                    )}
+                    {selectedUser.category && (
+                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Categoria</p>
+                        <p className="text-sm font-bold text-white">{selectedUser.category}</p>
+                      </div>
+                    )}
+                    {selectedUser.qualification && (
+                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Qualifica</p>
+                        <p className="text-sm font-bold text-white">{selectedUser.qualification}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
+                    {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                      <button 
+                        onClick={() => {
+                          setSelectedUser(null);
+                          editUser(selectedUser);
+                        }} 
+                        className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg"
+                      >
+                        <i className="fas fa-edit"></i> Modifica
+                      </button>
+                    )}
+                    {currentUser?.role === 'admin' && (
+                      <button 
+                        onClick={() => {
+                          setSelectedUser(null);
+                          handleDeleteUser(selectedUser.id);
+                        }} 
+                        disabled={selectedUser.email === 'snecaj@gmail.com'}
+                        className="flex-1 py-4 rounded-2xl bg-red-900/30 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-900/50 transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <i className="fas fa-trash-alt"></i> Elimina
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          , document.body)}
         </div>
       )}
       {/* Floating Add Button for Competitions */}
