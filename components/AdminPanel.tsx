@@ -366,6 +366,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [fitavCard, setFitavCard] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [phone, setPhone] = useState('');
 
   // Profile state for current user
   const [profileName, setProfileName] = useState(currentUser?.name || '');
@@ -377,6 +378,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [profileFitavCard, setProfileFitavCard] = useState(currentUser?.fitav_card || '');
   const [profileAvatar, setProfileAvatar] = useState(currentUser?.avatar || '');
   const [profileBirthDate, setProfileBirthDate] = useState(currentUser?.birth_date || '');
+  const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -746,6 +748,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           fitav_card: profileFitavCard,
           avatar: profileAvatar,
           birth_date: profileBirthDate || undefined,
+          phone: profilePhone || undefined,
           password: profilePassword || undefined
         }),
       });
@@ -763,7 +766,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           society: profileSociety,
           fitav_card: profileFitavCard,
           avatar: profileAvatar,
-          birth_date: profileBirthDate
+          birth_date: profileBirthDate,
+          phone: profilePhone
         });
       }
       
@@ -1279,7 +1283,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       'Qualifica': u.qualification,
       'Società': u.society,
       'Tessera FITAV': u.fitav_card,
-      'Data di Nascita': u.birth_date
+      'Data di Nascita': u.birth_date,
+      'Telefono': u.phone
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -1300,7 +1305,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         'Società': 'TAV Roma',
         'Codice Società': 'RM01',
         'Tessera FITAV': '12345',
-        'Data di Nascita': '1980-01-01'
+        'Data di Nascita': '1980-01-01',
+        'Telefono': '3331234567'
       }
     ];
     const ws = XLSX.utils.json_to_sheet(template);
@@ -1354,6 +1360,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           society_code: row['Codice Società']?.toString() || '',
           fitav_card: row['Tessera FITAV']?.toString() || '',
           birth_date: parseExcelDate(row['Data di Nascita']),
+          phone: row['Telefono']?.toString() || '',
           password: row['Tessera FITAV']?.toString() || 'Password123!'
         }));
 
@@ -1459,7 +1466,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     const endpoint = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
     const method = editingUser ? 'PUT' : 'POST';
-    const body = { name, surname, email, role, category, qualification, society, fitav_card: fitavCard, password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined };
+    const body = { name, surname, email, role, category, qualification, society, fitav_card: fitavCard, password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, phone: phone || undefined };
 
     try {
       const res = await fetch(endpoint, {
@@ -1475,7 +1482,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       
       setEditingUser(null);
       setShowUserForm(false);
-      setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard(''); setUserAvatar(''); setBirthDate('');
+      setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard(''); setUserAvatar(''); setBirthDate(''); setPhone('');
       fetchUsers();
       if (role === 'society' || editingUser?.role === 'society') {
         fetchSocieties();
@@ -1554,6 +1561,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setFitavCard(user.fitav_card || '');
     setUserAvatar(user.avatar || '');
     setBirthDate(user.birth_date || '');
+    setPhone(user.phone || '');
     setPassword('');
     setShowUserForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2014,6 +2022,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
                     <input type="date" value={profileBirthDate} onChange={e => setProfileBirthDate(e.target.value)} disabled={currentUser?.role === 'user'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'user' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono</label>
+                    <input type="tel" value={profilePhone} onChange={e => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nuova Password (opzionale)</label>
@@ -3623,74 +3635,102 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Foto Profilo (Max 2MB)</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {currentUser?.role !== 'society' && (
-                  <div className="md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
-                    <select 
-                      value={role} 
-                      onChange={e => setRole(e.target.value)} 
-                      disabled={currentUser?.role === 'society'}
-                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <option value="user">Tiratore</option>
-                      <option value="society">Società</option>
-                      <option value="admin">Amministratore</option>
-                    </select>
+              <div className="space-y-4 mb-6">
+                {/* Row 1: Ruolo, Società, Tessera */}
+                <div className={`grid grid-cols-1 ${currentUser?.role !== 'society' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+                  {currentUser?.role !== 'society' && (
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
+                      <select 
+                        value={role} 
+                        onChange={e => setRole(e.target.value)} 
+                        disabled={currentUser?.role === 'society'}
+                        className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <option value="user">Tiratore</option>
+                        <option value="society">Società</option>
+                        <option value="admin">Amministratore</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
+                    <SocietySearch 
+                      value={society}
+                      onChange={setSociety}
+                      societies={societies}
+                      placeholder="Seleziona..."
+                      disabled={currentUser?.role === 'society' && !!editingUser}
+                    />
                   </div>
-                )}
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={name} 
-                    onChange={e => setName(e.target.value)} 
-                    disabled={currentUser?.role === 'society' && !!editingUser}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={surname} 
-                    onChange={e => setSurname(e.target.value)} 
-                    disabled={currentUser?.role === 'society' && !!editingUser}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
-                  <input 
-                    type="date" 
-                    value={birthDate} 
-                    onChange={e => setBirthDate(e.target.value)} 
-                    disabled={currentUser?.role === 'society' && !!editingUser}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password {editingUser && '(lascia vuoto per non cambiare)'}</label>
-                  <div className="relative">
-                    <input type={showPassword ? "text" : "password"} required={!editingUser} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 pr-10 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowPassword(!showPassword)} 
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Tessera Fitav'}
+                    </label>
+                    <input 
+                      type="text" 
+                      required={role === 'society'} 
+                      value={fitavCard} 
+                      onChange={e => setFitavCard(e.target.value)} 
+                      disabled={currentUser?.role === 'society' && !!editingUser}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    />
                   </div>
                 </div>
-                
+
+                {/* Row 2: Nome, Cognome */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={name} 
+                      onChange={e => setName(e.target.value)} 
+                      disabled={currentUser?.role === 'society' && !!editingUser}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={surname} 
+                      onChange={e => setSurname(e.target.value)} 
+                      disabled={currentUser?.role === 'society' && !!editingUser}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Data di Nascita, Telefono */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
+                    <input 
+                      type="date" 
+                      value={birthDate} 
+                      onChange={e => setBirthDate(e.target.value)} 
+                      disabled={currentUser?.role === 'society' && !!editingUser}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono</label>
+                    <input 
+                      type="tel" 
+                      value={phone} 
+                      onChange={e => setPhone(e.target.value)} 
+                      disabled={currentUser?.role === 'society' && !!editingUser}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    />
+                  </div>
+                </div>
+
+                {/* Row 4: Categoria, Qualifica */}
                 {role !== 'society' && (
-                  <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
                       <select required={!qualification} value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
@@ -3712,38 +3752,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <option value="Junior">Junior</option>
                       </select>
                     </div>
-                  </>
+                  </div>
                 )}
 
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                  <SocietySearch 
-                    value={society}
-                    onChange={setSociety}
-                    societies={societies}
-                    placeholder="Seleziona..."
-                    disabled={currentUser?.role === 'society' && !!editingUser}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                    {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Tessera Fitav'}
-                  </label>
-                  <input 
-                    type="text" 
-                    required={role === 'society'} 
-                    value={fitavCard} 
-                    onChange={e => setFitavCard(e.target.value)} 
-                    disabled={currentUser?.role === 'society' && !!editingUser}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                  />
+                {/* Row 5: Email, Password */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
+                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password {editingUser && '(lascia vuoto per non cambiare)'}</label>
+                    <div className="relative">
+                      <input type={showPassword ? "text" : "password"} required={!editingUser} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 pr-10 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
                 <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
                   {editingUser ? 'Salva Modifiche' : (currentUser?.role === 'society' ? 'Crea Tiratore' : 'Crea Utente')}
                 </button>
-                <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setUserAvatar(''); setBirthDate(''); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
+                <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
                   Annulla
                 </button>
               </div>
