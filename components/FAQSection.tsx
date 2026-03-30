@@ -27,6 +27,10 @@ const FAQSection: React.FC<FAQSectionProps> = ({ role, onReplayTour }) => {
       answer: "Nel pannello 'Profilo', puoi cambiare la tua email, la foto profilo e la password. Alcuni dati (come nome, cognome e società) sono gestiti dall'amministratore per garantire la correttezza delle classifiche."
     },
     {
+      question: "Come consulto i risultati ufficiali delle gare?",
+      answer: "Puoi farlo in due modi: 1) Dalla sezione 'Eventi', selezionando una gara conclusa e cliccando su 'Risultati'. 2) Dalla sezione dedicata 'Risultati Gare' nel menu principale, dove troverai tutte le competizioni concluse raggruppate per Società Organizzatrice, con classifiche e statistiche complete."
+    },
+    {
       question: "Come installo l'app sul telefono?",
       answer: "Clay Tracker Pro è una Web App. Su iPhone (Safari), tocca 'Condividi' e poi 'Aggiungi alla schermata Home'. Su Android (Chrome), tocca i tre puntini in alto a destra e seleziona 'Installa applicazione'."
     }
@@ -36,6 +40,10 @@ const FAQSection: React.FC<FAQSectionProps> = ({ role, onReplayTour }) => {
     {
       question: "Come vedo i risultati dei miei tiratori?",
       answer: "Nella sezione 'Risultati' del tuo pannello, troverai l'elenco completo di tutte le prestazioni inserite dai tiratori iscritti alla tua società, con filtri per data e disciplina."
+    },
+    {
+      question: "Come inserisco e convalido i risultati di una gara?",
+      answer: "Dalla sezione 'Eventi', seleziona la gara d'interesse e vai su 'Gestisci Risultati'. Qui puoi inserire i punteggi per ogni tiratore e, una volta completati, cliccare su 'Convalida Risultati' per renderli ufficiali e visibili a tutti."
     },
     {
       question: "Come inserisco un nuovo evento?",

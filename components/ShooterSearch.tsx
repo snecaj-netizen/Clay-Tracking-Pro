@@ -132,9 +132,9 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
             placeholder={multiple && Array.isArray(value) && value.length > 0 ? "Aggiungi un altro..." : placeholder}
             required={required && (!multiple || (Array.isArray(value) && value.length === 0))}
             disabled={disabled}
-            className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+            className={`w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-orange-600 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
           />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
             {searchTerm && !disabled && (
               <button 
                 type="button" 

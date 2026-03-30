@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TourStep {
@@ -37,6 +37,11 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
       icon: "fa-user-tie"
     },
     {
+      title: "Risultati Gare",
+      description: "Accedi alla sezione dedicata 'Risultati Gare' per consultare le classifiche ufficiali raggruppate per Società Organizzatrice. Troverai punteggi individuali e statistiche dettagliate per ogni evento validato.",
+      icon: "fa-trophy"
+    },
+    {
       title: "Profilo e Sicurezza",
       description: "Personalizza il tuo profilo e installa l'app. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta (cambiala se necessario) e imposta una nuova password per maggiore sicurezza. Conserva le tue credenziali in un luogo sicuro!",
       icon: "fa-user-shield"
@@ -63,6 +68,11 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
       title: "Gestione Squadre",
       description: "Componi le squadre per le competizioni ufficiali in pochi clic. Seleziona i tiratori dai tuoi iscritti, assegna i pettorali e condividi la formazione istantaneamente con tutti.",
       icon: "fa-users"
+    },
+    {
+      title: "Risultati e Convalida",
+      description: "Inserisci i risultati dei tuoi tiratori e convalida le prestazioni ufficiali. Una volta convalidati, i risultati saranno visibili a tutti i partecipanti e contribuiranno alle statistiche globali.",
+      icon: "fa-check-double"
     },
     {
       title: "Anagrafica e Sicurezza",
@@ -94,6 +104,14 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
           {/* Background Decoration */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-orange-600/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange-600/10 rounded-full blur-3xl"></div>
+
+          {/* Skip Button */}
+          <button 
+            onClick={onClose}
+            className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest z-20"
+          >
+            Salta <i className="fas fa-times ml-1"></i>
+          </button>
 
           <div className="relative z-10 text-center">
             <div className="w-20 h-20 bg-orange-600/20 rounded-3xl flex items-center justify-center text-orange-500 text-3xl mx-auto mb-6 shadow-lg shadow-orange-600/10">

@@ -72,6 +72,9 @@ export interface Competition {
   userName?: string;
   userSurname?: string;
   teamName?: string;
+  status?: string;
+  ranking_preference?: 'categoria' | 'qualifica';
+  ranking_preference_override?: 'categoria' | 'qualifica';
 }
 
 export interface Cartridge {
@@ -138,6 +141,17 @@ export interface SocietyEvent {
   registration_link?: string;
   created_by?: number;
   is_from_competition?: boolean;
+  result_count?: number;
+  prize_settings?: string; // JSON string of PrizeSetting[]
+  status?: string;
+  ranking_logic?: 'individual' | 'best_placement' | 'absolute_score';
+  ranking_preference_override?: 'categoria' | 'qualifica' | null;
+}
+
+export interface PrizeSetting {
+  type: 'categoria' | 'qualifica';
+  name: string;
+  count: number;
 }
 
 export interface AppData {

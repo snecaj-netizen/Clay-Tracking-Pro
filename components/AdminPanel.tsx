@@ -11,7 +11,6 @@ import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
-import { motion, AnimatePresence } from 'motion/react';
 import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
 
 // Fix Leaflet default icon issue
@@ -54,7 +53,7 @@ function MapResizer() {
   return null;
 }
 
-type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'societies' | 'events' | 'halloffame' | 'notifications';
+type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications';
 
 interface AdminPanelProps {
   user: any;
@@ -81,6 +80,7 @@ interface AdminPanelProps {
   initialSocietyName?: string;
   onCloseSocietyDetail?: () => void;
   onUserUpdate?: (user: any) => void;
+  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   prefillTeam?: {
     competition_name: string;
     discipline: string;
@@ -92,6 +92,8 @@ interface AdminPanelProps {
   onPrefillTeamUsed?: () => void;
   hideTabs?: boolean;
   onReplayTour?: () => void;
+  appSettings?: any;
+  onSettingsUpdate?: () => void;
 }
 
 // User Search Input Component to avoid re-rendering the whole AdminPanel on every keystroke
@@ -140,7 +142,8 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, cartridgeTypes, societies: initialSocieties, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour
+  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, triggerToast, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour,
+  appSettings, onSettingsUpdate
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
@@ -275,7 +278,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterLocation, setFilterLocation] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [resultsPage, setResultsPage] = useState(1);
-  const [resultsPerPage, setResultsPerPage] = useState(20);
+  const [resultsPerPage] = useState(20);
   const [totalResults, setTotalResults] = useState(0);
   const resultsPageRef = React.useRef(resultsPage);
   const resultsPerPageRef = React.useRef(resultsPerPage);
@@ -306,6 +309,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     locations: [],
     years: []
   });
+
+  // Helper for automatic qualification
+  const updateAutoQualification = (date: string, currentQual: string, setter: (val: string) => void) => {
+    if (!date) return;
+    const birthYear = new Date(date).getFullYear();
+    if (isNaN(birthYear)) return;
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - birthYear;
+
+    if (age >= 56 && age <= 65) setter('Senior');
+    else if (age >= 66 && age <= 72) setter('Veterani');
+    else if (age > 72) setter('Master');
+    else if (['Senior', 'Veterani', 'Master'].includes(currentQual)) setter('');
+  };
 
   const fetchFilterOptions = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -1754,19 +1771,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return a.name.localeCompare(b.name);
     });
 
+  const resultsAccess = appSettings?.event_results_access || {};
+
+  const hasSocietaAccess = currentUser?.role === 'admin' || (
+    typeof resultsAccess.societa === 'boolean' ? resultsAccess.societa : (
+      resultsAccess.societa?.enabled && (
+        resultsAccess.societa.accessType === 'all' || 
+        (resultsAccess.societa.accessType === 'specific' && resultsAccess.societa.allowedSocieties?.includes(currentUser?.society))
+      )
+    )
+  );
+
+  const hasTiratoriAccess = currentUser?.role === 'admin' || (
+    typeof resultsAccess.tiratori === 'boolean' ? resultsAccess.tiratori : (
+      resultsAccess.tiratori?.enabled && (
+        resultsAccess.tiratori.accessType === 'all' || 
+        (resultsAccess.tiratori.accessType === 'specific' && resultsAccess.tiratori.allowedSocieties?.includes(currentUser?.society))
+      )
+    )
+  );
+
   return (
     <div className="space-y-6">
       {/* Overlay for mobile menu */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] sm:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] sm:hidden transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Tab Switcher - Mobile (Custom Elegant Dropdown) */}
       {!hideTabs && (
-        <div className="sm:hidden sticky top-16 z-[46] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
+        <div className="sm:hidden sticky top-16 z-[30] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
@@ -1775,6 +1812,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
                 <i className={`fas ${
                   activeTab === 'results' ? 'fa-history' :
+                  activeTab === 'event-results' ? 'fa-trophy' :
                   activeTab === 'events' ? 'fa-calendar-alt' :
                   activeTab === 'halloffame' ? 'fa-trophy' :
                   activeTab === 'notifications' ? 'fa-bell' :
@@ -1785,7 +1823,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 }`}></i>
               </div>
               <span className="uppercase tracking-widest text-[10px] font-black">
-                {activeTab === 'results' ? 'Risultati' :
+                {activeTab === 'results' ? 'Risultati Individuali' :
+                 activeTab === 'event-results' ? 'Classifiche Risultati' :
                  activeTab === 'events' ? 'Gare' :
                  activeTab === 'halloffame' ? 'Hall of Fame' :
                  activeTab === 'notifications' ? 'Notifiche' :
@@ -1799,15 +1838,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
 
           {isMobileMenuOpen && (
-            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[85]">
               <div className="p-2 grid grid-cols-1 gap-1">
-                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
                   <>
                     <button 
                       onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                     >
-                      <i className="fas fa-history w-5 text-center"></i> Risultati
+                      <i className="fas fa-history w-5 text-center"></i> Risultati Individuali
+                    </button>
+                    <button 
+                      onClick={() => { setActiveTab('event-results'); setIsMobileMenuOpen(false); }}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                    >
+                      <i className="fas fa-trophy w-5 text-center"></i> Classifiche Risultati
                     </button>
                     <button 
                       onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
@@ -1855,13 +1900,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
-        <div className="hidden sm:flex sticky top-[104px] z-40 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
-            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+        <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
+            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
                 onClick={() => setActiveTab('results')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati</span><span className="md:hidden">Ris.</span>
+                <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati Individuali</span><span className="md:hidden">Ris. Ind.</span>
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
+              <button 
+                onClick={() => setActiveTab('event-results')}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Classifiche Risultati</span><span className="md:hidden">Class. Ris.</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1929,6 +1982,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             onDisconnectDrive={onDisconnectDrive}
             onSaveDrive={onSaveDrive}
             onLoadDrive={onLoadDrive}
+            appSettings={appSettings}
+            onSettingsUpdate={onSettingsUpdate}
+            societies={societies}
           />
         </div>
       ) : activeTab === 'halloffame' ? (
@@ -2022,7 +2078,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
-                    <input type="date" value={profileBirthDate} onChange={e => setProfileBirthDate(e.target.value)} disabled={currentUser?.role === 'user'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'user' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                    <input 
+                      type="date" 
+                      value={profileBirthDate} 
+                      onChange={e => {
+                        setProfileBirthDate(e.target.value);
+                        updateAutoQualification(e.target.value, profileQualification, setProfileQualification);
+                      }} 
+                      disabled={currentUser?.role === 'user'} 
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'user' ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono</label>
@@ -2526,7 +2591,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       ) : activeTab === 'societies' ? (
         <div className="space-y-2">
-          <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
+          <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
@@ -3009,8 +3074,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             user={currentUser} 
             token={token} 
             triggerConfirm={triggerConfirm} 
+            triggerToast={triggerToast}
             societies={societies} 
             restrictToSociety={true}
+            onCreateTeam={(ev) => {
+              setActiveTab('team');
+              setShowTeamForm(true);
+              setNewTeamCompetitionName(ev.name || '');
+              setNewTeamDiscipline(ev.discipline || '');
+              setNewTeamSociety(ev.location || '');
+              setNewTeamDate(ev.start_date ? ev.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        </div>
+      ) : activeTab === 'event-results' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <EventsManager 
+            user={currentUser} 
+            token={token} 
+            triggerConfirm={triggerConfirm} 
+            triggerToast={triggerToast}
+            societies={societies} 
+            restrictToSociety={true}
+            initialViewMode="results"
+            hideViewSwitcher={true}
             onCreateTeam={(ev) => {
               setActiveTab('team');
               setShowTeamForm(true);
@@ -3712,7 +3800,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <input 
                       type="date" 
                       value={birthDate} 
-                      onChange={e => setBirthDate(e.target.value)} 
+                      onChange={e => {
+                        setBirthDate(e.target.value);
+                        updateAutoQualification(e.target.value, qualification, setQualification);
+                      }} 
                       disabled={currentUser?.role === 'society' && !!editingUser}
                       className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
                     />
@@ -3723,7 +3814,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="tel" 
                       value={phone} 
                       onChange={e => setPhone(e.target.value)} 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" 
+                      disabled={currentUser?.role === 'society'}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} 
                     />
                   </div>
                 </div>

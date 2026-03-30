@@ -329,7 +329,9 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
                   <div className="text-right">
                     <p className="text-[10px] text-slate-500 font-bold uppercase">Media</p>
                     <div className={`text-2xl font-black ${comp.discipline === Discipline.TRAINING ? 'text-blue-500' : 'text-orange-500'}`}>
-                      {comp.averagePerSeries.toFixed(1)}
+                      {(comp.scores.filter(s => s > 0).length > 0 
+                        ? (comp.scores.reduce((a, b) => a + b, 0) / comp.scores.filter(s => s > 0).length) 
+                        : 0).toFixed(1)}
                     </div>
                   </div>
                 </div>
@@ -656,7 +658,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
 
   return (
     <div className="space-y-2">
-      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-xl font-bold text-white flex items-center gap-2"><i className="fas fa-list-ul text-orange-600"></i>Cronologia Attività</h2>
           <div className="flex items-center gap-3 self-start sm:self-auto">

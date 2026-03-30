@@ -3,34 +3,45 @@ import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { SocietyEvent, Discipline } from '../types';
 import SocietySearch from './SocietySearch';
+import EventResultsManager from './EventResultsManager';
 
 interface EventsManagerProps {
   user: any;
   token: string;
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
+  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   societies: any[];
   onParticipate?: (event: SocietyEvent) => void;
   onCreateTeam?: (event: SocietyEvent) => void;
   restrictToSociety?: boolean;
   initialEventId?: string | null;
   onInitialEventHandled?: () => void;
+  initialViewMode?: 'list' | 'calendar' | 'results';
+  hideViewSwitcher?: boolean;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', hideViewSwitcher = false }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<SocietyEvent | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results'>(initialViewMode);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<SocietyEvent | null>(null);
+  const [managingResultsEvent, setManagingResultsEvent] = useState<SocietyEvent | null>(null);
+  const [viewingResultsEvent, setViewingResultsEvent] = useState<SocietyEvent | null>(null);
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [showFilters, setShowFilters] = useState(false);
   const [filterSociety, setFilterSociety] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
+
+  useEffect(() => {
+    setViewMode(initialViewMode);
+  }, [initialViewMode]);
 
   useEffect(() => {
     if (initialEventId && events.length > 0) {
@@ -62,6 +73,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
   const filteredEvents = React.useMemo(() => {
     const filtered = events.filter(ev => {
+      if (viewMode === 'results' && (!ev.result_count || Number(ev.result_count) === 0)) return false;
       if (restrictToSociety && user?.role === 'society') {
         if (ev.location !== user.society) return false;
       }
@@ -70,6 +82,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       if (filterMonth) {
         const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
         if (evMonth !== filterMonth) return false;
+      }
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        return ev.name.toLowerCase().includes(search) || ev.location.toLowerCase().includes(search);
       }
       return true;
     });
@@ -113,7 +129,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       // If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user, nextUpcomingEventId]);
+  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user, nextUpcomingEventId, viewMode]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
@@ -202,6 +218,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [notes, setNotes] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
   const [registrationLink, setRegistrationLink] = useState('');
+  const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
 
   const fetchEvents = async (signal?: AbortSignal) => {
     if (!token) {
@@ -231,6 +248,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     return () => controller.abort();
   }, [token]);
 
+  useEffect(() => {
+    if (managingResultsEvent) {
+      const updated = events.find(e => e.id === managingResultsEvent.id);
+      if (updated) setManagingResultsEvent(updated);
+    }
+    if (viewingResultsEvent) {
+      const updated = events.find(e => e.id === viewingResultsEvent.id);
+      if (updated) setViewingResultsEvent(updated);
+    }
+  }, [events]);
+
   const handleEdit = (ev: SocietyEvent) => {
     setEditingEvent(ev);
     setName(ev.name);
@@ -245,8 +273,35 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setNotes(ev.notes || '');
     setPosterUrl(ev.poster_url || '');
     setRegistrationLink(ev.registration_link || '');
+    setRankingPreferenceOverride(ev.ranking_preference_override || null);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleReopen = async (eventId: string) => {
+    triggerConfirm(
+      'Riapri Gara',
+      'Sei sicuro di voler riaprire questa gara? La società potrà nuovamente modificare i risultati.',
+      async () => {
+        try {
+          const res = await fetch(`/api/events/${eventId}/reopen`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            fetchEvents();
+          } else {
+            const err = await res.json();
+            alert(err.error || 'Errore durante la riapertura della gara');
+          }
+        } catch (err) {
+          console.error('Error reopening event:', err);
+          alert('Errore durante la riapertura della gara');
+        }
+      },
+      'Riapri',
+      'primary'
+    );
   };
 
   const resetForm = () => {
@@ -263,6 +318,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setNotes('');
     setPosterUrl('');
     setRegistrationLink('');
+    setRankingPreferenceOverride(null);
     setShowForm(false);
   };
 
@@ -282,7 +338,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       cost,
       notes,
       poster_url: posterUrl,
-      registration_link: registrationLink
+      registration_link: registrationLink,
+      ranking_preference_override: rankingPreferenceOverride
     };
 
     try {
@@ -689,11 +746,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
   return (
     <div className="space-y-2">
-      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-calendar-alt text-orange-500"></i> Gestione Eventi
+              <i className={`fas ${viewMode === 'results' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-500`}></i> 
+              {viewMode === 'results' ? 'Risultati Gare' : 'Gestione Eventi'}
             </h2>
             
             {!showForm && (
@@ -739,19 +797,38 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 )}
               </button>
 
-              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-                <button 
-                  onClick={() => setViewMode('list')} 
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                >
-                  <i className="fas fa-list"></i> Elenco
-                </button>
-                <button 
-                  onClick={() => setViewMode('calendar')} 
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                >
-                  <i className="fas fa-calendar-alt"></i> Calendario
-                </button>
+              {!hideViewSwitcher && (
+                <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+                  <button 
+                    onClick={() => setViewMode('list')} 
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                  >
+                    <i className="fas fa-list"></i> Elenco
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('calendar')} 
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                  >
+                    <i className="fas fa-calendar-alt"></i> Calendario
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('results')} 
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                  >
+                    <i className="fas fa-trophy"></i> Risultati
+                  </button>
+                </div>
+              )}
+
+              <div className="flex-1 min-w-[200px] relative group">
+                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-orange-500 transition-colors"></i>
+                <input 
+                  type="text" 
+                  placeholder="Cerca gara o società..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-11 pr-4 py-2 text-xs font-black uppercase tracking-widest text-white focus:border-orange-500 outline-none transition-all placeholder:text-slate-600"
+                />
               </div>
             </div>
           )}
@@ -920,6 +997,55 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all resize-none"></textarea>
             </div>
+
+            {/* Ranking Preference Override */}
+            {type !== 'Allenamento' && (
+              <div className="col-span-full p-4 bg-orange-600/10 rounded-2xl border border-orange-500/20 space-y-4">
+                <div className="flex items-center gap-3 text-orange-500">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <h4 className="text-xs font-black uppercase tracking-widest">Precedenza Classifica (Override Evento)</h4>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                  Seleziona un'opzione per forzare la classifica di questa gara a prescindere dalla scelta del tiratore. 
+                  Se impostato su "NESSUNO", verrà rispettata la scelta individuale di ogni tiratore.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRankingPreferenceOverride(null)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                      rankingPreferenceOverride === null 
+                        ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
+                    }`}
+                  >
+                    Nessuno
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRankingPreferenceOverride('categoria')}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                      rankingPreferenceOverride === 'categoria' 
+                        ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
+                    }`}
+                  >
+                    Forza Categoria
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRankingPreferenceOverride('qualifica')}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                      rankingPreferenceOverride === 'qualifica' 
+                        ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
+                    }`}
+                  >
+                    Forza Qualifica
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t border-slate-800">
@@ -933,6 +1059,278 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         </form>
       ) : viewMode === 'calendar' ? (
         renderCalendarView()
+      ) : viewMode === 'results' ? (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-2 mb-2">
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg">
+                <i className="fas fa-trophy"></i>
+              </div>
+              Classifiche e Risultati
+            </h2>
+            <p className="text-slate-500 text-sm font-medium ml-13">
+              Consulta i risultati ufficiali delle gare concluse e visualizza i dettagli dei punteggi.
+            </p>
+          </div>
+
+          {user?.role === 'admin' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <th className="py-3 px-4">Nome Gara</th>
+                    <th className="py-3 px-4">Società</th>
+                    <th className="py-3 px-4">Data</th>
+                    <th className="py-3 px-4">Disciplina</th>
+                    <th className="py-3 px-4">Stato</th>
+                    <th className="py-3 px-4 text-right">Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-20 text-center bg-slate-950/30 rounded-3xl border-2 border-dashed border-slate-800">
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center text-slate-700 text-2xl">
+                            <i className="fas fa-clipboard-list"></i>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Nessun risultato disponibile</p>
+                            <p className="text-slate-600 text-xs mt-1">Le classifiche verranno pubblicate al termine delle gare.</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEvents.map(ev => (
+                      <tr key={ev.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors group">
+                        <td className="py-3 px-4">
+                          <div 
+                            className="flex items-center gap-3 cursor-pointer hover:text-orange-500 transition-colors"
+                            onClick={() => setManagingResultsEvent(ev)}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center text-xs shadow-inner border border-orange-500/20">
+                              <i className="fas fa-trophy"></i>
+                            </div>
+                            <span className="text-sm text-white font-bold uppercase tracking-tight">{ev.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">
+                          <div className="flex items-center gap-1.5">
+                            <i className="fas fa-map-marker-alt text-orange-500/50"></i>
+                            {ev.location}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">
+                          {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-1 rounded-md bg-slate-800 text-slate-400 text-[9px] font-black uppercase tracking-widest border border-slate-700">
+                            {ev.discipline}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {ev.status === 'validated' ? (
+                            <span className="px-2 py-1 rounded-md bg-green-600/20 text-green-500 text-[9px] font-black uppercase tracking-widest border border-green-500/30">
+                              Convalidata
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-md bg-orange-600/20 text-orange-500 text-[9px] font-black uppercase tracking-widest border border-orange-500/30">
+                              In Corso
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => setManagingResultsEvent(ev)}
+                              className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all shadow-lg border border-slate-700"
+                              title="Gestisci Risultati"
+                            >
+                              <i className="fas fa-list-ol text-xs"></i>
+                            </button>
+                            <button 
+                              onClick={() => handleEdit(ev)}
+                              className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
+                              title="Modifica Gara"
+                            >
+                              <i className="fas fa-edit text-xs"></i>
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(ev.id)}
+                              className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
+                              title="Elimina Gara"
+                            >
+                              <i className="fas fa-trash-alt text-xs"></i>
+                            </button>
+                            {ev.status === 'validated' && (
+                              <button 
+                                onClick={() => handleReopen(ev.id)}
+                                className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/5"
+                                title="Riapri per modifica"
+                              >
+                                <i className="fas fa-unlock text-xs"></i>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : user?.role === 'user' ? (
+            <div className="space-y-8">
+              {filteredEvents.length === 0 ? (
+                <div className="py-20 text-center bg-slate-950/30 rounded-3xl border-2 border-dashed border-slate-800 flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center text-slate-700 text-2xl">
+                    <i className="fas fa-clipboard-list"></i>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Nessun risultato disponibile</p>
+                    <p className="text-slate-600 text-xs mt-1">Le classifiche verranno pubblicate al termine delle gare.</p>
+                  </div>
+                </div>
+              ) : (
+                Object.entries(
+                  filteredEvents.reduce((acc, ev) => {
+                    const location = ev.location || 'Altra Località';
+                    if (!acc[location]) acc[location] = [];
+                    acc[location].push(ev);
+                    return acc;
+                  }, {} as Record<string, typeof filteredEvents>)
+                ).map(([location, events]) => (
+                  <div key={location} className="bg-slate-900/30 border border-slate-800/50 rounded-3xl overflow-hidden">
+                    <div className="bg-slate-900/80 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-3">
+                        <i className="fas fa-map-marker-alt text-orange-500"></i>
+                        {location}
+                      </h3>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
+                        {events.length} {events.length === 1 ? 'Gara' : 'Gare'}
+                      </span>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {events.map(ev => (
+                        <div 
+                          key={ev.id} 
+                          onClick={() => setViewingResultsEvent(ev)}
+                          className="group bg-slate-950/50 border border-slate-800/50 rounded-2xl p-4 hover:border-orange-500/30 transition-all cursor-pointer hover:bg-slate-900/50"
+                        >
+                          <div className="flex justify-between items-start gap-3 mb-3">
+                            <h4 className="font-bold text-white text-sm group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight">{ev.name}</h4>
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 text-slate-500 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shrink-0">
+                              <i className="fas fa-chevron-right text-[10px]"></i>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="flex items-center gap-1.5">
+                              <i className="far fa-calendar text-orange-500/70 text-[10px]"></i>
+                              <span className="text-[10px] font-bold text-slate-400">{new Date(ev.start_date || '').toLocaleDateString('it-IT')}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <i className="fas fa-bullseye text-orange-500/70 text-[10px]"></i>
+                              <span className="text-[10px] font-bold text-slate-400">{ev.targets}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-800/50">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-900 text-slate-500 text-[9px] font-black uppercase tracking-widest border border-slate-800">
+                              {ev.discipline}
+                            </span>
+                            <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+                              Vedi Classifica
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.length === 0 ? (
+                <div className="col-span-full py-20 text-center bg-slate-950/30 rounded-3xl border-2 border-dashed border-slate-800 flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center text-slate-700 text-2xl">
+                    <i className="fas fa-clipboard-list"></i>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Nessun risultato disponibile</p>
+                    <p className="text-slate-600 text-xs mt-1">Le classifiche verranno pubblicate al termine delle gare.</p>
+                  </div>
+                </div>
+              ) : (
+                filteredEvents.map(ev => {
+                  const canManage = user?.role === 'admin' || (user?.role === 'society' && (ev.location === user?.society || ev.created_by === user?.id));
+                  return (
+                    <div 
+                      key={ev.id} 
+                      onClick={() => {
+                        if (canManage) {
+                          setManagingResultsEvent(ev);
+                        } else {
+                          setViewingResultsEvent(ev);
+                        }
+                      }}
+                      className="group relative bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden hover:border-orange-500/50 transition-all duration-300 cursor-pointer hover:shadow-2xl hover:shadow-orange-500/10"
+                    >
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h3 className="font-black text-white text-xl group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight mb-1">{ev.name}</h3>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                              <i className="fas fa-map-marker-alt text-orange-500/50"></i> {ev.location}
+                            </p>
+                          </div>
+                          <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-lg">
+                            <i className="fas fa-chevron-right"></i>
+                          </div>
+                        </div>
+  
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          <div className="bg-slate-950/50 rounded-2xl p-3 border border-slate-800/50">
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Data Gara</p>
+                            <p className="text-sm font-bold text-white flex items-center gap-2">
+                              <i className="far fa-calendar text-orange-500"></i>
+                              {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                            </p>
+                          </div>
+                          <div className="bg-slate-950/50 rounded-2xl p-3 border border-slate-800/50">
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Piattelli</p>
+                            <p className="text-sm font-bold text-white flex items-center gap-2">
+                              <i className="fas fa-bullseye text-orange-500"></i>
+                              {ev.targets}
+                            </p>
+                          </div>
+                        </div>
+  
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
+                          <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                            {ev.discipline}
+                          </span>
+                          
+                          <div className="flex items-center gap-2">
+                            <button className="text-orange-500 text-xs font-black uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                              {canManage ? 'Gestisci' : 'Vedi Classifica'}
+                              <i className="fas fa-arrow-right"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Decorative element */}
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-orange-500/10 transition-colors"></div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
           {user?.role === 'admin' && filteredEvents.length > 0 && (
@@ -1199,6 +1597,31 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   </button>
                 )}
                 
+                <button 
+                  onClick={() => {
+                    setViewingResultsEvent(selectedEvent);
+                    setSelectedEvent(null);
+                  }} 
+                  className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90 shrink-0"
+                  title="Classifica"
+                >
+                  <i className="fas fa-trophy text-xl"></i>
+                </button>
+
+                {(user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
+                  <button 
+                    onClick={() => {
+                      setManagingResultsEvent(selectedEvent);
+                      setSelectedEvent(null);
+                    }} 
+                    className="flex-1 h-14 rounded-2xl bg-orange-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-90"
+                    title="Gestisci Risultati"
+                  >
+                    <i className="fas fa-list-ol"></i>
+                    <span>Risultati</span>
+                  </button>
+                )}
+
                 {(user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
                   <>
                     <button 
@@ -1206,7 +1629,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         handleEdit(selectedEvent);
                         setSelectedEvent(null);
                       }} 
-                      className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90"
+                      className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90 shrink-0"
                       title="Modifica"
                     >
                       <i className="fas fa-edit text-xl"></i>
@@ -1216,7 +1639,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         handleDelete(selectedEvent.id);
                         setSelectedEvent(null);
                       }} 
-                      className="w-14 h-14 rounded-2xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all border border-red-900/30 active:scale-90"
+                      className="w-14 h-14 rounded-2xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all border border-red-900/30 active:scale-90 shrink-0"
                       title="Elimina"
                     >
                       <i className="fas fa-trash-alt text-xl"></i>
@@ -1229,8 +1652,33 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         </div>,
         document.body
       )}
+      
+      {managingResultsEvent && (
+        <EventResultsManager
+          event={managingResultsEvent}
+          token={token}
+          user={user}
+          onClose={() => setManagingResultsEvent(null)}
+          triggerConfirm={triggerConfirm}
+          triggerToast={triggerToast}
+          onEventUpdate={fetchEvents}
+        />
+      )}
+
+      {viewingResultsEvent && (
+        <EventResultsManager
+          event={viewingResultsEvent}
+          token={token}
+          user={user}
+          onClose={() => setViewingResultsEvent(null)}
+          readOnly={true}
+          triggerConfirm={triggerConfirm}
+          triggerToast={triggerToast}
+        />
+      )}
+
       {/* Floating Add Button for Events */}
-      {(user?.role === 'admin' || user?.role === 'society') && (
+      {(user?.role === 'admin' || user?.role === 'society') && viewMode !== 'results' && (
         <button 
           onClick={() => {
             if (!showForm) {

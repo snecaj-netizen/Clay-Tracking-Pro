@@ -18,19 +18,59 @@ interface SettingsProps {
   onDisconnectDrive: () => void;
   onSaveDrive: () => void;
   onLoadDrive: () => void;
+  appSettings?: any;
+  onSettingsUpdate?: () => void;
+  societies?: any[];
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
   user, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport, 
-  syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive 
+  syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
+  appSettings, onSettingsUpdate, societies
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(sessionStorage.getItem('settings_unlocked') === 'true');
   const [passError, setPassError] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const currentOrigin = window.location.origin;
+
+  const handleUpdateAppSetting = async (key: string, value: any) => {
+    if (!token) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ key, value })
+      });
+      if (res.ok) {
+        onSettingsUpdate?.();
+      }
+    } catch (err) {
+      console.error('Error updating setting:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const defaultAccess = { enabled: false, accessType: 'all', allowedSocieties: [] };
+  
+  const normalizeAccess = (access: any) => {
+    if (typeof access === 'boolean') {
+      return { enabled: access, accessType: 'all', allowedSocieties: [] };
+    }
+    return { ...defaultAccess, ...access };
+  };
+
+  const resultsAccess = appSettings?.event_results_access || {};
+  const tiratoriAccess = normalizeAccess(resultsAccess.tiratori);
+  const societaAccess = normalizeAccess(resultsAccess.societa);
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,6 +222,170 @@ const Settings: React.FC<SettingsProps> = ({
                       </div>
                     </div>
                   )}
+                </div>
+              </section>
+
+              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
+                <div className="flex items-center gap-3 mb-6">
+                  <i className="fas fa-shield-alt text-orange-500 text-xl"></i>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tight">Accesso Risultati Gare</h2>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-black text-white uppercase tracking-tight">Accesso Tiratori</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Permetti ai tiratori di consultare i risultati delle gare</p>
+                      </div>
+                      <button 
+                        onClick={() => handleUpdateAppSetting('event_results_access', { ...resultsAccess, tiratori: { ...tiratoriAccess, enabled: !tiratoriAccess.enabled } })}
+                        disabled={isSaving}
+                        className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${tiratoriAccess.enabled ? 'bg-orange-600' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all ${tiratoriAccess.enabled ? 'left-8' : 'left-1'}`}></div>
+                      </button>
+                    </div>
+                    {tiratoriAccess.enabled && (
+                      <div className="mt-4 pt-4 border-t border-slate-800 space-y-4">
+                        <div className="flex flex-wrap gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="tiratori_access_type" 
+                              checked={tiratoriAccess.accessType === 'all'}
+                              onChange={() => handleUpdateAppSetting('event_results_access', {
+                                ...resultsAccess,
+                                tiratori: { ...tiratoriAccess, accessType: 'all' }
+                              })}
+                              className="accent-orange-600"
+                            />
+                            <span className="text-xs font-bold text-white uppercase">Tutti i tiratori</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="tiratori_access_type" 
+                              checked={tiratoriAccess.accessType === 'specific'}
+                              onChange={() => handleUpdateAppSetting('event_results_access', {
+                                ...resultsAccess,
+                                tiratori: { ...tiratoriAccess, accessType: 'specific' }
+                              })}
+                              className="accent-orange-600"
+                            />
+                            <span className="text-xs font-bold text-white uppercase">Solo alcune società</span>
+                          </label>
+                        </div>
+                        
+                        {tiratoriAccess.accessType === 'specific' && (
+                          <div className="mt-3 space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {societies?.map(soc => (
+                              <label key={soc.id} className="flex items-center gap-3 p-2 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                                <input 
+                                  type="checkbox"
+                                  checked={tiratoriAccess.allowedSocieties.includes(soc.name)}
+                                  onChange={(e) => {
+                                    const newSocieties = e.target.checked 
+                                      ? [...tiratoriAccess.allowedSocieties, soc.name]
+                                      : tiratoriAccess.allowedSocieties.filter((s: string) => s !== soc.name);
+                                    handleUpdateAppSetting('event_results_access', {
+                                      ...resultsAccess,
+                                      tiratori: { ...tiratoriAccess, allowedSocieties: newSocieties }
+                                    });
+                                  }}
+                                  className="w-4 h-4 rounded border-slate-700 text-orange-600 focus:ring-orange-600 focus:ring-offset-slate-900 bg-slate-950"
+                                />
+                                <span className="text-xs font-bold text-slate-300">{soc.name}</span>
+                              </label>
+                            ))}
+                            {(!societies || societies.length === 0) && (
+                              <p className="text-xs text-slate-500 italic">Nessuna società trovata.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-black text-white uppercase tracking-tight">Accesso Società</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Permetti alle società di consultare i risultati delle gare</p>
+                      </div>
+                      <button 
+                        onClick={() => handleUpdateAppSetting('event_results_access', { ...resultsAccess, societa: { ...societaAccess, enabled: !societaAccess.enabled } })}
+                        disabled={isSaving}
+                        className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${societaAccess.enabled ? 'bg-orange-600' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all ${societaAccess.enabled ? 'left-8' : 'left-1'}`}></div>
+                      </button>
+                    </div>
+                    {societaAccess.enabled && (
+                      <div className="mt-4 pt-4 border-t border-slate-800 space-y-4">
+                        <div className="flex flex-wrap gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="societa_access_type" 
+                              checked={societaAccess.accessType === 'all'}
+                              onChange={() => handleUpdateAppSetting('event_results_access', {
+                                ...resultsAccess,
+                                societa: { ...societaAccess, accessType: 'all' }
+                              })}
+                              className="accent-orange-600"
+                            />
+                            <span className="text-xs font-bold text-white uppercase">Tutte le società</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="societa_access_type" 
+                              checked={societaAccess.accessType === 'specific'}
+                              onChange={() => handleUpdateAppSetting('event_results_access', {
+                                ...resultsAccess,
+                                societa: { ...societaAccess, accessType: 'specific' }
+                              })}
+                              className="accent-orange-600"
+                            />
+                            <span className="text-xs font-bold text-white uppercase">Solo alcune società</span>
+                          </label>
+                        </div>
+                        
+                        {societaAccess.accessType === 'specific' && (
+                          <div className="mt-3 space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {societies?.map(soc => (
+                              <label key={soc.id} className="flex items-center gap-3 p-2 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                                <input 
+                                  type="checkbox"
+                                  checked={societaAccess.allowedSocieties.includes(soc.name)}
+                                  onChange={(e) => {
+                                    const newSocieties = e.target.checked 
+                                      ? [...societaAccess.allowedSocieties, soc.name]
+                                      : societaAccess.allowedSocieties.filter((s: string) => s !== soc.name);
+                                    handleUpdateAppSetting('event_results_access', {
+                                      ...resultsAccess,
+                                      societa: { ...societaAccess, allowedSocieties: newSocieties }
+                                    });
+                                  }}
+                                  className="w-4 h-4 rounded border-slate-700 text-orange-600 focus:ring-orange-600 focus:ring-offset-slate-900 bg-slate-950"
+                                />
+                                <span className="text-xs font-bold text-slate-300">{soc.name}</span>
+                              </label>
+                            ))}
+                            {(!societies || societies.length === 0) && (
+                              <p className="text-xs text-slate-500 italic">Nessuna società trovata.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-6 p-4 bg-orange-600/5 border border-orange-600/10 rounded-2xl">
+                  <p className="text-[10px] text-orange-500/80 font-bold uppercase tracking-widest text-center italic leading-relaxed">
+                    Nota: L'amministratore ha sempre accesso completo a tutti i risultati, indipendentemente da queste impostazioni.
+                  </p>
                 </div>
               </section>
 

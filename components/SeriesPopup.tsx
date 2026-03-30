@@ -62,7 +62,8 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
       updatedDetailedScores[seriesIndex] = detailedScore;
 
       const totalScore = updatedScores.reduce((a, b) => a + b, 0);
-      const averagePerSeries = updatedScores.length > 0 ? totalScore / updatedScores.length : 0;
+      const completedSeriesCount = updatedScores.filter(s => s > 0).length || 1;
+      const averagePerSeries = totalScore / completedSeriesCount;
 
       const updatedComp: Competition = {
         ...competition,

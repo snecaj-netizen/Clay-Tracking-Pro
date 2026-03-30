@@ -30,20 +30,37 @@ const App: React.FC = () => {
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [cartridgeTypes, setCartridgeTypes] = useState<CartridgeType[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
-  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications'>(
+  const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | 'event-results'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
-  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | null>(null);
+  const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | 'event-results' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(null);
   const [initialSocietyName, setInitialSocietyName] = useState<string | null>(null);
+  const [appSettings, setAppSettings] = useState<any>({});
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTour, setShowTour] = useState(false);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setAppSettings(data);
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   useEffect(() => {
     if (user && !localStorage.getItem(`tour_completed_${user.id}`)) {
@@ -522,6 +539,7 @@ const App: React.FC = () => {
         onNavigate={handleNavigate} 
         onLogout={handleLogout}
         user={user}
+        appSettings={appSettings}
       />
       
       <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 flex-1 w-full ${view === 'ai-coach' ? 'flex flex-col pb-4 sm:pb-8' : 'pb-20 sm:pb-8'}`}>
@@ -611,12 +629,49 @@ const App: React.FC = () => {
               user={user} 
               token={token} 
               triggerConfirm={triggerConfirm} 
+              triggerToast={triggerToast}
               societies={societies} 
               onParticipate={handleParticipateInEvent}
               onCreateTeam={handleCreateTeamFromEvent}
               initialEventId={initialEventId}
               onInitialEventHandled={() => setInitialEventId(null)}
             />
+          </div>
+        )}
+
+        {view === 'event-results' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {(user?.role === 'admin' || (
+              typeof appSettings?.event_results_access?.tiratori === 'boolean' ? appSettings?.event_results_access?.tiratori : (
+                appSettings?.event_results_access?.tiratori?.enabled && (
+                  appSettings?.event_results_access?.tiratori?.accessType === 'all' || 
+                  (appSettings?.event_results_access?.tiratori?.accessType === 'specific' && appSettings?.event_results_access?.tiratori?.allowedSocieties?.includes(user?.society))
+                )
+              )
+            )) ? (
+              <EventsManager 
+                user={user} 
+                token={token} 
+                triggerConfirm={triggerConfirm} 
+                triggerToast={triggerToast}
+                societies={societies} 
+                onParticipate={handleParticipateInEvent}
+                onCreateTeam={handleCreateTeamFromEvent}
+                initialEventId={initialEventId}
+                onInitialEventHandled={() => setInitialEventId(null)}
+                initialViewMode="results"
+                hideViewSwitcher={true}
+              />
+            ) : (
+              <div className="text-center py-20">
+                <div className="bg-orange-600/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-orange-500">
+                  <i className="fas fa-lock text-3xl"></i>
+                </div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Accesso Limitato</h2>
+                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Questa sezione è attualmente riservata agli amministratori</p>
+                <button onClick={() => setView('history')} className="mt-8 bg-slate-800 hover:bg-slate-700 text-white font-black px-8 py-3 rounded-xl uppercase text-xs tracking-widest transition-all">Torna alla Home</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -650,9 +705,12 @@ const App: React.FC = () => {
               initialSocietyName={initialSocietyName || undefined}
               onCloseSocietyDetail={handleCloseSocietyDetail}
               onUserUpdate={handleUserUpdate}
+              triggerToast={triggerToast}
               societies={societies}
               hideTabs={true}
               onReplayTour={() => setShowTour(true)}
+              appSettings={appSettings}
+              onSettingsUpdate={fetchSettings}
             />
           </div>
         )}
@@ -693,6 +751,7 @@ const App: React.FC = () => {
               }}
               onDeleteCompetition={deleteCompetition}
               onUserUpdate={handleUserUpdate}
+              triggerToast={triggerToast}
               initialSocietyName={initialSocietyName || undefined}
               onCloseSocietyDetail={handleCloseSocietyDetail}
               societies={societies}
@@ -700,6 +759,8 @@ const App: React.FC = () => {
               onPrefillTeamUsed={() => setPrefillTeamData(null)}
               initialTab={initialAdminTab as any}
               onReplayTour={() => setShowTour(true)}
+              appSettings={appSettings}
+              onSettingsUpdate={fetchSettings}
             />
           </div>
         )}

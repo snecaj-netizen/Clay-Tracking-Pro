@@ -7,9 +7,10 @@ interface HeaderProps {
   onNavigate: (view: any, tab?: string) => void;
   onLogout?: () => void;
   user?: any;
+  appSettings?: any;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings }) => {
   const [isLightMode, setIsLightMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -44,8 +45,28 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     }
   };
 
+  const resultsAccess = appSettings?.event_results_access || {};
+
+  const hasSocietaAccess = user?.role === 'admin' || (
+    typeof resultsAccess.societa === 'boolean' ? resultsAccess.societa : (
+      resultsAccess.societa?.enabled && (
+        resultsAccess.societa.accessType === 'all' || 
+        (resultsAccess.societa.accessType === 'specific' && resultsAccess.societa.allowedSocieties?.includes(user?.society))
+      )
+    )
+  );
+
+  const hasTiratoriAccess = user?.role === 'admin' || (
+    typeof resultsAccess.tiratori === 'boolean' ? resultsAccess.tiratori : (
+      resultsAccess.tiratori?.enabled && (
+        resultsAccess.tiratori.accessType === 'all' || 
+        (resultsAccess.tiratori.accessType === 'specific' && resultsAccess.tiratori.allowedSocieties?.includes(user?.society))
+      )
+    )
+  );
+
   const menuItems = user?.role === 'society' ? [
-    { id: 'admin', tab: 'results', label: 'Risultati', icon: 'fa-poll' },
+    ...(hasSocietaAccess ? [{ id: 'admin', tab: 'results', label: 'Risultati', icon: 'fa-poll' }] : []),
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
@@ -55,6 +76,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
     { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
+    ...(hasTiratoriAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
   ];
 
@@ -63,12 +85,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
       {/* Overlay for mobile menu - Moved outside header for better event handling */}
       {isMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] sm:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[95] sm:hidden transition-opacity duration-300"
           onClick={() => setIsMenuOpen(false)}
         />
       )}
       
-      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-50">
+      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[100]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">

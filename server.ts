@@ -33,6 +33,23 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : undefined
 });
 
+// Helper to calculate qualification based on age
+const getAutoQualification = (birthDate: string | null, currentQual: string | null): string | null => {
+  if (!birthDate) return currentQual;
+  const birthDateObj = new Date(birthDate);
+  const birthYear = birthDateObj.getFullYear();
+  if (isNaN(birthYear)) return currentQual;
+  
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - birthYear;
+  
+  if (age >= 56 && age <= 65) return 'Senior';
+  if (age >= 66 && age <= 72) return 'Veterani';
+  if (age > 72) return 'Master';
+  
+  return currentQual;
+};
+
 const initDB = async () => {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ DATABASE_URL environment variable is missing. Database will not be initialized.');
@@ -108,15 +125,31 @@ const initDB = async () => {
         usedcartridges TEXT,
         chokes TEXT,
         team_name TEXT,
-        team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL
+        team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+        event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
+        shoot_off INTEGER,
+        category_at_time TEXT,
+        qualification_at_time TEXT,
+        society_at_time TEXT,
+        ranking_preference TEXT DEFAULT 'categoria'
       );
     `);
 
     // Check if chokes column exists, if not add it
     try {
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS detailedscores TEXT");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS chokes TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_name TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS event_id TEXT REFERENCES events(id) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS shoot_off INTEGER");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS category_at_time TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS qualification_at_time TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS society_at_time TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS ranking_preference TEXT DEFAULT 'categoria'");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS ranking_preference_override TEXT");
     } catch (e) {
-      console.log("Column chokes might already exist or ALTER TABLE failed:", e);
+      console.log("Some columns might already exist or ALTER TABLE failed:", e);
     }
 
     await pool.query(`
@@ -315,9 +348,36 @@ const initDB = async () => {
 
     try {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_link TEXT`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS prize_settings TEXT`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open'`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_logic TEXT DEFAULT 'individual'`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_preference_override TEXT`);
     } catch (e) {
-      console.log("Error adding registration_link to events:", e);
+      console.log("Error adding columns to events:", e);
     }
+
+    // Add status to competitions
+    try {
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open'");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS hidden_from_user BOOLEAN DEFAULT FALSE");
+    } catch (e) {
+      console.log("Error adding columns to competitions:", e);
+    }
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Initialize default settings
+    await pool.query(`
+      INSERT INTO app_settings (key, value)
+      VALUES ('event_results_access', '{"tiratori": false, "societa": false}'::jsonb)
+      ON CONFLICT (key) DO NOTHING;
+    `);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
@@ -499,6 +559,20 @@ const initDB = async () => {
       console.log("Error migrating societies:", e);
     }
 
+    // Migration: Update qualifications for existing users based on birth_date
+    try {
+      const { rows: existingUsers } = await pool.query("SELECT id, birth_date, qualification FROM users WHERE birth_date IS NOT NULL AND birth_date != ''");
+      for (const u of existingUsers) {
+        const newQual = getAutoQualification(u.birth_date, u.qualification);
+        if (newQual !== u.qualification) {
+          await pool.query("UPDATE users SET qualification = $1 WHERE id = $2", [newQual, u.id]);
+        }
+      }
+      console.log("✅ Qualifications migration completed.");
+    } catch (err) {
+      console.error("❌ Error in qualifications migration:", err);
+    }
+
     console.log('Connected to PostgreSQL database and initialized tables.');
   } catch (err) {
     console.error('Error initializing database', err);
@@ -582,7 +656,7 @@ initDB().then(() => {
       // Find competitions scheduled for today that have no score (totalscore = 0)
       // We check if today is the last day of the competition (enddate if exists, otherwise date)
       const { rows: pendingCompetitions } = await pool.query(
-        "SELECT user_id, name FROM competitions WHERE COALESCE(NULLIF(enddate, ''), date) = $1 AND totalscore = 0",
+        "SELECT user_id, name FROM competitions WHERE COALESCE(NULLIF(enddate, ''), date) = $1 AND totalscore = 0 AND hidden_from_user = FALSE",
         [todayStr]
       );
 
@@ -867,6 +941,8 @@ app.post('/api/auth/login', async (req, res) => {
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { name, surname, email, password, category, qualification, society, fitav_card, avatar, birth_date, phone } = req.body;
   
+  const finalQualification = getAutoQualification(birth_date, qualification);
+
   if (req.user.role === 'society' && !fitav_card) {
     return res.status(400).json({ error: 'Il Codice Società è obbligatorio' });
   }
@@ -877,12 +953,12 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
         "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, birth_date = $10, phone = $11 WHERE id = $12",
-        [name, surname, email, hash, category, qualification, society, fitav_card, avatar, birth_date || null, phone || null, req.user.id]
+        [name, surname, email, hash, category, finalQualification, society, fitav_card, avatar, birth_date || null, phone || null, req.user.id]
       );
     } else {
       await pool.query(
         "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, fitav_card = $7, avatar = $8, birth_date = $9, phone = $10 WHERE id = $11",
-        [name, surname, email, category, qualification, society, fitav_card, avatar, birth_date || null, phone || null, req.user.id]
+        [name, surname, email, category, finalQualification, society, fitav_card, avatar, birth_date || null, phone || null, req.user.id]
       );
     }
     res.json({ success: true });
@@ -1242,6 +1318,8 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date, phone } = req.body;
   
+  const finalQualification = getAutoQualification(birth_date, qualification);
+
   if (role === 'society' && !fitav_card) {
     return res.status(400).json({ error: 'Il Codice Società (Tessera Fitav) è obbligatorio per gli utenti società' });
   }
@@ -1261,7 +1339,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   try {
     const { rows } = await pool.query(
       "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
-      [name, surname, email, hash, role || 'user', category, qualification, society, fitav_card, avatar || null, birth_date || null, phone || null, 'active']
+      [name, surname, email, hash, role || 'user', category, finalQualification, society, fitav_card, avatar || null, birth_date || null, phone || null, 'active']
     );
     
     // Notify Admin about new user
@@ -1269,7 +1347,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     const creatorName = req.user.role === 'society' ? `la società ${req.user.society}` : 'l\'amministratore';
     sendPushNotification([], "Nuovo Utente Registrato", `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorName}.`, `/admin?tab=users`);
 
-    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification, society, fitav_card, avatar, birth_date, phone, status: 'active' });
+    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, fitav_card, avatar, birth_date, phone, status: 'active' });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -1311,18 +1389,20 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
         
         if (existing.length > 0) {
           // Update profile
+          const finalQual = getAutoQualification(u.birth_date, u.qualification);
           await client.query(
             "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, fitav_card = $6, birth_date = $7, phone = $8 WHERE id = $9",
-            [u.name, u.surname, u.category, u.qualification, societyName, u.fitav_card, u.birth_date || null, u.phone || null, existing[0].id]
+            [u.name, u.surname, u.category, finalQual, societyName, u.fitav_card, u.birth_date || null, u.phone || null, existing[0].id]
           );
           results.updated++;
         } else {
           // Create new
+          const finalQual = getAutoQualification(u.birth_date, u.qualification);
           const salt = bcrypt.genSaltSync(10);
           const hash = bcrypt.hashSync(u.password || u.fitav_card || 'Password123!', salt);
           await client.query(
             "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')",
-            [u.name, u.surname, u.email, hash, u.role || 'user', u.category, u.qualification, societyName, u.fitav_card, u.birth_date || null, u.phone || null]
+            [u.name, u.surname, u.email, hash, u.role || 'user', u.category, finalQual, societyName, u.fitav_card, u.birth_date || null, u.phone || null]
           );
           results.created++;
         }
@@ -1345,6 +1425,8 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar, birth_date, phone, status } = req.body;
   
+  const finalQualification = getAutoQualification(birth_date, qualification);
+
   if (role === 'society' && !fitav_card) {
     return res.status(400).json({ error: 'Il Codice Società (Tessera Fitav) è obbligatorio per gli utenti società' });
   }
@@ -1376,12 +1458,12 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
         "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10, birth_date = $11, phone = $12, status = $13 WHERE id = $14",
-        [name, surname, email, role, hash, category, qualification, society, fitav_card, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
+        [name, surname, email, role, hash, category, finalQualification, society, fitav_card, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
       );
     } else {
       await pool.query(
         "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, birth_date = $10, phone = $11, status = $12 WHERE id = $13",
-        [name, surname, email, role, category, qualification, society, fitav_card, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
+        [name, surname, email, role, category, finalQualification, society, fitav_card, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
       );
     }
     
@@ -1476,19 +1558,12 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let query = `
-      SELECT 
-        c.*, 
-        u.name as user_name, 
-        u.surname as user_surname,
-        u.society,
-        u.category,
-        u.qualification,
-        u.avatar
-      FROM competitions c
-      JOIN users u ON c.user_id = u.id
+    // First, find all shooters that match the filters
+    let shooterQuery = `
+      SELECT DISTINCT u.id
+      FROM users u
+      JOIN competitions c ON u.id = c.user_id
     `;
-    let countQuery = "SELECT COUNT(*) FROM competitions c JOIN users u ON c.user_id = u.id";
     let params: any[] = [];
     let whereClauses: string[] = [];
 
@@ -1524,24 +1599,73 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     }
 
     if (whereClauses.length > 0) {
-      const wherePart = " WHERE " + whereClauses.join(" AND ");
-      query += wherePart;
-      countQuery += wherePart;
+      shooterQuery += " WHERE " + whereClauses.join(" AND ");
     }
 
-    // Get total count
-    const countRes = await pool.query(countQuery, params);
+    // Get total shooters count
+    const countRes = await pool.query(`SELECT COUNT(DISTINCT u.id) FROM users u JOIN competitions c ON u.id = c.user_id ${whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(" AND ") : ''}`, params);
     const total = parseInt(countRes.rows[0].count);
 
-    query += " ORDER BY c.date DESC ";
+    // Get paginated shooter IDs
+    const offset = (page - 1) * limit;
+    shooterQuery += ` ORDER BY u.id LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    const shooterIdParams = [...params, limit, offset];
+    const shooterIdsRes = await pool.query(shooterQuery, shooterIdParams);
+    const shooterIds = shooterIdsRes.rows.map(r => r.id);
 
-    if (limit) {
-      const offset = (page - 1) * limit;
-      query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-      params.push(limit, offset);
+    if (shooterIds.length === 0) {
+      return res.json({ results: [], total: 0 });
     }
 
-    const { rows } = await pool.query(query, params);
+    // Now fetch all results for these shooters (matching the filters)
+    let resultsQuery = `
+      SELECT 
+        c.*, 
+        u.name as user_name, 
+        u.surname as user_surname,
+        u.society,
+        u.category,
+        u.qualification,
+        u.avatar
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      WHERE u.id = ANY($1)
+    `;
+    let resultsParams: any[] = [shooterIds];
+
+    // Re-apply filters to results to ensure we only get matching results
+    let resultsWhereClauses: string[] = [];
+    if (req.user.role === 'society') {
+      resultsWhereClauses.push("c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'");
+    }
+    if (search) {
+      const searchParam = "%" + search.toLowerCase() + "%";
+      resultsWhereClauses.push("(LOWER(u.name) LIKE $" + (resultsParams.length + 1) + " OR LOWER(u.surname) LIKE $" + (resultsParams.length + 1) + " OR LOWER(c.name) LIKE $" + (resultsParams.length + 1) + " OR LOWER(c.location) LIKE $" + (resultsParams.length + 1) + ")");
+      resultsParams.push(searchParam);
+    }
+    if (society) {
+      resultsWhereClauses.push("u.society = $" + (resultsParams.length + 1));
+      resultsParams.push(society);
+    }
+    if (discipline) {
+      resultsWhereClauses.push("c.discipline = $" + (resultsParams.length + 1));
+      resultsParams.push(discipline);
+    }
+    if (location) {
+      resultsWhereClauses.push("c.location = $" + (resultsParams.length + 1));
+      resultsParams.push(location);
+    }
+    if (year) {
+      resultsWhereClauses.push("EXTRACT(YEAR FROM c.date) = $" + (resultsParams.length + 1));
+      resultsParams.push(parseInt(year));
+    }
+
+    if (resultsWhereClauses.length > 0) {
+      resultsQuery += " AND " + resultsWhereClauses.join(" AND ");
+    }
+
+    resultsQuery += " ORDER BY c.date DESC";
+    const { rows } = await pool.query(resultsQuery, resultsParams);
     
     const comps = rows.map((row: any) => ({
       id: row.id,
@@ -1570,7 +1694,8 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
       usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
-      teamName: row.team_name
+      teamName: row.team_name,
+      ranking_preference: row.ranking_preference
     }));
 
     if (limit) {
@@ -2387,8 +2512,12 @@ app.put('/api/teams/:teamId/members/:userId/score', authenticateToken, requireAd
 // Events Routes
 app.get('/api/events', authenticateToken, async (req: any, res) => {
   try {
-    // 1. Fetch regular events
-    let eventQuery = "SELECT * FROM events";
+    // 1. Fetch regular events with result count
+    let eventQuery = `
+      SELECT e.*, 
+      (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count 
+      FROM events e
+    `;
     let eventParams: any[] = [];
 
     if (req.user.role === 'admin') {
@@ -2416,23 +2545,53 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
+  try {
+    const eventId = req.params.id;
+    const results = await pool.query(`
+      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification, u.society
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.event_id = $1
+      ORDER BY c.totalscore DESC, c.shoot_off DESC NULLS LAST
+    `, [eventId]);
+    
+    // Parse JSON fields
+    const parsedResults = results.rows.map(r => ({
+      ...r,
+      scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
+      detailedScores: r.detailedscores ? (typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores) : null,
+      weather: r.weather ? (typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather) : null,
+      seriesImages: r.seriesimages ? (typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages) : null,
+      usedCartridges: r.usedcartridges ? (typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges) : null,
+      chokes: r.chokes ? (typeof r.chokes === 'string' ? JSON.parse(r.chokes) : r.chokes) : null,
+    }));
+
+    res.json(parsedResults);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/events', authenticateToken, async (req: any, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'society') {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link } = req.body;
+  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override } = req.body;
   
   try {
     await pool.query(
-      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by, prize_settings, ranking_logic, ranking_preference_override)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
        start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, cost = EXCLUDED.cost, 
-       notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link`,
-      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id]
+       notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link,
+       prize_settings = EXCLUDED.prize_settings, ranking_logic = EXCLUDED.ranking_logic,
+       ranking_preference_override = EXCLUDED.ranking_preference_override`,
+      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id, prize_settings, ranking_logic || 'individual', ranking_preference_override]
     );
 
     // Send push notification
@@ -2477,21 +2636,44 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link } = req.body;
+  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override } = req.body;
   
   try {
+    // Check if event is validated
+    const { rows: currentEvent } = await pool.query("SELECT status, location, created_by FROM events WHERE id = $1", [req.params.id]);
+    if (currentEvent.length === 0) return res.status(404).json({ error: 'Evento non trovato' });
+    
+    if (currentEvent[0].status === 'validated' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+    }
+
     // Check ownership if not admin
     if (req.user.role === 'society') {
-      const { rows } = await pool.query("SELECT location, created_by FROM events WHERE id = $1", [req.params.id]);
-      if (rows.length === 0 || (rows[0].location !== req.user.society && rows[0].created_by !== req.user.id)) {
+      if (currentEvent[0].location !== req.user.society && currentEvent[0].created_by !== req.user.id) {
         return res.status(403).json({ error: 'Non autorizzato a modificare questo evento' });
       }
     }
 
+    // Use COALESCE to keep existing values if not provided in body (for partial updates like prize_settings)
     await pool.query(
-      `UPDATE events SET name = $1, type = $2, visibility = $3, discipline = $4, location = $5, targets = $6, start_date = $7, end_date = $8, cost = $9, notes = $10, poster_url = $11, registration_link = $12
-       WHERE id = $13`,
-      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.params.id]
+      `UPDATE events SET 
+        name = COALESCE($1, name), 
+        type = COALESCE($2, type), 
+        visibility = COALESCE($3, visibility), 
+        discipline = COALESCE($4, discipline), 
+        location = COALESCE($5, location), 
+        targets = COALESCE($6, targets), 
+        start_date = COALESCE($7, start_date), 
+        end_date = COALESCE($8, end_date), 
+        cost = COALESCE($9, cost), 
+        notes = COALESCE($10, notes), 
+        poster_url = COALESCE($11, poster_url), 
+        registration_link = COALESCE($12, registration_link),
+        prize_settings = COALESCE($13, prize_settings),
+        ranking_logic = COALESCE($14, ranking_logic),
+        ranking_preference_override = COALESCE($15, ranking_preference_override)
+      WHERE id = $16`,
+      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, req.params.id]
     );
 
     // Send push notification for update
@@ -2534,9 +2716,14 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
 
   try {
     // Get event details for notification before deletion
-    const { rows: eventRows } = await pool.query("SELECT name, visibility, location, created_by FROM events WHERE id = $1", [req.params.id]);
+    const { rows: eventRows } = await pool.query("SELECT name, visibility, location, created_by, status FROM events WHERE id = $1", [req.params.id]);
     if (eventRows.length === 0) return res.status(404).json({ error: 'Evento non trovato' });
     const event = eventRows[0];
+
+    // Check if event is validated
+    if (event.status === 'validated' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere eliminata.' });
+    }
 
     // Check ownership if not admin
     if (req.user.role === 'society') {
@@ -2577,6 +2764,50 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.post('/api/events/:id/validate', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const { role, id: userId } = req.user;
+
+  try {
+    const { rows: events } = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+    if (events.length === 0) return res.status(404).json({ error: 'Gara non trovata' });
+
+    const event = events[0];
+    if (role !== 'admin') {
+      if (role === 'society' && event.location === req.user.society) {
+        // Society can validate events at their location
+      } else if (event.created_by !== userId) {
+        return res.status(403).json({ error: 'Non hai i permessi per convalidare questa gara' });
+      }
+    }
+
+    await pool.query('UPDATE events SET status = $1 WHERE id = $2', ['validated', id]);
+
+    res.json({ message: 'Gara convalidata con successo' });
+  } catch (error) {
+    console.error('Error validating event:', error);
+    res.status(500).json({ error: 'Errore durante la convalida della gara' });
+  }
+});
+
+app.post('/api/events/:id/reopen', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const { role } = req.user;
+
+  if (role !== 'admin') {
+    return res.status(403).json({ error: 'Solo l\'amministratore può riaprire una gara' });
+  }
+
+  try {
+    await pool.query('UPDATE events SET status = $1 WHERE id = $2', ['open', id]);
+
+    res.json({ message: 'Gara riaperta con successo' });
+  } catch (error) {
+    console.error('Error reopening event:', error);
+    res.status(500).json({ error: 'Errore durante la riapertura della gara' });
+  }
+});
+
 // Helper for admin compact notifications
 const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: string, action: 'inserita' | 'aggiornata' | 'eliminata', visibility: string, targetSociety: string | null, from: string) => {
   try {
@@ -2597,7 +2828,7 @@ const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: 
 };
 app.get('/api/competitions', authenticateToken, async (req: any, res) => {
   try {
-    let query = "SELECT * FROM competitions WHERE user_id = $1";
+    let query = "SELECT * FROM competitions WHERE user_id = $1 AND hidden_from_user = FALSE";
     let params = [req.user.id];
 
     if (req.user.role === 'society') {
@@ -2644,7 +2875,8 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
       userId: row.user_id,
       teamName: row.team_name,
       userName: row.userName,
-      userSurname: row.userSurname
+      userSurname: row.userSurname,
+      ranking_preference: row.ranking_preference
     }));
     res.json(comps);
   } catch (err: any) {
@@ -2653,28 +2885,101 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
 });
 
 app.post('/api/competitions', authenticateToken, async (req: any, res) => {
-  if (req.user.role === 'society') return res.status(403).json({ error: 'Le società non possono inserire gare.' });
   const c = req.body;
-  const targetUserId = (req.user.role === 'admin' && c.userId) ? c.userId : req.user.id;
+  let targetUserId = req.user.id;
+  
+  if (req.user.role === 'admin' && c.userId) {
+    targetUserId = c.userId;
+  } else if (req.user.role === 'society') {
+    if (!c.userId) {
+      return res.status(400).json({ error: 'Devi specificare un tiratore.' });
+    }
+    // Verify that the user belongs to this society OR the society owns the event
+    let canManage = false;
+    const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [c.userId]);
+    if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+      canManage = true;
+    }
+    
+    if (!canManage && c.eventId) {
+      const eventCheck = await pool.query('SELECT location, created_by, status FROM events WHERE id = $1', [c.eventId]);
+      if (eventCheck.rows.length > 0) {
+        const ev = eventCheck.rows[0];
+        if (ev.status === 'validated' && req.user.role !== 'admin') {
+          return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+        }
+        if (ev.location === req.user.society || ev.created_by === req.user.id) {
+          canManage = true;
+        }
+      }
+    }
+
+    if (!canManage) {
+      return res.status(403).json({ error: 'Puoi inserire gare solo per i tuoi tiratori o per eventi che gestisci.' });
+    }
+    targetUserId = c.userId;
+  }
+
   try {
+    // Check if event is validated if not already checked
+    if (c.eventId && req.user.role !== 'admin') {
+      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [c.eventId]);
+      if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated') {
+        return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+      }
+    }
+    // Fetch user details for snapshot
+    const userDetails = await pool.query('SELECT category, qualification, society FROM users WHERE id = $1', [targetUserId]);
+    const cat = userDetails.rows[0]?.category || null;
+    const qual = userDetails.rows[0]?.qualification || null;
+    const soc = userDetails.rows[0]?.society || null;
+
+    let finalId = c.id;
+    if (c.eventId) {
+      // Check if user already has a competition for this event or matching date/location/discipline
+      const existingComp = await pool.query(`
+        SELECT id FROM competitions 
+        WHERE user_id = $1 
+          AND date = $2 
+          AND location = $3 
+          AND discipline = $4
+          AND (event_id IS NULL OR event_id = $5)
+        LIMIT 1
+      `, [targetUserId, c.date, c.location, c.discipline, c.eventId]);
+      
+      if (existingComp.rows.length > 0) {
+        finalId = existingComp.rows[0].id;
+      }
+    }
+
     await pool.query(
-      `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, event_id, shoot_off, category_at_time, qualification_at_time, society_at_time, ranking_preference, ranking_preference_override, hidden_from_user) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, FALSE)
        ON CONFLICT (id) DO UPDATE SET 
        user_id = EXCLUDED.user_id, name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, location = EXCLUDED.location, 
        discipline = EXCLUDED.discipline, level = EXCLUDED.level, totalscore = EXCLUDED.totalscore, totaltargets = EXCLUDED.totaltargets, 
        averageperseries = EXCLUDED.averageperseries, position = EXCLUDED.position, cost = EXCLUDED.cost, win = EXCLUDED.win, 
        notes = EXCLUDED.notes, weather = EXCLUDED.weather, scores = EXCLUDED.scores, detailedscores = EXCLUDED.detailedscores, 
-       seriesimages = EXCLUDED.seriesimages, usedcartridges = EXCLUDED.usedcartridges, chokes = EXCLUDED.chokes`,
+       seriesimages = EXCLUDED.seriesimages, usedcartridges = EXCLUDED.usedcartridges, chokes = EXCLUDED.chokes,
+       event_id = EXCLUDED.event_id, shoot_off = EXCLUDED.shoot_off, category_at_time = EXCLUDED.category_at_time, 
+       qualification_at_time = EXCLUDED.qualification_at_time, society_at_time = EXCLUDED.society_at_time,
+       ranking_preference = EXCLUDED.ranking_preference,
+       ranking_preference_override = EXCLUDED.ranking_preference_override,
+       hidden_from_user = FALSE`,
       [
-        c.id, targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
+        finalId, targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
         c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
         c.weather ? JSON.stringify(c.weather) : null,
         JSON.stringify(c.scores),
         c.detailedScores ? JSON.stringify(c.detailedScores) : null,
         c.seriesImages ? JSON.stringify(c.seriesImages) : null,
         c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
-        c.chokes ? JSON.stringify(c.chokes) : null
+        c.chokes ? JSON.stringify(c.chokes) : null,
+        c.eventId || null,
+        c.shootOff !== undefined ? c.shootOff : null,
+        cat, qual, soc,
+        c.ranking_preference || 'categoria',
+        c.ranking_preference_override || null
       ]
     );
     res.json({ success: true });
@@ -2684,15 +2989,23 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
 });
 
 app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
-  if (req.user.role === 'society') return res.status(403).json({ error: 'Le società non possono modificare gare.' });
   const c = req.body;
   
   try {
+    // Check if competition is linked to a validated event
+    const compCheck = await pool.query('SELECT event_id FROM competitions WHERE id = $1', [req.params.id]);
+    if (compCheck.rows.length > 0 && compCheck.rows[0].event_id) {
+      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [compCheck.rows[0].event_id]);
+      if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated' && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+      }
+    }
+
     let result;
     if (req.user.role === 'admin') {
       const targetUserId = c.userId || req.user.id;
       result = await pool.query(
-        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20 WHERE id=$21`,
+        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24 WHERE id=$25`,
         [
           targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -2702,12 +3015,43 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.seriesImages ? JSON.stringify(c.seriesImages) : null,
           c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
           c.chokes ? JSON.stringify(c.chokes) : null,
+          c.eventId || null,
+          c.shootOff !== undefined ? c.shootOff : null,
+          c.ranking_preference || 'categoria',
+          c.ranking_preference_override || null,
           req.params.id
         ]
       );
-    } else {
+    } else if (req.user.role === 'society') {
+      // Società can update competitions for their own shooters OR for events they own
+      const existingComp = await pool.query('SELECT user_id, event_id FROM competitions WHERE id = $1', [req.params.id]);
+      if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
+      
+      const compUserId = existingComp.rows[0].user_id;
+      const compEventId = existingComp.rows[0].event_id;
+      
+      let canManage = false;
+      const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
+      if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+        canManage = true;
+      }
+      
+      if (!canManage && compEventId) {
+        const eventCheck = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [compEventId]);
+        if (eventCheck.rows.length > 0) {
+          const ev = eventCheck.rows[0];
+          if (ev.location === req.user.society || ev.created_by === req.user.id) {
+            canManage = true;
+          }
+        }
+      }
+
+      if (!canManage) {
+        return res.status(403).json({ error: 'Puoi modificare gare solo per i tuoi tiratori o per eventi che gestisci.' });
+      }
+
       result = await pool.query(
-        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19 WHERE id=$20 AND user_id=$21`,
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23 WHERE id=$24`,
         [
           c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -2717,6 +3061,29 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.seriesImages ? JSON.stringify(c.seriesImages) : null,
           c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
           c.chokes ? JSON.stringify(c.chokes) : null,
+          c.eventId || null,
+          c.shootOff !== undefined ? c.shootOff : null,
+          c.ranking_preference || 'categoria',
+          c.ranking_preference_override || null,
+          req.params.id
+        ]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23 WHERE id=$24 AND user_id=$25`,
+        [
+          c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
+          c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
+          c.weather ? JSON.stringify(c.weather) : null,
+          JSON.stringify(c.scores),
+          c.detailedScores ? JSON.stringify(c.detailedScores) : null,
+          c.seriesImages ? JSON.stringify(c.seriesImages) : null,
+          c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
+          c.chokes ? JSON.stringify(c.chokes) : null,
+          c.eventId || null,
+          c.shootOff !== undefined ? c.shootOff : null,
+          c.ranking_preference || 'categoria',
+          c.ranking_preference_override || null,
           req.params.id, req.user.id
         ]
       );
@@ -2734,14 +3101,46 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
 });
 
 app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => {
-  if (req.user.role === 'society') return res.status(403).json({ error: 'Le società non possono eliminare gare.' });
   console.log(`DELETE competition request: id=${req.params.id}, user_id=${req.user.id}, role=${req.user.role}`);
   try {
+    // Check if competition is linked to a validated event
+    const compCheck = await pool.query('SELECT event_id FROM competitions WHERE id = $1', [req.params.id]);
+    if (compCheck.rows.length > 0 && compCheck.rows[0].event_id) {
+      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [compCheck.rows[0].event_id]);
+      if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated' && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+      }
+    }
+
     let result;
     if (req.user.role === 'admin') {
       result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
+    } else if (req.user.role === 'society') {
+      // Check if the competition belongs to a user in this society
+      const compCheck = await pool.query(`
+        SELECT c.id FROM competitions c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.id = $1 AND u.society = $2
+      `, [req.params.id, req.user.society]);
+      
+      if (compCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Puoi eliminare solo i risultati dei tuoi tiratori.' });
+      }
+      result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
     } else {
-      result = await pool.query("DELETE FROM competitions WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+      // If it's a user deleting their own competition, check if it's linked to an event
+      const compCheck = await pool.query('SELECT event_id FROM competitions WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+      if (compCheck.rows.length > 0) {
+        if (compCheck.rows[0].event_id) {
+          // It's linked to a society event, so just hide it from the user's view
+          result = await pool.query("UPDATE competitions SET hidden_from_user = TRUE WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+        } else {
+          // Not linked, safe to delete
+          result = await pool.query("DELETE FROM competitions WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+        }
+      } else {
+        result = { rowCount: 0 };
+      }
     }
     console.log(`DELETE competition result: rowCount=${result.rowCount}`);
     res.json({ success: true, rowCount: result.rowCount });
@@ -3005,6 +3404,38 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
+  }
+});
+
+// Settings endpoints
+app.get('/api/settings', async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT key, value FROM app_settings");
+    const settings = rows.reduce((acc, row) => {
+      acc[row.key] = row.value;
+      return acc;
+    }, {} as any);
+    res.json(settings);
+  } catch (err) {
+    console.error('Error fetching settings:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res) => {
+  const { key, value } = req.body;
+  if (!key || value === undefined) {
+    return res.status(400).json({ error: 'Key and value are required' });
+  }
+  try {
+    await pool.query(
+      "INSERT INTO app_settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP",
+      [key, JSON.stringify(value)]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating settings:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

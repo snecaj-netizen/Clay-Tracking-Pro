@@ -98,6 +98,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [showEventSelector, setShowEventSelector] = useState(false);
   const [eventSearch, setEventSearch] = useState('');
+  const [rankingPreference, setRankingPreference] = useState<'categoria' | 'qualifica'>(data?.ranking_preference || 'categoria');
+  const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(data?.ranking_preference_override || null);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -442,6 +444,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       notes,
       chokes,
       usedCartridges,
+      ranking_preference: rankingPreference,
+      ranking_preference_override: rankingPreferenceOverride,
       weather: weatherTemp !== undefined ? { temp: weatherTemp, icon: weatherIcon } : undefined
     };
     if (initialData?.id) {
@@ -991,6 +995,59 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           )})}
         </div>
       </div>
+
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Preferenza Classifica</label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setRankingPreference('categoria')}
+            className={`py-3 px-4 rounded-xl text-xs font-bold transition-all border ${rankingPreference === 'categoria' ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+          >
+            PER CATEGORIA
+          </button>
+          <button
+            type="button"
+            onClick={() => setRankingPreference('qualifica')}
+            className={`py-3 px-4 rounded-xl text-xs font-bold transition-all border ${rankingPreference === 'qualifica' ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+          >
+            PER QUALIFICA
+          </button>
+        </div>
+      </div>
+
+      {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !isTraining && (
+        <div className="bg-orange-900/10 border border-orange-900/20 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] font-black text-orange-500 uppercase tracking-widest ml-1">Override Società (Classifica Forzata)</label>
+            <i className="fas fa-shield-alt text-orange-500/50 text-xs"></i>
+          </div>
+          <p className="text-[9px] text-slate-500 font-medium italic mb-2">Forza il tiratore in una specifica classifica, ignorando la sua preferenza.</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setRankingPreferenceOverride(null)}
+              className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border ${rankingPreferenceOverride === null ? 'bg-slate-700 border-slate-600 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+            >
+              NESSUNO
+            </button>
+            <button
+              type="button"
+              onClick={() => setRankingPreferenceOverride('categoria')}
+              className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border ${rankingPreferenceOverride === 'categoria' ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+            >
+              CATEGORIA
+            </button>
+            <button
+              type="button"
+              onClick={() => setRankingPreferenceOverride('qualifica')}
+              className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border ${rankingPreferenceOverride === 'qualifica' ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+            >
+              QUALIFICA
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
