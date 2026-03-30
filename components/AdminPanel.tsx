@@ -75,7 +75,7 @@ interface AdminPanelProps {
   onLoadDrive: () => void;
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   onEditCompetition?: (comp?: Competition, userId?: number) => void;
-  onDeleteCompetition?: (id: string) => void;
+  onDeleteCompetition?: (id: string) => Promise<boolean | void> | void;
   initialTab?: Tab;
   initialSocietyName?: string;
   onCloseSocietyDetail?: () => void;
@@ -3290,8 +3290,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {selectedShooterResults && createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
+              <div className="bg-slate-900 w-full h-full overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
                   <div className="flex items-center gap-5">
                     <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-orange-600/20">
@@ -3388,7 +3388,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   </div>
                                 </div>
                                 
-                                { (currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                                { currentUser?.role === 'admin' && (
                                   <div className="flex gap-2">
                                     <button 
                                       onClick={() => {
@@ -3411,41 +3411,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                       <i className="fas fa-share-alt text-xs"></i>
                                     </button>
                                     
-                                    {currentUser?.role === 'admin' && (
-                                      <>
-                                        <button 
-                                          onClick={() => onEditCompetition && onEditCompetition(r)}
-                                          className="w-9 h-9 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
-                                          title="Modifica"
-                                        >
-                                          <i className="fas fa-edit text-xs"></i>
-                                        </button>
-                                        <button 
-                                          onClick={() => {
-                                            triggerConfirm(
-                                              'Elimina Gara',
-                                              `Sei sicuro di voler eliminare la gara "${r.name}"?`,
-                                              () => {
-                                                if (onDeleteCompetition) {
-                                                  onDeleteCompetition(r.id);
-                                                  setAllResults(prev => prev.filter(res => res.id !== r.id));
-                                                  setSelectedShooterResults((prev: any) => ({
-                                                    ...prev,
-                                                    results: prev.results.filter((res: any) => res.id !== r.id)
-                                                  }));
-                                                }
-                                              },
-                                              'Elimina',
-                                              'danger'
-                                            );
-                                          }}
-                                          className="w-9 h-9 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
-                                          title="Elimina"
-                                        >
-                                          <i className="fas fa-trash-alt text-xs"></i>
-                                        </button>
-                                      </>
-                                    )}
+                                    <button 
+                                      onClick={() => {
+                                        if (onEditCompetition) {
+                                          const mappedComp = {
+                                            ...r,
+                                            userId: r.user_id,
+                                            userName: r.user_name,
+                                            userSurname: r.user_surname,
+                                            totalScore: r.totalscore,
+                                            totalTargets: r.totaltargets,
+                                            averagePerSeries: r.averageperseries,
+                                            eventId: r.event_id,
+                                            shootOff: r.shoot_off,
+                                            endDate: r.enddate,
+                                            detailedScores: typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores,
+                                            seriesImages: typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages,
+                                            usedCartridges: typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges,
+                                            scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
+                                            weather: typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather,
+                                            chokes: typeof r.chokes === 'string' ? JSON.parse(r.chokes) : r.chokes
+                                          };
+                                          onEditCompetition(mappedComp);
+                                        }
+                                      }}
+                                      className="w-9 h-9 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
+                                      title="Modifica"
+                                    >
+                                      <i className="fas fa-edit text-xs"></i>
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        triggerConfirm(
+                                          'Elimina Gara',
+                                          `Sei sicuro di voler eliminare la gara "${r.name}"?`,
+                                          async () => {
+                                            if (onDeleteCompetition) {
+                                              const success = await onDeleteCompetition(r.id);
+                                              if (success !== false) {
+                                                setAllResults(prev => prev.filter(res => res.id !== r.id));
+                                                setSelectedShooterResults((prev: any) => ({
+                                                  ...prev,
+                                                  results: prev.results.filter((res: any) => res.id !== r.id)
+                                                }));
+                                              }
+                                            }
+                                          },
+                                          'Elimina',
+                                          'danger'
+                                        );
+                                      }}
+                                      className="w-9 h-9 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
+                                      title="Elimina"
+                                    >
+                                      <i className="fas fa-trash-alt text-xs"></i>
+                                    </button>
                                   </div>
                                 )}
                               </div>

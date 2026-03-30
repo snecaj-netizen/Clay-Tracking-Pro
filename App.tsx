@@ -330,13 +330,16 @@ const App: React.FC = () => {
       console.log('Delete response status:', res.status);
       if (res.ok) {
         setCompetitions(prev => prev.filter(c => c.id !== id));
+        return true;
       } else {
         const errorData = await res.json();
         alert(`Errore nell'eliminazione: ${errorData.error || res.statusText}`);
+        return false;
       }
     } catch (err) {
       console.error('Error deleting competition:', err);
       alert('Errore di rete nell\'eliminazione.');
+      return false;
     }
   };
 

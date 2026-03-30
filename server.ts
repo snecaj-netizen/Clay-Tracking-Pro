@@ -655,6 +655,7 @@ initDB().then(() => {
 
       // Find competitions scheduled for today that have no score (totalscore = 0)
       // We check if today is the last day of the competition (enddate if exists, otherwise date)
+      // AND we ensure the competition is actually linked to the user in their history (user_id matches)
       const { rows: pendingCompetitions } = await pool.query(
         "SELECT user_id, name FROM competitions WHERE COALESCE(NULLIF(enddate, ''), date) = $1 AND totalscore = 0 AND hidden_from_user = FALSE",
         [todayStr]
@@ -844,18 +845,45 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       }
     }
 
-    // 1. Save notifications for each user in the list
+    // 1. Filter users by rate limit
+    const usersToNotify = [];
     for (const userId of numericUserIds) {
+      // Get user's specific rate limit or fallback to global admin setting
+      let userRateLimit = settings.rate_limit;
+      const { rows: userSettingsRows } = await pool.query("SELECT rate_limit FROM notification_settings WHERE user_id = $1", [userId]);
+      if (userSettingsRows.length > 0 && userSettingsRows[0].rate_limit !== undefined) {
+        userRateLimit = userSettingsRows[0].rate_limit;
+      }
+
+      // Count notifications sent today
+      const today = new Date().toISOString().split('T')[0];
+      const { rows: countRows } = await pool.query(
+        "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND DATE(created_at) = $2",
+        [userId, today]
+      );
+      const notificationsSentToday = parseInt(countRows[0].count);
+
+      if (notificationsSentToday < userRateLimit) {
+        usersToNotify.push(userId);
+      } else {
+        console.log(`Rate limit reached for user ${userId}. Skipping notification.`);
+      }
+    }
+
+    // 2. Save notifications for each user in the filtered list
+    for (const userId of usersToNotify) {
       await pool.query(
         "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
         [userId, title, body, url]
       );
     }
 
-    // 2. Send Push Notifications
+    // 3. Send Push Notifications
+    if (usersToNotify.length === 0) return;
+
     const { rows: subscriptions } = await pool.query(
       "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
-      [numericUserIds]
+      [usersToNotify]
     );
 
     // Deduplicate subscriptions by endpoint
