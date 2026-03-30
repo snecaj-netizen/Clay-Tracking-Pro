@@ -43,9 +43,14 @@ const getAutoQualification = (birthDate: string | null, currentQual: string | nu
   const currentYear = new Date().getFullYear();
   const age = currentYear - birthYear;
   
+  if (age <= 20) return 'Junior';
   if (age >= 56 && age <= 65) return 'Senior';
   if (age >= 66 && age <= 72) return 'Veterani';
   if (age > 72) return 'Master';
+  
+  if (['Junior', 'Senior', 'Veterani', 'Master'].includes(currentQual || '')) {
+    return null;
+  }
   
   return currentQual;
 };

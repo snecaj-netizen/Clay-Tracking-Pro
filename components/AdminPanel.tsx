@@ -318,10 +318,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const currentYear = new Date().getFullYear();
     const age = currentYear - birthYear;
 
-    if (age >= 56 && age <= 65) setter('Senior');
+    if (age <= 20) setter('Junior');
+    else if (age >= 56 && age <= 65) setter('Senior');
     else if (age >= 66 && age <= 72) setter('Veterani');
     else if (age > 72) setter('Master');
-    else if (['Senior', 'Veterani', 'Master'].includes(currentQual)) setter('');
+    else if (['Junior', 'Senior', 'Veterani', 'Master'].includes(currentQual)) setter('');
   };
 
   const fetchFilterOptions = useCallback(async (signal?: AbortSignal) => {
