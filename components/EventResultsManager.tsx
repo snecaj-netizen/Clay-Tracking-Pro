@@ -184,6 +184,46 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     return series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
   };
 
+  const sortResults = (a: any, b: any) => {
+    // 1. Sort by total score descending
+    if (b.totalscore !== a.totalscore) {
+      return (b.totalscore || 0) - (a.totalscore || 0);
+    }
+    
+    // 2. Sort by shoot-off score descending
+    const aShootOff = a.shoot_off !== null && a.shoot_off !== undefined ? a.shoot_off : -1;
+    const bShootOff = b.shoot_off !== null && b.shoot_off !== undefined ? b.shoot_off : -1;
+    if (bShootOff !== aShootOff) {
+      return bShootOff - aShootOff;
+    }
+    
+    // 3. FITAV Countback Rule (zeroes from the end)
+    // Compare detailed scores from the last series and last target backwards
+    if (a.detailedScores && b.detailedScores) {
+      // Find the maximum number of series
+      const maxSeries = Math.max(a.detailedScores.length, b.detailedScores.length);
+      
+      for (let sIdx = maxSeries - 1; sIdx >= 0; sIdx--) {
+        const aSeries = a.detailedScores[sIdx] || [];
+        const bSeries = b.detailedScores[sIdx] || [];
+        
+        // Assuming 25 targets per series
+        for (let tIdx = 24; tIdx >= 0; tIdx--) {
+          const aHit = aSeries[tIdx] === true;
+          const bHit = bSeries[tIdx] === true;
+          
+          if (aHit !== bHit) {
+            // The one with a hit (true) wins over the one with a miss (false)
+            return aHit ? -1 : 1;
+          }
+        }
+      }
+    }
+    
+    // If still tied, sort by name
+    return `${a.user_surname || ''} ${a.user_name || ''}`.localeCompare(`${b.user_surname || ''} ${b.user_name || ''}`);
+  };
+
   const generatePDF = (shouldDownload = true) => {
     const doc = new jsPDF({
       orientation: 'p',
@@ -291,20 +331,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     };
 
     // 1. Classifica Generale
-    const sortedGeneral = [...results].sort((a, b) => {
-      if ((b.totalscore || 0) !== (a.totalscore || 0)) return (b.totalscore || 0) - (a.totalscore || 0);
-      return (b.shoot_off || 0) - (a.shoot_off || 0);
-    });
+    const sortedGeneral = [...results].sort(sortResults);
     renderTable('Classifica Generale', sortedGeneral);
 
     // 2. Classifiche per Categoria
     categories.forEach(cat => {
       if (currentY > 240) { doc.addPage(); currentY = 20; }
-      const catResults = results.filter(r => (r.category_at_time || r.category) === cat)
-        .sort((a, b) => {
-          if ((b.totalscore || 0) !== (a.totalscore || 0)) return (b.totalscore || 0) - (a.totalscore || 0);
-          return (b.shoot_off || 0) - (a.shoot_off || 0);
-        });
+      const catResults = results.filter(r => {
+        const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+        if (effectivePref === 'qualifica') return false;
+        return (r.category_at_time || r.category) === cat;
+      }).sort(sortResults);
       if (catResults.length > 0) {
         renderTable(`Classifica Categoria: ${cat}`, catResults);
       }
@@ -313,11 +350,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     // 3. Classifiche per Qualifica
     qualifications.forEach(qual => {
       if (currentY > 240) { doc.addPage(); currentY = 20; }
-      const qualResults = results.filter(r => (r.qualification_at_time || r.qualification) === qual)
-        .sort((a, b) => {
-          if ((b.totalscore || 0) !== (a.totalscore || 0)) return (b.totalscore || 0) - (a.totalscore || 0);
-          return (b.shoot_off || 0) - (a.shoot_off || 0);
-        });
+      const qualResults = results.filter(r => {
+        const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+        if (effectivePref !== 'qualifica') return false;
+        return (r.qualification_at_time || r.qualification) === qual;
+      }).sort(sortResults);
       if (qualResults.length > 0) {
         renderTable(`Classifica Qualifica: ${qual}`, qualResults);
       }
@@ -366,45 +403,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       return rQual === selectedQualification && effectivePref === 'qualifica';
     }
     return true;
-  }).sort((a, b) => {
-    // 1. Sort by total score descending
-    if (b.totalscore !== a.totalscore) {
-      return b.totalscore - a.totalscore;
-    }
-    
-    // 2. Sort by shoot-off score descending
-    const aShootOff = a.shoot_off !== null ? a.shoot_off : -1;
-    const bShootOff = b.shoot_off !== null ? b.shoot_off : -1;
-    if (bShootOff !== aShootOff) {
-      return bShootOff - aShootOff;
-    }
-    
-    // 3. FITAV Countback Rule (zeroes from the end)
-    // Compare detailed scores from the last series and last target backwards
-    if (a.detailedScores && b.detailedScores) {
-      // Find the maximum number of series
-      const maxSeries = Math.max(a.detailedScores.length, b.detailedScores.length);
-      
-      for (let sIdx = maxSeries - 1; sIdx >= 0; sIdx--) {
-        const aSeries = a.detailedScores[sIdx] || [];
-        const bSeries = b.detailedScores[sIdx] || [];
-        
-        // Assuming 25 targets per series
-        for (let tIdx = 24; tIdx >= 0; tIdx--) {
-          const aHit = aSeries[tIdx] === true;
-          const bHit = bSeries[tIdx] === true;
-          
-          if (aHit !== bHit) {
-            // The one with a hit (true) wins over the one with a miss (false)
-            return aHit ? -1 : 1;
-          }
-        }
-      }
-    }
-    
-    // If still tied, sort by name
-    return `${a.user_surname} ${a.user_name}`.localeCompare(`${b.user_surname} ${b.user_name}`);
-  });
+  }).sort(sortResults);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -559,7 +558,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       if (categorySetting) {
         const catResults = results
           .filter(r => (r.category_at_time || r.category) === rCat && (event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria') === 'categoria')
-          .sort((a, b) => b.totalscore - a.totalscore || (b.shoot_off || 0) - (a.shoot_off || 0));
+          .sort(sortResults);
         const rank = catResults.findIndex(r => r.id === result.id);
         if (rank !== -1 && rank < categorySetting.count) return true;
       }
@@ -571,7 +570,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       if (qualificationSetting) {
         const qualResults = results
           .filter(r => (r.qualification_at_time || r.qualification) === rQual && (event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria') === 'qualifica')
-          .sort((a, b) => b.totalscore - a.totalscore || (b.shoot_off || 0) - (a.shoot_off || 0));
+          .sort(sortResults);
         const rank = qualResults.findIndex(r => r.id === result.id);
         if (rank !== -1 && rank < qualificationSetting.count) return true;
       }
