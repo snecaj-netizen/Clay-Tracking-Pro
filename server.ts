@@ -929,9 +929,9 @@ const getTargetUserIds = async (targetType: string, targetId: string | null) => 
     userQuery = "SELECT id FROM users WHERE role = 'society' AND society = $1";
     queryParams = [targetId];
   } else if (targetType === 'all_shooters') {
-    userQuery = "SELECT id FROM users WHERE role = 'user'";
+    userQuery = "SELECT id FROM users WHERE role IN ('user', 'admin')";
   } else if (targetType === 'shooters_of_society') {
-    userQuery = "SELECT id FROM users WHERE role = 'user' AND society = $1";
+    userQuery = "SELECT id FROM users WHERE (role = 'user' OR role = 'admin') AND society = $1";
     queryParams = [targetId];
   }
 
