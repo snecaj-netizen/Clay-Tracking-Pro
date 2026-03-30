@@ -617,7 +617,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[1050] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
       <div className="bg-slate-900 rounded-none sm:rounded-3xl w-full h-full sm:h-auto sm:max-w-[98vw] max-h-[100dvh] sm:max-h-[98vh] flex flex-col overflow-hidden border-0 sm:border border-slate-800 shadow-2xl">
         <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 shadow-lg relative z-10">
           <div className="flex items-center gap-4">
@@ -1175,7 +1175,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       {/* PDF Preview Modal */}
       <AnimatePresence>
         {showPDFPreview && pdfUrl && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[1060] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

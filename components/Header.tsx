@@ -85,12 +85,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
       {/* Overlay for mobile menu - Moved outside header for better event handling */}
       {isMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[95] sm:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[995] sm:hidden transition-opacity duration-300"
           onClick={() => setIsMenuOpen(false)}
         />
       )}
       
-      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[100]">
+      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[1000]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">

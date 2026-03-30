@@ -92,7 +92,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}

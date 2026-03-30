@@ -24,7 +24,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const isDanger = variant === 'danger';
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onCancel}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onCancel}>
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-4">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDanger ? 'bg-red-950/30 text-red-500' : 'bg-orange-950/30 text-orange-500'}`}>
