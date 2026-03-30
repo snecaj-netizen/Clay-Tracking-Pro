@@ -1799,14 +1799,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Overlay for mobile menu */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[980] sm:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1010] sm:hidden transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Tab Switcher - Mobile (Custom Elegant Dropdown) */}
       {!hideTabs && (
-        <div className="sm:hidden sticky top-16 z-[990] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
+        <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
@@ -1841,7 +1841,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
 
           {isMobileMenuOpen && (
-            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[1000]">
+            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[1030]">
               <div className="p-2 grid grid-cols-1 gap-1">
                 {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
                   <>

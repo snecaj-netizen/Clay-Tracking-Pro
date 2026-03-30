@@ -32,6 +32,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [rankingPreference, setRankingPreference] = useState<'categoria' | 'qualifica'>('categoria');
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   // Form state
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -372,16 +373,46 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     if (shouldDownload) {
       doc.save(`Risultati_${event.name.replace(/\s+/g, '_')}.pdf`);
     } else {
-      return doc.output('bloburl');
+      return doc.output('blob');
     }
   };
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
+  const closePDFPreview = () => {
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+    }
+    setShowPDFPreview(false);
+    setPdfUrl(null);
+  };
+
   const handlePreviewPDF = () => {
-    const url = generatePDF(false) as any;
-    setPdfUrl(url);
-    setShowPDFPreview(true);
+    if (results.length === 0) {
+      if (triggerToast) triggerToast('Nessun risultato da esportare', 'info');
+      return;
+    }
+    
+    setIsGeneratingPDF(true);
+    
+    // Small timeout to allow UI to update and not block main thread
+    setTimeout(() => {
+      try {
+        const blob = generatePDF(false);
+        if (blob instanceof Blob) {
+          const url = URL.createObjectURL(blob);
+          setPdfUrl(url);
+          setShowPDFPreview(true);
+        } else {
+          throw new Error('La generazione del PDF non ha restituito un formato valido');
+        }
+      } catch (err: any) {
+        console.error('Error generating PDF preview:', err);
+        if (triggerToast) triggerToast('Errore nella generazione dell\'anteprima PDF: ' + err.message, 'error');
+      } finally {
+        setIsGeneratingPDF(false);
+      }
+    }, 100);
   };
   
   const filteredResults = [...results].filter(r => {
@@ -953,10 +984,15 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 {canExportPDF && (
                   <button
                     onClick={handlePreviewPDF}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-orange-500 hover:border-orange-500/50 transition-all text-sm font-bold shadow-lg"
+                    disabled={isGeneratingPDF}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-orange-500 hover:border-orange-500/50 transition-all text-sm font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <i className="fas fa-file-pdf text-red-500"></i>
-                    Scarica PDF
+                    {isGeneratingPDF ? (
+                      <i className="fas fa-circle-notch fa-spin text-orange-500"></i>
+                    ) : (
+                      <i className="fas fa-file-pdf text-red-500"></i>
+                    )}
+                    {isGeneratingPDF ? 'Generazione...' : 'Scarica PDF'}
                   </button>
                 )}
                 <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
@@ -1175,7 +1211,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       {/* PDF Preview Modal */}
       <AnimatePresence>
         {showPDFPreview && pdfUrl && (
-          <div className="fixed inset-0 z-[1060] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1060] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1196,7 +1237,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     Scarica Ora
                   </button>
                   <button
-                    onClick={() => { setShowPDFPreview(false); setPdfUrl(null); }}
+                    onClick={closePDFPreview}
                     className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all"
                   >
                     <i className="fas fa-times"></i>
@@ -1204,15 +1245,35 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 </div>
               </div>
               
-              <div className="flex-1 bg-slate-950 p-4 overflow-hidden">
-                <iframe 
-                  src={pdfUrl} 
-                  className="w-full h-full rounded-xl border border-slate-800"
-                  title="PDF Preview"
-                />
+              <div className="flex-1 bg-slate-950 p-2 sm:p-4 overflow-hidden relative">
+                {!pdfUrl && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 gap-3">
+                    <i className="fas fa-circle-notch fa-spin text-3xl text-orange-500"></i>
+                    <p className="text-xs uppercase tracking-widest font-black">Caricamento Anteprima...</p>
+                  </div>
+                )}
+                {pdfUrl && (
+                  <object 
+                    data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`} 
+                    type="application/pdf"
+                    className="w-full h-full rounded-xl border border-slate-800"
+                  >
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-800 p-8 text-center">
+                      <i className="fas fa-file-pdf text-5xl text-red-500 mb-4"></i>
+                      <h4 className="text-white font-bold mb-2">L'anteprima non può essere visualizzata</h4>
+                      <p className="text-slate-400 text-sm mb-6 max-w-md">Il tuo browser non supporta la visualizzazione dei PDF integrata. Puoi comunque scaricare il file per visualizzarlo.</p>
+                      <button
+                        onClick={() => generatePDF(true)}
+                        className="px-8 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg"
+                      >
+                        Scarica il PDF
+                      </button>
+                    </div>
+                  </object>
+                )}
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
