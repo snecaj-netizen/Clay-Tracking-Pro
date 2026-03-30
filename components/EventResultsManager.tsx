@@ -306,7 +306,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           return [
             index + 1,
             isPrize ? 'P' : '',
-            `${r.user_name || ''} ${r.user_surname || ''}`,
+            `${r.user_name || ''} ${r.user_surname || ''}${r.fitav_card ? `\n(${r.fitav_card})` : ''}`,
             `${r.category_at_time || r.category || '-'}/${r.qualification_at_time || r.qualification || '-'}`,
             ...seriesData,
             r.totalscore || 0,
@@ -1067,10 +1067,15 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               )}
                             </td>
                             <td className="p-2 sm:p-3 text-white font-medium text-xs sm:text-sm">
-                              <div className="flex items-center gap-2">
-                                {r.user_name} {r.user_surname}
-                                {isOverridden && (
-                                  <i className="fas fa-exclamation-triangle text-[10px] text-orange-500" title={`Classifica forzata a ${effectivePref}`}></i>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  {r.user_name} {r.user_surname}
+                                  {isOverridden && (
+                                    <i className="fas fa-exclamation-triangle text-[10px] text-orange-500" title={`Classifica forzata a ${effectivePref}`}></i>
+                                  )}
+                                </div>
+                                {r.fitav_card && (
+                                  <span className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mt-0.5">{r.fitav_card}</span>
                                 )}
                               </div>
                             </td>
@@ -1143,7 +1148,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                         {dScore.map((hit: boolean, tIdx: number) => (
                                           <div 
                                             key={tIdx} 
-                                            className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${hit ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
+                                            className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold ${hit ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
                                             title={`Piattello ${tIdx + 1}: ${hit ? 'Colpito' : 'Zero'}`}
                                           >
                                             {hit ? '1' : '0'}

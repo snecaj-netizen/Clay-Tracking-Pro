@@ -429,7 +429,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDe
                                   return (
                                     <div 
                                       key={targetIdx} 
-                                      className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${isHit ? 'bg-[#a3e635]' : 'bg-[#ef4444]'}`}
+                                      className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${isHit ? 'bg-[#a3e635]' : 'bg-[#ef4444]'}`}
                                       title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
                                     />
                                   );

@@ -359,11 +359,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           society: s.society,
           category: s.category,
           qualification: s.qualification,
+          fitav_card: s.fitav_card,
           is_logged_in: s.is_logged_in
         });
       }
     });
-    return (Array.from(unique.values()) as { id: number, name: string, surname: string, society: string, category?: string, qualification?: string, is_logged_in?: boolean }[])
+    return (Array.from(unique.values()) as { id: number, name: string, surname: string, society: string, category?: string, qualification?: string, fitav_card?: string, is_logged_in?: boolean }[])
       .sort((a, b) => {
         if (a.is_logged_in && !b.is_logged_in) return -1;
         if (!a.is_logged_in && b.is_logged_in) return 1;
@@ -1703,6 +1704,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           society: r.society,
           category: r.category,
           qualification: r.qualification,
+          fitav_card: r.fitav_card,
           avatar: r.avatar,
           results: []
         });
@@ -3226,6 +3228,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <h3 className="text-sm font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors truncate">
                       {shooter.userSurname || ''} {shooter.userName || ''}
                     </h3>
+                    {shooter.fitav_card && (
+                      <p className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">
+                        {shooter.fitav_card}
+                      </p>
+                    )}
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest truncate">
                         {shooter.society || 'Nessuna Società'}
@@ -3301,6 +3308,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <h2 className="text-2xl font-black text-white uppercase tracking-tight">
                         {selectedShooterResults.userSurname || ''} {selectedShooterResults.userName || ''}
                       </h2>
+                      {selectedShooterResults.fitav_card && (
+                        <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.2em] mt-1">
+                          {selectedShooterResults.fitav_card}
+                        </p>
+                      )}
                       <p className="text-xs font-black text-orange-500 uppercase tracking-[0.2em] mt-1">
                         {selectedShooterResults.society ? (
                           <>

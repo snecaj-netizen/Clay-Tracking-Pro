@@ -1516,6 +1516,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
         u.category, 
         u.qualification,
         u.society,
+        u.fitav_card,
         c.discipline,
         COUNT(c.id) as total_competitions,
         AVG(c.averageperseries) as avg_score
@@ -1531,7 +1532,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     }
 
     query += `
-      GROUP BY u.id, u.name, u.surname, u.category, u.qualification, u.society, c.discipline
+      GROUP BY u.id, u.name, u.surname, u.category, u.qualification, u.society, u.fitav_card, c.discipline
       ORDER BY u.surname, u.name, c.discipline
     `;
 
@@ -1654,6 +1655,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         u.society,
         u.category,
         u.qualification,
+        u.fitav_card,
         u.avatar
       FROM competitions c
       JOIN users u ON c.user_id = u.id
@@ -2577,7 +2579,7 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
   try {
     const eventId = req.params.id;
     const results = await pool.query(`
-      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification, u.society
+      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification, u.society, u.fitav_card
       FROM competitions c
       JOIN users u ON c.user_id = u.id
       WHERE c.event_id = $1
