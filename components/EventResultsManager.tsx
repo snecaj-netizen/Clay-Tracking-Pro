@@ -363,6 +363,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
     // Footer on each page
     const pageCount = (doc as any).internal.getNumberOfPages();
+    console.log(`PDF generated with ${pageCount} pages`);
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
@@ -371,9 +372,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
 
     if (shouldDownload) {
+      console.log('Downloading PDF...');
       doc.save(`Risultati_${event.name.replace(/\s+/g, '_')}.pdf`);
     } else {
-      return doc.output('blob');
+      const blob = doc.output('blob');
+      console.log('Returning PDF Blob:', blob);
+      return blob;
     }
   };
 
@@ -398,12 +402,16 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     // Small timeout to allow UI to update and not block main thread
     setTimeout(() => {
       try {
+        console.log('Generating PDF for preview...');
         const blob = generatePDF(false);
+        console.log('PDF Blob generated:', blob);
         if (blob instanceof Blob) {
           const url = URL.createObjectURL(blob);
+          console.log('PDF Preview URL created:', url);
           setPdfUrl(url);
           setShowPDFPreview(true);
         } else {
+          console.error('PDF generation did not return a Blob:', blob);
           throw new Error('La generazione del PDF non ha restituito un formato valido');
         }
       } catch (err: any) {
@@ -1253,23 +1261,27 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   </div>
                 )}
                 {pdfUrl && (
-                  <object 
-                    data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`} 
-                    type="application/pdf"
-                    className="w-full h-full rounded-xl border border-slate-800"
-                  >
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-800 p-8 text-center">
-                      <i className="fas fa-file-pdf text-5xl text-red-500 mb-4"></i>
-                      <h4 className="text-white font-bold mb-2">L'anteprima non può essere visualizzata</h4>
-                      <p className="text-slate-400 text-sm mb-6 max-w-md">Il tuo browser non supporta la visualizzazione dei PDF integrata. Puoi comunque scaricare il file per visualizzarlo.</p>
-                      <button
-                        onClick={() => generatePDF(true)}
-                        className="px-8 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg"
-                      >
-                        Scarica il PDF
-                      </button>
-                    </div>
-                  </object>
+                  <div className="w-full h-full">
+                    {console.log('Rendering PDF object with URL:', pdfUrl)}
+                    <object 
+                      key={pdfUrl}
+                      data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`} 
+                      type="application/pdf"
+                      className="w-full h-full rounded-xl border border-slate-800"
+                    >
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-800 p-8 text-center">
+                        <i className="fas fa-file-pdf text-5xl text-red-500 mb-4"></i>
+                        <h4 className="text-white font-bold mb-2">L'anteprima non può essere visualizzata</h4>
+                        <p className="text-slate-400 text-sm mb-6 max-w-md">Il tuo browser non supporta la visualizzazione dei PDF integrata. Puoi comunque scaricare il file per visualizzarlo.</p>
+                        <button
+                          onClick={() => generatePDF(true)}
+                          className="px-8 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg"
+                        >
+                          Scarica il PDF
+                        </button>
+                      </div>
+                    </object>
+                  </div>
                 )}
               </div>
             </motion.div>
