@@ -244,7 +244,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Risultati Ufficiali Gara', pageWidth / 2, 22, { align: 'center' });
+    doc.text(event.status === 'validated' ? 'Classifica Finale' : 'Classifica Provvisoria', pageWidth / 2, 22, { align: 'center' });
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
@@ -977,7 +977,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           <div className={`w-full ${(readOnly || event.status === 'validated') ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 shrink-0 md:shrink`}>
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
               <h3 className="text-lg font-bold text-white uppercase tracking-widest">
-                {readOnly ? 'Classifica Generale' : 'Classifica Provvisoria'}
+                {event.status === 'validated' ? 'Classifica Finale' : (readOnly ? 'Classifica Generale' : 'Classifica Provvisoria')}
               </h3>
               
               <div className="flex flex-wrap items-center gap-4">
