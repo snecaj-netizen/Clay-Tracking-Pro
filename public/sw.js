@@ -19,7 +19,10 @@ self.addEventListener('push', function(event) {
   };
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    Promise.all([
+      self.registration.showNotification(title, options),
+      'setAppBadge' in navigator ? (navigator as any).setAppBadge().catch(() => {}) : Promise.resolve()
+    ])
   );
 });
 

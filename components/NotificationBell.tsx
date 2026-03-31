@@ -151,6 +151,20 @@ export default function NotificationBell({ token }: NotificationBellProps) {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  useEffect(() => {
+    if ('setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        (navigator as any).setAppBadge(unreadCount).catch((err: any) => {
+          console.error('Error setting app badge:', err);
+        });
+      } else {
+        (navigator as any).clearAppBadge().catch((err: any) => {
+          console.error('Error clearing app badge:', err);
+        });
+      }
+    }
+  }, [unreadCount]);
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
