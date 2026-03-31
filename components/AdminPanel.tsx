@@ -1901,20 +1901,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {isMobileMenuOpen && (
             <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[1030]">
               <div className="p-2 grid grid-cols-1 gap-1">
+                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                  <button 
+                    onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-history w-5 text-center"></i> Risultati Individuali
+                  </button>
+                )}
                 {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
+                  <button 
+                    onClick={() => { setActiveTab('event-results'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-trophy w-5 text-center"></i> Classifiche Risultati
+                  </button>
+                )}
+                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                   <>
-                    <button 
-                      onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                      <i className="fas fa-history w-5 text-center"></i> Risultati Individuali
-                    </button>
-                    <button 
-                      onClick={() => { setActiveTab('event-results'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                      <i className="fas fa-trophy w-5 text-center"></i> Classifiche Risultati
-                    </button>
                     <button 
                       onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
@@ -1962,7 +1966,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
         <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
-            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
+            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('results')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
