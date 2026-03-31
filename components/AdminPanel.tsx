@@ -186,14 +186,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [usersPage, setUsersPage] = useState(1);
   const [usersPerPage, setUsersPerPage] = useState(25);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [filterRole, setFilterRole] = useState<string>('');
 
   const usersPageRef = React.useRef(usersPage);
   const usersPerPageRef = React.useRef(usersPerPage);
   const userSearchTermRef = React.useRef(userSearchTerm);
+  const filterRoleRef = React.useRef(filterRole);
 
   useEffect(() => { usersPageRef.current = usersPage; }, [usersPage]);
   useEffect(() => { usersPerPageRef.current = usersPerPage; }, [usersPerPage]);
   useEffect(() => { userSearchTermRef.current = userSearchTerm; }, [userSearchTerm]);
+  useEffect(() => { filterRoleRef.current = filterRole; }, [filterRole]);
 
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [allResults, setAllResults] = useState<any[]>([]);
@@ -554,7 +557,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const queryParams = new URLSearchParams({
         page: usersPageRef.current.toString(),
         limit: usersPerPageRef.current.toString(),
-        search: userSearchTermRef.current
+        search: userSearchTermRef.current,
+        role: filterRoleRef.current
       });
       
       const res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
@@ -781,7 +785,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         controller.abort();
       };
     }
-  }, [activeTab, currentUser?.role, fetchUsers, fetchAllUsers]);
+  }, [activeTab, currentUser?.role, fetchUsers, fetchAllUsers, usersPage, usersPerPage, userSearchTerm, filterRole]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1961,7 +1965,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
                 onClick={() => setActiveTab('results')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati Individuali</span><span className="md:hidden">Ris. Ind.</span>
               </button>
@@ -1969,7 +1973,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
                 onClick={() => setActiveTab('event-results')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Classifiche Risultati</span><span className="md:hidden">Class. Ris.</span>
               </button>
@@ -1977,7 +1981,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('events')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue' : 'Gare'}</span>
               </button>
@@ -1985,7 +1989,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('halloffame')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Hall of Fame</span><span className="md:hidden">HoF</span>
               </button>
@@ -1993,7 +1997,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('team')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-users-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">Squadre</span><span className="md:hidden">Sq.</span>
               </button>
@@ -2001,20 +2005,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('users')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : 'Ut.'}</span>
               </button>
             )}
             <button 
               onClick={() => setActiveTab('profile')}
-              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
               <i className="fas fa-user mr-1 lg:mr-2"></i> <span className="hidden md:inline">Profilo</span><span className="md:hidden">Prof.</span>
             </button>
             <button 
               onClick={() => setActiveTab('settings')}
-              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-[10px] lg:text-xs font-black uppercase transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
               <i className="fas fa-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}</span><span className="md:hidden">{currentUser?.role === 'admin' ? 'Av.' : 'Bk.'}</span>
             </button>
@@ -2061,7 +2065,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800">
               <button
                 onClick={() => setProfileSubTab('details')}
-                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs lg:text-sm font-black uppercase tracking-widest transition-all ${
                   profileSubTab === 'details' 
                     ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                     : 'text-slate-500 hover:text-slate-300'
@@ -2071,7 +2075,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
               <button
                 onClick={() => setProfileSubTab('help')}
-                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs lg:text-sm font-black uppercase tracking-widest transition-all ${
                   profileSubTab === 'help' 
                     ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                     : 'text-slate-500 hover:text-slate-300'
@@ -3239,12 +3243,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
               <button 
                 onClick={() => setShowFilters(!showFilters)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all flex items-center gap-1.5 shrink-0 border ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
               >
-                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'} text-sm`}></i>
-                <span className="hidden sm:inline">Filtri</span>
+                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
                 {hasActiveFilters && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
                 )}
               </button>
             </div>
@@ -3701,6 +3704,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     setUsersPage(1);
                   }}
                 />
+                {currentUser?.role === 'admin' && (
+                  <button
+                    onClick={() => {
+                      setFilterRole(prev => prev === 'society' ? '' : 'society');
+                      setUsersPage(1);
+                    }}
+                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border shrink-0 ${
+                      filterRole === 'society' 
+                        ? 'bg-orange-600 text-white border-orange-500' 
+                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                    }`}
+                    title="Filtra per Ruolo Società"
+                  >
+                    <i className="fas fa-building"></i>
+                    <span className="hidden sm:inline">Società</span>
+                  </button>
+                )}
                 <div className="flex items-center gap-2 shrink-0">
                   <select
                     value={usersPerPage}

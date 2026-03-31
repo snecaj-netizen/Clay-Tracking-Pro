@@ -122,7 +122,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
             >
               <div className="hidden sm:block text-right">
-                <div className={`text-[10px] font-black uppercase tracking-widest ${currentView === 'admin' ? 'text-orange-200' : 'text-slate-500'}`}>
+                <div className={`text-xs font-black uppercase tracking-widest ${currentView === 'admin' ? 'text-orange-200' : 'text-slate-500'}`}>
                   {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
                 </div>
                 <div className={`text-sm font-bold ${currentView === 'admin' ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
@@ -174,7 +174,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             <button 
               key={item.id}
               onClick={() => onNavigate(item.id, (item as any).tab)} 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'}`}
             >
               <i className={`fas ${item.icon} text-xs`}></i>
               <span>{item.label}</span>
@@ -220,7 +220,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                     </div>
                   )}
                   <div className="truncate">
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 truncate">
+                    <div className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 truncate">
                       {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
                     </div>
                     <div className="text-sm font-bold text-white truncate">{user?.name} {user?.surname}</div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SocietyEvent } from '../types';
 import SocietySearch from './SocietySearch';
+import ShooterSearch from './ShooterSearch';
 
 interface TeamManagerProps {
   event: SocietyEvent;
@@ -290,42 +291,29 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                 Seleziona Tiratori ({formData.memberIds.length} / {teamTypes.find(t => t.id === formData.type)?.size})
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                {availableShooters.map(shooter => {
-                  const isSelected = formData.memberIds.includes(shooter.id);
-                  const userResult = results.find(r => r.user_id === shooter.id);
-                  const cat = userResult?.category_at_time || shooter.category;
-                  const qual = userResult?.qualification_at_time || shooter.qualification;
-                  return (
-                    <div 
-                      key={shooter.id}
-                      onClick={() => toggleMember(shooter.id)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
-                        isSelected 
-                          ? 'bg-orange-600/20 border-orange-500 text-white' 
-                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-600'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                        isSelected ? 'border-orange-500 bg-orange-500 text-white' : 'border-slate-600'
-                      }`}>
-                        {isSelected && <i className="fas fa-check text-xs"></i>}
-                      </div>
-                      <div>
-                        <div className="font-bold">{shooter.surname || shooter.user_surname} {shooter.name || shooter.user_name}</div>
-                        <div className="text-xs opacity-70">
-                          {cat} {qual ? `- ${qual}` : ''} {userResult ? `| ${userResult.totalscore} pt` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {availableShooters.length === 0 && (
-                  <div className="col-span-full text-center py-4 text-slate-500 text-sm">
-                    Nessun tiratore trovato per questa società.
-                  </div>
-                )}
-              </div>
+              <ShooterSearch 
+                value={formData.memberIds}
+                onChange={(val) => {
+                  if (Array.isArray(val)) {
+                    const typeDef = teamTypes.find(t => t.id === formData.type);
+                    if (typeDef && val.length > typeDef.size) {
+                      if (triggerToast) triggerToast(`Massimo ${typeDef.size} tiratori per questa squadra`, 'info');
+                      return;
+                    }
+                    setFormData({ ...formData, memberIds: val });
+                  }
+                }}
+                shooters={availableShooters.map(s => ({
+                  ...s,
+                  // Ensure name and surname are available for ShooterSearch display
+                  name: s.name || s.user_name,
+                  surname: s.surname || s.user_surname
+                }))}
+                useId={true}
+                multiple={true}
+                placeholder="Cerca e seleziona tiratori..."
+                className="w-full"
+              />
             </div>
           )}
 

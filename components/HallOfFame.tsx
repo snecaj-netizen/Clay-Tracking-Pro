@@ -494,7 +494,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <h4 className="text-sm font-black text-white uppercase italic truncate">{entry.userName} {entry.userSurname}</h4>
+                          <h4 className="text-sm font-black text-white uppercase italic truncate">{entry.userSurname} {entry.userName}</h4>
                           <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase">
                             {entry.category}
                           </span>

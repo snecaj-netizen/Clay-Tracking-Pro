@@ -1313,6 +1313,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string);
     const search = req.query.search as string;
+    const role = req.query.role as string;
     
     let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, birth_date, phone, status, login_count, last_login, created_at FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
@@ -1322,6 +1323,11 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     if (req.user.role === 'society') {
       whereClauses.push("LOWER(TRIM(society)) = LOWER(TRIM($" + (params.length + 1) + "))");
       params.push(req.user.society);
+    }
+
+    if (role) {
+      whereClauses.push("role = $" + (params.length + 1));
+      params.push(role);
     }
     
     if (search) {

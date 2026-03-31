@@ -320,7 +320,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           return [
             index + 1,
             isPrize ? 'P' : '',
-            `${r.user_name || ''} ${r.user_surname || ''}${r.fitav_card ? `\n(${r.fitav_card})` : ''}`,
+            `${r.user_surname || ''} ${r.user_name || ''}${r.fitav_card ? `\n(${r.fitav_card})` : ''}`,
             `${r.category_at_time || r.category || '-'}/${r.qualification_at_time || r.qualification || '-'}`,
             ...seriesData,
             r.totalscore || 0,
@@ -388,7 +388,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       
       const bodyData = societyRanking.map((soc, index) => {
         const shootersStr = soc.shooters.map(s => 
-          `${s.user_name} ${s.user_surname} (${s.totalscore})`
+          `${s.user_surname} ${s.user_name} (${s.totalscore})`
         ).join('\n');
         
         return [
@@ -457,7 +457,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         const typeStr = team.type ? ` (${team.type})` : '';
         const nameStr = `${team.name}\n${team.society}${typeStr}`;
         const shootersStr = team.members.map((s: any) => 
-          `${s.user_name} ${s.user_surname} (${s.totalscore})`
+          `${s.user_surname} ${s.user_name} (${s.totalscore})`
         ).join('\n');
         
         return [
@@ -1405,7 +1405,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             <div key={shooter.id} className="flex justify-between items-center p-2 rounded-lg bg-slate-900 border border-slate-800/50">
                               <div className="flex items-center gap-3">
                                 <span className="text-slate-500 font-black text-xs">{sIdx + 1}.</span>
-                                <span className="text-sm font-bold text-white">{shooter.user_name} {shooter.user_surname}</span>
+                                <span className="text-sm font-bold text-white">{shooter.user_surname} {shooter.user_name}</span>
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
                                   {shooter.category_at_time || shooter.category} / {shooter.qualification_at_time || shooter.qualification}
                                 </span>
@@ -1466,7 +1466,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             <td className="p-2 sm:p-3 text-white font-medium text-xs sm:text-sm">
                               <div className="flex flex-col">
                                 <div className="flex items-center gap-2">
-                                  {r.user_name} {r.user_surname}
+                                  {r.user_surname} {r.user_name}
                                   {isOverridden && (
                                     <i className="fas fa-exclamation-triangle text-[10px] text-orange-500" title={`Classifica forzata a ${effectivePref}`}></i>
                                   )}

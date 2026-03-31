@@ -32,7 +32,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
       setSearchTerm('');
     } else if (useId) {
       const shooter = shooters.find(s => s.id === value || s.id === Number(value));
-      setSearchTerm(shooter ? `${shooter.name} ${shooter.surname}` : '');
+      setSearchTerm(shooter ? `${shooter.surname} ${shooter.name}` : '');
     } else {
       setSearchTerm(value as string || '');
     }
@@ -45,7 +45,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
         if (!multiple) {
           if (useId) {
             const shooter = shooters.find(s => s.id === value || s.id === Number(value));
-            setSearchTerm(shooter ? `${shooter.name} ${shooter.surname}` : '');
+            setSearchTerm(shooter ? `${shooter.surname} ${shooter.name}` : '');
           } else {
             setSearchTerm(value as string || '');
           }
@@ -61,11 +61,11 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
   }, [value, shooters, useId, multiple]);
 
   const filteredShooters = shooters.filter(s => {
-    const searchStr = `${s.name} ${s.surname} ${s.email || ''} ${s.fitav_card || ''}`.toLowerCase();
+    const searchStr = `${s.surname} ${s.name} ${s.email || ''} ${s.fitav_card || ''}`.toLowerCase();
     const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
     
     if (multiple && Array.isArray(value)) {
-      return matchesSearch && !value.includes(useId ? s.id : `${s.name} ${s.surname}`);
+      return matchesSearch && !value.includes(useId ? s.id : `${s.surname} ${s.name}`);
     }
     return matchesSearch;
   });
@@ -73,16 +73,16 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
   const handleSelect = (shooter: any) => {
     if (multiple) {
       const currentValue = Array.isArray(value) ? value : [];
-      const newValue = [...currentValue, useId ? shooter.id : `${shooter.name} ${shooter.surname}`];
+      const newValue = [...currentValue, useId ? shooter.id : `${shooter.surname} ${shooter.name}`];
       onChange(newValue, shooter.id);
       setSearchTerm('');
     } else {
       if (useId) {
         onChange(shooter.id.toString(), shooter.id);
       } else {
-        onChange(`${shooter.name} ${shooter.surname}`, shooter.id);
+        onChange(`${shooter.surname} ${shooter.name}`, shooter.id);
       }
-      setSearchTerm(`${shooter.name} ${shooter.surname}`);
+      setSearchTerm(`${shooter.surname} ${shooter.name}`);
       setIsOpen(false);
     }
   };
@@ -102,7 +102,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
             {value.map((v, idx) => {
               const shooter = useId ? shooters.find(s => s.id === v) : null;
               const label = shooter 
-                ? `${shooter.name} ${shooter.surname}${shooter.category || shooter.qualification ? ` (${shooter.category || shooter.qualification})` : ''}` 
+                ? `${shooter.surname} ${shooter.name}${shooter.category || shooter.qualification ? ` (${shooter.category || shooter.qualification})` : ''}` 
                 : v;
               return (
                 <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-600/20 text-orange-500 text-[10px] font-black uppercase tracking-widest border border-orange-500/30">
@@ -167,7 +167,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="block font-bold">
-                      {s.name} {s.surname}
+                      {s.surname} {s.name}
                       {(s.category || s.qualification) && (
                         <span className="ml-2 text-[10px] font-black text-orange-500 uppercase tracking-tighter bg-orange-600/10 px-1.5 py-0.5 rounded">
                           {s.category || s.qualification}
