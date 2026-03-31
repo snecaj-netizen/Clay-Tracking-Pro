@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SocietyEvent, PrizeSetting, User } from '../types';
 import ShooterSearch from './ShooterSearch';
+import TeamManager from './TeamManager';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { motion, AnimatePresence } from 'motion/react';
@@ -19,9 +20,10 @@ interface EventResultsManagerProps {
 const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, triggerConfirm, triggerToast, onEventUpdate }) => {
   const [results, setResults] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState<'generale' | 'categoria' | 'qualifica' | 'societa'>('generale');
+  const [viewMode, setViewMode] = useState<'generale' | 'categoria' | 'qualifica' | 'societa' | 'squadre'>('generale');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedQualification, setSelectedQualification] = useState<string>('');
   const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
@@ -32,6 +34,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [rankingPreference, setRankingPreference] = useState<'categoria' | 'qualifica'>('categoria');
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
   const [hasSocietyRanking, setHasSocietyRanking] = useState(event.has_society_ranking || false);
+  const [hasTeamRanking, setHasTeamRanking] = useState(event.has_team_ranking || false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
@@ -76,22 +79,30 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         setResults(data);
       }
 
-      // Fetch users (shooters) only if not readOnly
-      if (!readOnly) {
-        const resUsers = await fetch('/api/admin/users?limit=1000', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (resUsers.ok) {
-          const data = await resUsers.json();
-          let filteredUsers = (data.users || []).filter((u: any) => u.role === 'user' || u.role === 'admin');
-          
-          // For society events, only show shooters from that society
-          if (event.visibility === 'Gara di Società') {
-            filteredUsers = filteredUsers.filter((u: any) => u.society === event.location);
-          }
-          
-          setUsers(filteredUsers);
+      // Fetch teams
+      const resTeams = await fetch(`/api/events/${event.id}/teams`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resTeams.ok) {
+        const data = await resTeams.json();
+        setTeams(data);
+      }
+
+      // Fetch users (shooters) regardless of readOnly to show names in team rankings
+      const resUsers = await fetch('/api/admin/users?limit=10000', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resUsers.ok) {
+        const data = await resUsers.json();
+        let filteredUsers = (data.users || []).filter((u: any) => u.role === 'user' || u.role === 'admin');
+        
+        // For society events, only show shooters from that society
+        if (event.visibility === 'Gara di Società') {
+          const eventLoc = (event.location || '').toLowerCase().trim();
+          filteredUsers = filteredUsers.filter((u: any) => (u.society || '').toLowerCase().trim() === eventLoc);
         }
+        
+        setUsers(filteredUsers);
       }
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -409,6 +420,75 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       currentY = (doc as any).lastAutoTable.finalY + 15;
     }
 
+    // 5. Classifica Squadre
+    if (event.has_team_ranking && teams.length > 0) {
+      if (currentY > 240) { doc.addPage(); currentY = 20; }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(234, 88, 12); // orange-600
+      doc.text('CLASSIFICA SQUADRE', 20, currentY);
+      currentY += 5;
+
+      const teamRankings = teams.map(team => {
+        const teamMembers = (team.member_ids || []).map((id: string) => {
+          const result = results.find(r => r.user_id === id);
+          const user = users.find(u => u.id === id);
+          return {
+            id: id,
+            user_id: id,
+            user_name: result?.user_name || user?.name || 'Sconosciuto',
+            user_surname: result?.user_surname || user?.surname || '',
+            totalscore: result?.totalscore || 0
+          };
+        });
+        const totalScore = teamMembers.reduce((sum: number, m: any) => sum + (m.totalscore || 0), 0);
+        return {
+          ...team,
+          totalScore,
+          members: teamMembers
+        };
+      }).sort((a, b) => b.totalScore - a.totalScore);
+
+      const headers = [['Pos', 'Squadra', 'Tiratori', 'Totale']];
+      
+      const bodyData = teamRankings.map((team, index) => {
+        const typeStr = team.type ? ` (${team.type})` : '';
+        const nameStr = `${team.name}\n${team.society}${typeStr}`;
+        const shootersStr = team.members.map((s: any) => 
+          `${s.user_name} ${s.user_surname} (${s.totalscore})`
+        ).join('\n');
+        
+        return [
+          index + 1,
+          nameStr,
+          shootersStr,
+          team.totalScore
+        ];
+      });
+
+      autoTable(doc, {
+        startY: currentY,
+        head: headers,
+        body: bodyData,
+        theme: 'striped',
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
+        bodyStyles: { fontSize: 7, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 10 }, // Pos
+          1: { cellWidth: 40 }, // Squadra
+          2: { cellWidth: 'auto' }, // Tiratori
+          3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' }, // Totale
+        },
+        margin: { left: 15, right: 15 },
+        didDrawPage: (data: any) => {
+          currentY = data.cursor.y + 15;
+        }
+      });
+      
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+    }
+
     // Footer on each page
     const pageCount = (doc as any).internal.getNumberOfPages();
     console.log(`PDF generated with ${pageCount} pages`);
@@ -695,7 +775,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ has_society_ranking: hasSocietyRanking })
+        body: JSON.stringify({ has_society_ranking: hasSocietyRanking, has_team_ranking: hasTeamRanking })
       });
       if (res.ok) {
         if (onEventUpdate) onEventUpdate();
@@ -1092,6 +1172,37 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 </div>
 
                 <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Classifica Squadre (Gara)</label>
+                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="hasTeamRankingResult"
+                        checked={hasTeamRanking}
+                        onChange={(e) => {
+                          setHasTeamRanking(e.target.checked);
+                          // Auto-save the event setting
+                          fetch(`/api/events/${event.id}`, {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ has_team_ranking: e.target.checked })
+                          }).then(res => {
+                            if (res.ok && onEventUpdate) onEventUpdate();
+                          });
+                        }}
+                        className="w-4 h-4 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
+                      />
+                      <label htmlFor="hasTeamRankingResult" className="text-xs font-bold text-slate-300 cursor-pointer">
+                        Abilita Classifica Squadre
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Spareggio (Opzionale)</label>
                   <input 
                     type="number" 
@@ -1201,6 +1312,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       Società
                     </button>
                   )}
+                  {(event.has_team_ranking || !readOnly) && (
+                    <button
+                      onClick={() => setViewMode('squadre')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Squadre
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1237,6 +1356,24 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
               <div className="flex justify-center items-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
               </div>
+            ) : viewMode === 'squadre' ? (
+              <TeamManager 
+                event={event} 
+                results={results} 
+                users={Array.from(new Map([...users, ...results.map(r => ({
+                  id: r.user_id,
+                  name: r.user_name,
+                  surname: r.user_surname,
+                  society: r.society_at_time || r.society,
+                  category: r.category_at_time || r.category,
+                  qualification: r.qualification_at_time || r.qualification
+                }))].map(u => [u.id, u])).values())}
+                teams={teams} 
+                token={token} 
+                onTeamsUpdate={fetchData}
+                triggerToast={triggerToast}
+                readOnly={readOnly || event.status === 'validated'}
+              />
             ) : viewMode === 'societa' ? (
               societyRanking.length === 0 ? (
                 <div className="text-center py-12 text-slate-500">
@@ -1475,7 +1612,6 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 )}
                 {pdfUrl && (
                   <div className="w-full h-full">
-                    {console.log('Rendering PDF object with URL:', pdfUrl)}
                     <object 
                       key={pdfUrl}
                       data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`} 

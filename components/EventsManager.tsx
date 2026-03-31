@@ -220,6 +220,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [registrationLink, setRegistrationLink] = useState('');
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
   const [hasSocietyRanking, setHasSocietyRanking] = useState(false);
+  const [hasTeamRanking, setHasTeamRanking] = useState(false);
 
   const fetchEvents = async (signal?: AbortSignal) => {
     if (!token) {
@@ -276,6 +277,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setRegistrationLink(ev.registration_link || '');
     setRankingPreferenceOverride(ev.ranking_preference_override || null);
     setHasSocietyRanking(ev.has_society_ranking || false);
+    setHasTeamRanking(ev.has_team_ranking || false);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -322,6 +324,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setRegistrationLink('');
     setRankingPreferenceOverride(null);
     setHasSocietyRanking(false);
+    setHasTeamRanking(false);
     setShowForm(false);
   };
 
@@ -343,7 +346,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       poster_url: posterUrl,
       registration_link: registrationLink,
       ranking_preference_override: rankingPreferenceOverride,
-      has_society_ranking: hasSocietyRanking
+      has_society_ranking: hasSocietyRanking,
+      has_team_ranking: hasTeamRanking
     };
 
     try {
@@ -1064,6 +1068,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 Abilita Classifica per Società
                 <p className="text-xs font-normal text-slate-500 mt-1">
                   Calcola una classifica aggiuntiva sommando i 3 migliori risultati per ogni società.
+                </p>
+              </label>
+            </div>
+
+            {/* Classifica Squadre Toggle */}
+            <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+              <input
+                type="checkbox"
+                id="hasTeamRanking"
+                checked={hasTeamRanking}
+                onChange={(e) => setHasTeamRanking(e.target.checked)}
+                className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
+              />
+              <label htmlFor="hasTeamRanking" className="text-sm font-bold text-slate-300">
+                Abilita Classifica Squadre
+                <p className="text-xs font-normal text-slate-500 mt-1">
+                  Permette di creare squadre di 3 o 6 tiratori durante l'inserimento dei risultati.
                 </p>
               </label>
             </div>

@@ -358,6 +358,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_logic TEXT DEFAULT 'individual'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_preference_override TEXT`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_society_ranking BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_team_ranking BOOLEAN DEFAULT FALSE`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -393,6 +394,24 @@ const initDB = async () => {
       );
     `);
     
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS event_teams (
+        id SERIAL PRIMARY KEY,
+        event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        society TEXT NOT NULL,
+        type TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Add event_team_id to competitions
+    try {
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS event_team_id INTEGER REFERENCES event_teams(id) ON DELETE SET NULL");
+    } catch (e) {
+      console.log("Failed to add event_team_id column:", e);
+    }
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS challenges (
         id TEXT PRIMARY KEY,
@@ -2308,6 +2327,13 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
 
     console.log(`Changes: added=${addedMemberIds}, removed=${removedMemberIds}, kept=${keptMemberIds}`);
 
+    // Find if there is an event matching the competition_name
+    const { rows: eventRows } = await client.query(
+      "SELECT id FROM events WHERE name = $1 LIMIT 1",
+      [competition_name]
+    );
+    const eventId = eventRows.length > 0 ? eventRows[0].id : null;
+
     // 1. Delete competitions for removed members
     if (removedMemberIds.length > 0) {
       const delResult = await client.query("DELETE FROM competitions WHERE team_id = $1 AND user_id = ANY($2)", [teamId, removedMemberIds]);
@@ -2317,9 +2343,9 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
     // 2. Update competitions for kept members
     if (keptMemberIds.length > 0) {
       await client.query(
-        `UPDATE competitions SET name = $1, date = $2, location = $3, discipline = $4, team_name = $5 
-         WHERE team_id = $6 AND user_id = ANY($7)`,
-        [competition_name || name, date, req.body.location || society || '', discipline, name, teamId, keptMemberIds]
+        `UPDATE competitions SET name = $1, date = $2, location = $3, discipline = $4, team_name = $5, event_id = $6 
+         WHERE team_id = $7 AND user_id = ANY($8)`,
+        [competition_name || name, date, req.body.location || society || '', discipline, name, eventId, teamId, keptMemberIds]
       );
     }
 
@@ -2329,10 +2355,10 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
       for (const userId of addedMemberIds) {
         const compId = `team_comp_${Date.now()}_${userId}`;
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes, event_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            ON CONFLICT (id) DO UPDATE SET 
-           name = EXCLUDED.name, date = EXCLUDED.date, location = EXCLUDED.location, discipline = EXCLUDED.discipline, team_name = EXCLUDED.team_name`,
+           name = EXCLUDED.name, date = EXCLUDED.date, location = EXCLUDED.location, discipline = EXCLUDED.discipline, team_name = EXCLUDED.team_name, event_id = EXCLUDED.event_id`,
           [
             compId, 
             userId, 
@@ -2345,7 +2371,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
             JSON.stringify([0, 0, 0, 0]), 
             name,
             teamId,
-            null // chokes
+            null, // chokes
+            eventId
           ]
         );
       }
@@ -2438,6 +2465,13 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
 
     const team = teamRows[0];
 
+    // Find if there is an event matching the competition_name
+    const { rows: eventRows } = await client.query(
+      "SELECT id FROM events WHERE name = $1 LIMIT 1",
+      [team.competition_name]
+    );
+    const eventId = eventRows.length > 0 ? eventRows[0].id : null;
+
     // 2. Create or update competition for each member
     for (const userId of team.member_ids) {
       if (!userId) continue;
@@ -2451,14 +2485,15 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
       if (existingComp.length > 0) {
         // Update existing
         await client.query(
-          `UPDATE competitions SET name = $1, date = $2, location = $3, discipline = $4, team_name = $5 
-           WHERE id = $6`,
+          `UPDATE competitions SET name = $1, date = $2, location = $3, discipline = $4, team_name = $5, event_id = $6 
+           WHERE id = $7`,
           [
             team.competition_name || team.name, 
             team.date || new Date().toISOString().split('T')[0], 
             team.location || team.society || '', 
             team.discipline || '', 
             team.name,
+            eventId,
             existingComp[0].id
           ]
         );
@@ -2470,10 +2505,10 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
         const initialScores = Array(numSeries).fill(0);
 
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `INSERT INTO competitions (id, user_id, name, date, location, discipline, level, totalscore, totaltargets, averageperseries, scores, team_name, team_id, chokes, event_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            ON CONFLICT (id) DO UPDATE SET 
-           name = EXCLUDED.name, date = EXCLUDED.date, location = EXCLUDED.location, discipline = EXCLUDED.discipline, team_name = EXCLUDED.team_name`,
+           name = EXCLUDED.name, date = EXCLUDED.date, location = EXCLUDED.location, discipline = EXCLUDED.discipline, team_name = EXCLUDED.team_name, event_id = EXCLUDED.event_id`,
           [
             compId, 
             userId, 
@@ -2488,7 +2523,8 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
             JSON.stringify(initialScores), 
             team.name,
             teamId,
-            null // chokes
+            null, // chokes
+            eventId
           ]
         );
       }
@@ -2581,6 +2617,244 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.get('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
+  try {
+    const eventId = req.params.id;
+    // Get event name
+    const eventRes = await pool.query('SELECT name FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    const eventName = eventRes.rows[0].name;
+
+    // Fetch teams from `teams` table where competition_name matches eventName
+    const teams = await pool.query(`
+      SELECT t.*, 
+             COALESCE(json_agg(tm.user_id) FILTER (WHERE tm.user_id IS NOT NULL), '[]') as member_ids
+      FROM teams t
+      LEFT JOIN team_members tm ON t.id = tm.team_id
+      WHERE t.competition_name = $1
+      GROUP BY t.id
+      ORDER BY t.created_at ASC
+    `, [eventName]);
+    res.json(teams.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Errore nel recupero delle squadre' });
+  }
+});
+
+app.post('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    const eventId = req.params.id;
+    const { name, society, type, memberIds } = req.body; // memberIds are user IDs
+    
+    // Check if event exists and user has permission
+    const eventCheck = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventCheck.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Evento non trovato' });
+    }
+    
+    const event = eventCheck.rows[0];
+    if (event.status === 'validated' && req.user.role !== 'admin') {
+      client.release();
+      return res.status(403).json({ error: 'Questa gara è stata convalidata e le squadre non possono più essere modificate.' });
+    }
+    
+    if (req.user.role !== 'admin' && event.created_by !== req.user.id && event.location !== req.user.society) {
+      client.release();
+      return res.status(403).json({ error: 'Non hai i permessi per gestire le squadre di questo evento' });
+    }
+
+    await client.query('BEGIN');
+
+    // Determine size from type (e.g., "3_shooters" -> 3)
+    let size = 3;
+    if (type && type.includes('6')) size = 6;
+
+    // Create team in `teams` table
+    const newTeam = await client.query(`
+      INSERT INTO teams (name, size, society, competition_name, discipline, date, location, targets, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [name, size, society, event.name, event.discipline, event.start_date, event.location, event.targets, req.user.id]);
+
+    const teamId = newTeam.rows[0].id;
+
+    // Assign members to `team_members`
+    if (memberIds && memberIds.length > 0) {
+      for (const userId of memberIds) {
+        await client.query(
+          "INSERT INTO team_members (team_id, user_id) VALUES ($1, $2)",
+          [teamId, userId]
+        );
+      }
+
+      // Update existing competitions for these users in this event to have team_id and team_name
+      await client.query(`
+        UPDATE competitions SET team_id = $1, team_name = $2 
+        WHERE event_id = $3 AND user_id = ANY($4)
+      `, [teamId, name, eventId, memberIds]);
+      
+      // Send push notification to team members
+      await sendPushNotification(
+        memberIds,
+        "Nuova Squadra!",
+        `Sei stato inserito nella squadra "${name}" per la gara "${event.name}".`,
+        `/history`,
+        'team'
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json(newTeam.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Errore nella creazione della squadra' });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    const { id: eventId, teamId } = req.params;
+    const { name, society, type, memberIds } = req.body;
+    
+    const eventCheck = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventCheck.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Evento non trovato' });
+    }
+    
+    const event = eventCheck.rows[0];
+    if (event.status === 'validated' && req.user.role !== 'admin') {
+      client.release();
+      return res.status(403).json({ error: 'Questa gara è stata convalidata e le squadre non possono più essere modificate.' });
+    }
+    
+    if (req.user.role !== 'admin' && event.created_by !== req.user.id && event.location !== req.user.society) {
+      client.release();
+      return res.status(403).json({ error: 'Non hai i permessi per gestire le squadre di questo evento' });
+    }
+
+    await client.query('BEGIN');
+
+    let size = 3;
+    if (type && type.includes('6')) size = 6;
+
+    const updatedTeam = await client.query(`
+      UPDATE teams SET name = $1, society = $2, size = $3
+      WHERE id = $4 AND competition_name = $5
+      RETURNING *
+    `, [name, society, size, teamId, event.name]);
+
+    if (updatedTeam.rows.length === 0) {
+      await client.query('ROLLBACK');
+      client.release();
+      return res.status(404).json({ error: 'Squadra non trovata' });
+    }
+
+    // Update members
+    if (memberIds) {
+      // Remove all members from this team
+      await client.query(`DELETE FROM team_members WHERE team_id = $1`, [teamId]);
+      
+      // Remove team_id from competitions for this event
+      await client.query(`
+        UPDATE competitions SET team_id = NULL, team_name = NULL 
+        WHERE team_id = $1 AND event_id = $2
+      `, [teamId, eventId]);
+
+      if (memberIds.length > 0) {
+        // Assign new members
+        for (const userId of memberIds) {
+          await client.query(
+            "INSERT INTO team_members (team_id, user_id) VALUES ($1, $2)",
+            [teamId, userId]
+          );
+        }
+        
+        // Update competitions
+        await client.query(`
+          UPDATE competitions SET team_id = $1, team_name = $2 
+          WHERE event_id = $3 AND user_id = ANY($4)
+        `, [teamId, name, eventId, memberIds]);
+        
+        // Send push notification to team members
+        await sendPushNotification(
+          memberIds,
+          "Squadra Aggiornata",
+          `La squadra "${name}" per la gara "${event.name}" è stata modificata.`,
+          `/history`,
+          'team'
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json(updatedTeam.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Errore nell\'aggiornamento della squadra' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    const { id: eventId, teamId } = req.params;
+    
+    const eventCheck = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventCheck.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Evento non trovato' });
+    }
+    
+    const event = eventCheck.rows[0];
+    if (event.status === 'validated' && req.user.role !== 'admin') {
+      client.release();
+      return res.status(403).json({ error: 'Questa gara è stata convalidata e le squadre non possono più essere modificate.' });
+    }
+    
+    if (req.user.role !== 'admin' && event.created_by !== req.user.id && event.location !== req.user.society) {
+      client.release();
+      return res.status(403).json({ error: 'Non hai i permessi per gestire le squadre di questo evento' });
+    }
+
+    await client.query('BEGIN');
+
+    // Remove team_id from competitions
+    await client.query(`
+      UPDATE competitions SET team_id = NULL, team_name = NULL 
+      WHERE team_id = $1 AND event_id = $2
+    `, [teamId, eventId]);
+
+    // Delete team (cascade will handle team_members)
+    const deleted = await client.query(`DELETE FROM teams WHERE id = $1 AND competition_name = $2 RETURNING *`, [teamId, event.name]);
+
+    if (deleted.rows.length === 0) {
+      await client.query('ROLLBACK');
+      client.release();
+      return res.status(404).json({ error: 'Squadra non trovata' });
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Errore nell\'eliminazione della squadra' });
+  } finally {
+    client.release();
+  }
+});
+
 app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
   try {
     const eventId = req.params.id;
@@ -2614,12 +2888,12 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking } = req.body;
+  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking } = req.body;
   
   try {
     await pool.query(
-      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -2627,8 +2901,9 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
        notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link,
        prize_settings = EXCLUDED.prize_settings, ranking_logic = EXCLUDED.ranking_logic,
        ranking_preference_override = EXCLUDED.ranking_preference_override,
-       has_society_ranking = EXCLUDED.has_society_ranking`,
-      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id, prize_settings, ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false]
+       has_society_ranking = EXCLUDED.has_society_ranking,
+       has_team_ranking = EXCLUDED.has_team_ranking`,
+      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id, prize_settings, ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, has_team_ranking || false]
     );
 
     // Send push notification
@@ -2673,7 +2948,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking } = req.body;
+  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking } = req.body;
   
   try {
     // Check if event is validated
@@ -2709,9 +2984,10 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         prize_settings = COALESCE($13, prize_settings),
         ranking_logic = COALESCE($14, ranking_logic),
         ranking_preference_override = COALESCE($15, ranking_preference_override),
-        has_society_ranking = COALESCE($16, has_society_ranking)
-       WHERE id = $17`,
-      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, req.params.id]
+        has_society_ranking = COALESCE($16, has_society_ranking),
+        has_team_ranking = COALESCE($17, has_team_ranking)
+       WHERE id = $18`,
+      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking, req.params.id]
     );
 
     // Send push notification for update
@@ -2926,46 +3202,50 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
   const c = req.body;
   let targetUserId = req.user.id;
   
-  if (req.user.role === 'admin' && c.userId) {
-    targetUserId = c.userId;
-  } else if (req.user.role === 'society') {
-    if (!c.userId) {
-      return res.status(400).json({ error: 'Devi specificare un tiratore.' });
-    }
-    // Verify that the user belongs to this society OR the society owns the event
-    let canManage = false;
-    const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [c.userId]);
-    if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
-      canManage = true;
-    }
-    
-    if (!canManage && c.eventId) {
+  if (c.eventId) {
+    // If it's an event result, ONLY Admin or the hosting Society can insert it
+    if (req.user.role === 'admin') {
+      if (c.userId) targetUserId = c.userId;
+    } else if (req.user.role === 'society') {
+      if (!c.userId) {
+        return res.status(400).json({ error: 'Devi specificare un tiratore.' });
+      }
       const eventCheck = await pool.query('SELECT location, created_by, status FROM events WHERE id = $1', [c.eventId]);
       if (eventCheck.rows.length > 0) {
         const ev = eventCheck.rows[0];
-        if (ev.status === 'validated' && req.user.role !== 'admin') {
+        if (ev.status === 'validated') {
           return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
         }
         if (ev.location === req.user.society || ev.created_by === req.user.id) {
-          canManage = true;
+          targetUserId = c.userId;
+        } else {
+          return res.status(403).json({ error: 'I risultati di una gara possono essere inseriti solo dalla società ospitante o da un Admin.' });
         }
+      } else {
+        return res.status(404).json({ error: 'Evento non trovato.' });
+      }
+    } else {
+      // Users cannot insert event results
+      return res.status(403).json({ error: 'I risultati di una gara possono essere inseriti solo dalla società ospitante o da un Admin.' });
+    }
+  } else {
+    // Non-event competition (personal or society-added)
+    if (req.user.role === 'admin' && c.userId) {
+      targetUserId = c.userId;
+    } else if (req.user.role === 'society') {
+      if (!c.userId) {
+        return res.status(400).json({ error: 'Devi specificare un tiratore.' });
+      }
+      const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [c.userId]);
+      if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+        targetUserId = c.userId;
+      } else {
+        return res.status(403).json({ error: 'Puoi inserire gare solo per i tuoi tiratori.' });
       }
     }
-
-    if (!canManage) {
-      return res.status(403).json({ error: 'Puoi inserire gare solo per i tuoi tiratori o per eventi che gestisci.' });
-    }
-    targetUserId = c.userId;
   }
 
   try {
-    // Check if event is validated if not already checked
-    if (c.eventId && req.user.role !== 'admin') {
-      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [c.eventId]);
-      if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated') {
-        return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
-      }
-    }
     // Fetch user details for snapshot
     const userDetails = await pool.query('SELECT category, qualification, society FROM users WHERE id = $1', [targetUserId]);
     const cat = userDetails.rows[0]?.category || null;
@@ -2973,6 +3253,9 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
     const soc = userDetails.rows[0]?.society || null;
 
     let finalId = c.id;
+    let teamId = null;
+    let teamName = null;
+
     if (c.eventId) {
       // Check if user already has a competition for this event or matching date/location/discipline
       const existingComp = await pool.query(`
@@ -2988,11 +3271,25 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
       if (existingComp.rows.length > 0) {
         finalId = existingComp.rows[0].id;
       }
+
+      // Check if user is in a team for this event
+      const teamCheck = await pool.query(`
+        SELECT t.id, t.name 
+        FROM teams t
+        JOIN team_members tm ON t.id = tm.team_id
+        WHERE tm.user_id = $1 AND t.competition_name = $2
+        LIMIT 1
+      `, [targetUserId, c.name]);
+
+      if (teamCheck.rows.length > 0) {
+        teamId = teamCheck.rows[0].id;
+        teamName = teamCheck.rows[0].name;
+      }
     }
 
     await pool.query(
-      `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, event_id, shoot_off, category_at_time, qualification_at_time, society_at_time, ranking_preference, ranking_preference_override, hidden_from_user) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, FALSE)
+      `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, event_id, shoot_off, category_at_time, qualification_at_time, society_at_time, ranking_preference, ranking_preference_override, hidden_from_user, team_id, team_name) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, FALSE, $29, $30)
        ON CONFLICT (id) DO UPDATE SET 
        user_id = EXCLUDED.user_id, name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, location = EXCLUDED.location, 
        discipline = EXCLUDED.discipline, level = EXCLUDED.level, totalscore = EXCLUDED.totalscore, totaltargets = EXCLUDED.totaltargets, 
@@ -3003,7 +3300,7 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
        qualification_at_time = EXCLUDED.qualification_at_time, society_at_time = EXCLUDED.society_at_time,
        ranking_preference = EXCLUDED.ranking_preference,
        ranking_preference_override = EXCLUDED.ranking_preference_override,
-       hidden_from_user = FALSE`,
+       hidden_from_user = FALSE, team_id = EXCLUDED.team_id, team_name = EXCLUDED.team_name`,
       [
         finalId, targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
         c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -3017,9 +3314,22 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
         c.shootOff !== undefined ? c.shootOff : null,
         cat, qual, soc,
         c.ranking_preference || 'categoria',
-        c.ranking_preference_override || null
+        c.ranking_preference_override || null,
+        teamId, teamName
       ]
     );
+
+    // Send push notification to user if result was entered by someone else
+    if (targetUserId !== req.user.id) {
+      await sendPushNotification(
+        [targetUserId],
+        "Nuovo Risultato!",
+        `È stato inserito un nuovo risultato per te nella gara "${c.name}".`,
+        `/history`,
+        'all'
+      );
+    }
+
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -3030,20 +3340,45 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
   const c = req.body;
   
   try {
+    // Fetch existing competition to check permissions and get targetUserId
+    const existingComp = await pool.query('SELECT user_id, name, event_id FROM competitions WHERE id = $1', [req.params.id]);
+    if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
+    
+    const targetUserId = existingComp.rows[0].user_id;
+    const compName = existingComp.rows[0].name;
+    const compEventId = existingComp.rows[0].event_id;
+
     // Check if competition is linked to a validated event
-    const compCheck = await pool.query('SELECT event_id FROM competitions WHERE id = $1', [req.params.id]);
-    if (compCheck.rows.length > 0 && compCheck.rows[0].event_id) {
-      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [compCheck.rows[0].event_id]);
+    if (compEventId) {
+      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [compEventId]);
       if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated' && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
       }
     }
 
     let result;
+    let teamId = c.teamId || null;
+    let teamName = c.teamName || null;
+
+    if (c.eventId && !teamId) {
+      const teamCheck = await pool.query(`
+        SELECT t.id, t.name 
+        FROM teams t
+        JOIN team_members tm ON t.id = tm.team_id
+        WHERE tm.user_id = $1 AND t.competition_name = $2
+        LIMIT 1
+      `, [c.userId || req.user.id, c.name]);
+
+      if (teamCheck.rows.length > 0) {
+        teamId = teamCheck.rows[0].id;
+        teamName = teamCheck.rows[0].name;
+      }
+    }
+
     if (req.user.role === 'admin') {
       const targetUserId = c.userId || req.user.id;
       result = await pool.query(
-        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24 WHERE id=$25`,
+        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24, team_id=$25, team_name=$26 WHERE id=$27`,
         [
           targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -3057,6 +3392,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.shootOff !== undefined ? c.shootOff : null,
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
+          teamId, teamName,
           req.params.id
         ]
       );
@@ -3069,18 +3405,25 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       const compEventId = existingComp.rows[0].event_id;
       
       let canManage = false;
-      const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
-      if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
-        canManage = true;
-      }
       
-      if (!canManage && compEventId) {
+      if (compEventId) {
+        // If it's an event result, ONLY the hosting Society can update it
         const eventCheck = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [compEventId]);
         if (eventCheck.rows.length > 0) {
           const ev = eventCheck.rows[0];
           if (ev.location === req.user.society || ev.created_by === req.user.id) {
             canManage = true;
+          } else {
+            return res.status(403).json({ error: 'I risultati di una gara possono essere modificati solo dalla società ospitante o da un Admin.' });
           }
+        } else {
+          return res.status(404).json({ error: 'Evento non trovato.' });
+        }
+      } else {
+        // Non-event competition
+        const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
+        if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+          canManage = true;
         }
       }
 
@@ -3089,7 +3432,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       }
 
       result = await pool.query(
-        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23 WHERE id=$24`,
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25 WHERE id=$26`,
         [
           c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -3103,12 +3446,13 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.shootOff !== undefined ? c.shootOff : null,
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
+          teamId, teamName,
           req.params.id
         ]
       );
     } else {
       result = await pool.query(
-        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23 WHERE id=$24 AND user_id=$25`,
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25 WHERE id=$26 AND user_id=$27`,
         [
           c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -3122,6 +3466,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.shootOff !== undefined ? c.shootOff : null,
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
+          teamId, teamName,
           req.params.id, req.user.id
         ]
       );
@@ -3130,6 +3475,17 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
     if (result.rowCount === 0) {
       console.log(`Competition update failed: ID ${req.params.id} not found or unauthorized for user ${req.user.id} (role: ${req.user.role})`);
       return res.status(404).json({ error: 'Gara non trovata o non autorizzato.' });
+    }
+
+    // Send push notification to user if result was updated by someone else
+    if (targetUserId !== req.user.id) {
+      await sendPushNotification(
+        [targetUserId],
+        "Risultato Aggiornato!",
+        `Il tuo risultato nella gara "${c.name || compName}" è stato aggiornato.`,
+        `/history`,
+        'all'
+      );
     }
     
     res.json({ success: true });
@@ -3154,15 +3510,38 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
     if (req.user.role === 'admin') {
       result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
     } else if (req.user.role === 'society') {
-      // Check if the competition belongs to a user in this society
-      const compCheck = await pool.query(`
-        SELECT c.id FROM competitions c
-        JOIN users u ON c.user_id = u.id
-        WHERE c.id = $1 AND u.society = $2
-      `, [req.params.id, req.user.society]);
+      // Società can delete competitions for their own shooters OR for events they own
+      const existingComp = await pool.query('SELECT user_id, event_id FROM competitions WHERE id = $1', [req.params.id]);
+      if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
       
-      if (compCheck.rows.length === 0) {
-        return res.status(403).json({ error: 'Puoi eliminare solo i risultati dei tuoi tiratori.' });
+      const compUserId = existingComp.rows[0].user_id;
+      const compEventId = existingComp.rows[0].event_id;
+      
+      let canManage = false;
+      
+      if (compEventId) {
+        // If it's an event result, ONLY the hosting Society can delete it
+        const eventCheck = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [compEventId]);
+        if (eventCheck.rows.length > 0) {
+          const ev = eventCheck.rows[0];
+          if (ev.location === req.user.society || ev.created_by === req.user.id) {
+            canManage = true;
+          } else {
+            return res.status(403).json({ error: 'I risultati di una gara possono essere eliminati solo dalla società ospitante o da un Admin.' });
+          }
+        } else {
+          return res.status(404).json({ error: 'Evento non trovato.' });
+        }
+      } else {
+        // Non-event competition
+        const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
+        if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+          canManage = true;
+        }
+      }
+
+      if (!canManage) {
+        return res.status(403).json({ error: 'Puoi eliminare gare solo per i tuoi tiratori o per eventi che gestisci.' });
       }
       result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
     } else {

@@ -198,6 +198,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [allResults, setAllResults] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [societies, setSocieties] = useState<any[]>(initialSocieties || []);
+  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState('');
@@ -527,6 +528,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, [token]);
 
+  const fetchEvents = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch('/api/events', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') console.error(err);
+    }
+  }, [token]);
+
   const fetchUsers = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     if (!isBackground) setLoading(true);
@@ -715,9 +731,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (activeTab === 'team' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
       const controller = new AbortController();
       fetchTeams(controller.signal);
+      fetchEvents(controller.signal);
       return () => controller.abort();
     }
-  }, [activeTab, currentUser?.role, fetchTeams]);
+  }, [activeTab, currentUser?.role, fetchTeams, fetchEvents]);
 
   useEffect(() => {
     if (activeTab === 'results' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
@@ -2287,13 +2304,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo/Nome Gara</label>
-                    <input 
-                      type="text" 
+                    <select 
                       value={newTeamCompetitionName} 
-                      onChange={e => setNewTeamCompetitionName(e.target.value)} 
-                      placeholder="Es: Campionato Regionale"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-                    />
+                      onChange={e => {
+                        const selectedEventName = e.target.value;
+                        setNewTeamCompetitionName(selectedEventName);
+                        const selectedEvent = events.find(ev => ev.name === selectedEventName);
+                        if (selectedEvent) {
+                          setNewTeamDiscipline(selectedEvent.discipline || '');
+                          setNewTeamLocation(selectedEvent.location || '');
+                          if (selectedEvent.start_date) {
+                            setNewTeamDate(selectedEvent.start_date);
+                          }
+                        }
+                      }} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">Seleziona Gara...</option>
+                      {events.map(ev => (
+                        <option key={ev.id} value={ev.name}>{ev.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV</label>

@@ -147,6 +147,7 @@ export interface SocietyEvent {
   ranking_logic?: 'individual' | 'best_placement' | 'absolute_score';
   ranking_preference_override?: 'categoria' | 'qualifica' | null;
   has_society_ranking?: boolean;
+  has_team_ranking?: boolean;
 }
 
 export interface PrizeSetting {
