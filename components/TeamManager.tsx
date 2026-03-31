@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SocietyEvent } from '../types';
+import SocietySearch from './SocietySearch';
 
 interface TeamManagerProps {
   event: SocietyEvent;
@@ -11,9 +12,10 @@ interface TeamManagerProps {
   triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   readOnly?: boolean;
   currentUser?: any;
+  allSocieties?: any[];
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, readOnly, currentUser }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, readOnly, currentUser, allSocieties = [] }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -250,16 +252,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white opacity-50 cursor-not-allowed outline-none" 
                 />
               ) : (
-                <select
+                <SocietySearch
                   value={formData.society}
-                  onChange={e => setFormData({...formData, society: e.target.value, memberIds: []})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
-                >
-                  <option value="">Seleziona Società</option>
-                  {societies.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({...formData, society: val, memberIds: []})}
+                  societies={allSocieties.length > 0 ? allSocieties : societies.map(s => ({ name: s, id: s }))}
+                  placeholder="Seleziona Società"
+                  className="w-full"
+                  required
+                />
               )}
             </div>
             <div>

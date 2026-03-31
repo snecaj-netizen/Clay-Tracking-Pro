@@ -15,9 +15,10 @@ interface EventResultsManagerProps {
   triggerConfirm?: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onEventUpdate?: () => void;
+  societies?: any[];
 }
 
-const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, triggerConfirm, triggerToast, onEventUpdate }) => {
+const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, triggerConfirm, triggerToast, onEventUpdate, societies = [] }) => {
   const [results, setResults] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -1374,6 +1375,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 triggerToast={triggerToast}
                 readOnly={readOnly || event.status === 'validated'}
                 currentUser={user}
+                allSocieties={societies}
               />
             ) : viewMode === 'societa' ? (
               societyRanking.length === 0 ? (

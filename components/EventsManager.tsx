@@ -1743,6 +1743,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           triggerConfirm={triggerConfirm}
           triggerToast={triggerToast}
           onEventUpdate={fetchEvents}
+          societies={societies}
         />
       )}
 
@@ -1755,6 +1756,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           readOnly={true}
           triggerConfirm={triggerConfirm}
           triggerToast={triggerToast}
+          societies={societies}
         />
       )}
 
