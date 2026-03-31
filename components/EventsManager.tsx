@@ -32,7 +32,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [managingResultsEvent, setManagingResultsEvent] = useState<SocietyEvent | null>(null);
   const [viewingResultsEvent, setViewingResultsEvent] = useState<SocietyEvent | null>(null);
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   
   const [showFilters, setShowFilters] = useState(false);
   const [filterSociety, setFilterSociety] = useState('');
@@ -82,10 +81,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       if (filterMonth) {
         const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
         if (evMonth !== filterMonth) return false;
-      }
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        return ev.name.toLowerCase().includes(search) || ev.location.toLowerCase().includes(search);
       }
       return true;
     });
@@ -853,17 +848,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   </button>
                 </div>
               )}
-
-              <div className="flex-1 min-w-[200px] relative group">
-                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-orange-500 transition-colors"></i>
-                <input 
-                  type="text" 
-                  placeholder="Cerca gara o società..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-11 pr-4 py-2 text-xs font-black uppercase tracking-widest text-white focus:border-orange-500 outline-none transition-all placeholder:text-slate-600"
-                />
-              </div>
             </div>
           )}
         </div>
