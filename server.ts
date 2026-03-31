@@ -1617,24 +1617,18 @@ app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, a
 app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string);
+    const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string;
     const society = req.query.society as string;
     const discipline = req.query.discipline as string;
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    // First, find all shooters that match the filters
-    let shooterQuery = `
-      SELECT DISTINCT u.id
-      FROM users u
-      JOIN competitions c ON u.id = c.user_id
-    `;
+    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
     let params: any[] = [];
-    let whereClauses: string[] = [];
 
     if (req.user.role === 'society') {
-      whereClauses.push("u.society = $" + (params.length + 1) + " AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'");
+      whereClauses.push("u.society = $" + (params.length + 1));
       params.push(req.user.society);
     }
 
@@ -1664,27 +1658,21 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       params.push(parseInt(year));
     }
 
-    if (whereClauses.length > 0) {
-      shooterQuery += " WHERE " + whereClauses.join(" AND ");
-    }
+    const whereString = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
 
-    // Get total shooters count
-    const countRes = await pool.query(`SELECT COUNT(DISTINCT u.id) FROM users u JOIN competitions c ON u.id = c.user_id ${whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(" AND ") : ''}`, params);
+    // Get total count of results
+    const countQuery = `
+      SELECT COUNT(*) 
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      ${whereString}
+    `;
+    const countRes = await pool.query(countQuery, params);
     const total = parseInt(countRes.rows[0].count);
 
-    // Get paginated shooter IDs
+    // Get paginated results
     const offset = (page - 1) * limit;
-    shooterQuery += ` ORDER BY u.id LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    const shooterIdParams = [...params, limit, offset];
-    const shooterIdsRes = await pool.query(shooterQuery, shooterIdParams);
-    const shooterIds = shooterIdsRes.rows.map(r => r.id);
-
-    if (shooterIds.length === 0) {
-      return res.json({ results: [], total: 0 });
-    }
-
-    // Now fetch all results for these shooters (matching the filters)
-    let resultsQuery = `
+    const resultsQuery = `
       SELECT 
         c.*, 
         u.name as user_name, 
@@ -1696,43 +1684,11 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         u.avatar
       FROM competitions c
       JOIN users u ON c.user_id = u.id
-      WHERE u.id = ANY($1)
+      ${whereString}
+      ORDER BY c.date DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
-    let resultsParams: any[] = [shooterIds];
-
-    // Re-apply filters to results to ensure we only get matching results
-    let resultsWhereClauses: string[] = [];
-    if (req.user.role === 'society') {
-      resultsWhereClauses.push("c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'");
-    }
-    if (search) {
-      const searchParam = "%" + search.toLowerCase() + "%";
-      resultsWhereClauses.push("(LOWER(u.name) LIKE $" + (resultsParams.length + 1) + " OR LOWER(u.surname) LIKE $" + (resultsParams.length + 1) + " OR LOWER(c.name) LIKE $" + (resultsParams.length + 1) + " OR LOWER(c.location) LIKE $" + (resultsParams.length + 1) + ")");
-      resultsParams.push(searchParam);
-    }
-    if (society) {
-      resultsWhereClauses.push("u.society = $" + (resultsParams.length + 1));
-      resultsParams.push(society);
-    }
-    if (discipline) {
-      resultsWhereClauses.push("c.discipline = $" + (resultsParams.length + 1));
-      resultsParams.push(discipline);
-    }
-    if (location) {
-      resultsWhereClauses.push("c.location = $" + (resultsParams.length + 1));
-      resultsParams.push(location);
-    }
-    if (year) {
-      resultsWhereClauses.push("EXTRACT(YEAR FROM c.date) = $" + (resultsParams.length + 1));
-      resultsParams.push(parseInt(year));
-    }
-
-    if (resultsWhereClauses.length > 0) {
-      resultsQuery += " AND " + resultsWhereClauses.join(" AND ");
-    }
-
-    resultsQuery += " ORDER BY c.date DESC";
-    const { rows } = await pool.query(resultsQuery, resultsParams);
+    const { rows } = await pool.query(resultsQuery, [...params, limit, offset]);
     
     const comps = rows.map((row: any) => ({
       id: row.id,
@@ -1765,11 +1721,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       ranking_preference: row.ranking_preference
     }));
 
-    if (limit) {
-      res.json({ results: comps, total });
-    } else {
-      res.json(comps);
-    }
+    res.json({ results: comps, total });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

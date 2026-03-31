@@ -1718,96 +1718,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const hasActiveFilters = filterShooter !== '' || filterSociety !== '' || filterDiscipline !== '' || filterLocation !== '' || filterYear !== '';
 
-  const resultsToDisplay = (currentUser?.role === 'admin' || currentUser?.role === 'society') ? allResults : competitions.map(c => ({
-    ...c,
-    userName: currentUser?.name || '',
-    userSurname: currentUser?.surname || '',
-    userId: currentUser?.id || ''
-  }));
-
-  const filteredResults = useMemo(() => {
-    return resultsToDisplay
-      .filter(r => r.totalScore > 0)
-      .filter(r => {
-        const shooterMatch = `${r.userName || ''} ${r.userSurname || ''}`.toLowerCase().includes(filterShooter.toLowerCase()) || 
-                             `${r.userSurname || ''} ${r.userName || ''}`.toLowerCase().includes(filterShooter.toLowerCase());
-        const societyMatch = !filterSociety || r.society === filterSociety;
-        const disciplineMatch = !filterDiscipline || r.discipline === filterDiscipline;
-        const locationMatch = !filterLocation || r.location === filterLocation;
-        
-        let yearMatch = true;
-        if (filterYear && r.date) {
-          const dateParts = r.date.split(/[-/]/);
-          const year = dateParts[0].length === 4 ? dateParts[0] : dateParts[2];
-          yearMatch = year === filterYear;
-        }
-
-        return shooterMatch && societyMatch && disciplineMatch && locationMatch && yearMatch;
-      })
-      .sort((a, b) => {
-        const dateA = a.date ? (new Date(a.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(a.date).getTime()) : 0;
-        const dateB = b.date ? (new Date(b.date.split(/[-/]/).reverse().join('-')).getTime() || new Date(b.date).getTime()) : 0;
-        return dateB - dateA; // Sort by date descending
-      });
-  }, [resultsToDisplay, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
-
-  const groupedShooters = useMemo(() => {
-    const groups = new Map();
-    filteredResults.forEach(r => {
-      const key = r.userId;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          userId: r.userId,
-          userName: r.userName,
-          userSurname: r.userSurname,
-          society: r.society,
-          category: r.category,
-          qualification: r.qualification,
-          fitav_card: r.fitav_card,
-          avatar: r.avatar,
-          results: []
-        });
-      }
-      groups.get(key).results.push(r);
-    });
-    
-    return Array.from(groups.values()).map(group => {
-      const results = group.results;
-      const totalCompetitions = results.length;
-      const totalScore = results.reduce((acc: number, r: any) => acc + (r.totalScore || 0), 0);
-      const totalTargets = results.reduce((acc: number, r: any) => acc + (r.totalTargets || 0), 0);
-      const layoutObj = getSeriesLayout(results[0]?.discipline as Discipline || Discipline.CK);
-      const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
-      const average = totalTargets > 0 ? (totalScore / totalTargets) * tps : 0;
-      const bestAverage = results.length > 0 ? Math.max(...results.map((r: any) => {
-        const rLayoutObj = getSeriesLayout(r.discipline as Discipline);
-        const rTps = rLayoutObj.layout.reduce((a, b) => a + b, 0);
-        return r.totalTargets > 0 ? (r.totalScore / r.totalTargets) * rTps : 0;
-      })) : 0;
-      
-      return {
-        ...group,
-        totalCompetitions,
-        average,
-        bestAverage
-      };
-    }).sort((a, b) => {
-      const nameA = `${a.userSurname || ''} ${a.userName || ''}`.trim();
-      const nameB = `${b.userSurname || ''} ${b.userName || ''}`.trim();
-      return nameA.localeCompare(nameB);
-    });
-  }, [filteredResults]);
-
   const isTabLoading = loading && (
     (activeTab === 'users' && users.length === 0) ||
     (activeTab === 'team' && teamStats.length === 0) ||
-    (activeTab === 'results' && allResults.length === 0)
+    (activeTab === 'results' && allResults.length === 0 && totalResults > 0)
   );
 
   if (isTabLoading) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
 
   const totalPages = Math.ceil(totalResults / resultsPerPage);
-  const paginatedShooters = groupedShooters;
 
   const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement> | string) => {
     const value = typeof e === 'string' ? e : e.target.value;
@@ -3336,93 +3255,185 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-8">
-            {paginatedShooters.map((shooter) => (
-              <div 
-                key={shooter.userId}
-                onClick={() => setSelectedShooterResults(shooter)}
-                className="bg-slate-950 border border-slate-800 rounded-2xl p-4 hover:border-orange-500/50 transition-all cursor-pointer group relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-600/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-orange-600/10 transition-all"></div>
-                
-                <div className="flex items-center gap-3 mb-3 relative z-10">
-                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-orange-500 text-lg font-black shadow-inner shrink-0">
-                    {(shooter.userName?.[0] || '')}{(shooter.userSurname?.[0] || '')}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors truncate">
-                      {shooter.userSurname || ''} {shooter.userName || ''}
-                    </h3>
-                    {shooter.fitav_card && (
-                      <p className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">
-                        {shooter.fitav_card}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest truncate">
-                        {shooter.society || 'Nessuna Società'}
-                      </p>
-                      {(shooter.category || shooter.qualification) && (
-                        <p className="text-[9px] font-black text-orange-500/70 uppercase tracking-widest truncate">
-                          • {shooter.category}{shooter.qualification ? ` / ${shooter.qualification}` : ''}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center text-slate-700 group-hover:text-orange-500 transition-all shrink-0">
-                    <i className="fas fa-chevron-right text-[10px]"></i>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-900 relative z-10">
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Gare</p>
-                    <p className="text-xs font-black text-white">{shooter.totalCompetitions}</p>
-                  </div>
-                  <div className="text-center border-x border-slate-900">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Media</p>
-                    <p className="text-xs font-black text-orange-500">{shooter.average.toFixed(2)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Best</p>
-                    <p className="text-xs font-black text-white">{shooter.bestAverage.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full border-separate border-spacing-y-2">
+              <thead>
+                <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
+                  <th className="px-4 py-2 text-left">Data</th>
+                  <th className="px-4 py-2 text-left">Tiratore</th>
+                  <th className="px-4 py-2 text-left">Gara</th>
+                  <th className="px-4 py-2 text-left">Località</th>
+                  <th className="px-4 py-2 text-left">Disciplina</th>
+                  <th className="px-4 py-2 text-center">Punteggio</th>
+                  <th className="px-4 py-2 text-center">Media</th>
+                  <th className="px-4 py-2 text-center">Pos.</th>
+                  <th className="px-4 py-2 text-right">Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allResults.map((result) => {
+                  const layoutObj = getSeriesLayout(result.discipline as Discipline);
+                  const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
+                  const avg = result.totalTargets > 0 ? (result.totalScore / result.totalTargets) * tps : 0;
+                  
+                  return (
+                    <tr 
+                      key={result.id}
+                      className="group bg-slate-950/40 hover:bg-slate-900/60 transition-all border border-slate-800/50"
+                    >
+                      <td className="px-4 py-4 rounded-l-2xl">
+                        <div className="text-xs font-black text-white">
+                          {new Date(result.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-orange-500 text-xs font-black">
+                            {result.avatar ? (
+                              <img src={result.avatar} alt="" className="w-full h-full object-cover rounded-lg" />
+                            ) : (
+                              `${result.userName?.[0] || ''}${result.userSurname?.[0] || ''}`
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors">
+                              {result.userSurname} {result.userName}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                              {result.society}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-xs font-bold text-white truncate max-w-[150px]">
+                          {result.name}
+                        </div>
+                        <div className="text-[9px] font-black text-orange-500/70 uppercase tracking-widest">
+                          {result.level}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-xs font-medium text-slate-400">
+                          {result.location}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-900 text-slate-400 text-[9px] font-black uppercase tracking-widest border border-slate-800">
+                          {result.discipline}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-xs font-black text-white">
+                          {result.totalScore}<span className="text-slate-500">/{result.totalTargets}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-xs font-black text-orange-500">
+                          {avg.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-xs font-black text-white">
+                          {result.position || '-'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-right rounded-r-2xl">
+                        <button 
+                          onClick={() => {
+                            // Find all results for this shooter to show the summary modal
+                            const shooterResults = allResults.filter(r => r.userId === result.userId);
+                            // Note: Since we are paginated, we might not have all results here.
+                            // But the modal expects a shooter object with a results array.
+                            // We can either fetch all results for this shooter or just show this one.
+                            // For now, let's just show the summary modal with what we have or a simplified version.
+                            setSelectedShooterResults({
+                              userId: result.userId,
+                              userName: result.userName,
+                              userSurname: result.userSurname,
+                              society: result.society,
+                              category: result.category,
+                              qualification: result.qualification,
+                              fitav_card: result.fitav_card,
+                              avatar: result.avatar,
+                              results: [result] // Just show this one for now, or we could fetch more
+                            });
+                          }}
+                          className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all flex items-center justify-center"
+                        >
+                          <i className="fas fa-eye text-[10px]"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          {groupedShooters.length === 0 && (
+          {allResults.length === 0 && (
             <div className="text-center py-20 bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
               <i className="fas fa-search text-4xl text-slate-800 mb-4"></i>
-              <p className="text-slate-500 font-bold">Nessun tiratore trovato con i filtri selezionati</p>
+              <p className="text-slate-500 font-bold">Nessun risultato trovato con i filtri selezionati</p>
             </div>
           )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-6 border-t border-slate-800">
-              <button 
-                disabled={resultsPage === 1}
-                onClick={() => setResultsPage(prev => prev - 1)}
-                className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-black uppercase text-slate-400 hover:text-white disabled:opacity-30 transition-all"
-              >
-                Precedente
-              </button>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                 Pagina {resultsPage} di {totalPages}
-              </span>
-              <button 
-                disabled={resultsPage === totalPages}
-                onClick={() => setResultsPage(prev => prev + 1)}
-                className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-black uppercase text-slate-400 hover:text-white disabled:opacity-30 transition-all"
-              >
-                Successiva
-              </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setResultsPage(prev => Math.max(1, prev - 1))}
+                  disabled={resultsPage === 1}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (resultsPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (resultsPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = resultsPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setResultsPage(pageNum)}
+                        className={`w-10 h-10 rounded-xl text-xs font-black transition-all border ${
+                          resultsPage === pageNum 
+                            ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setResultsPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={resultsPage === totalPages}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700"
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              </div>
             </div>
           )}
 
           {selectedShooterResults && createPortal(
-            <div className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
+            <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
               <div className="bg-slate-900 w-full h-full overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
                   <div className="flex items-center gap-5">
@@ -4256,7 +4267,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {selectedUser && createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedUser(null)}>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4" onClick={() => setSelectedUser(null)}>
               <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
                 <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
                   {/* Decorative background elements */}
