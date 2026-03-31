@@ -279,7 +279,12 @@ const initDB = async () => {
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS date TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS targets INTEGER DEFAULT 100");
-      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS event_id INTEGER");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS event_id TEXT");
+      try {
+        await pool.query("ALTER TABLE teams ALTER COLUMN event_id TYPE TEXT");
+      } catch (e) {
+        console.log("Error altering teams.event_id type:", e);
+      }
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_name TEXT");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL");
     } catch (e) {
