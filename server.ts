@@ -357,6 +357,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_logic TEXT DEFAULT 'individual'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_preference_override TEXT`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_society_ranking BOOLEAN DEFAULT FALSE`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -2613,20 +2614,21 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override } = req.body;
+  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking } = req.body;
   
   try {
     await pool.query(
-      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by, prize_settings, ranking_logic, ranking_preference_override)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
        start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, cost = EXCLUDED.cost, 
        notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link,
        prize_settings = EXCLUDED.prize_settings, ranking_logic = EXCLUDED.ranking_logic,
-       ranking_preference_override = EXCLUDED.ranking_preference_override`,
-      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id, prize_settings, ranking_logic || 'individual', ranking_preference_override]
+       ranking_preference_override = EXCLUDED.ranking_preference_override,
+       has_society_ranking = EXCLUDED.has_society_ranking`,
+      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id, prize_settings, ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false]
     );
 
     // Send push notification
@@ -2671,7 +2673,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override } = req.body;
+  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking } = req.body;
   
   try {
     // Check if event is validated
@@ -2706,9 +2708,10 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         registration_link = COALESCE($12, registration_link),
         prize_settings = COALESCE($13, prize_settings),
         ranking_logic = COALESCE($14, ranking_logic),
-        ranking_preference_override = COALESCE($15, ranking_preference_override)
-      WHERE id = $16`,
-      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, req.params.id]
+        ranking_preference_override = COALESCE($15, ranking_preference_override),
+        has_society_ranking = COALESCE($16, has_society_ranking)
+       WHERE id = $17`,
+      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, req.params.id]
     );
 
     // Send push notification for update

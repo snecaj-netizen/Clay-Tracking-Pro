@@ -21,7 +21,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState<'generale' | 'categoria' | 'qualifica'>('generale');
+  const [viewMode, setViewMode] = useState<'generale' | 'categoria' | 'qualifica' | 'societa'>('generale');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedQualification, setSelectedQualification] = useState<string>('');
   const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
@@ -31,6 +31,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [isDirty, setIsDirty] = useState(false);
   const [rankingPreference, setRankingPreference] = useState<'categoria' | 'qualifica'>('categoria');
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
+  const [hasSocietyRanking, setHasSocietyRanking] = useState(event.has_society_ranking || false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
@@ -361,6 +362,53 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       }
     });
 
+    // 4. Classifica Società
+    if (event.has_society_ranking && societyRanking.length > 0) {
+      if (currentY > 240) { doc.addPage(); currentY = 20; }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(234, 88, 12); // orange-600
+      doc.text('CLASSIFICA SOCIETÀ', 20, currentY);
+      currentY += 5;
+
+      const headers = [['Pos', 'Società', 'Tiratori', 'Totale']];
+      
+      const bodyData = societyRanking.map((soc, index) => {
+        const shootersStr = soc.shooters.map(s => 
+          `${s.user_name} ${s.user_surname} (${s.totalscore})`
+        ).join('\n');
+        
+        return [
+          index + 1,
+          soc.societyName,
+          shootersStr,
+          soc.totalScore
+        ];
+      });
+
+      autoTable(doc, {
+        startY: currentY,
+        head: headers,
+        body: bodyData,
+        theme: 'striped',
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
+        bodyStyles: { fontSize: 7, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 10 }, // Pos
+          1: { cellWidth: 40 }, // Società
+          2: { cellWidth: 'auto' }, // Tiratori
+          3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' }, // Totale
+        },
+        margin: { left: 15, right: 15 },
+        didDrawPage: (data: any) => {
+          currentY = data.cursor.y + 15;
+        }
+      });
+      
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+    }
+
     // Footer on each page
     const pageCount = (doc as any).internal.getNumberOfPages();
     console.log(`PDF generated with ${pageCount} pages`);
@@ -443,6 +491,63 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
     return true;
   }).sort(sortResults);
+
+  const societyRanking = useMemo(() => {
+    if (!event.has_society_ranking) return [];
+    
+    const societyMap = new Map<string, any[]>();
+    
+    results.forEach(r => {
+      const soc = r.society_at_time || r.society;
+      if (!soc) return;
+      if (!societyMap.has(soc)) {
+        societyMap.set(soc, []);
+      }
+      societyMap.get(soc)!.push(r);
+    });
+
+    const isRestrictedCategory = (cat: string | null | undefined) => {
+      if (!cat) return false;
+      const c = cat.toLowerCase().trim();
+      return c === 'eccellenza' || c === '1' || c === '1°' || c === '1a' || c === '1^' || c === '1*';
+    };
+
+    const ranking = Array.from(societyMap.entries()).map(([societyName, shooters]) => {
+      // Sort shooters by score descending
+      const sortedShooters = [...shooters].sort(sortResults);
+      
+      const top3 = [];
+      let restrictedCount = 0;
+      
+      for (const shooter of sortedShooters) {
+        if (top3.length >= 3) break;
+        
+        const cat = shooter.category_at_time || shooter.category;
+        const isRestricted = isRestrictedCategory(cat);
+        
+        if (isRestricted) {
+          if (restrictedCount < 1) {
+            top3.push(shooter);
+            restrictedCount++;
+          }
+        } else {
+          top3.push(shooter);
+        }
+      }
+
+      const totalScore = top3.reduce((sum, s) => sum + (s.totalscore || 0), 0);
+      
+      return {
+        societyName,
+        totalScore,
+        shooters: top3,
+        allShooters: sortedShooters
+      };
+    });
+
+    // Sort societies by total score descending
+    return ranking.sort((a, b) => b.totalScore - a.totalScore);
+  }, [results, event.has_society_ranking]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -579,6 +684,31 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       console.error('Error saving prize settings:', err);
       if (triggerToast) triggerToast('Errore nel salvataggio della configurazione premi', 'error');
       else alert('Errore nel salvataggio della configurazione premi');
+    }
+  };
+
+  const handleSaveEventSettings = async () => {
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ has_society_ranking: hasSocietyRanking })
+      });
+      if (res.ok) {
+        if (onEventUpdate) onEventUpdate();
+        if (triggerToast) triggerToast('Impostazioni gara salvate con successo', 'success');
+        else alert('Impostazioni gara salvate con successo');
+      } else {
+        if (triggerToast) triggerToast('Errore nel salvataggio delle impostazioni', 'error');
+        else alert('Errore nel salvataggio delle impostazioni');
+      }
+    } catch (err) {
+      console.error('Error saving event settings:', err);
+      if (triggerToast) triggerToast('Errore nel salvataggio delle impostazioni', 'error');
+      else alert('Errore nel salvataggio delle impostazioni');
     }
   };
 
@@ -931,6 +1061,37 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 </div>
 
                 <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Classifica Società (Gara)</label>
+                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="hasSocietyRankingResult"
+                        checked={hasSocietyRanking}
+                        onChange={(e) => {
+                          setHasSocietyRanking(e.target.checked);
+                          // Auto-save the event setting
+                          fetch(`/api/events/${event.id}`, {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ has_society_ranking: e.target.checked })
+                          }).then(res => {
+                            if (res.ok && onEventUpdate) onEventUpdate();
+                          });
+                        }}
+                        className="w-4 h-4 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
+                      />
+                      <label htmlFor="hasSocietyRankingResult" className="text-xs font-bold text-slate-300 cursor-pointer">
+                        Abilita Classifica Società
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Spareggio (Opzionale)</label>
                   <input 
                     type="number" 
@@ -1032,6 +1193,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   >
                     Qualifica
                   </button>
+                  {event.has_society_ranking && (
+                    <button
+                      onClick={() => setViewMode('societa')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Società
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1068,6 +1237,50 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
               <div className="flex justify-center items-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
               </div>
+            ) : viewMode === 'societa' ? (
+              societyRanking.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
+                  <p>Nessuna società trovata nei risultati.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {societyRanking.map((soc, idx) => (
+                    <div key={soc.societyName} className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+                      <div className="flex items-center justify-between p-4 bg-slate-800/50">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-full bg-orange-600/20 text-orange-500 flex items-center justify-center font-black text-lg border border-orange-500/30">
+                            {idx + 1}
+                          </div>
+                          <h4 className="text-lg font-bold text-white uppercase tracking-widest">{soc.societyName}</h4>
+                        </div>
+                        <div className="text-2xl font-black text-orange-500">
+                          {soc.totalScore} <span className="text-xs text-slate-500 uppercase tracking-widest font-normal">pt</span>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-slate-950/50">
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">I 3 Migliori Risultati</h5>
+                        <div className="space-y-2">
+                          {soc.shooters.map((shooter, sIdx) => (
+                            <div key={shooter.id} className="flex justify-between items-center p-2 rounded-lg bg-slate-900 border border-slate-800/50">
+                              <div className="flex items-center gap-3">
+                                <span className="text-slate-500 font-black text-xs">{sIdx + 1}.</span>
+                                <span className="text-sm font-bold text-white">{shooter.user_name} {shooter.user_surname}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                                  {shooter.category_at_time || shooter.category} / {shooter.qualification_at_time || shooter.qualification}
+                                </span>
+                              </div>
+                              <div className="font-black text-white">
+                                {shooter.totalscore}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : filteredResults.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
                 <i className="fas fa-clipboard-list text-4xl mb-3 opacity-50"></i>

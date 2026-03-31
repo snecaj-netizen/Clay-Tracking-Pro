@@ -219,6 +219,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [posterUrl, setPosterUrl] = useState('');
   const [registrationLink, setRegistrationLink] = useState('');
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
+  const [hasSocietyRanking, setHasSocietyRanking] = useState(false);
 
   const fetchEvents = async (signal?: AbortSignal) => {
     if (!token) {
@@ -274,6 +275,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setPosterUrl(ev.poster_url || '');
     setRegistrationLink(ev.registration_link || '');
     setRankingPreferenceOverride(ev.ranking_preference_override || null);
+    setHasSocietyRanking(ev.has_society_ranking || false);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -319,6 +321,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     setPosterUrl('');
     setRegistrationLink('');
     setRankingPreferenceOverride(null);
+    setHasSocietyRanking(false);
     setShowForm(false);
   };
 
@@ -339,7 +342,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       notes,
       poster_url: posterUrl,
       registration_link: registrationLink,
-      ranking_preference_override: rankingPreferenceOverride
+      ranking_preference_override: rankingPreferenceOverride,
+      has_society_ranking: hasSocietyRanking
     };
 
     try {
@@ -1046,6 +1050,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 </div>
               </div>
             )}
+
+            {/* Classifica Società Toggle */}
+            <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+              <input
+                type="checkbox"
+                id="hasSocietyRanking"
+                checked={hasSocietyRanking}
+                onChange={(e) => setHasSocietyRanking(e.target.checked)}
+                className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
+              />
+              <label htmlFor="hasSocietyRanking" className="text-sm font-bold text-slate-300">
+                Abilita Classifica per Società
+                <p className="text-xs font-normal text-slate-500 mt-1">
+                  Calcola una classifica aggiuntiva sommando i 3 migliori risultati per ogni società.
+                </p>
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t border-slate-800">
