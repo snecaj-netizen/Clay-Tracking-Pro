@@ -1373,6 +1373,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 onTeamsUpdate={fetchData}
                 triggerToast={triggerToast}
                 readOnly={readOnly || event.status === 'validated'}
+                currentUser={user}
               />
             ) : viewMode === 'societa' ? (
               societyRanking.length === 0 ? (

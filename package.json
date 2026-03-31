@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
+    "prebuild": "rm -rf build",
     "build": "vite build",
-    "gcp-build": "npm run build",
+    "gcp-build": "npm run build && ls -la build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },

@@ -182,6 +182,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [usersPage, setUsersPage] = useState(1);
   const [usersPerPage, setUsersPerPage] = useState(25);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -249,6 +250,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamSize, setNewTeamSize] = useState<3 | 6>(3);
+  const [newTeamEventId, setNewTeamEventId] = useState<string | null>(null);
   const [newTeamCompetitionName, setNewTeamCompetitionName] = useState('');
   const [newTeamDiscipline, setNewTeamDiscipline] = useState('');
   const [newTeamSociety, setNewTeamSociety] = useState(currentUser?.role === 'society' ? currentUser?.society || '' : '');
@@ -270,6 +272,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       document.body.style.overflow = 'unset';
     };
   }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    if (currentUser?.role === 'society' && currentUser?.society) {
+      setNewTeamSociety(currentUser.society);
+    }
+  }, [currentUser]);
 
   // Results Filtering State
   const [showFilters, setShowFilters] = useState(false);
@@ -348,31 +356,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [activeTab, fetchFilterOptions]);
 
   const shooters = React.useMemo(() => {
-    const unique = new Map();
-    teamStats.forEach(s => {
-      // Filter by society if one is selected
-      if (newTeamSociety && s.society !== newTeamSociety) return;
-      
-      if (!unique.has(s.user_id)) {
-        unique.set(s.user_id, { 
-          id: s.user_id, 
-          name: s.name, 
-          surname: s.surname, 
-          society: s.society,
-          category: s.category,
-          qualification: s.qualification,
-          fitav_card: s.fitav_card,
-          is_logged_in: s.is_logged_in
-        });
-      }
-    });
-    return (Array.from(unique.values()) as { id: number, name: string, surname: string, society: string, category?: string, qualification?: string, fitav_card?: string, is_logged_in?: boolean }[])
+    // Use the full users list to ensure all shooters are available, not just those with results
+    const sourceUsers = allUsers.length > 0 ? allUsers : users;
+    return sourceUsers
+      .filter(u => !newTeamSociety || (u.society && u.society.trim().toLowerCase() === newTeamSociety.trim().toLowerCase()))
+      .map(u => ({
+        id: u.id,
+        name: u.name,
+        surname: u.surname,
+        society: u.society,
+        category: u.category,
+        qualification: u.qualification,
+        fitav_card: u.fitav_card,
+        is_logged_in: u.is_logged_in
+      }))
       .sort((a, b) => {
         if (a.is_logged_in && !b.is_logged_in) return -1;
         if (!a.is_logged_in && b.is_logged_in) return 1;
         return a.surname.localeCompare(b.surname);
       });
-  }, [teamStats, newTeamSociety]);
+  }, [users, allUsers, newTeamSociety]);
 
   // Form state for Admin User Management
   const [name, setName] = useState('');
@@ -586,14 +589,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, [currentUser?.role, token]);
 
-  useEffect(() => {
-    if (activeTab === 'users') {
-      const timer = setTimeout(() => {
-        fetchUsers();
-      }, 100); // Small delay to ensure refs are updated if triggered by state change
-      return () => clearTimeout(timer);
+  const fetchAllUsers = useCallback(async (signal?: AbortSignal) => {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
+    try {
+      // Fetch a large number of users to ensure we have all shooters for team selection
+      const res = await fetch(`/api/admin/users?limit=2000`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
+      });
+      if (!res.ok) throw new Error('Errore nel caricamento di tutti gli utenti');
+      const data = await res.json();
+      setAllUsers(data.users || data);
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      console.error('Error fetching all users:', err);
     }
-  }, [fetchUsers, activeTab, usersPage, usersPerPage, userSearchTerm]);
+  }, [token, currentUser?.role]);
 
   const fetchTeamStats = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
@@ -753,15 +764,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [activeTab, currentUser?.role, fetchTeamStats]);
 
   useEffect(() => {
-    if (activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
+    if ((activeTab === 'users' || activeTab === 'team') && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
       const controller = new AbortController();
-      const interval = setInterval(() => fetchUsers(controller.signal, true), 30000); // Refresh every 30 seconds
+      fetchUsers(controller.signal);
+      if (activeTab === 'team') {
+        fetchAllUsers(controller.signal);
+      }
+      const interval = setInterval(() => {
+        fetchUsers(controller.signal, true);
+        if (activeTab === 'team') {
+          fetchAllUsers(controller.signal);
+        }
+      }, 30000); // Refresh every 30 seconds
       return () => {
         clearInterval(interval);
         controller.abort();
       };
     }
-  }, [activeTab, currentUser?.role, fetchUsers]);
+  }, [activeTab, currentUser?.role, fetchUsers, fetchAllUsers]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -836,6 +856,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           name: newTeamName,
           size: newTeamSize,
           competition_name: newTeamCompetitionName,
+          event_id: newTeamEventId,
           discipline: newTeamDiscipline,
           society: newTeamSociety,
           location: newTeamLocation,
@@ -845,10 +866,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }),
       });
 
-      if (!res.ok) throw new Error(`Errore durante ${editingTeam ? 'la modifica' : 'la creazione'} della squadra`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `Errore durante ${editingTeam ? 'la modifica' : 'la creazione'} della squadra`);
+      }
       
       setNewTeamName('');
       setNewTeamCompetitionName('');
+      setNewTeamEventId(null);
       setNewTeamDiscipline('');
       setNewTeamLocation('');
       setNewTeamDate(new Date().toISOString().split('T')[0]);
@@ -901,6 +926,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewTeamName(team.name || '');
     setNewTeamSize(team.size as 3 | 6 || 3);
     setNewTeamCompetitionName(team.competition_name || '');
+    setNewTeamEventId(team.event_id || null);
     setNewTeamDiscipline(team.discipline || '');
     setNewTeamSociety(team.society || '');
     setNewTeamLocation(team.location || '');
@@ -981,6 +1007,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               name: newTeamName,
               size: newTeamSize,
               competition_name: newTeamCompetitionName,
+              event_id: newTeamEventId,
               discipline: newTeamDiscipline,
               society: newTeamSociety,
               location: newTeamLocation,
@@ -990,7 +1017,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             }),
           });
 
-          if (!res.ok) throw new Error(`Errore durante il salvataggio della squadra`);
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || `Errore durante il salvataggio della squadra`);
+          }
           const data = await res.json();
           const teamId = editingTeam ? editingTeam.id : data.id;
 
@@ -1000,6 +1030,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           // 3. Reset form
           setNewTeamName('');
           setNewTeamCompetitionName('');
+          setNewTeamEventId(null);
           setNewTeamDiscipline('');
           setNewTeamLocation('');
           setNewTeamDate(new Date().toISOString().split('T')[0]);
@@ -1213,7 +1244,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 }
               }
               fetchSocieties();
-              alert(`Aggiornamento completato!\nSocietà aggiornate: ${successCount}\nErrori: ${errorCount}`);
+              if (triggerToast) {
+                triggerToast(`Aggiornamento completato!\nSocietà aggiornate: ${successCount}\nErrori: ${errorCount}`, errorCount > 0 ? 'error' : 'success');
+              }
             } catch (err) {
               console.error('Error updating society codes:', err);
               setError('Errore durante l\'aggiornamento dei codici.');
@@ -1285,7 +1318,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 });
               }
               fetchSocieties();
-              alert('Importazione completata con successo!');
+              if (triggerToast) {
+                triggerToast('Importazione completata con successo!', 'success');
+              }
             } catch (err) {
               console.error('Error importing societies:', err);
               setError('Errore durante l\'importazione di alcune società.');
@@ -1420,7 +1455,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               
               const results = await res.json();
               fetchUsers();
-              alert(`Importazione completata! Creati: ${results.created}, Aggiornati: ${results.updated}, Errori: ${results.errors}`);
+              if (triggerToast) {
+                triggerToast(`Importazione completata! Creati: ${results.created}, Aggiornati: ${results.updated}, Errori: ${results.errors}`, results.errors > 0 ? 'error' : 'success');
+              }
             } catch (err) {
               console.error('Error importing users:', err);
               setError('Errore durante l\'importazione.');
@@ -2254,6 +2291,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </h2>
             </div>
 
+            {error && (
+              <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-exclamation-circle"></i>
+                  <span>{error}</span>
+                </div>
+                <button 
+                  onClick={() => setError('')}
+                  className="text-red-500 hover:text-white transition-colors"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            )}
+
             {showTeamForm && (
               <form onSubmit={handleCreateTeam} className="bg-slate-950/50 p-4 sm:p-6 rounded-2xl border border-slate-700 mb-8 space-y-4 sm:space-y-6 animate-in zoom-in-95 duration-300">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -2294,7 +2346,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <select 
                       value={newTeamDiscipline} 
                       onChange={e => setNewTeamDiscipline(e.target.value)} 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
                     >
                       <option value="">Seleziona...</option>
                       {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
@@ -2305,24 +2357,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo/Nome Gara</label>
                     <select 
-                      value={newTeamCompetitionName} 
+                      value={newTeamEventId || ''} 
                       onChange={e => {
-                        const selectedEventName = e.target.value;
-                        setNewTeamCompetitionName(selectedEventName);
-                        const selectedEvent = events.find(ev => ev.name === selectedEventName);
+                        const val = e.target.value;
+                        setNewTeamEventId(val || null);
+                        
+                        const selectedEvent = events.find(ev => String(ev.id) === val);
                         if (selectedEvent) {
+                          setNewTeamCompetitionName(selectedEvent.name);
                           setNewTeamDiscipline(selectedEvent.discipline || '');
                           setNewTeamLocation(selectedEvent.location || '');
+                          
+                          // Format date for input type="date" (YYYY-MM-DD)
                           if (selectedEvent.start_date) {
-                            setNewTeamDate(selectedEvent.start_date);
+                            try {
+                              const d = new Date(selectedEvent.start_date);
+                              if (!isNaN(d.getTime())) {
+                                setNewTeamDate(d.toISOString().split('T')[0]);
+                              }
+                            } catch (err) {
+                              console.error('Invalid date format:', selectedEvent.start_date);
+                            }
                           }
+                          
+                          if (selectedEvent.targets) {
+                            setNewTeamTargets(selectedEvent.targets);
+                          }
+                        } else {
+                          setNewTeamCompetitionName('');
+                          // Reset other fields if no event is selected
+                          setNewTeamLocation('');
+                          setNewTeamDiscipline('');
                         }
                       }} 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
                     >
                       <option value="">Seleziona Gara...</option>
-                      {events.map(ev => (
-                        <option key={ev.id} value={ev.name}>{ev.name}</option>
+                      {events
+                        .filter(ev => !newTeamDiscipline || ev.discipline === newTeamDiscipline)
+                        .map(ev => (
+                        <option key={ev.id} value={ev.id}>{ev.name} ({ev.location})</option>
                       ))}
                     </select>
                   </div>
@@ -2384,7 +2458,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         if (val.length <= newTeamSize) {
                           setSelectedShooterIds(val);
                         } else {
-                          alert(`Puoi selezionare al massimo ${newTeamSize} tiratori.`);
+                          if (triggerToast) {
+                            triggerToast(`Puoi selezionare al massimo ${newTeamSize} tiratori.`, 'error');
+                          }
                         }
                       }
                     }}
@@ -2479,9 +2555,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
                   <div className="mb-2">
-                    <h4 className="text-base font-black text-white leading-tight truncate">{team.name}</h4>
+                    <h4 
+                      onClick={() => handleEditTeam(team)}
+                      className="text-base font-black text-white leading-tight truncate cursor-pointer hover:text-orange-500 transition-colors"
+                    >
+                      {team.name}
+                    </h4>
                     {team.competition_name && (
-                      <p className="text-[10px] text-slate-500 font-medium truncate">{team.competition_name}</p>
+                      <p 
+                        onClick={() => handleEditTeam(team)}
+                        className="text-[10px] text-slate-500 font-medium truncate cursor-pointer hover:text-orange-400 transition-colors"
+                      >
+                        {team.competition_name}
+                      </p>
                     )}
                   </div>
                   <div className="space-y-1">
@@ -3420,7 +3506,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     {r.location || 'Campo N.D.'}
                                   </span>
                                 </div>
-                                <h4 className="text-sm font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tight truncate">{r.name}</h4>
+                                <h4 
+                                  onClick={() => {
+                                    if (onEditCompetition) {
+                                      const mappedComp = {
+                                        ...r,
+                                        userId: r.user_id,
+                                        userName: r.user_name,
+                                        userSurname: r.user_surname,
+                                        totalScore: r.totalscore,
+                                        totalTargets: r.totaltargets,
+                                        averagePerSeries: r.averageperseries,
+                                        eventId: r.event_id,
+                                        shootOff: r.shoot_off,
+                                        endDate: r.enddate,
+                                        detailedScores: typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores,
+                                        seriesImages: typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages,
+                                        usedCartridges: typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges,
+                                        scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
+                                        weather: typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather,
+                                        chokes: typeof r.chokes === 'string' ? JSON.parse(r.chokes) : r.chokes
+                                      };
+                                      onEditCompetition(mappedComp);
+                                    }
+                                  }}
+                                  className="text-sm font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tight truncate cursor-pointer"
+                                >
+                                  {r.name}
+                                </h4>
                               </div>
                               
                               <div className="flex items-center justify-between sm:justify-end gap-6 relative z-10">

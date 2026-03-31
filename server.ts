@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 import webpush from 'web-push';
 import cron from 'node-cron';
 
-import { createServer as createViteServer } from 'vite';
+// import { createServer as createViteServer } from 'vite'; // Removed top-level import
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -279,6 +279,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS date TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS targets INTEGER DEFAULT 100");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS event_id INTEGER");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_name TEXT");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL");
     } catch (e) {
@@ -2240,14 +2241,14 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
 });
 
 app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date, targets } = req.body;
+  const { name, size, memberIds, competition_name, event_id, discipline, society: bodySociety, date, targets } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const society = req.user.role === 'society' ? req.user.society : bodySociety;
     const { rows } = await client.query(
-      "INSERT INTO teams (name, size, society, competition_name, discipline, date, location, targets, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
-      [name, size, society, competition_name, discipline, date, req.body.location, targets || 100, req.user.id]
+      "INSERT INTO teams (name, size, society, competition_name, event_id, discipline, date, location, targets, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+      [name, size, society, competition_name, event_id, discipline, date, req.body.location, targets || 100, req.user.id]
     );
     const teamId = rows[0].id;
 
@@ -2282,7 +2283,7 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
 
 app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { id } = req.params;
-  const { name, size, memberIds, competition_name, discipline, society: bodySociety, date, targets } = req.body;
+  const { name, size, memberIds, competition_name, event_id, discipline, society: bodySociety, date, targets } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -2307,8 +2308,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
     console.log(`Syncing team ${teamId}: oldMembers=${oldMemberIds}, newMembers=${numericMemberIds}`);
 
     await client.query(
-      "UPDATE teams SET name = $1, size = $2, competition_name = $3, discipline = $4, society = $5, date = $6, location = $7, targets = $8 WHERE id = $9",
-      [name, size, competition_name, discipline, society, date, req.body.location, targets || 100, teamId]
+      "UPDATE teams SET name = $1, size = $2, competition_name = $3, event_id = $4, discipline = $5, society = $6, date = $7, location = $8, targets = $9 WHERE id = $10",
+      [name, size, competition_name, event_id, discipline, society, date, req.body.location, targets || 100, teamId]
     );
 
     // Update members
@@ -3858,10 +3859,11 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
-  const distPath = path.resolve(process.cwd(), 'dist');
+  const buildPath = path.resolve(process.cwd(), 'build');
 
   if (!isProd) {
     try {
+      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
@@ -3870,7 +3872,7 @@ async function setupVite(app: any) {
       console.log('Vite middleware initialized');
     } catch (e) {
       console.error('Vite initialization failed, falling back to static serving', e);
-      if (fs.existsSync(distPath)) {
+      if (fs.existsSync(buildPath)) {
         serveStatic(app);
       } else {
         app.get('*', (req: any, res: any) => {
@@ -3879,11 +3881,11 @@ async function setupVite(app: any) {
       }
     }
   } else {
-    if (fs.existsSync(distPath)) {
-      console.log('Serving static files from dist directory');
+    if (fs.existsSync(buildPath)) {
+      console.log('Serving static files from build directory');
       serveStatic(app);
     } else {
-      console.error('Production mode enabled but dist directory not found');
+      console.error('Production mode enabled but build directory not found');
       app.get('*', (req: any, res: any) => {
         res.status(500).send('Production build not found. Run npm run build.');
       });
@@ -3892,10 +3894,10 @@ async function setupVite(app: any) {
 }
 
 function serveStatic(app: any) {
-  const distPath = path.resolve(process.cwd(), 'dist');
-  app.use(express.static(distPath));
+  const buildPath = path.resolve(process.cwd(), 'build');
+  app.use(express.static(buildPath));
   app.use((req: any, res: any) => {
-    res.sendFile(path.resolve(distPath, 'index.html'));
+    res.sendFile(path.resolve(buildPath, 'index.html'));
   });
 }
 

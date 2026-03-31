@@ -10,9 +10,10 @@ interface TeamManagerProps {
   onTeamsUpdate: () => void;
   triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   readOnly?: boolean;
+  currentUser?: any;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, readOnly }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, readOnly, currentUser }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -21,6 +22,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     type: '',
     memberIds: [] as string[]
   });
+
+  React.useEffect(() => {
+    if (isCreating && !editingTeamId && currentUser?.role === 'society' && currentUser?.society) {
+      setFormData(prev => ({ ...prev, society: currentUser.society }));
+    }
+  }, [isCreating, editingTeamId, currentUser]);
 
   const societies = useMemo(() => {
     const socs = new Set<string>();
@@ -235,16 +242,25 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Società</label>
-              <select
-                value={formData.society}
-                onChange={e => setFormData({...formData, society: e.target.value, memberIds: []})}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
-              >
-                <option value="">Seleziona Società</option>
-                {societies.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              {currentUser?.role === 'society' ? (
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={formData.society} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white opacity-50 cursor-not-allowed outline-none" 
+                />
+              ) : (
+                <select
+                  value={formData.society}
+                  onChange={e => setFormData({...formData, society: e.target.value, memberIds: []})}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
+                >
+                  <option value="">Seleziona Società</option>
+                  {societies.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tipo Squadra</label>
@@ -355,8 +371,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
           return (
             <div key={team.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
               <div className="p-4 border-b border-slate-800 flex justify-between items-start bg-slate-800/30">
-                <div>
-                  <h4 className="text-lg font-black text-white uppercase tracking-widest">{team.name}</h4>
+                <div 
+                  onClick={() => {
+                    if (!readOnly) {
+                      setFormData({
+                        name: team.name,
+                        society: team.society,
+                        type: team.type || '',
+                        memberIds: teamMembers.map((m: any) => m.user_id)
+                      });
+                      setEditingTeamId(team.id);
+                      setIsCreating(true);
+                    }
+                  }}
+                  className={`cursor-pointer group/title ${!readOnly ? 'hover:text-orange-500' : ''} transition-colors`}
+                >
+                  <h4 className="text-lg font-black text-white uppercase tracking-widest group-hover/title:text-orange-500 transition-colors">{team.name}</h4>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs font-bold text-slate-400 bg-slate-950 px-2 py-1 rounded-md border border-slate-800">
                       {team.society}

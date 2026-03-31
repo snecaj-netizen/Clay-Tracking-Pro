@@ -296,11 +296,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             fetchEvents();
           } else {
             const err = await res.json();
-            alert(err.error || 'Errore durante la riapertura della gara');
+            if (triggerToast) {
+              triggerToast(err.error || 'Errore durante la riapertura della gara', 'error');
+            }
           }
         } catch (err) {
           console.error('Error reopening event:', err);
-          alert('Errore durante la riapertura della gara');
+          if (triggerToast) {
+            triggerToast('Errore durante la riapertura della gara', 'error');
+          }
         }
       },
       'Riapri',
@@ -332,7 +336,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     e.preventDefault();
     
     const eventData = {
-      id: editingEvent ? editingEvent.id : crypto.randomUUID(),
+      id: editingEvent ? editingEvent.id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)),
       name,
       type,
       visibility,
@@ -365,11 +369,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         resetForm();
       } else {
         const errorData = await res.json();
-        alert(`Errore: ${errorData.error || res.statusText}`);
+        if (triggerToast) {
+          triggerToast(`Errore: ${errorData.error || res.statusText}`, 'error');
+        } else {
+          console.error(`Errore: ${errorData.error || res.statusText}`);
+        }
       }
     } catch (err) {
       console.error('Error saving event:', err);
-      alert('Errore di rete nel salvataggio.');
+      if (triggerToast) {
+        triggerToast('Errore di rete nel salvataggio.', 'error');
+      }
     }
   };
 
@@ -387,7 +397,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             setEvents(events.filter(e => e.id !== id));
           } else {
             const errorData = await res.json();
-            alert(`Errore: ${errorData.error || res.statusText}`);
+            if (triggerToast) {
+              triggerToast(`Errore: ${errorData.error || res.statusText}`, 'error');
+            }
           }
         } catch (err) {
           console.error('Error deleting event:', err);
@@ -402,7 +414,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Il file è troppo grande. Dimensione massima: 5MB');
+        if (triggerToast) {
+          triggerToast('Il file è troppo grande. Dimensione massima: 5MB', 'error');
+        }
         return;
       }
       const reader = new FileReader();
@@ -415,7 +429,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
   const handleExportExcel = () => {
     if (filteredEvents.length === 0) {
-      alert('Nessun evento da esportare.');
+      if (triggerToast) {
+        triggerToast('Nessun evento da esportare.', 'info');
+      }
       return;
     }
 
@@ -453,7 +469,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         if (data.length === 0) {
-          alert('Il file Excel è vuoto.');
+          if (triggerToast) {
+            triggerToast('Il file Excel è vuoto.', 'error');
+          }
           return;
         }
 
@@ -478,7 +496,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         };
 
         const importedEvents = data.map(row => ({
-          id: crypto.randomUUID(),
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)),
           name: row['Nome Gara'] || 'Gara senza nome',
           type: row['Tipologia'] || 'Regionale',
           visibility: row['Visibilità'] || 'Pubblica',
@@ -509,10 +527,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 });
               }
               fetchEvents();
-              alert('Importazione completata con successo!');
+              if (triggerToast) {
+                triggerToast('Importazione completata con successo!', 'success');
+              }
             } catch (err) {
               console.error('Error importing events:', err);
-              alert('Errore durante l\'importazione di alcune gare.');
+              if (triggerToast) {
+                triggerToast('Errore durante l\'importazione di alcune gare.', 'error');
+              }
             } finally {
               setLoading(false);
             }
@@ -522,7 +544,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         );
       } catch (err) {
         console.error('Error reading Excel file:', err);
-        alert('Errore nella lettura del file Excel. Assicurati che il formato sia corretto.');
+        if (triggerToast) {
+          triggerToast('Errore nella lettura del file Excel. Assicurati che il formato sia corretto.', 'error');
+        }
       }
     };
     reader.readAsBinaryString(file);
@@ -547,7 +571,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           setSelectedEvents([]);
         } catch (err) {
           console.error('Error deleting events:', err);
-          alert('Errore durante l\'eliminazione delle gare.');
+          if (triggerToast) {
+            triggerToast('Errore durante l\'eliminazione delle gare.', 'error');
+          }
         } finally {
           setLoading(false);
         }
@@ -1530,7 +1556,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     {selectedEvent.visibility}
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedEvent.name}</h2>
+                <h2 
+                  onClick={() => {
+                    const canManage = user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id));
+                    if (canManage) {
+                      setManagingResultsEvent(selectedEvent);
+                    } else {
+                      setViewingResultsEvent(selectedEvent);
+                    }
+                    setSelectedEvent(null);
+                  }}
+                  className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words cursor-pointer hover:text-orange-500 transition-colors"
+                >
+                  {selectedEvent.name}
+                </h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1 flex items-center gap-2">
                   <i className="fas fa-map-marker-alt text-orange-500"></i> 
                   {selectedEvent.location}
