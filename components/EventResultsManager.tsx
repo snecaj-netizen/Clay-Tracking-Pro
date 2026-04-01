@@ -71,6 +71,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
   }, [event.id, event.prize_settings]);
 
+  useEffect(() => {
+    setHasSocietyRanking(event.has_society_ranking || false);
+    setHasTeamRanking(event.has_team_ranking || false);
+  }, [event.has_society_ranking, event.has_team_ranking]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -1161,7 +1166,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         id="hasSocietyRankingResult"
                         checked={hasSocietyRanking}
                         onChange={(e) => {
-                          setHasSocietyRanking(e.target.checked);
+                          const checked = e.target.checked;
+                          setHasSocietyRanking(checked);
+                          if (!checked && viewMode === 'societa') setViewMode('generale');
                           // Auto-save the event setting
                           fetch(`/api/events/${event.id}`, {
                             method: 'PUT',
@@ -1169,7 +1176,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               'Content-Type': 'application/json',
                               'Authorization': `Bearer ${token}`
                             },
-                            body: JSON.stringify({ has_society_ranking: e.target.checked })
+                            body: JSON.stringify({ has_society_ranking: checked })
                           }).then(res => {
                             if (res.ok && onEventUpdate) onEventUpdate();
                           });
@@ -1192,7 +1199,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         id="hasTeamRankingResult"
                         checked={hasTeamRanking}
                         onChange={(e) => {
-                          setHasTeamRanking(e.target.checked);
+                          const checked = e.target.checked;
+                          setHasTeamRanking(checked);
+                          if (!checked && viewMode === 'squadre') setViewMode('generale');
                           // Auto-save the event setting
                           fetch(`/api/events/${event.id}`, {
                             method: 'PUT',
@@ -1200,7 +1209,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               'Content-Type': 'application/json',
                               'Authorization': `Bearer ${token}`
                             },
-                            body: JSON.stringify({ has_team_ranking: e.target.checked })
+                            body: JSON.stringify({ has_team_ranking: checked })
                           }).then(res => {
                             if (res.ok && onEventUpdate) onEventUpdate();
                           });
@@ -1316,7 +1325,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   >
                     Qualifica
                   </button>
-                  {event.has_society_ranking && (
+                  {hasSocietyRanking && (
                     <button
                       onClick={() => setViewMode('societa')}
                       className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
@@ -1324,7 +1333,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       Società
                     </button>
                   )}
-                  {(event.has_team_ranking || !readOnly) && (
+                  {hasTeamRanking && (
                     <button
                       onClick={() => setViewMode('squadre')}
                       className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
