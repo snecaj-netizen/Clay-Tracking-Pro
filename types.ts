@@ -119,7 +119,7 @@ export interface User {
   category?: string;
   qualification?: string;
   society?: string;
-  fitav_card?: string;
+  shooter_code?: string;
   avatar?: string;
   birth_date?: string;
   is_logged_in?: boolean;

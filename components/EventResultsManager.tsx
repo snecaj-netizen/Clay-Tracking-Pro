@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { SocietyEvent, PrizeSetting, User } from '../types';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
@@ -322,7 +323,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           return [
             index + 1,
             isPrize ? 'P' : '',
-            `${r.user_surname || ''} ${r.user_name || ''}${r.fitav_card ? `\n(${r.fitav_card})` : ''}`,
+            `${r.user_surname || ''} ${r.user_name || ''}${r.shooter_code ? `\n(${r.shooter_code})` : ''}`,
             `${r.category_at_time || r.category || '-'}/${r.qualification_at_time || r.qualification || '-'}`,
             ...seriesData,
             r.totalscore || 0,
@@ -652,10 +653,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           'Sostituisci',
           'primary'
         );
-        return;
-      } else if (!window.confirm(`Il tiratore ${existingResult.user_surname} ${existingResult.user_name} ha già un risultato registrato. Sostituire?`)) {
-        return;
       }
+      return;
     }
 
     await performSave(editingResultId);
@@ -845,10 +844,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       triggerConfirm(
         'Elimina Risultato',
         'Sei sicuro di voler eliminare questo risultato? Questa azione non può essere annullata.',
-        confirmDelete
+        confirmDelete,
+        'Elimina',
+        'danger'
       );
-    } else if (window.confirm('Sei sicuro di voler eliminare questo risultato?')) {
-      confirmDelete();
     }
   };
 
@@ -858,17 +857,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         triggerConfirm(
           'Modifiche non salvate',
           'Hai delle modifiche non salvate. Vuoi uscire comunque?',
-          onClose
+          onClose,
+          'Esci',
+          'danger'
         );
-      } else if (window.confirm('Hai delle modifiche non salvate. Vuoi uscire comunque?')) {
-        onClose();
       }
     } else {
       onClose();
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[1050] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
       <div className="bg-slate-900 rounded-none sm:rounded-3xl w-full h-full sm:h-auto sm:max-w-[98vw] max-h-[100dvh] sm:max-h-[98vh] flex flex-col overflow-hidden border-0 sm:border border-slate-800 shadow-2xl">
         <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 shadow-lg relative z-10">
@@ -1022,7 +1021,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       }}
                       shooters={users}
                       useId={true}
-                      placeholder="Cerca Tiratore (Nome, Cognome o Tessera)..."
+                      placeholder="Cerca Tiratore (Nome, Cognome o Codice)..."
                       className="flex-1"
                       required
                     />
@@ -1385,6 +1384,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 token={token} 
                 onTeamsUpdate={fetchData}
                 triggerToast={triggerToast}
+                triggerConfirm={triggerConfirm}
                 readOnly={readOnly || event.status === 'validated'}
                 currentUser={user}
                 allSocieties={societies}
@@ -1483,8 +1483,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                     <i className="fas fa-exclamation-triangle text-[10px] text-orange-500" title={`Classifica forzata a ${effectivePref}`}></i>
                                   )}
                                 </div>
-                                {r.fitav_card && (
-                                  <span className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mt-0.5">{r.fitav_card}</span>
+                                {r.shooter_code && (
+                                  <span className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mt-0.5">{r.shooter_code}</span>
                                 )}
                               </div>
                             </td>
@@ -1668,7 +1668,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout, SocietyEvent } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
@@ -506,9 +507,9 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           </div>
         </div>
 
-        {showEventSelector && (
+        {showEventSelector && createPortal(
           <div 
-            className="md:col-span-2 fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+            className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
             onClick={() => setShowEventSelector(false)}
           >
             <div 
@@ -584,7 +585,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {!isTraining && (

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import SocietySearch from './SocietySearch';
 
+import { createPortal } from 'react-dom';
+
 interface QuickAddShooterModalProps {
   token: string;
   currentUser: any;
@@ -19,7 +21,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
   const [category, setCategory] = useState('');
   const [qualification, setQualification] = useState('');
   const [society, setSociety] = useState(currentUser?.role === 'society' ? currentUser.society : '');
-  const [fitavCard, setFitavCard] = useState('');
+  const [shooterCode, setShooterCode] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,9 +30,9 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
     e.preventDefault();
     
     // Validate FITAV card format: 3 letters + 2 numbers + 2 letters + 2 numbers
-    const fitavRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
-    if (fitavCard && !fitavRegex.test(fitavCard)) {
-      if (triggerToast) triggerToast('La Tessera FITAV deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)', 'error');
+    const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
+    if (shooterCode && !shooterCodeRegex.test(shooterCode)) {
+      if (triggerToast) triggerToast('La Codice Tiratore deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)', 'error');
       return;
     }
 
@@ -40,7 +42,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
     const cleanName = name.trim().toLowerCase().replace(/[\s']/g, '');
     const cleanSurname = surname.trim().toLowerCase().replace(/[\s']/g, '');
     const finalEmail = isSociety ? `${cleanName}.${cleanSurname}@gmail.com` : email;
-    const finalPassword = isSociety ? fitavCard : password;
+    const finalPassword = isSociety ? shooterCode : password;
 
     const body = {
       name,
@@ -50,7 +52,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
       category,
       qualification,
       society,
-      fitav_card: fitavCard,
+      shooter_code: shooterCode,
       password: finalPassword,
       birth_date: (!isSociety && birthDate) ? birthDate : undefined,
       phone: (!isSociety && phone) ? phone : undefined
@@ -81,8 +83,8 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
           <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
@@ -136,12 +138,12 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tessera Fitav *</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Tiratore *</label>
                 <input 
                   type="text" 
                   required
-                  value={fitavCard} 
-                  onChange={e => setFitavCard(e.target.value.toUpperCase())} 
+                  value={shooterCode} 
+                  onChange={e => setShooterCode(e.target.value.toUpperCase())} 
                   pattern="[A-Z]{3}\d{2}[A-Z]{2}\d{2}"
                   title="Formato richiesto: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)"
                   placeholder="es. ABC12DE34"
@@ -200,7 +202,8 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

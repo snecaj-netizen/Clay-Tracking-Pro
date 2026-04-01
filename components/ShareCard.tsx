@@ -1,5 +1,6 @@
 
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 import { Competition, User } from '../types';
 
@@ -81,8 +82,8 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[1050] flex items-start justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[1100] flex items-start justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="w-full max-w-md animate-in slide-in-from-top-10 duration-300 py-8">
         {/* Card Container */}
         <div className="mb-6 overflow-hidden rounded-[2.5rem] shadow-2xl bg-white mx-auto w-full max-w-[480px]">
@@ -281,7 +282,8 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

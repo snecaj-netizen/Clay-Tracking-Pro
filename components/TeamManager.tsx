@@ -11,12 +11,13 @@ interface TeamManagerProps {
   token: string;
   onTeamsUpdate: () => void;
   triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  triggerConfirm?: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   readOnly?: boolean;
   currentUser?: any;
   allSocieties?: any[];
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, readOnly, currentUser, allSocieties = [] }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, triggerConfirm, readOnly, currentUser, allSocieties = [] }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -173,18 +174,27 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   };
 
   const handleDelete = async (teamId: number) => {
-    if (!confirm('Sei sicuro di voler eliminare questa squadra?')) return;
-    try {
-      const res = await fetch(`/api/events/${event.id}/teams/${teamId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        if (triggerToast) triggerToast('Squadra eliminata', 'success');
-        onTeamsUpdate();
-      }
-    } catch (err) {
-      console.error(err);
+    if (triggerConfirm) {
+      triggerConfirm(
+        'Elimina Squadra',
+        'Sei sicuro di voler eliminare questa squadra?',
+        async () => {
+          try {
+            const res = await fetch(`/api/events/${event.id}/teams/${teamId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+              if (triggerToast) triggerToast('Squadra eliminata', 'success');
+              onTeamsUpdate();
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        },
+        'Elimina',
+        'danger'
+      );
     }
   };
 

@@ -73,7 +73,7 @@ const initDB = async () => {
         category TEXT,
         qualification TEXT,
         society TEXT,
-        fitav_card TEXT,
+        shooter_code TEXT,
         avatar TEXT,
         status TEXT DEFAULT 'active',
         login_count INTEGER DEFAULT 0,
@@ -84,10 +84,11 @@ const initDB = async () => {
 
     // Add columns if they don't exist (for existing databases)
     try {
+      await pool.query("ALTER TABLE users RENAME COLUMN fitav_card TO shooter_code").catch(() => {});
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS category TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS society TEXT");
-      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS fitav_card TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS shooter_code TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
@@ -990,7 +991,7 @@ app.post('/api/auth/login', async (req, res) => {
     await pool.query("INSERT INTO login_logs (user_id) VALUES ($1)", [user.id]);
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, society: user.society }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, fitav_card: user.fitav_card, avatar: user.avatar, birth_date: user.birth_date, phone: user.phone } });
+    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, shooter_code: user.shooter_code, avatar: user.avatar, birth_date: user.birth_date, phone: user.phone } });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -998,11 +999,11 @@ app.post('/api/auth/login', async (req, res) => {
 
 // User Profile Routes
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
-  const { name, surname, email, password, category, qualification, society, fitav_card, avatar, birth_date, phone } = req.body;
+  const { name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
-  if (req.user.role === 'society' && !fitav_card) {
+  if (req.user.role === 'society' && !shooter_code) {
     return res.status(400).json({ error: 'Il Codice Società è obbligatorio' });
   }
 
@@ -1011,13 +1012,13 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, birth_date = $10, phone = $11 WHERE id = $12",
-        [name, surname, email, hash, category, finalQualification, society, fitav_card, avatar, birth_date || null, phone || null, req.user.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11 WHERE id = $12",
+        [name, surname, email, hash, category, finalQualification, society, shooter_code, avatar, birth_date || null, phone || null, req.user.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, fitav_card = $7, avatar = $8, birth_date = $9, phone = $10 WHERE id = $11",
-        [name, surname, email, category, finalQualification, society, fitav_card, avatar, birth_date || null, phone || null, req.user.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, shooter_code = $7, avatar = $8, birth_date = $9, phone = $10 WHERE id = $11",
+        [name, surname, email, category, finalQualification, society, shooter_code, avatar, birth_date || null, phone || null, req.user.id]
       );
     }
     res.json({ success: true });
@@ -1315,7 +1316,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const search = req.query.search as string;
     const role = req.query.role as string;
     
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, fitav_card, avatar, birth_date, phone, status, login_count, last_login, created_at FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
     let params: any[] = [];
     let whereClauses: string[] = [];
@@ -1332,7 +1333,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     
     if (search) {
       const searchParam = "%" + search.toLowerCase() + "%";
-      whereClauses.push("(LOWER(name) LIKE $" + (params.length + 1) + " OR LOWER(surname) LIKE $" + (params.length + 1) + " OR LOWER(email) LIKE $" + (params.length + 1) + " OR LOWER(society) LIKE $" + (params.length + 1) + " OR LOWER(fitav_card) LIKE $" + (params.length + 1) + ")");
+      whereClauses.push("(LOWER(name) LIKE $" + (params.length + 1) + " OR LOWER(surname) LIKE $" + (params.length + 1) + " OR LOWER(email) LIKE $" + (params.length + 1) + " OR LOWER(society) LIKE $" + (params.length + 1) + " OR LOWER(shooter_code) LIKE $" + (params.length + 1) + ")");
       params.push(searchParam);
     }
     
@@ -1381,12 +1382,12 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 });
 
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date, phone } = req.body;
+  const { name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
-  if (role === 'society' && !fitav_card) {
-    return res.status(400).json({ error: 'Il Codice Società (Tessera Fitav) è obbligatorio per gli utenti società' });
+  if (role === 'society' && !shooter_code) {
+    return res.status(400).json({ error: 'Il Codice Società (Codice Tiratore) è obbligatorio per gli utenti società' });
   }
 
   if (req.user.role === 'society') {
@@ -1403,8 +1404,8 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, avatar, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
-      [name, surname, email, hash, role || 'user', category, finalQualification, society, fitav_card, avatar || null, birth_date || null, phone || null, 'active']
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
+      [name, surname, email, hash, role || 'user', category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active']
     );
     
     // Notify Admin about new user
@@ -1412,7 +1413,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     const creatorName = req.user.role === 'society' ? `la società ${req.user.society}` : 'l\'amministratore';
     sendPushNotification([], "Nuovo Utente Registrato", `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorName}.`, `/admin?tab=users`);
 
-    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, fitav_card, avatar, birth_date, phone, status: 'active' });
+    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, shooter_code, avatar, birth_date, phone, status: 'active' });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -1456,18 +1457,18 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           // Update profile
           const finalQual = getAutoQualification(u.birth_date, u.qualification);
           await client.query(
-            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, fitav_card = $6, birth_date = $7, phone = $8 WHERE id = $9",
-            [u.name, u.surname, u.category, finalQual, societyName, u.fitav_card, u.birth_date || null, u.phone || null, existing[0].id]
+            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8 WHERE id = $9",
+            [u.name, u.surname, u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null, existing[0].id]
           );
           results.updated++;
         } else {
           // Create new
           const finalQual = getAutoQualification(u.birth_date, u.qualification);
           const salt = bcrypt.genSaltSync(10);
-          const hash = bcrypt.hashSync(u.password || u.fitav_card || 'Password123!', salt);
+          const hash = bcrypt.hashSync(u.password || u.shooter_code || 'Password123!', salt);
           await client.query(
-            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, fitav_card, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')",
-            [u.name, u.surname, u.email, hash, u.role || 'user', u.category, finalQual, societyName, u.fitav_card, u.birth_date || null, u.phone || null]
+            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')",
+            [u.name, u.surname, u.email, hash, u.role || 'user', u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null]
           );
           results.created++;
         }
@@ -1488,12 +1489,12 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 });
 
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, role, password, category, qualification, society, fitav_card, avatar, birth_date, phone, status } = req.body;
+  const { name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
-  if (role === 'society' && !fitav_card) {
-    return res.status(400).json({ error: 'Il Codice Società (Tessera Fitav) è obbligatorio per gli utenti società' });
+  if (role === 'society' && !shooter_code) {
+    return res.status(400).json({ error: 'Il Codice Società (Codice Tiratore) è obbligatorio per gli utenti società' });
   }
 
   try {
@@ -1522,13 +1523,13 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, fitav_card = $9, avatar = $10, birth_date = $11, phone = $12, status = $13 WHERE id = $14",
-        [name, surname, email, role, hash, category, finalQualification, society, fitav_card, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13 WHERE id = $14",
+        [name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, fitav_card = $8, avatar = $9, birth_date = $10, phone = $11, status = $12 WHERE id = $13",
-        [name, surname, email, role, category, finalQualification, society, fitav_card, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12 WHERE id = $13",
+        [name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
       );
     }
     
@@ -1553,7 +1554,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
         u.category, 
         u.qualification,
         u.society,
-        u.fitav_card,
+        u.shooter_code,
         c.discipline,
         COUNT(c.id) as total_competitions,
         AVG(c.averageperseries) as avg_score
@@ -1569,7 +1570,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     }
 
     query += `
-      GROUP BY u.id, u.name, u.surname, u.category, u.qualification, u.society, u.fitav_card, c.discipline
+      GROUP BY u.id, u.name, u.surname, u.category, u.qualification, u.society, u.shooter_code, c.discipline
       ORDER BY u.surname, u.name, c.discipline
     `;
 
@@ -1680,7 +1681,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         u.society,
         u.category,
         u.qualification,
-        u.fitav_card,
+        u.shooter_code,
         u.avatar
       FROM competitions c
       JOIN users u ON c.user_id = u.id
@@ -2823,7 +2824,7 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
   try {
     const eventId = req.params.id;
     const results = await pool.query(`
-      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification, u.society, u.fitav_card
+      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification, u.society, u.shooter_code
       FROM competitions c
       JOIN users u ON c.user_id = u.id
       WHERE c.event_id = $1

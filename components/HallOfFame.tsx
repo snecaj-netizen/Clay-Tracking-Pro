@@ -388,7 +388,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
 
       {/* Challenge Details Modal */}
       {selectedChallenge && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setSelectedChallenge(null)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4" onClick={() => setSelectedChallenge(null)}>
           <div className="relative w-full max-w-4xl bg-slate-950 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-6 sm:p-8 border-b border-slate-700 relative">

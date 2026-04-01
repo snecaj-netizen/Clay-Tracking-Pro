@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Competition, getSeriesLayout } from '../types';
 
 interface SeriesPopupProps {
@@ -82,7 +83,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[1050] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg md:max-w-xl shadow-2xl animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6 sm:mb-5">
@@ -162,7 +163,8 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

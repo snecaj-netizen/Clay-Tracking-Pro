@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ToastProps {
   message: string;
@@ -22,7 +23,7 @@ const Toast: React.FC<ToastProps> = ({ message, isOpen, onClose, type = 'success
   const isSuccess = type === 'success';
   const isError = type === 'error';
 
-  return (
+  return createPortal(
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-bottom-8 duration-500">
       <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl border backdrop-blur-md shadow-2xl ${
         isSuccess ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-400' : 
@@ -38,7 +39,8 @@ const Toast: React.FC<ToastProps> = ({ message, isOpen, onClose, type = 'success
         </div>
         <p className="text-sm font-black uppercase tracking-tight">{message}</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

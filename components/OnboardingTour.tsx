@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TourStep {
@@ -91,7 +92,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <AnimatePresence mode="wait">
         <motion.div
@@ -146,7 +147,8 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
           </div>
         </motion.div>
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body
   );
 };
 

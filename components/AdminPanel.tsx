@@ -370,7 +370,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         society: u.society,
         category: u.category,
         qualification: u.qualification,
-        fitav_card: u.fitav_card,
+        shooter_code: u.shooter_code,
         is_logged_in: u.is_logged_in
       }))
       .sort((a, b) => {
@@ -390,7 +390,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [category, setCategory] = useState('');
   const [qualification, setQualification] = useState('');
   const [society, setSociety] = useState('');
-  const [fitavCard, setFitavCard] = useState('');
+  const [shooterCode, setShooterCode] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
@@ -402,7 +402,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [profileCategory, setProfileCategory] = useState(currentUser?.category || '');
   const [profileQualification, setProfileQualification] = useState(currentUser?.qualification || '');
   const [profileSociety, setProfileSociety] = useState(currentUser?.society || '');
-  const [profileFitavCard, setProfileFitavCard] = useState(currentUser?.fitav_card || '');
+  const [profileShooterCode, setProfileShooterCode] = useState(currentUser?.shooter_code || '');
   const [profileAvatar, setProfileAvatar] = useState(currentUser?.avatar || '');
   const [profileBirthDate, setProfileBirthDate] = useState(currentUser?.birth_date || '');
   const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
@@ -793,9 +793,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setProfileSuccess('');
 
     if (currentUser?.role === 'user' || currentUser?.role === 'admin') {
-      const fitavRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
-      if (profileFitavCard && !fitavRegex.test(profileFitavCard)) {
-        setError('La Tessera FITAV deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
+      const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
+      if (profileShooterCode && !shooterCodeRegex.test(profileShooterCode)) {
+        setError('La Codice Tiratore deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
         return;
       }
     }
@@ -814,7 +814,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           category: profileCategory,
           qualification: profileQualification,
           society: profileSociety,
-          fitav_card: profileFitavCard,
+          shooter_code: profileShooterCode,
           avatar: profileAvatar,
           birth_date: profileBirthDate || undefined,
           phone: profilePhone || undefined,
@@ -833,7 +833,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           category: profileCategory,
           qualification: profileQualification,
           society: profileSociety,
-          fitav_card: profileFitavCard,
+          shooter_code: profileShooterCode,
           avatar: profileAvatar,
           birth_date: profileBirthDate,
           phone: profilePhone
@@ -1366,7 +1366,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       'Categoria': u.category,
       'Qualifica': u.qualification,
       'Società': u.society,
-      'Tessera FITAV': u.fitav_card,
+      'Codice Tiratore': u.shooter_code,
       'Data di Nascita': u.birth_date,
       'Telefono': u.phone
     }));
@@ -1388,7 +1388,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         'Qualifica': 'Skeet',
         'Società': 'TAV Roma',
         'Codice Società': 'RM01',
-        'Tessera FITAV': '12345',
+        'Codice Tiratore': '12345',
         'Data di Nascita': '1980-01-01',
         'Telefono': '3331234567'
       }
@@ -1442,10 +1442,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           qualification: row['Qualifica'] || '',
           society: row['Società'] || '',
           society_code: row['Codice Società']?.toString() || '',
-          fitav_card: row['Tessera FITAV']?.toString() || '',
+          shooter_code: row['Codice Tiratore']?.toString() || '',
           birth_date: parseExcelDate(row['Data di Nascita']),
           phone: row['Telefono']?.toString() || '',
-          password: row['Tessera FITAV']?.toString() || 'Password123!'
+          password: row['Codice Tiratore']?.toString() || 'Password123!'
         }));
 
         triggerConfirm(
@@ -1551,16 +1551,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setError('');
 
     if (role === 'user') {
-      const fitavRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
-      if (fitavCard && !fitavRegex.test(fitavCard)) {
-        setError('La Tessera FITAV deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
+      const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
+      if (shooterCode && !shooterCodeRegex.test(shooterCode)) {
+        setError('La Codice Tiratore deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
         return;
       }
     }
 
     const endpoint = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
     const method = editingUser ? 'PUT' : 'POST';
-    const body = { name, surname, email, role, category, qualification, society, fitav_card: fitavCard, password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, phone: phone || undefined };
+    const body = { name, surname, email, role, category, qualification, society, shooter_code: shooterCode, password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, phone: phone || undefined };
 
     try {
       const res = await fetch(endpoint, {
@@ -1576,7 +1576,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       
       setEditingUser(null);
       setShowUserForm(false);
-      setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setFitavCard(''); setUserAvatar(''); setBirthDate(''); setPhone('');
+      setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone('');
       fetchUsers();
       if (role === 'society' || editingUser?.role === 'society') {
         fetchSocieties();
@@ -1652,13 +1652,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setCategory(user.category || '');
     setQualification(user.qualification || '');
     setSociety(user.society || '');
-    setFitavCard(user.fitav_card || '');
+    setShooterCode(user.shooter_code || '');
     setUserAvatar(user.avatar || '');
     setBirthDate(user.birth_date || '');
     setPhone(user.phone || '');
     setPassword('');
     setShowUserForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2124,13 +2123,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                      {currentUser?.role === 'society' ? 'Codice Società' : 'Tessera Fitav'}
+                      {currentUser?.role === 'society' ? 'Codice Società' : 'Codice Tiratore'}
                     </label>
                     <input 
                       type="text" 
                       required={currentUser?.role === 'society'} 
-                      value={profileFitavCard} 
-                      onChange={e => setProfileFitavCard(currentUser?.role !== 'society' ? e.target.value.toUpperCase() : e.target.value)} 
+                      value={profileShooterCode} 
+                      onChange={e => setProfileShooterCode(currentUser?.role !== 'society' ? e.target.value.toUpperCase() : e.target.value)} 
                       disabled={currentUser?.role !== 'admin'} 
                       pattern={currentUser?.role !== 'society' ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
                       title={currentUser?.role !== 'society' ? "Formato richiesto: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)" : undefined}
@@ -2259,8 +2258,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
 
-            {showTeamForm && (
-              <form onSubmit={handleCreateTeam} className="bg-slate-950/50 p-4 sm:p-6 rounded-2xl border border-slate-700 mb-8 space-y-4 sm:space-y-6 animate-in zoom-in-95 duration-300">
+            {showTeamForm && createPortal(
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                      <i className="fas fa-users text-orange-500"></i>
+                      {editingTeam ? 'Modifica Squadra' : 'Nuova Squadra'}
+                    </h3>
+                    <button 
+                      onClick={() => setShowTeamForm(false)}
+                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+
+                  <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto no-scrollbar">
+                    <form onSubmit={handleCreateTeam} className="space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Squadra</label>
@@ -2467,7 +2482,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   )}
                 </div>
               </form>
-            )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
             {/* Elenco Squadre Esistenti */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2735,117 +2754,133 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           <div className="pt-4">
-            {showSocietyForm && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 mb-8">
-                <form onSubmit={handleSocietySubmit} className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingSociety ? 'Modifica Società' : 'Nuova Società'}</h3>
-                  
-                  <div className="flex flex-col items-center mb-6">
-                    <div className="relative group">
-                      <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
-                        {socLogo ? (
-                          <img src={socLogo} alt="Logo Società" className="w-full h-full object-cover" />
-                        ) : (
-                          <i className="fas fa-building text-4xl text-slate-500"></i>
-                        )}
-                      </div>
-                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
-                        <i className="fas fa-camera text-white text-xl"></i>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleSocietyLogoChange} />
-                      </label>
-                    </div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo Società (Max 2MB)</span>
+            {showSocietyForm && createPortal(
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                      <i className="fas fa-building text-orange-500"></i>
+                      {editingSociety ? 'Modifica Società' : 'Nuova Società'}
+                    </h3>
+                    <button 
+                      onClick={() => setShowSocietyForm(false)}
+                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
-                      <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-                    </div>
-                    <div className="sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Società (Obbligatorio)</label>
-                      <input type="text" required value={socCode} onChange={e => setSocCode(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
-                      <input type="email" value={socEmail} onChange={e => setSocEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
-                      <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Google Maps (Opzionale)</label>
-                      <input type="url" value={socGoogleMapsLink} onChange={e => setSocGoogleMapsLink(e.target.value)} placeholder="https://goo.gl/maps/..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
-                      <input type="text" value={socContactName} onChange={e => setSocContactName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
-                      <input type="text" value={socAddress} onChange={e => setSocAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Città</label>
-                        <input type="text" value={socCity} onChange={e => setSocCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                      </div>
-                      <div className="col-span-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Regione</label>
-                        <input type="text" value={socRegion} onChange={e => setSocRegion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                      </div>
-                      <div className="col-span-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CAP</label>
-                        <input type="text" value={socZip} onChange={e => setSocZip(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono Fisso</label>
-                      <input type="tel" value={socPhone} onChange={e => setSocPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
-                      <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
-                      <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
-                    </div>
-                    
-                    <div className="sm:col-span-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Discipline Disponibili</label>
-                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                        {Object.keys(Discipline).filter(k => k !== 'TRAINING').map(key => (
-                          <label key={key} className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-all ${socDisciplines.includes(key) ? 'bg-orange-600/20 border-orange-600 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
-                            <input 
-                              type="checkbox" 
-                              className="hidden" 
-                              checked={socDisciplines.includes(key)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSocDisciplines([...socDisciplines, key]);
-                                } else {
-                                  setSocDisciplines(socDisciplines.filter(d => d !== key));
-                                }
-                              }}
-                            />
-                            <span className="text-xs font-black">{key}</span>
+                  <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto no-scrollbar">
+                    <form onSubmit={handleSocietySubmit} className="space-y-4 sm:space-y-6">
+                      <div className="flex flex-col items-center mb-6">
+                        <div className="relative group">
+                          <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
+                            {socLogo ? (
+                              <img src={socLogo} alt="Logo Società" className="w-full h-full object-cover" />
+                            ) : (
+                              <i className="fas fa-building text-4xl text-slate-500"></i>
+                            )}
+                          </div>
+                          <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                            <i className="fas fa-camera text-white text-xl"></i>
+                            <input type="file" accept="image/*" className="hidden" onChange={handleSocietyLogoChange} />
                           </label>
-                        ))}
+                        </div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo Società (Max 2MB)</span>
                       </div>
-                    </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
+                          <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                        </div>
+                        <div className="sm:col-span-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Società (Obbligatorio)</label>
+                          <input type="text" required value={socCode} onChange={e => setSocCode(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
+                          <input type="email" value={socEmail} onChange={e => setSocEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
+                          <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Google Maps (Opzionale)</label>
+                          <input type="url" value={socGoogleMapsLink} onChange={e => setSocGoogleMapsLink(e.target.value)} placeholder="https://goo.gl/maps/..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
+                          <input type="text" value={socContactName} onChange={e => setSocContactName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
+                          <input type="text" value={socAddress} onChange={e => setSocAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="col-span-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Città</label>
+                            <input type="text" value={socCity} onChange={e => setSocCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Regione</label>
+                            <input type="text" value={socRegion} onChange={e => setSocRegion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CAP</label>
+                            <input type="text" value={socZip} onChange={e => setSocZip(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono Fisso</label>
+                          <input type="tel" value={socPhone} onChange={e => setSocPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
+                          <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
+                          <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                        
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Discipline Disponibili</label>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                            {Object.keys(Discipline).filter(k => k !== 'TRAINING').map(key => (
+                              <label key={key} className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-all ${socDisciplines.includes(key) ? 'bg-orange-600/20 border-orange-600 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
+                                <input 
+                                  type="checkbox" 
+                                  className="hidden" 
+                                  checked={socDisciplines.includes(key)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSocDisciplines([...socDisciplines, key]);
+                                    } else {
+                                      setSocDisciplines(socDisciplines.filter(d => d !== key));
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs font-black">{key}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-4">
+                        <button type="submit" className="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-orange-600/20">
+                          {editingSociety ? 'Salva Modifiche' : 'Crea Società'}
+                        </button>
+                        <button type="button" onClick={() => setShowSocietyForm(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-slate-700">
+                          Annulla
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                  <div className="flex gap-2 pt-4">
-                    <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                      {editingSociety ? 'Salva Modifiche' : 'Crea Società'}
-                    </button>
-                    <button type="button" onClick={() => setShowSocietyForm(false)} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                      Annulla
-                    </button>
-                  </div>
-                </form>
-              </div>
+                </div>
+              </div>,
+              document.body
             )}
 
           {societyViewMode === 'list' ? (
@@ -2975,7 +3010,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {selectedSociety && createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleCloseSocietyDetail}>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4" onClick={handleCloseSocietyDetail}>
               <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
                 <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
                   {/* Decorative background elements */}
@@ -3098,13 +3133,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           setEmail(soc.email || '');
                           setRole('society');
                           setSociety(soc.name);
-                          setFitavCard(soc.code || '');
+                          setShooterCode(soc.code || '');
                           setPassword('');
                           setCategory('');
                           setQualification('');
                           setUserAvatar(soc.logo || '');
                           setBirthDate('');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
                         }} 
                         className="w-full py-4 rounded-2xl bg-blue-600/20 text-blue-500 font-black text-xs uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center justify-center gap-2 border border-blue-600/30 shadow-lg mb-2"
                       >
@@ -3380,7 +3414,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               society: result.society,
                               category: result.category,
                               qualification: result.qualification,
-                              fitav_card: result.fitav_card,
+                              shooter_code: result.shooter_code,
                               avatar: result.avatar,
                               results: [result] // Just show this one for now, or we could fetch more
                             });
@@ -3470,9 +3504,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <h2 className="text-2xl font-black text-white uppercase tracking-tight">
                         {selectedShooterResults.userSurname || ''} {selectedShooterResults.userName || ''}
                       </h2>
-                      {selectedShooterResults.fitav_card && (
+                      {selectedShooterResults.shooter_code && (
                         <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.2em] mt-1">
-                          {selectedShooterResults.fitav_card}
+                          {selectedShooterResults.shooter_code}
                         </p>
                       )}
                       <p className="text-xs font-black text-orange-500 uppercase tracking-[0.2em] mt-1">
@@ -3738,7 +3772,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
               <div className="relative flex-1 flex items-center gap-3">
                 <UserSearchInput 
-                  placeholder={currentUser?.role === 'society' ? "Cerca per nome, tessera..." : "Cerca per nome, società, tessera..."} 
+                  placeholder={currentUser?.role === 'society' ? "Cerca per nome, codice..." : "Cerca per nome, società, codice..."} 
                   value={userSearchTerm}
                   onChange={(val) => {
                     setUserSearchTerm(val);
@@ -3941,11 +3975,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {showUserForm && (
-            <form onSubmit={handleSubmit} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mb-8 animate-in zoom-in-95 duration-300">
-              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">{editingUser ? (currentUser?.role === 'society' ? 'Modifica Tiratore' : 'Modifica Utente') : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}</h3>
-              
-              <div className="flex flex-col items-center mb-6">
+          {showUserForm && createPortal(
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                    <i className={`fas ${editingUser ? 'fa-user-edit' : 'fa-user-plus'} text-orange-500`}></i> 
+                    {editingUser ? (currentUser?.role === 'society' ? 'Modifica Tiratore' : 'Modifica Utente') : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
+                  </h3>
+                  <button onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-lg border border-slate-700">
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                
+                <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                  <form id="admin-user-form" onSubmit={handleSubmit} className="space-y-4">
+                    
+                    <div className="flex flex-col items-center mb-6">
                 <div className="relative group">
                   <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
                     {userAvatar ? (
@@ -3963,7 +4009,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="space-y-4 mb-6">
-                {/* Row 1: Ruolo, Società, Tessera */}
+                {/* Row 1: Ruolo, Società, Codice */}
                 <div className={`grid grid-cols-1 ${currentUser?.role !== 'society' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                   {currentUser?.role !== 'society' && (
                     <div>
@@ -3992,13 +4038,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                      {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Tessera Fitav'}
+                      {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Codice Tiratore'}
                     </label>
                     <input 
                       type="text" 
                       required={role === 'society'} 
-                      value={fitavCard} 
-                      onChange={e => setFitavCard(role === 'user' ? e.target.value.toUpperCase() : e.target.value)} 
+                      value={shooterCode} 
+                      onChange={e => setShooterCode(role === 'user' ? e.target.value.toUpperCase() : e.target.value)} 
                       disabled={currentUser?.role === 'society' && !!editingUser}
                       pattern={role === 'user' ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
                       title={role === 'user' ? "Formato richiesto: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)" : undefined}
@@ -4109,15 +4155,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                  {editingUser ? 'Salva Modifiche' : (currentUser?.role === 'society' ? 'Crea Tiratore' : 'Crea Utente')}
-                </button>
-                <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase">
-                  Annulla
-                </button>
+                  </form>
+                </div>
+                
+                <div className="p-6 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-3">
+                  <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                    Annulla
+                  </button>
+                  <button type="submit" form="admin-user-form" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-900/20">
+                    {editingUser ? 'Salva Modifiche' : (currentUser?.role === 'society' ? 'Crea Tiratore' : 'Crea Utente')}
+                  </button>
+                </div>
               </div>
-            </form>
+            </div>,
+            document.body
           )}
 
           <div className="overflow-x-auto">
@@ -4127,8 +4178,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('name')}>
                     Nome {userSortConfig?.key === 'name' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
                   </th>
-                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('fitav_card')}>
-                    Tessera / Codice {userSortConfig?.key === 'fitav_card' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('shooter_code')}>
+                    Codice Tiratore {userSortConfig?.key === 'shooter_code' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
                   </th>
                   <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('society')}>
                     Società {userSortConfig?.key === 'society' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
@@ -4174,7 +4225,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.fitav_card || '-'}</td>
+                    <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.shooter_code || '-'}</td>
                     <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">
                       {u.society ? (
                         <>
@@ -4376,12 +4427,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </p>
                       </div>
                     )}
-                    {selectedUser.fitav_card && (
+                    {selectedUser.shooter_code && (
                       <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                          {selectedUser.role === 'society' ? 'Codice Società' : 'Tessera FITAV'}
+                          {selectedUser.role === 'society' ? 'Codice Società' : 'Codice Tiratore'}
                         </p>
-                        <p className="text-sm font-bold text-white uppercase">{selectedUser.fitav_card}</p>
+                        <p className="text-sm font-bold text-white uppercase">{selectedUser.shooter_code}</p>
                       </div>
                     )}
                     {selectedUser.category && (
@@ -4475,7 +4526,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             } else {
               setEditingUser(null);
               setShowUserForm(true);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
               if (currentUser?.role === 'society') {
                 setSociety(currentUser.society);
                 setRole('user');

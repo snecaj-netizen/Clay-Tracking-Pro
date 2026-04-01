@@ -61,7 +61,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
   }, [value, shooters, useId, multiple]);
 
   const filteredShooters = shooters.filter(s => {
-    const searchStr = `${s.surname} ${s.name} ${s.email || ''} ${s.fitav_card || ''}`.toLowerCase();
+    const searchStr = `${s.surname} ${s.name} ${s.email || ''} ${s.shooter_code || ''}`.toLowerCase();
     const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
     
     if (multiple && Array.isArray(value)) {
@@ -176,7 +176,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
                     </span>
                     <div className="flex items-center gap-2 mt-0.5">
                       {s.email && <span className="text-[10px] opacity-50">{s.email}</span>}
-                      {s.fitav_card && <span className="text-[10px] text-orange-500/70 font-black uppercase tracking-tighter">#{s.fitav_card}</span>}
+                      {s.shooter_code && <span className="text-[10px] text-orange-500/70 font-black uppercase tracking-tighter">#{s.shooter_code}</span>}
                     </div>
                   </div>
                   {s.role === 'admin' && <span className="text-[10px] bg-orange-600/20 text-orange-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Admin</span>}

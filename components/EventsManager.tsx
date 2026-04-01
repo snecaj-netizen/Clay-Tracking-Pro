@@ -909,207 +909,222 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           </div>
         )}
 
-        {showForm ? (
-          <form onSubmit={handleSubmit} className="space-y-6 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-white uppercase tracking-widest">{editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}</h3>
-            <button type="button" onClick={resetForm} className="text-slate-400 hover:text-white">
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
+        {showForm && createPortal(
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                  <i className="fas fa-calendar-plus text-orange-500"></i>
+                  {editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}
+                </h3>
+                <button 
+                  onClick={resetForm}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome Gara *</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-            </div>
+              <div className="p-6 sm:p-8 max-h-[80vh] overflow-y-auto no-scrollbar">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome Gara *</label>
+                      <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia *</label>
-              <select value={type} onChange={(e) => setType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                <option value="Regionale">Regionale</option>
-                <option value="Nazionale">Nazionale</option>
-                <option value="Internazionale">Internazionale</option>
-                <option value="Allenamento">Allenamento</option>
-              </select>
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia *</label>
+                      <select value={type} onChange={(e) => setType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+                        <option value="Regionale">Regionale</option>
+                        <option value="Nazionale">Nazionale</option>
+                        <option value="Internazionale">Internazionale</option>
+                        <option value="Allenamento">Allenamento</option>
+                      </select>
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Visibilità *</label>
-              <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                <option value="Gara di Società">Gara di Società (Solo propri tiratori)</option>
-                <option value="Pubblica">Pubblica (Tutti)</option>
-              </select>
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Visibilità *</label>
+                      <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+                        <option value="Gara di Società">Gara di Società (Solo propri tiratori)</option>
+                        <option value="Pubblica">Pubblica (Tutti)</option>
+                      </select>
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina *</label>
-              <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina *</label>
+                      <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
+                        {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV *</label>
-              {user?.role === 'admin' ? (
-                <SocietySearch 
-                  value={location}
-                  onChange={setLocation}
-                  societies={societies}
-                  placeholder="Seleziona Società"
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all"
-                />
-              ) : (
-                <input type="text" value={location} disabled className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-400 cursor-not-allowed" />
-              )}
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV *</label>
+                      {user?.role === 'admin' ? (
+                        <SocietySearch 
+                          value={location}
+                          onChange={setLocation}
+                          societies={societies}
+                          placeholder="Seleziona Società"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all"
+                        />
+                      ) : (
+                        <input type="text" value={location} disabled className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-400 cursor-not-allowed" />
+                      )}
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Gara *</label>
-              <input type="number" required min="25" step="25" value={targets} onChange={(e) => setTargets(parseInt(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Gara *</label>
+                      <input type="number" required min="25" step="25" value={targets} onChange={(e) => setTargets(parseInt(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Inizio *</label>
-              <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Inizio *</label>
+                      <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine *</label>
-              <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine *</label>
+                      <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
-              <input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
+                      <input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Iscrizione</label>
-              <input type="url" placeholder="https://..." value={registrationLink} onChange={(e) => setRegistrationLink(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-            </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Iscrizione</label>
+                      <input type="url" placeholder="https://..." value={registrationLink} onChange={(e) => setRegistrationLink(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+                    </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Locandina / Programma</label>
-              <div className="flex items-center gap-4">
-                <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl px-4 py-3 text-center transition-all">
-                  <span className="text-sm font-bold text-white"><i className="fas fa-upload mr-2"></i> Carica File (Max 5MB)</span>
-                  <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="hidden" />
-                </label>
-                {posterUrl && (
-                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center bg-slate-900">
-                    {posterUrl.startsWith('data:application/pdf') ? (
-                      <i className="fas fa-file-pdf text-2xl text-red-500"></i>
-                    ) : (
-                      <img src={posterUrl} alt="Locandina" className="w-full h-full object-cover" />
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Locandina / Programma</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl px-4 py-3 text-center transition-all">
+                          <span className="text-sm font-bold text-white"><i className="fas fa-upload mr-2"></i> Carica File (Max 5MB)</span>
+                          <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="hidden" />
+                        </label>
+                        {posterUrl && (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center bg-slate-900">
+                            {posterUrl.startsWith('data:application/pdf') ? (
+                              <i className="fas fa-file-pdf text-2xl text-red-500"></i>
+                            ) : (
+                              <img src={posterUrl} alt="Locandina" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-full space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+                      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    {/* Ranking Preference Override */}
+                    {type !== 'Allenamento' && (
+                      <div className="col-span-full p-4 bg-orange-600/10 rounded-2xl border border-orange-500/20 space-y-4">
+                        <div className="flex items-center gap-3 text-orange-500">
+                          <i className="fas fa-exclamation-triangle"></i>
+                          <h4 className="text-xs font-black uppercase tracking-widest">Precedenza Classifica (Override Evento)</h4>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                          Seleziona un'opzione per forzare la classifica di questa gara a prescindere dalla scelta del tiratore. 
+                          Se impostato su "NESSUNO", verrà rispettata la scelta individuale di ogni tiratore.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setRankingPreferenceOverride(null)}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                              rankingPreferenceOverride === null 
+                                ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
+                            }`}
+                          >
+                            Nessuno
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRankingPreferenceOverride('categoria')}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                              rankingPreferenceOverride === 'categoria' 
+                                ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
+                            }`}
+                          >
+                            Forza Categoria
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRankingPreferenceOverride('qualifica')}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                              rankingPreferenceOverride === 'qualifica' 
+                                ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
+                            }`}
+                          >
+                            Forza Qualifica
+                          </button>
+                        </div>
+                      </div>
                     )}
+
+                    {/* Classifica Società Toggle */}
+                    <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                      <input
+                        type="checkbox"
+                        id="hasSocietyRanking"
+                        checked={hasSocietyRanking}
+                        onChange={(e) => setHasSocietyRanking(e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
+                      />
+                      <label htmlFor="hasSocietyRanking" className="text-sm font-bold text-slate-300">
+                        Abilita Classifica per Società
+                        <p className="text-xs font-normal text-slate-500 mt-1">
+                          Calcola una classifica aggiuntiva sommando i 3 migliori risultati per ogni società.
+                        </p>
+                      </label>
+                    </div>
+
+                    {/* Classifica Squadre Toggle */}
+                    <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                      <input
+                        type="checkbox"
+                        id="hasTeamRanking"
+                        checked={hasTeamRanking}
+                        onChange={(e) => setHasTeamRanking(e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
+                      />
+                      <label htmlFor="hasTeamRanking" className="text-sm font-bold text-slate-300">
+                        Abilita Classifica Squadre
+                        <p className="text-xs font-normal text-slate-500 mt-1">
+                          Permette di creare squadre di 3 o 6 tiratori durante l'inserimento dei risultati.
+                        </p>
+                      </label>
+                    </div>
                   </div>
-                )}
+
+                  <div className="flex justify-end gap-4 pt-6 border-t border-slate-800">
+                    <button type="button" onClick={resetForm} className="px-6 py-3 rounded-xl text-xs font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
+                      Annulla
+                    </button>
+                    <button type="submit" className="px-6 py-3 rounded-xl text-xs font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
+                      {editingEvent ? 'Aggiorna' : 'Salva'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
+          </div>,
+          document.body
+        )}
 
-            <div className="col-span-full space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all resize-none"></textarea>
-            </div>
-
-            {/* Ranking Preference Override */}
-            {type !== 'Allenamento' && (
-              <div className="col-span-full p-4 bg-orange-600/10 rounded-2xl border border-orange-500/20 space-y-4">
-                <div className="flex items-center gap-3 text-orange-500">
-                  <i className="fas fa-exclamation-triangle"></i>
-                  <h4 className="text-xs font-black uppercase tracking-widest">Precedenza Classifica (Override Evento)</h4>
-                </div>
-                <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                  Seleziona un'opzione per forzare la classifica di questa gara a prescindere dalla scelta del tiratore. 
-                  Se impostato su "NESSUNO", verrà rispettata la scelta individuale di ogni tiratore.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRankingPreferenceOverride(null)}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                      rankingPreferenceOverride === null 
-                        ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
-                    }`}
-                  >
-                    Nessuno
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRankingPreferenceOverride('categoria')}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                      rankingPreferenceOverride === 'categoria' 
-                        ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
-                    }`}
-                  >
-                    Forza Categoria
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRankingPreferenceOverride('qualifica')}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                      rankingPreferenceOverride === 'qualifica' 
-                        ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
-                    }`}
-                  >
-                    Forza Qualifica
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Classifica Società Toggle */}
-            <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-              <input
-                type="checkbox"
-                id="hasSocietyRanking"
-                checked={hasSocietyRanking}
-                onChange={(e) => setHasSocietyRanking(e.target.checked)}
-                className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
-              />
-              <label htmlFor="hasSocietyRanking" className="text-sm font-bold text-slate-300">
-                Abilita Classifica per Società
-                <p className="text-xs font-normal text-slate-500 mt-1">
-                  Calcola una classifica aggiuntiva sommando i 3 migliori risultati per ogni società.
-                </p>
-              </label>
-            </div>
-
-            {/* Classifica Squadre Toggle */}
-            <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-              <input
-                type="checkbox"
-                id="hasTeamRanking"
-                checked={hasTeamRanking}
-                onChange={(e) => setHasTeamRanking(e.target.checked)}
-                className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
-              />
-              <label htmlFor="hasTeamRanking" className="text-sm font-bold text-slate-300">
-                Abilita Classifica Squadre
-                <p className="text-xs font-normal text-slate-500 mt-1">
-                  Permette di creare squadre di 3 o 6 tiratori durante l'inserimento dei risultati.
-                </p>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-4 pt-4 border-t border-slate-800">
-            <button type="button" onClick={resetForm} className="px-6 py-3 rounded-xl text-xs font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
-              Annulla
-            </button>
-            <button type="submit" className="px-6 py-3 rounded-xl text-xs font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-              {editingEvent ? 'Aggiorna' : 'Salva'}
-            </button>
-          </div>
-        </form>
-      ) : viewMode === 'calendar' ? (
+        {viewMode === 'calendar' ? (
         renderCalendarView()
       ) : viewMode === 'results' ? (
         <div className="space-y-6">
@@ -1517,7 +1532,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
       {/* Event Detail Modal */}
       {selectedEvent && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedEvent(null)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4" onClick={() => setSelectedEvent(null)}>
           <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
               {/* Decorative background elements */}
