@@ -792,6 +792,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setError('');
     setProfileSuccess('');
 
+    if (currentUser?.role === 'user' || currentUser?.role === 'admin') {
+      const fitavRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
+      if (profileFitavCard && !fitavRegex.test(profileFitavCard)) {
+        setError('La Tessera FITAV deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
@@ -1542,6 +1550,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     e.preventDefault();
     setError('');
 
+    if (role === 'user') {
+      const fitavRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
+      if (fitavCard && !fitavRegex.test(fitavCard)) {
+        setError('La Tessera FITAV deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
+        return;
+      }
+    }
+
     const endpoint = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
     const method = editingUser ? 'PUT' : 'POST';
     const body = { name, surname, email, role, category, qualification, society, fitav_card: fitavCard, password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, phone: phone || undefined };
@@ -2110,7 +2126,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                       {currentUser?.role === 'society' ? 'Codice Società' : 'Tessera Fitav'}
                     </label>
-                    <input type="text" required={currentUser?.role === 'society'} value={profileFitavCard} onChange={e => setProfileFitavCard(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                    <input 
+                      type="text" 
+                      required={currentUser?.role === 'society'} 
+                      value={profileFitavCard} 
+                      onChange={e => setProfileFitavCard(currentUser?.role !== 'society' ? e.target.value.toUpperCase() : e.target.value)} 
+                      disabled={currentUser?.role !== 'admin'} 
+                      pattern={currentUser?.role !== 'society' ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
+                      title={currentUser?.role !== 'society' ? "Formato richiesto: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)" : undefined}
+                      placeholder={currentUser?.role !== 'society' ? "es. ABC12DE34" : ""}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''} ${currentUser?.role !== 'society' ? 'uppercase' : ''}`} 
+                    />
                   </div>
                   {currentUser?.role !== 'society' && (
                     <>
@@ -3972,9 +3998,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="text" 
                       required={role === 'society'} 
                       value={fitavCard} 
-                      onChange={e => setFitavCard(e.target.value)} 
+                      onChange={e => setFitavCard(role === 'user' ? e.target.value.toUpperCase() : e.target.value)} 
                       disabled={currentUser?.role === 'society' && !!editingUser}
-                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                      pattern={role === 'user' ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
+                      title={role === 'user' ? "Formato richiesto: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)" : undefined}
+                      placeholder={role === 'user' ? "es. ABC12DE34" : ""}
+                      className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''} ${role === 'user' ? 'uppercase' : ''}`} 
                     />
                   </div>
                 </div>

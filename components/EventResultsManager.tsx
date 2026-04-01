@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { SocietyEvent, PrizeSetting, User } from '../types';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
+import QuickAddShooterModal from './QuickAddShooterModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,6 +47,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [detailedScores, setDetailedScores] = useState<boolean[][]>(() => Array.from({ length: Math.ceil((event.targets || 100) / 25) }, () => []));
   const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
   const [shootOff, setShootOff] = useState('');
+  const [showQuickAddShooter, setShowQuickAddShooter] = useState(false);
 
   const categories = useMemo(() => Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean))).sort(), [results]);
   const qualifications = useMemo(() => Array.from(new Set(results.map(r => r.qualification_at_time || r.qualification).filter(Boolean))).sort(), [results]);
@@ -1011,18 +1013,28 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
               <form id="result-form" onSubmit={handleSave} className="space-y-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
-                  <ShooterSearch 
-                    value={selectedUserId} 
-                    onChange={(val) => {
-                      setSelectedUserId(val);
-                      setIsDirty(true);
-                    }}
-                    shooters={users}
-                    useId={true}
-                    placeholder="Cerca Tiratore (Nome, Cognome o Tessera)..."
-                    className="w-full"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <ShooterSearch 
+                      value={selectedUserId} 
+                      onChange={(val) => {
+                        setSelectedUserId(val);
+                        setIsDirty(true);
+                      }}
+                      shooters={users}
+                      useId={true}
+                      placeholder="Cerca Tiratore (Nome, Cognome o Tessera)..."
+                      className="flex-1"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickAddShooter(true)}
+                      className="px-3 py-2 rounded-xl bg-slate-800 text-orange-500 hover:bg-orange-600 hover:text-white border border-slate-700 hover:border-orange-500 transition-all active:scale-95 flex items-center justify-center shadow-lg"
+                      title="Aggiungi nuovo tiratore"
+                    >
+                      <i className="fas fa-user-plus"></i>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -1640,6 +1652,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showQuickAddShooter && (
+        <QuickAddShooterModal
+          token={token}
+          currentUser={user}
+          societies={societies}
+          onClose={() => setShowQuickAddShooter(false)}
+          triggerToast={triggerToast}
+          onSuccess={(newUser) => {
+            setUsers(prev => [...prev, newUser]);
+            setSelectedUserId(newUser.id);
+            setIsDirty(true);
+            setShowQuickAddShooter(false);
+          }}
+        />
+      )}
     </div>
   );
 };
