@@ -18,9 +18,10 @@ interface EventsManagerProps {
   onInitialEventHandled?: () => void;
   initialViewMode?: 'list' | 'calendar' | 'results';
   hideViewSwitcher?: boolean;
+  appSettings?: any;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', hideViewSwitcher = false }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', hideViewSwitcher = false, appSettings }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -377,6 +378,26 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       }
     }
   };
+
+  const resultsAccess = appSettings?.event_results_access || {};
+
+  const hasSocietaAccess = user?.role === 'admin' || (
+    typeof resultsAccess.societa === 'boolean' ? resultsAccess.societa : (
+      resultsAccess.societa?.enabled && (
+        resultsAccess.societa.accessType === 'all' || 
+        (resultsAccess.societa.accessType === 'specific' && resultsAccess.societa.allowedSocieties?.includes(user?.society))
+      )
+    )
+  );
+
+  const hasTiratoriAccess = user?.role === 'admin' || (
+    typeof resultsAccess.tiratori === 'boolean' ? resultsAccess.tiratori : (
+      resultsAccess.tiratori?.enabled && (
+        resultsAccess.tiratori.accessType === 'all' || 
+        (resultsAccess.tiratori.accessType === 'specific' && resultsAccess.tiratori.allowedSocieties?.includes(user?.society))
+      )
+    )
+  );
 
   const handleDelete = (id: string) => {
     triggerConfirm(
@@ -1677,18 +1698,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   </button>
                 )}
                 
-                <button 
-                  onClick={() => {
-                    setViewingResultsEvent(selectedEvent);
-                    setSelectedEvent(null);
-                  }} 
-                  className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90 shrink-0"
-                  title="Classifica"
-                >
-                  <i className="fas fa-trophy text-xl"></i>
-                </button>
+                {/* Classifica Button - Hidden if access is blocked */}
+                {((user?.role === 'admin') || 
+                  (user?.role === 'society' && hasSocietaAccess) || 
+                  (user?.role === 'user' && hasTiratoriAccess)) && (
+                  <button 
+                    onClick={() => {
+                      setViewingResultsEvent(selectedEvent);
+                      setSelectedEvent(null);
+                    }} 
+                    className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90 shrink-0"
+                    title="Classifica"
+                  >
+                    <i className="fas fa-trophy text-xl"></i>
+                  </button>
+                )}
 
-                {(user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
+                {(user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess && (selectedEvent.location === user.society || selectedEvent.created_by === user.id))) && (
                   <button 
                     onClick={() => {
                       setManagingResultsEvent(selectedEvent);

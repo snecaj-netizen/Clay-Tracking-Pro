@@ -638,6 +638,7 @@ const App: React.FC = () => {
               onCreateTeam={handleCreateTeamFromEvent}
               initialEventId={initialEventId}
               onInitialEventHandled={() => setInitialEventId(null)}
+              appSettings={appSettings}
             />
           </div>
         )}
@@ -664,6 +665,7 @@ const App: React.FC = () => {
                 onInitialEventHandled={() => setInitialEventId(null)}
                 initialViewMode="results"
                 hideViewSwitcher={true}
+                appSettings={appSettings}
               />
             ) : (
               <div className="text-center py-20">
