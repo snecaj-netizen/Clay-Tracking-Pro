@@ -3509,7 +3509,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   {Object.entries(
                     (selectedShooterResults.results || [])
                       .filter((r: any) => {
-                        if (currentUser?.role === 'society' && r.name?.toLowerCase().includes('allenamento')) return false;
+                        if (r.name?.toLowerCase().includes('allenamento')) return false;
                         return true;
                       })
                       .reduce((acc: any, r: any) => {
@@ -3526,7 +3526,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     Object.entries(
                       (selectedShooterResults.results || [])
                         .filter((r: any) => {
-                          if (currentUser?.role === 'society' && r.name?.toLowerCase().includes('allenamento')) return false;
+                          if (r.name?.toLowerCase().includes('allenamento')) return false;
                           return true;
                         })
                         .reduce((acc: any, r: any) => {

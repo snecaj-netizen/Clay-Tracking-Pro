@@ -1620,7 +1620,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
         AVG(c.averageperseries) as avg_score
       FROM users u
       JOIN competitions c ON u.id = c.user_id
-      WHERE c.totalscore > 0 AND c.event_id IS NOT NULL
+      WHERE c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0
     `;
     let params: any[] = [];
 
@@ -1648,10 +1648,10 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
 
 app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    let whereClause = "WHERE c.event_id IS NOT NULL";
+    let whereClause = "WHERE c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
     let params: any[] = [];
     if (req.user.role === 'society') {
-      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.event_id IS NOT NULL";
+      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
       params.push(req.user.society);
     }
 
@@ -1685,7 +1685,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0", "c.event_id IS NOT NULL"];
+    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
     let params: any[] = [];
 
     if (req.user.role === 'society') {
@@ -1750,7 +1750,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       JOIN users u ON c.user_id = u.id
       ${whereString}
       GROUP BY u.id, u.name, u.surname, u.society, u.category, u.qualification, u.shooter_code, u.avatar
-      ORDER BY user_surname ASC, user_name ASC
+      ORDER BY (SUM(c.totalscore)::float / NULLIF(SUM(c.totaltargets), 0)) DESC NULLS LAST, user_surname ASC, user_name ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
     const { rows } = await pool.query(resultsQuery, [...params, limit, offset]);
@@ -1784,7 +1784,7 @@ app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrS
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let whereClauses: string[] = ["c.user_id = $1", "c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0", "c.event_id IS NOT NULL"];
+    let whereClauses: string[] = ["c.user_id = $1", "c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
     let params: any[] = [userId];
 
     if (req.user.role === 'society') {
