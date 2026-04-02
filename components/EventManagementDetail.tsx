@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { 
   Users, RefreshCw, Save, Clock, Target, ArrowRight, 
   ChevronLeft, Mail, Phone, Shield, User, Calendar,
-  Download, Trash2, Edit3, Search
+  Download, Trash2, Edit3, Search, Plus, AlertCircle
 } from 'lucide-react';
 import { SocietyEvent, EventSquad, EventRegistration } from '../types';
 
@@ -18,6 +18,8 @@ interface EventManagementDetailProps {
   societies?: any[];
   setManagingResultsEvent?: (ev: SocietyEvent | null) => void;
   setViewingResultsEvent?: (ev: SocietyEvent | null) => void;
+  onRegisterShooter?: () => void;
+  refreshVersion?: number;
 }
 
 export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
@@ -30,7 +32,9 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   triggerToast,
   societies = [],
   setManagingResultsEvent,
-  setViewingResultsEvent
+  setViewingResultsEvent,
+  onRegisterShooter,
+  refreshVersion = 0
 }) => {
   const [activeTab, setActiveTab] = useState<'registrations' | 'squads' | 'results'>(initialTab);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -42,6 +46,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   const [startTime, setStartTime] = useState('09:00');
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [swapConfig, setSwapConfig] = useState<{
+    fromSquadIndex: number;
+    fromMemberIndex: number;
+    toSquadIndex: number;
+  } | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -78,9 +87,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
   useEffect(() => {
     fetchData();
-  }, [event.id]);
+  }, [event.id, refreshVersion]);
 
   const handleGenerate = async () => {
+    console.log('handleGenerate called', { fieldsCount, startTime, eventId: event.id });
     setIsGenerating(true);
     setError(null);
     try {
@@ -92,11 +102,19 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         },
         body: JSON.stringify({ fieldsCount, startTime })
       });
-      if (!response.ok) throw new Error('Errore nella generazione delle batterie');
+      console.log('generate response status:', response.status);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('generate error data:', errData);
+        throw new Error(errData.error || 'Errore nella generazione delle batterie');
+      }
       await fetchData();
       setActiveTab('squads');
+      triggerToast?.('Batterie generate con successo', 'success');
     } catch (err: any) {
+      console.error('handleGenerate error:', err);
       setError(err.message);
+      triggerToast?.(err.message, 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -115,8 +133,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       });
       if (!response.ok) throw new Error('Errore nel salvataggio delle batterie');
       await fetchData();
+      triggerToast?.('Batterie salvate con successo', 'success');
     } catch (err: any) {
       setError(err.message);
+      triggerToast?.(err.message, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -124,17 +144,77 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
   const moveMember = (fromSquadIndex: number, fromMemberIndex: number, toSquadIndex: number) => {
     const newSquads = JSON.parse(JSON.stringify(squads));
-    const [member] = newSquads[fromSquadIndex].members.splice(fromMemberIndex, 1);
     
     if (newSquads[toSquadIndex].members.length < 6 || fromSquadIndex === toSquadIndex) {
+      const [member] = newSquads[fromSquadIndex].members.splice(fromMemberIndex, 1);
       newSquads[toSquadIndex].members.push(member);
       newSquads[fromSquadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
       newSquads[toSquadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
       setSquads(newSquads);
     } else {
-      alert('La batteria di destinazione è piena (max 6 tiratori)');
+      setSwapConfig({ fromSquadIndex, fromMemberIndex, toSquadIndex });
     }
   };
+
+  const handleSwapMember = (toMemberIndex: number) => {
+    if (!swapConfig) return;
+    const { fromSquadIndex, fromMemberIndex, toSquadIndex } = swapConfig;
+    const newSquads = JSON.parse(JSON.stringify(squads));
+    
+    const memberA = newSquads[fromSquadIndex].members[fromMemberIndex];
+    const memberB = newSquads[toSquadIndex].members[toMemberIndex];
+    
+    const tempRegId = memberA.registration_id;
+    const tempFirstName = memberA.first_name;
+    const tempLastName = memberA.last_name;
+    
+    memberA.registration_id = memberB.registration_id;
+    memberA.first_name = memberB.first_name;
+    memberA.last_name = memberB.last_name;
+    
+    memberB.registration_id = tempRegId;
+    memberB.first_name = tempFirstName;
+    memberB.last_name = tempLastName;
+    
+    setSquads(newSquads);
+    setSwapConfig(null);
+  };
+
+  const handleAddSquad = () => {
+    const nextSquadNumber = squads.length > 0 ? Math.max(...squads.map(s => s.squad_number)) + 1 : 1;
+    const newSquad: EventSquad = {
+      id: Date.now(),
+      event_id: event.id,
+      squad_number: nextSquadNumber,
+      field_number: 1,
+      start_time: '09:00',
+      members: []
+    };
+    setSquads([...squads, newSquad]);
+  };
+
+  const handleAddMemberToSquad = (squadIndex: number, registration: EventRegistration) => {
+    const newSquads = JSON.parse(JSON.stringify(squads));
+    if (newSquads[squadIndex].members.length < 6) {
+      newSquads[squadIndex].members.push({
+        registration_id: registration.id,
+        first_name: registration.first_name,
+        last_name: registration.last_name,
+        position: newSquads[squadIndex].members.length + 1
+      });
+      setSquads(newSquads);
+    }
+  };
+
+  const handleRemoveMemberFromSquad = (squadIndex: number, memberIndex: number) => {
+    const newSquads = JSON.parse(JSON.stringify(squads));
+    newSquads[squadIndex].members.splice(memberIndex, 1);
+    newSquads[squadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
+    setSquads(newSquads);
+  };
+
+  const assignedRegistrationIds = new Set(squads.flatMap(s => s.members.map(m => m.registration_id)));
+  const unassignedRegistrations = registrations.filter(r => !assignedRegistrationIds.has(r.id));
 
   const filteredRegistrations = registrations.filter(reg => 
     `${reg.first_name} ${reg.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -274,7 +354,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                               <User className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="font-bold text-white uppercase tracking-tight">{reg.first_name} {reg.last_name}</p>
+                              <p className="font-bold text-white uppercase tracking-tight">{reg.last_name} {reg.first_name}</p>
                               <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">{reg.registration_day}</p>
                             </div>
                           </div>
@@ -375,9 +455,16 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
                 <div className="flex items-center gap-3 w-full lg:w-auto">
                   <button
+                    onClick={handleAddSquad}
+                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Aggiungi Batteria
+                  </button>
+                  <button
                     onClick={handleGenerate}
                     disabled={isGenerating || registrations.length === 0}
-                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                     Genera Batterie
@@ -385,30 +472,111 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                   <button
                     onClick={handleSaveSquads}
                     disabled={squads.length === 0}
-                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save className="w-4 h-4" />
                     Salva Modifiche
                   </button>
                 </div>
               </div>
+              
+              {registrations.length === 0 && (
+                <div className="mt-6 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-sm font-medium flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  Impossibile generare le batterie: nessun tiratore iscritto alla gara.
+                </div>
+              )}
             </div>
 
             {/* Squads Grid */}
+            
+            {unassignedRegistrations.length > 0 && (
+              <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6">
+                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-4">Tiratori da Assegnare ({unassignedRegistrations.length})</h3>
+                <div className="flex flex-wrap gap-2">
+                  {unassignedRegistrations.map(reg => (
+                    <div key={reg.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+                      <span className="text-xs font-bold text-slate-200 uppercase tracking-tight">
+                        {reg.last_name} {reg.first_name}
+                      </span>
+                      {squads.length > 0 && (
+                        <select 
+                          onChange={(e) => {
+                            if (e.target.value !== "") {
+                              handleAddMemberToSquad(parseInt(e.target.value), reg);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Aggiungi a...</option>
+                          {squads.map((s, idx) => (
+                            s.members.length < 6 && <option key={idx} value={idx}>B{s.squad_number}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {squads.map((squad, sIdx) => (
                 <div key={squad.id} className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6 hover:border-slate-700 transition-all group">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h3 className="text-xl font-black text-white uppercase tracking-tight">Batteria {squad.squad_number}</h3>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-black text-white uppercase tracking-tight">Batteria</span>
+                        <input 
+                          type="number" 
+                          value={squad.squad_number}
+                          onChange={(e) => {
+                            const newSquads = [...squads];
+                            newSquads[sIdx].squad_number = parseInt(e.target.value) || 1;
+                            setSquads(newSquads);
+                          }}
+                          className="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-black text-lg focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
                         <Clock className="w-3 h-3 text-orange-500" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{squad.start_time}</span>
+                        <input 
+                          type="time"
+                          value={squad.start_time}
+                          onChange={(e) => {
+                            const newSquads = [...squads];
+                            newSquads[sIdx].start_time = e.target.value;
+                            setSquads(newSquads);
+                          }}
+                          className="bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest focus:outline-none focus:border-orange-500"
+                        />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">- Campo</span>
+                        <input 
+                          type="number"
+                          value={squad.field_number}
+                          onChange={(e) => {
+                            const newSquads = [...squads];
+                            newSquads[sIdx].field_number = parseInt(e.target.value) || 1;
+                            setSquads(newSquads);
+                          }}
+                          className="w-12 bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest focus:outline-none focus:border-orange-500"
+                        />
                       </div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 group-hover:border-orange-500/30 group-hover:text-orange-500 transition-all">
-                      <Users className="w-5 h-5" />
-                    </div>
+                    <button 
+                      onClick={() => {
+                        if (confirm('Sei sicuro di voler eliminare questa batteria? I tiratori torneranno nella lista da assegnare.')) {
+                          const newSquads = squads.filter((_, idx) => idx !== sIdx);
+                          setSquads(newSquads);
+                        }
+                      }}
+                      className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                      title="Elimina batteria"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
 
                   <div className="space-y-2">
@@ -422,22 +590,35 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             {member.position}
                           </span>
                           <span className="text-xs font-bold text-slate-200 uppercase tracking-tight">
-                            {member.first_name} {member.last_name}
+                            {member.last_name} {member.first_name}
                           </span>
                         </div>
                         
                         <div className="flex items-center gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
                           {squads.length > 1 && (
                             <select 
-                              onChange={(e) => moveMember(sIdx, mIdx, parseInt(e.target.value))}
+                              onChange={(e) => {
+                                if (e.target.value !== "") {
+                                  moveMember(sIdx, mIdx, parseInt(e.target.value));
+                                  e.target.value = "";
+                                }
+                              }}
                               className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none"
-                              value={sIdx}
+                              defaultValue=""
                             >
-                              {squads.map((_, idx) => (
-                                <option key={idx} value={idx}>Sposta in B{idx + 1}</option>
+                              <option value="" disabled>Sposta in...</option>
+                              {squads.map((s, idx) => (
+                                idx !== sIdx && <option key={idx} value={idx}>B{s.squad_number}</option>
                               ))}
                             </select>
                           )}
+                          <button
+                            onClick={() => handleRemoveMemberFromSquad(sIdx, mIdx)}
+                            className="p-1 text-slate-500 hover:text-red-500 transition-colors"
+                            title="Rimuovi dalla batteria"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -547,6 +728,57 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           </div>
         )}
       </div>
+
+      {/* Floating Add Button for Registrations */}
+      {activeTab === 'registrations' && (user?.role === 'admin' || user?.role === 'society') && onRegisterShooter && (
+        <button 
+          onClick={onRegisterShooter}
+          className="fixed bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
+          title="Iscrivi Tiratore"
+        >
+          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+      )}
+
+      {/* Swap Modal */}
+      {swapConfig && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-4">Scambia Tiratore</h3>
+            <p className="text-sm text-slate-400 mb-6">
+              La batteria di destinazione è piena. Seleziona il tiratore con cui scambiare 
+              <strong className="text-white ml-1">
+                {squads[swapConfig.fromSquadIndex].members[swapConfig.fromMemberIndex].last_name} {squads[swapConfig.fromSquadIndex].members[swapConfig.fromMemberIndex].first_name}
+              </strong>:
+            </p>
+            <div className="space-y-2">
+              {squads[swapConfig.toSquadIndex].members.map((member, mIdx) => (
+                <button
+                  key={mIdx}
+                  onClick={() => handleSwapMember(mIdx)}
+                  className="w-full flex items-center justify-between p-3 bg-slate-950/50 border border-slate-800/50 rounded-xl hover:bg-slate-800 hover:border-slate-700 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded bg-slate-900 text-[10px] font-black text-slate-500 flex items-center justify-center border border-slate-800">
+                      {member.position}
+                    </span>
+                    <span className="text-xs font-bold text-slate-200 uppercase tracking-tight">
+                      {member.last_name} {member.first_name}
+                    </span>
+                  </div>
+                  <RefreshCw className="w-4 h-4 text-slate-500 group-hover:text-orange-500 transition-colors" />
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setSwapConfig(null)}
+              className="mt-6 w-full py-3 rounded-xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

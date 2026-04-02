@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
 import { User, SocietyEvent } from '../types';
+import ShooterSearch from './ShooterSearch';
 
 interface EventRegistrationModalProps {
   event: SocietyEvent;
@@ -28,7 +29,9 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
+    user_id: isAdminOrSociety ? '' : user.id,
     registration_day: 'Giorno1',
     registration_type: 'Iscrizione per Categoria',
     shotgun_brand: 'Beretta',
@@ -37,11 +40,44 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     cartridge_model: '',
     shooting_session: 'Mattina',
     notes: '',
-    phone: user.phone || ''
+    phone: isAdminOrSociety ? '' : (user.phone || '')
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shooters, setShooters] = useState<any[]>([]);
+  const [selectedShooter, setSelectedShooter] = useState<any>(isAdminOrSociety ? null : user);
+
+  useEffect(() => {
+    if (user.role === 'admin' || user.role === 'society') {
+      const fetchShooters = async () => {
+        try {
+          const res = await fetch('/api/admin/users', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setShooters(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch shooters", err);
+        }
+      };
+      fetchShooters();
+    }
+  }, [user.role]);
+
+  const handleShooterSelect = (val: any, id?: number) => {
+    const shooter = shooters.find(s => s.id === id);
+    if (shooter) {
+      setSelectedShooter(shooter);
+      setFormData(prev => ({
+        ...prev,
+        user_id: shooter.id,
+        phone: shooter.phone || ''
+      }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +109,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[1001] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -91,23 +127,37 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-          {/* User Info (Read-only) */}
+          {/* User Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tiratore</label>
-              <p className="font-medium text-gray-900">{user.name} {user.surname}</p>
-            </div>
+            {(user.role === 'admin' || user.role === 'society') ? (
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Seleziona Tiratore</label>
+                <ShooterSearch 
+                  value={selectedShooter?.id || ''}
+                  onChange={handleShooterSelect}
+                  shooters={shooters}
+                  useId={true}
+                  className="w-full"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tiratore</label>
+                <p className="font-medium text-gray-900">{selectedShooter?.name} {selectedShooter?.surname}</p>
+              </div>
+            )}
+            
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Codice Tiratore</label>
-              <p className="font-medium text-gray-900">{user.shooter_code || '-'}</p>
+              <p className="font-medium text-gray-900">{selectedShooter?.shooter_code || '-'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Società</label>
-              <p className="font-medium text-gray-900">{user.society || '-'}</p>
+              <p className="font-medium text-gray-900">{selectedShooter?.society || '-'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoria / Qualifica</label>
-              <p className="font-medium text-gray-900">{user.category || '-'} / {user.qualification || '-'}</p>
+              <p className="font-medium text-gray-900">{selectedShooter?.category || '-'} / {selectedShooter?.qualification || '-'}</p>
             </div>
           </div>
 
@@ -268,7 +318,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !formData.user_id}
               className="flex-1 px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (

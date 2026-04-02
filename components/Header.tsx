@@ -75,7 +75,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const menuItems = user?.role === 'society' ? [
     ...(hasSocietaAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
     { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
-    { id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
   ] : [
@@ -205,16 +204,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             </button>
 
             <NotificationBell token={localStorage.getItem('auth_token') || ''} />
-
-            {onLogout && (
-              <button 
-                onClick={onLogout}
-                className="hidden sm:flex w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 items-center justify-center text-red-500 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                title="Esci"
-              >
-                <i className="fas fa-sign-out-alt"></i>
-              </button>
-            )}
 
             {/* Kebab Menu Button (Mobile Only) */}
             <button 

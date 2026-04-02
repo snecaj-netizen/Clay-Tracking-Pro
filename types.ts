@@ -161,6 +161,7 @@ export interface SocietyEvent {
   has_society_ranking?: boolean;
   has_team_ranking?: boolean;
   registration_count?: number;
+  is_registered?: boolean;
 }
 
 export interface PrizeSetting {

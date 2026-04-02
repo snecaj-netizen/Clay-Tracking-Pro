@@ -209,7 +209,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingUser, setEditingUser] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
-  const [profileSubTab, setProfileSubTab] = useState<'details' | 'help'>('details');
+  const [profileSubTab, setProfileSubTab] = useState<'details' | 'help' | 'events'>('details');
   
   // Society Form State
   const [showSocietyForm, setShowSocietyForm] = useState(false);
@@ -1842,13 +1842,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                 )}
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                  <button 
+                    onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}
+                  </button>
+                )}
+                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                   <>
-                    <button 
-                      onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                      <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}
-                    </button>
                     <button 
                       onClick={() => { setActiveTab('halloffame'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
@@ -1903,7 +1905,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('events')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue' : 'Gare'}</span>
+                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1982,7 +1984,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </h2>
 
             {/* Sub-navigation */}
-            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800">
+            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 flex-wrap">
               <button
                 onClick={() => setProfileSubTab('details')}
                 className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs lg:text-sm font-black uppercase tracking-widest transition-all ${
@@ -3279,34 +3281,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <table className="w-full border-separate border-spacing-y-2">
               <thead>
                 <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
-                  <th className="px-4 py-2 text-left">Data</th>
                   <th className="px-4 py-2 text-left">Tiratore</th>
-                  <th className="px-4 py-2 text-left">Gara</th>
-                  <th className="px-4 py-2 text-left">Località</th>
-                  <th className="px-4 py-2 text-left">Disciplina</th>
-                  <th className="px-4 py-2 text-center">Punteggio</th>
-                  <th className="px-4 py-2 text-center">Media</th>
-                  <th className="px-4 py-2 text-center">Pos.</th>
+                  <th className="px-4 py-2 text-left">Cat / Qual</th>
+                  <th className="px-4 py-2 text-center">Gare</th>
+                  <th className="px-4 py-2 text-center">Media Globale</th>
                   <th className="px-4 py-2 text-right">Azioni</th>
                 </tr>
               </thead>
               <tbody>
                 {allResults.map((result) => {
-                  const layoutObj = getSeriesLayout(result.discipline as Discipline);
-                  const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
-                  const avg = result.totalTargets > 0 ? (result.totalScore / result.totalTargets) * tps : 0;
+                  const avg = result.totalTargets > 0 ? (result.totalScore / result.totalTargets) * 25 : 0;
                   
                   return (
                     <tr 
-                      key={result.id}
-                      className="group bg-slate-950/40 hover:bg-slate-900/60 transition-all border border-slate-800/50"
+                      key={result.userId}
+                      className="group bg-slate-950/40 hover:bg-slate-900/60 transition-all border border-slate-800/50 cursor-pointer"
+                      onClick={async () => {
+                        try {
+                          const queryParams = new URLSearchParams({
+                            search: filterShooter,
+                            society: filterSociety,
+                            discipline: filterDiscipline,
+                            location: filterLocation,
+                            year: filterYear
+                          });
+                          const res = await fetch(`/api/admin/shooter-results/${result.userId}?${queryParams.toString()}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setSelectedShooterResults({
+                              userId: result.userId,
+                              userName: result.userName,
+                              userSurname: result.userSurname,
+                              society: result.society,
+                              category: result.category,
+                              qualification: result.qualification,
+                              shooter_code: result.shooter_code,
+                              avatar: result.avatar,
+                              results: data
+                            });
+                          }
+                        } catch (err) {
+                          console.error("Error fetching shooter results:", err);
+                        }
+                      }}
                     >
                       <td className="px-4 py-4 rounded-l-2xl">
-                        <div className="text-xs font-black text-white">
-                          {new Date(result.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-orange-500 text-xs font-black">
                             {result.avatar ? (
@@ -3320,66 +3341,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               {result.userSurname} {result.userName}
                             </span>
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                              {result.society}
+                              {result.society || '-'}
                             </span>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-xs font-bold text-white truncate max-w-[150px]">
-                          {result.name}
-                        </div>
-                        <div className="text-[9px] font-black text-orange-500/70 uppercase tracking-widest">
-                          {result.level}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-xs font-medium text-slate-400">
-                          {result.location}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-900 text-slate-400 text-[9px] font-black uppercase tracking-widest border border-slate-800">
-                          {result.discipline}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="text-xs font-black text-white">
-                          {result.totalScore}<span className="text-slate-500">/{result.totalTargets}</span>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">
+                          {result.category || '-'} / {result.qualification || '-'}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <div className="text-xs font-black text-orange-500">
+                        <div className="text-xs font-bold text-white">
+                          {result.totalCompetitions}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-sm font-black text-orange-500">
                           {avg.toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="text-xs font-black text-white">
-                          {result.position || '-'}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right rounded-r-2xl">
                         <button 
-                          onClick={() => {
-                            // Find all results for this shooter to show the summary modal
-                            const shooterResults = allResults.filter(r => r.userId === result.userId);
-                            // Note: Since we are paginated, we might not have all results here.
-                            // But the modal expects a shooter object with a results array.
-                            // We can either fetch all results for this shooter or just show this one.
-                            // For now, let's just show the summary modal with what we have or a simplified version.
-                            setSelectedShooterResults({
-                              userId: result.userId,
-                              userName: result.userName,
-                              userSurname: result.userSurname,
-                              society: result.society,
-                              category: result.category,
-                              qualification: result.qualification,
-                              shooter_code: result.shooter_code,
-                              avatar: result.avatar,
-                              results: [result] // Just show this one for now, or we could fetch more
-                            });
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.parentElement?.parentElement?.click();
                           }}
-                          className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all flex items-center justify-center"
+                          className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all flex items-center justify-center ml-auto"
                         >
                           <i className="fas fa-eye text-[10px]"></i>
                         </button>
@@ -3531,7 +3519,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {results.map((r: any, idx: number) => (
+                          {results.map((r: any, idx: number) => {
+                            const layoutObj = getSeriesLayout(r.discipline as Discipline);
+                            const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
+                            const avg = r.totalTargets > 0 ? (r.totalScore / r.totalTargets) * tps : 0;
+                            
+                            return (
                             <div key={idx} className="bg-slate-950 border border-slate-800 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:border-orange-500/30 transition-all group relative overflow-hidden">
                               <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full -mr-8 -mt-8 blur-xl group-hover:bg-orange-600/10 transition-all"></div>
                               <div className="flex-1 relative z-10">
@@ -3575,6 +3568,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                               
                               <div className="flex items-center justify-between sm:justify-end gap-6 relative z-10">
+                                <div className="text-right">
+                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Media</p>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-black text-orange-500">
+                                      {avg.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
                                 <div className="text-right">
                                   <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Punteggio</p>
                                   <div className="flex items-baseline gap-1">
@@ -3665,7 +3666,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 )}
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )

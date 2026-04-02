@@ -1599,7 +1599,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
         AVG(c.averageperseries) as avg_score
       FROM users u
       JOIN competitions c ON u.id = c.user_id
-      WHERE c.totalscore > 0
+      WHERE c.totalscore > 0 AND c.event_id IS NOT NULL
     `;
     let params: any[] = [];
 
@@ -1627,10 +1627,10 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
 
 app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    let whereClause = "";
+    let whereClause = "WHERE c.event_id IS NOT NULL";
     let params: any[] = [];
     if (req.user.role === 'society') {
-      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'";
+      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.event_id IS NOT NULL";
       params.push(req.user.society);
     }
 
@@ -1664,7 +1664,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
+    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0", "c.event_id IS NOT NULL"];
     let params: any[] = [];
 
     if (req.user.role === 'society') {
@@ -1700,9 +1700,9 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
 
     const whereString = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
 
-    // Get total count of results
+    // Get total count of distinct shooters
     const countQuery = `
-      SELECT COUNT(*) 
+      SELECT COUNT(DISTINCT u.id) 
       FROM competitions c
       JOIN users u ON c.user_id = u.id
       ${whereString}
@@ -1710,8 +1710,95 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     const countRes = await pool.query(countQuery, params);
     const total = parseInt(countRes.rows[0].count);
 
-    // Get paginated results
+    // Get paginated results grouped by shooter
     const offset = (page - 1) * limit;
+    const resultsQuery = `
+      SELECT 
+        u.id as user_id,
+        u.name as user_name, 
+        u.surname as user_surname,
+        u.society,
+        u.category,
+        u.qualification,
+        u.shooter_code,
+        u.avatar,
+        COUNT(c.id) as total_competitions,
+        SUM(c.totalscore) as total_score,
+        SUM(c.totaltargets) as total_targets
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      ${whereString}
+      GROUP BY u.id, u.name, u.surname, u.society, u.category, u.qualification, u.shooter_code, u.avatar
+      ORDER BY user_surname ASC, user_name ASC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+    const { rows } = await pool.query(resultsQuery, [...params, limit, offset]);
+    
+    const comps = rows.map((row: any) => ({
+      userId: row.user_id,
+      userName: row.user_name,
+      userSurname: row.user_surname,
+      society: row.society,
+      category: row.category,
+      qualification: row.qualification,
+      shooter_code: row.shooter_code,
+      avatar: row.avatar,
+      totalCompetitions: parseInt(row.total_competitions),
+      totalScore: parseInt(row.total_score),
+      totalTargets: parseInt(row.total_targets)
+    }));
+
+    res.json({ results: comps, total });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  try {
+    const userId = req.params.userId;
+    const search = req.query.search as string;
+    const society = req.query.society as string;
+    const discipline = req.query.discipline as string;
+    const location = req.query.location as string;
+    const year = req.query.year as string;
+
+    let whereClauses: string[] = ["c.user_id = $1", "c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0", "c.event_id IS NOT NULL"];
+    let params: any[] = [userId];
+
+    if (req.user.role === 'society') {
+      whereClauses.push("u.society = $" + (params.length + 1));
+      params.push(req.user.society);
+    }
+
+    if (search) {
+      const searchParam = "%" + search.toLowerCase() + "%";
+      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + " OR LOWER(u.surname) LIKE $" + (params.length + 1) + " OR LOWER(c.name) LIKE $" + (params.length + 1) + " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
+      params.push(searchParam);
+    }
+
+    if (society) {
+      whereClauses.push("u.society = $" + (params.length + 1));
+      params.push(society);
+    }
+
+    if (discipline) {
+      whereClauses.push("c.discipline = $" + (params.length + 1));
+      params.push(discipline);
+    }
+
+    if (location) {
+      whereClauses.push("c.location = $" + (params.length + 1));
+      params.push(location);
+    }
+
+    if (year) {
+      whereClauses.push("EXTRACT(YEAR FROM c.date) = $" + (params.length + 1));
+      params.push(parseInt(year));
+    }
+
+    const whereString = "WHERE " + whereClauses.join(" AND ");
+
     const resultsQuery = `
       SELECT 
         c.*, 
@@ -1726,9 +1813,8 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       JOIN users u ON c.user_id = u.id
       ${whereString}
       ORDER BY c.date DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
-    const { rows } = await pool.query(resultsQuery, [...params, limit, offset]);
+    const { rows } = await pool.query(resultsQuery, params);
     
     const comps = rows.map((row: any) => ({
       id: row.id,
@@ -1761,7 +1847,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       ranking_preference: row.ranking_preference
     }));
 
-    res.json({ results: comps, total });
+    res.json(comps);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -2592,7 +2678,8 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
     let eventQuery = `
       SELECT e.*, 
       (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count,
-      (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count
+      (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count,
+      (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = '${req.user.id}') > 0 as is_registered
       FROM events e
     `;
     let eventParams: any[] = [];
@@ -2915,6 +3002,7 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
 app.post('/api/events/:id/register', authenticateToken, async (req: any, res) => {
   const { id } = req.params;
   const {
+    user_id,
     registration_day,
     registration_type,
     shotgun_brand,
@@ -2927,29 +3015,35 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
   } = req.body;
 
   try {
+    // Determine the target user ID
+    let targetUserId = req.user.id;
+    if (user_id && (req.user.role === 'admin' || req.user.role === 'society')) {
+      targetUserId = user_id;
+    }
+
+    // Check if user is already registered
+    const existingReg = await pool.query(
+      'SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2',
+      [id, targetUserId]
+    );
+    
+    if (existingReg.rows.length > 0) {
+      return res.status(400).json({ error: 'Il tiratore è già iscritto a questa gara.' });
+    }
+
     const result = await pool.query(
       `INSERT INTO event_registrations (
         event_id, user_id, registration_day, registration_type,
         shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
         shooting_session, notes, phone
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ON CONFLICT (event_id, user_id) DO UPDATE SET
-        registration_day = EXCLUDED.registration_day,
-        registration_type = EXCLUDED.registration_type,
-        shotgun_brand = EXCLUDED.shotgun_brand,
-        shotgun_model = EXCLUDED.shotgun_model,
-        cartridge_brand = EXCLUDED.cartridge_brand,
-        cartridge_model = EXCLUDED.cartridge_model,
-        shooting_session = EXCLUDED.shooting_session,
-        notes = EXCLUDED.notes,
-        phone = EXCLUDED.phone
       RETURNING *`,
-      [id, req.user.id, registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone]
+      [id, targetUserId, registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone]
     );
 
     // Also update user phone if provided and not already set
     if (phone) {
-      await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, req.user.id]);
+      await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, targetUserId]);
     }
 
     res.json(result.rows[0]);
@@ -2996,7 +3090,7 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
     if (eventResult.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
     const event = eventResult.rows[0];
 
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'SOCIETY') {
+    if (req.user.role !== 'admin' && req.user.role !== 'society') {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
@@ -3087,23 +3181,34 @@ app.put('/api/events/:id/squads/update-members', authenticateToken, async (req: 
   const { squads } = req.body;
 
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'SOCIETY') {
+    if (req.user.role !== 'admin' && req.user.role !== 'society') {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
+    await pool.query('BEGIN');
+
+    await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
+
     for (const squad of squads) {
-      await pool.query('DELETE FROM event_squad_members WHERE squad_id = $1', [squad.id]);
+      const squadInsert = await pool.query(
+        'INSERT INTO event_squads (event_id, squad_number, field_number, start_time) VALUES ($1, $2, $3, $4) RETURNING id',
+        [id, squad.squad_number, squad.field_number, squad.start_time]
+      );
+      const newSquadId = squadInsert.rows[0].id;
+
       for (let i = 0; i < squad.members.length; i++) {
         const member = squad.members[i];
         await pool.query(
           'INSERT INTO event_squad_members (squad_id, registration_id, position) VALUES ($1, $2, $3)',
-          [squad.id, member.registration_id, i + 1]
+          [newSquadId, member.registration_id, i + 1]
         );
       }
     }
 
+    await pool.query('COMMIT');
     res.json({ message: 'Squads updated successfully' });
   } catch (error) {
+    await pool.query('ROLLBACK');
     console.error('Error updating squads:', error);
     res.status(500).json({ error: 'Failed to update squads' });
   }

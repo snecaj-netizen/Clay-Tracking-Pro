@@ -39,6 +39,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [registeringEvent, setRegisteringEvent] = useState<SocietyEvent | null>(null);
   const [managingSquadsEvent, setManagingSquadsEvent] = useState<SocietyEvent | null>(null);
   const [managingEventDetail, setManagingEventDetail] = useState<SocietyEvent | null>(null);
+  const [refreshDetailVersion, setRefreshDetailVersion] = useState(0);
   const [initialManagementTab, setInitialManagementTab] = useState<'registrations' | 'squads' | 'results'>('registrations');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   
@@ -1054,6 +1055,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           societies={societies}
           setManagingResultsEvent={setManagingResultsEvent}
           setViewingResultsEvent={setViewingResultsEvent}
+          onRegisterShooter={() => setRegisteringEvent(managingEventDetail)}
+          refreshVersion={refreshDetailVersion}
         />
       ) : (
         <>
@@ -1756,7 +1759,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     href={selectedEvent.registration_link} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="px-6 py-3 rounded-xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 whitespace-nowrap"
+                    className="h-10 px-4 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 whitespace-nowrap active:scale-95"
                   >
                     <i className="fas fa-external-link-alt"></i> Iscriviti Ora
                   </a>
@@ -1786,17 +1789,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-center gap-4 pt-6 border-t border-slate-800">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-6 border-t border-slate-800">
                 {onParticipate && user?.role !== 'society' && (
                   <button 
                     onClick={() => {
                       onParticipate(selectedEvent);
                       setSelectedEvent(null);
                     }}
-                    className="w-14 h-14 rounded-2xl bg-orange-600 text-white hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center active:scale-90"
+                    className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title={user?.role === 'admin' ? 'Aggiungi a un tiratore' : 'Aggiungi alle mie gare'}
                   >
-                    <i className="fas fa-calendar-plus text-xl"></i>
+                    <i className="fas fa-calendar-plus"></i> Aggiungi
                   </button>
                 )}
 
@@ -1806,10 +1809,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       onCreateTeam(selectedEvent);
                       setSelectedEvent(null);
                     }}
-                    className="w-14 h-14 rounded-2xl bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center active:scale-90"
+                    className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title="Crea Squadra"
                   >
-                    <i className="fas fa-users text-xl"></i>
+                    <i className="fas fa-users"></i> Squadra
                   </button>
                 )}
                 
@@ -1822,34 +1825,42 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       setViewingResultsEvent(selectedEvent);
                       setSelectedEvent(null);
                     }} 
-                    className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90 shrink-0"
+                    className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title="Classifica"
                   >
-                    <i className="fas fa-trophy text-xl"></i>
+                    <i className="fas fa-trophy"></i> Classifica
                   </button>
                 )}
 
                 {/* Iscriviti Button for Shooters */}
                 {(user?.role === 'user' || user?.role === 'admin') && !isPastEvent(selectedEvent) && (
-                  <div className="flex-1 flex flex-col sm:flex-row gap-3">
-                    <button 
-                      onClick={() => {
-                        handleQuickRegister(selectedEvent);
-                      }}
-                      className="flex-1 h-14 rounded-2xl bg-green-600 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20"
-                    >
-                      <i className="fas fa-bolt"></i> Iscrizione Rapida
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setRegisteringEvent(selectedEvent);
-                        setSelectedEvent(null);
-                      }}
-                      className="flex-1 h-14 rounded-2xl bg-slate-800 text-slate-300 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95"
-                    >
-                      <i className="fas fa-list-ul"></i> Iscrizione Dettagliata
-                    </button>
-                  </div>
+                  <>
+                    {selectedEvent.is_registered ? (
+                      <div className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[9px] font-black uppercase tracking-widest cursor-default">
+                        <i className="fas fa-check-circle"></i> Già Iscritto
+                      </div>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => {
+                            handleQuickRegister(selectedEvent);
+                          }}
+                          className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[9px] font-black uppercase tracking-widest"
+                        >
+                          <i className="fas fa-bolt"></i> Iscr. Rapida
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setRegisteringEvent(selectedEvent);
+                            setSelectedEvent(null);
+                          }}
+                          className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
+                        >
+                          <i className="fas fa-list-ul"></i> Iscr. Dettagliata
+                        </button>
+                      </>
+                    )}
+                  </>
                 )}
 
                 {/* Gestione Batterie Button for Societies/Admins */}
@@ -1859,11 +1870,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       setManagingEventDetail(selectedEvent);
                       setSelectedEvent(null);
                     }}
-                    className={`${(user?.role === 'user' || user?.role === 'admin') ? 'w-14' : 'flex-1'} h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 active:scale-90 shrink-0`}
+                    className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-indigo-600 text-white flex items-center justify-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title="Gestione Iscritti e Batterie"
                   >
-                    <i className="fas fa-tasks text-xl"></i>
-                    {!(user?.role === 'user' || user?.role === 'admin') && <span className="ml-2 font-bold uppercase tracking-widest text-xs">Gestisci Gara</span>}
+                    <i className="fas fa-tasks"></i> Gestisci
                   </button>
                 )}
 
@@ -1881,11 +1891,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       }
                       setSelectedEvent(null);
                     }} 
-                    className="flex-1 h-14 rounded-2xl bg-orange-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-90"
+                    className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title={user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id)) ? "Gestisci Risultati" : "Vedi Risultati"}
                   >
-                    <i className="fas fa-list-ol"></i>
-                    <span>Risultati</span>
+                    <i className="fas fa-list-ol"></i> Risultati
                   </button>
                 )}
 
@@ -1896,20 +1905,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         handleEdit(selectedEvent);
                         setSelectedEvent(null);
                       }} 
-                      className="w-14 h-14 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-90 shrink-0"
+                      className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                       title="Modifica"
                     >
-                      <i className="fas fa-edit text-xl"></i>
+                      <i className="fas fa-edit"></i> Modifica
                     </button>
                     <button 
                       onClick={() => {
                         handleDelete(selectedEvent.id);
                         setSelectedEvent(null);
                       }} 
-                      className="w-14 h-14 rounded-2xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all border border-red-900/30 active:scale-90 shrink-0"
+                      className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all border border-red-900/30 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                       title="Elimina"
                     >
-                      <i className="fas fa-trash-alt text-xl"></i>
+                      <i className="fas fa-trash-alt"></i> Elimina
                     </button>
                   </>
                 )}
@@ -1923,7 +1932,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     </>
   )}
       
-      {managingResultsEvent && (
+      {managingResultsEvent && createPortal(
         <EventResultsManager
           event={managingResultsEvent}
           token={token}
@@ -1933,10 +1942,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           triggerToast={triggerToast}
           onEventUpdate={fetchEvents}
           societies={societies}
-        />
+        />,
+        document.body
       )}
 
-      {viewingResultsEvent && (
+      {viewingResultsEvent && createPortal(
         <EventResultsManager
           event={viewingResultsEvent}
           token={token}
@@ -1946,10 +1956,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           triggerConfirm={triggerConfirm}
           triggerToast={triggerToast}
           societies={societies}
-        />
+        />,
+        document.body
       )}
 
-      {registeringEvent && (
+      {registeringEvent && createPortal(
         <EventRegistrationModal
           event={registeringEvent}
           user={user}
@@ -1957,19 +1968,22 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           onSuccess={() => {
             if (triggerToast) triggerToast('Iscrizione completata con successo!', 'success');
             fetchEvents();
+            setRefreshDetailVersion(v => v + 1);
           }}
-        />
+        />,
+        document.body
       )}
 
-      {managingSquadsEvent && (
+      {managingSquadsEvent && createPortal(
         <EventSquadManager
           event={managingSquadsEvent}
           onClose={() => setManagingSquadsEvent(null)}
-        />
+        />,
+        document.body
       )}
 
       {/* Floating Add Button for Events */}
-      {(user?.role === 'admin' || user?.role === 'society') && viewMode !== 'results' && (
+      {(user?.role === 'admin' || user?.role === 'society') && viewMode !== 'results' && !managingEventDetail && (
         <button 
           onClick={() => {
             if (!showForm) {
