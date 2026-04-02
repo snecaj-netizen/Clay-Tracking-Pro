@@ -21,7 +21,7 @@ const CARTRIDGE_BRANDS = [
   'Nobel Sport', 'RC', 'Trust', 'Winchester', 'Altro'
 ];
 
-const SESSIONS = ['Mattina', 'Pomeriggio', 'Tutto il giorno'];
+const SESSIONS = ['Mattina', 'Pomeriggio', 'Nessuna scelta'];
 
 export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   event,
@@ -32,13 +32,13 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
     user_id: isAdminOrSociety ? '' : user.id,
-    registration_day: 'Giorno1',
+    registration_day: 'Nessuna scelta',
     registration_type: 'Iscrizione per Categoria',
     shotgun_brand: 'Beretta',
     shotgun_model: '',
     cartridge_brand: 'Fiocchi',
     cartridge_model: '',
-    shooting_session: 'Mattina',
+    shooting_session: 'Nessuna scelta',
     notes: '',
     phone: isAdminOrSociety ? '' : (user.phone || '')
   });
@@ -190,9 +190,9 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                   onChange={e => setFormData({ ...formData, registration_day: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
                 >
+                  <option value="Nessuna scelta">Nessuna scelta</option>
                   <option value="Giorno1">Giorno 1</option>
                   <option value="Giorno2">Giorno 2</option>
-                  <option value="Tutti i Giorni">Tutti i Giorni</option>
                 </select>
               </div>
 
