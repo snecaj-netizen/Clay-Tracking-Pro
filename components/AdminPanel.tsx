@@ -1820,14 +1820,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <span className="uppercase tracking-widest text-[10px] font-black">
                 {activeTab === 'results' ? 'Risultati Individuali' :
-                 activeTab === 'event-control' ? 'Attivazione Gare' :
-                 activeTab === 'events' ? 'Gare' :
+                 activeTab === 'event-control' ? 'Attivazione gare' :
+                 activeTab === 'events' ? (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare') :
                  activeTab === 'halloffame' ? 'Hall of Fame' :
                  activeTab === 'notifications' ? 'Notifiche' :
                  activeTab === 'team' ? 'Squadre' :
-                 activeTab === 'users' ? (currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti') :
+                 activeTab === 'users' ? (currentUser?.role === 'society' ? 'I tuoi Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Utenti')) :
                  activeTab === 'profile' ? 'Profilo' :
-                 (currentUser?.role === 'admin' ? 'Avanzate' : 'Backup')}
+                 (currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup')}
               </span>
             </div>
             <i className={`fas fa-chevron-down text-xs transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-180' : ''}`}></i>
@@ -1841,7 +1841,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => { setActiveTab('event-control'); setIsMobileMenuOpen(false); }}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-control' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
-                    <i className="fas fa-tasks w-5 text-center"></i> Attivazione Gare
+                    <i className="fas fa-tasks w-5 text-center"></i> Attivazione gare
                   </button>
                 )}
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1857,7 +1857,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
-                    <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}
+                    <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}
                   </button>
                 )}
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1878,7 +1878,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                     >
-                      <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti'}
+                      <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'I tuoi Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Utenti')}
                     </button>
                   </>
                 )}
@@ -1892,7 +1892,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                 >
-                  <i className="fas fa-cog w-5 text-center"></i> {currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}
+                  <i className="fas fa-cog w-5 text-center"></i> {currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup'}
                 </button>
               </div>
             </div>
@@ -1916,7 +1916,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('event-control')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-control' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-tasks mr-1 lg:mr-2"></i> <span className="hidden md:inline">Attivazione Gare</span><span className="md:hidden">Attiv.</span>
+                <i className="fas fa-tasks mr-1 lg:mr-2"></i> <span className="hidden md:inline">Attivazione gare</span><span className="md:hidden">Attiv.</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1924,7 +1924,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('events')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}</span>
+                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue Gare' : (currentUser?.role === 'admin' ? 'Gare gest.' : 'Gare')}</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1948,7 +1948,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('users')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'I tuoi Tiratori' : 'Utenti'}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : 'Ut.'}</span>
+                <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'I tuoi Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Utenti')}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : (currentUser?.role === 'admin' ? 'Gest. Ut.' : 'Ut.')}</span>
               </button>
             )}
             <button 
@@ -1961,7 +1961,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               onClick={() => setActiveTab('settings')}
               className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              <i className="fas fa-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'admin' ? 'Avanzate' : 'Backup'}</span><span className="md:hidden">{currentUser?.role === 'admin' ? 'Av.' : 'Bk.'}</span>
+              <i className="fas fa-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup'}</span><span className="md:hidden">{currentUser?.role === 'admin' ? 'Imp.' : 'Bk.'}</span>
             </button>
         </div>
       )}
@@ -3709,7 +3709,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
             <div className="flex items-center justify-between sm:justify-start gap-4">
               <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : 'Gestione Utenti'}
+                <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Gestione Utenti')}
                 {(loading || backgroundLoading) && <i className="fas fa-circle-notch fa-spin text-orange-500 text-xs ml-2"></i>}
               </h2>
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
