@@ -6,6 +6,8 @@ import {
   Download, Trash2, Edit3, Search, Plus, AlertCircle
 } from 'lucide-react';
 import { SocietyEvent, EventSquad, EventRegistration } from '../types';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface EventManagementDetailProps {
   event: SocietyEvent;
@@ -88,6 +90,96 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   useEffect(() => {
     fetchData();
   }, [event.id, refreshVersion]);
+
+  const generateSquadsPDF = () => {
+    const fields = Array.from(new Set(squads.map(s => s.field_number))).sort((a, b) => a - b);
+    if (fields.length === 0) return;
+
+    const orientation = fields.length > 4 ? 'l' : 'p';
+    const doc = new jsPDF({
+      orientation: orientation,
+      unit: 'mm',
+      format: 'a4'
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CLAY TRACKER PRO', pageWidth / 2, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ordine di Tiro', pageWidth / 2, 22, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(event.name.toUpperCase(), pageWidth / 2, 32, { align: 'center' });
+
+    const fieldLines = fields.map(fieldNum => {
+      const fieldSquads = squads.filter(s => s.field_number === fieldNum).sort((a,b) => {
+        if (a.start_time !== b.start_time) return a.start_time.localeCompare(b.start_time);
+        return a.squad_number - b.squad_number;
+      });
+      
+      const lines: string[] = [];
+      fieldSquads.forEach(squad => {
+        lines.push(`BATTERIA ${squad.squad_number} - ${squad.start_time}`);
+        for (let i = 1; i <= 6; i++) {
+          const member = squad.members.find(m => m.position === i);
+          if (member) {
+            lines.push(`${i}. ${member.last_name} ${member.first_name}`);
+          } else {
+            lines.push(`${i}. ---`);
+          }
+        }
+        lines.push(''); // Empty line between squads
+      });
+      return lines;
+    });
+
+    const maxLines = Math.max(...fieldLines.map(lines => lines.length), 0);
+    const rows: string[][] = [];
+    for (let i = 0; i < maxLines; i++) {
+      const row: string[] = [];
+      for (let j = 0; j < fields.length; j++) {
+        row.push(fieldLines[j][i] || '');
+      }
+      rows.push(row);
+    }
+
+    autoTable(doc, {
+      head: [fields.map(f => `CAMPO ${f}`)],
+      body: rows,
+      startY: 50,
+      theme: 'grid',
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        valign: 'middle',
+        halign: 'left'
+      },
+      headStyles: {
+        fillColor: [234, 88, 12], // orange-600
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.cell.raw && typeof data.cell.raw === 'string' && data.cell.raw.startsWith('BATTERIA')) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [241, 245, 249]; // slate-100
+          data.cell.styles.textColor = [15, 23, 42]; // slate-900
+        }
+      }
+    });
+
+    doc.save(`batterie_${event.name.replace(/\s+/g, '_')}.pdf`);
+  };
 
   const handleGenerate = async () => {
     console.log('handleGenerate called', { fieldsCount, startTime, eventId: event.id });
@@ -418,71 +510,75 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         ) : activeTab === 'squads' ? (
           <div className="space-y-8">
             {/* Squads Controls */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
-              <div className="flex flex-col lg:flex-row items-center gap-8">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Numero Campi</label>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                      {[1, 2, 3, 4, 5, 6].map(n => (
-                        <button
-                          key={n}
-                          onClick={() => setFieldsCount(n)}
-                          className={`w-10 h-10 rounded-xl font-black text-xs transition-all border ${
-                            fieldsCount === n 
-                              ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-600/20' 
-                              : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
-                          }`}
-                        >
-                          {n}
-                        </button>
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+              <div className="flex flex-col md:flex-row items-end gap-4">
+                <div className="w-full md:w-48">
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Numero Campi</label>
+                  <div className="relative">
+                    <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
+                    <select
+                      value={fieldsCount}
+                      onChange={(e) => setFieldsCount(parseInt(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white appearance-none"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                        <option key={n} value={n}>{n} {n === 1 ? 'Campo' : 'Campi'}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Orario Inizio</label>
-                    <div className="relative">
-                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
-                      <input 
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white"
-                      />
-                    </div>
+                </div>
+                
+                <div className="w-full md:w-48">
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Orario Inizio</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
+                    <input 
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white"
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full lg:w-auto">
+                <div className="flex-1 flex flex-wrap items-center gap-2 justify-end w-full">
                   <button
                     onClick={handleAddSquad}
-                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3"
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
                   >
-                    <Plus className="w-4 h-4" />
-                    Aggiungi Batteria
+                    <Plus className="w-3.5 h-3.5" />
+                    Aggiungi
                   </button>
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || registrations.length === 0}
-                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                    Genera Batterie
+                    <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+                    Genera
                   </button>
                   <button
                     onClick={handleSaveSquads}
                     disabled={squads.length === 0}
-                    className="flex-1 lg:flex-none px-8 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Save className="w-4 h-4" />
-                    Salva Modifiche
+                    <Save className="w-3.5 h-3.5" />
+                    Salva
+                  </button>
+                  <button
+                    onClick={generateSquadsPDF}
+                    disabled={squads.length === 0}
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Stampa
                   </button>
                 </div>
               </div>
               
               {registrations.length === 0 && (
-                <div className="mt-6 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-sm font-medium flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
+                <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   Impossibile generare le batterie: nessun tiratore iscritto alla gara.
                 </div>
               )}
