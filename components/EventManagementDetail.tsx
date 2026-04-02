@@ -48,6 +48,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   const [startTime, setStartTime] = useState('09:00');
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [swapConfig, setSwapConfig] = useState<{
     fromSquadIndex: number;
     fromMemberIndex: number;
@@ -132,7 +133,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         for (let i = 1; i <= 6; i++) {
           const member = squad.members.find(m => m.position === i);
           if (member) {
-            lines.push(`${i}. ${member.last_name} ${member.first_name}`);
+            const catQual = [member.category, member.qualification].filter(Boolean).join(' - ');
+            lines.push(`${i}. ${member.last_name} ${member.first_name}${catQual ? ` (${catQual})` : ''}`);
           } else {
             lines.push(`${i}. ---`);
           }
@@ -202,6 +204,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       }
       await fetchData();
       setActiveTab('squads');
+      setHasUnsavedChanges(false);
       triggerToast?.('Batterie generate con successo', 'success');
     } catch (err: any) {
       console.error('handleGenerate error:', err);
@@ -225,6 +228,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       });
       if (!response.ok) throw new Error('Errore nel salvataggio delle batterie');
       await fetchData();
+      setHasUnsavedChanges(false);
       triggerToast?.('Batterie salvate con successo', 'success');
     } catch (err: any) {
       setError(err.message);
@@ -243,9 +247,20 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       newSquads[fromSquadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
       newSquads[toSquadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
       setSquads(newSquads);
+      setHasUnsavedChanges(true);
     } else {
       setSwapConfig({ fromSquadIndex, fromMemberIndex, toSquadIndex });
     }
+  };
+
+  const changePosition = (squadIndex: number, fromIndex: number, toIndex: number) => {
+    const newSquads = JSON.parse(JSON.stringify(squads));
+    const squad = newSquads[squadIndex];
+    const [member] = squad.members.splice(fromIndex, 1);
+    squad.members.splice(toIndex, 0, member);
+    squad.members.forEach((m: any, idx: number) => m.position = idx + 1);
+    setSquads(newSquads);
+    setHasUnsavedChanges(true);
   };
 
   const handleSwapMember = (toMemberIndex: number) => {
@@ -270,6 +285,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     
     setSquads(newSquads);
     setSwapConfig(null);
+    setHasUnsavedChanges(true);
   };
 
   const handleAddSquad = () => {
@@ -283,6 +299,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       members: []
     };
     setSquads([...squads, newSquad]);
+    setHasUnsavedChanges(true);
   };
 
   const handleAddMemberToSquad = (squadIndex: number, registration: EventRegistration) => {
@@ -292,9 +309,12 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         registration_id: registration.id,
         first_name: registration.first_name,
         last_name: registration.last_name,
+        category: registration.category,
+        qualification: registration.qualification,
         position: newSquads[squadIndex].members.length + 1
       });
       setSquads(newSquads);
+      setHasUnsavedChanges(true);
     }
   };
 
@@ -303,6 +323,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     newSquads[squadIndex].members.splice(memberIndex, 1);
     newSquads[squadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
     setSquads(newSquads);
+    setHasUnsavedChanges(true);
   };
 
   const assignedRegistrationIds = new Set(squads.flatMap(s => s.members.map(m => m.registration_id)));
@@ -330,9 +351,6 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
             <div className="flex items-center gap-3 mb-2">
               <span className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase tracking-widest border border-orange-500/20">
                 Gestione Gara
-              </span>
-              <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">
-                ID: {event.id}
               </span>
             </div>
             <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight leading-none">
@@ -576,6 +594,22 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                 </div>
               </div>
               
+              {hasUnsavedChanges && (
+                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-500 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    Hai delle modifiche non salvate. Ricordati di salvare per non perderle.
+                  </div>
+                  <button
+                    onClick={handleSaveSquads}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-yellow-950 font-black rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    Salva Ora
+                  </button>
+                </div>
+              )}
+
               {registrations.length === 0 && (
                 <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-xs font-medium flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -594,6 +628,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                     <div key={reg.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
                       <span className="text-xs font-bold text-slate-200 uppercase tracking-tight">
                         {reg.last_name} {reg.first_name}
+                        {(reg.category || reg.qualification) && (
+                          <span className="ml-2 text-[10px] text-slate-500 font-medium">
+                            ({[reg.category, reg.qualification].filter(Boolean).join(' - ')})
+                          </span>
+                        )}
                       </span>
                       {squads.length > 0 && (
                         <select 
@@ -632,6 +671,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             const newSquads = [...squads];
                             newSquads[sIdx].squad_number = parseInt(e.target.value) || 1;
                             setSquads(newSquads);
+                            setHasUnsavedChanges(true);
                           }}
                           className="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-black text-lg focus:outline-none focus:border-orange-500"
                         />
@@ -645,6 +685,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             const newSquads = [...squads];
                             newSquads[sIdx].start_time = e.target.value;
                             setSquads(newSquads);
+                            setHasUnsavedChanges(true);
                           }}
                           className="bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest focus:outline-none focus:border-orange-500"
                         />
@@ -656,6 +697,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             const newSquads = [...squads];
                             newSquads[sIdx].field_number = parseInt(e.target.value) || 1;
                             setSquads(newSquads);
+                            setHasUnsavedChanges(true);
                           }}
                           className="w-12 bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest focus:outline-none focus:border-orange-500"
                         />
@@ -666,6 +708,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                         if (confirm('Sei sicuro di voler eliminare questa batteria? I tiratori torneranno nella lista da assegnare.')) {
                           const newSquads = squads.filter((_, idx) => idx !== sIdx);
                           setSquads(newSquads);
+                          setHasUnsavedChanges(true);
                         }
                       }}
                       className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
@@ -687,10 +730,26 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                           </span>
                           <span className="text-xs font-bold text-slate-200 uppercase tracking-tight">
                             {member.last_name} {member.first_name}
+                            {(member.category || member.qualification) && (
+                              <span className="ml-2 text-[10px] text-slate-500 font-medium">
+                                ({[member.category, member.qualification].filter(Boolean).join(' - ')})
+                              </span>
+                            )}
                           </span>
                         </div>
                         
                         <div className="flex items-center gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                          <select 
+                            onChange={(e) => {
+                              changePosition(sIdx, mIdx, parseInt(e.target.value));
+                            }}
+                            className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none"
+                            value={mIdx}
+                          >
+                            {[0, 1, 2, 3, 4, 5].slice(0, squad.members.length).map(posIdx => (
+                              <option key={posIdx} value={posIdx}>Pos {posIdx + 1}</option>
+                            ))}
+                          </select>
                           {squads.length > 1 && (
                             <select 
                               onChange={(e) => {
