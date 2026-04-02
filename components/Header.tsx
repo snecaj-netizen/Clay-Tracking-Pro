@@ -16,6 +16,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
+    const handleCloseAllMenus = () => {
+      setIsMenuOpen(false);
+      setIsProfileOpen(false);
+    };
+
+    window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+    return () => window.removeEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.profile-dropdown-container')) {
@@ -97,7 +107,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
         />
       )}
       
-      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[1000]">
+      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[1050]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
@@ -117,7 +127,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
           <div className="flex items-center gap-2 sm:gap-4 relative profile-dropdown-container">
             <button 
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              onClick={() => {
+                if (!isProfileOpen) {
+                  window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
+                }
+                setIsProfileOpen(!isProfileOpen);
+              }}
               className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' || isProfileOpen ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
             >
               <div className="hidden sm:block text-right">
@@ -216,7 +231,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
             {/* Kebab Menu Button (Mobile Only) */}
             <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={() => {
+                if (!isMenuOpen) {
+                  window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
+                }
+                setIsMenuOpen(!isMenuOpen);
+              }}
               className="sm:hidden w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-orange-500 transition-all active:scale-95"
             >
               <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-ellipsis-v'}`}></i>

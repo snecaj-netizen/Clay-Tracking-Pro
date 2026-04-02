@@ -267,6 +267,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   useEffect(() => {
+    const handleCloseAllMenus = () => {
+      setIsMobileMenuOpen(false);
+    };
+
+    window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+    return () => window.removeEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+  }, []);
+  
+  useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -1801,7 +1810,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {!hideTabs && (
         <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
           <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={() => {
+              if (!isMobileMenuOpen) {
+                window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
+              }
+              setIsMobileMenuOpen(!isMobileMenuOpen);
+            }}
             className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
           >
             <div className="flex items-center gap-3">

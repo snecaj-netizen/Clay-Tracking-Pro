@@ -29,6 +29,15 @@ export default function NotificationBell({ token }: NotificationBellProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const handleCloseAllMenus = () => {
+      setShowDropdown(false);
+    };
+
+    window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+    return () => window.removeEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
@@ -168,7 +177,12 @@ export default function NotificationBell({ token }: NotificationBellProps) {
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
-        onClick={() => setShowDropdown(!showDropdown)}
+        onClick={() => {
+          if (!showDropdown) {
+            window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
+          }
+          setShowDropdown(!showDropdown);
+        }}
         className={`w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition-all relative ${showDropdown ? 'text-orange-500 border-orange-500/50' : 'text-slate-400 hover:text-orange-500 hover:border-orange-500/50'}`}
       >
         <i className="fas fa-bell"></i>
