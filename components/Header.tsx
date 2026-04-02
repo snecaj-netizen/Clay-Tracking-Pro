@@ -13,6 +13,18 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings }) => {
   const [isLightMode, setIsLightMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.profile-dropdown-container')) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -47,35 +59,31 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   const resultsAccess = appSettings?.event_results_access || {};
 
-  const hasSocietaAccess = user?.role === 'admin' || (
-    typeof resultsAccess.societa === 'boolean' ? resultsAccess.societa : (
-      resultsAccess.societa?.enabled && (
-        resultsAccess.societa.accessType === 'all' || 
-        (resultsAccess.societa.accessType === 'specific' && resultsAccess.societa.allowedSocieties?.includes(user?.society))
-      )
-    )
-  );
+  const checkAccess = (access: any, userSociety: string | undefined) => {
+    if (typeof access === 'boolean') return access;
+    if (!access?.enabled) return false;
+    if (access.accessType === 'all') return true;
+    if (access.accessType === 'specific' && Array.isArray(access.allowedSocieties)) {
+      return access.allowedSocieties.some((s: string) => s?.trim().toLowerCase() === userSociety?.trim().toLowerCase());
+    }
+    return false;
+  };
 
-  const hasTiratoriAccess = user?.role === 'admin' || (
-    typeof resultsAccess.tiratori === 'boolean' ? resultsAccess.tiratori : (
-      resultsAccess.tiratori?.enabled && (
-        resultsAccess.tiratori.accessType === 'all' || 
-        (resultsAccess.tiratori.accessType === 'specific' && resultsAccess.tiratori.allowedSocieties?.includes(user?.society))
-      )
-    )
-  );
+  const hasSocietaAccess = user?.role === 'admin' || checkAccess(resultsAccess.societa, user?.society);
+  const hasTiratoriAccess = user?.role === 'admin' || checkAccess(resultsAccess.tiratori, user?.society);
 
   const menuItems = user?.role === 'society' ? [
-    ...(hasSocietaAccess ? [{ id: 'admin', tab: 'results', label: 'Risultati', icon: 'fa-poll' }] : []),
-    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
+    ...(hasSocietaAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
+    { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
+    { id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' },
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
   ] : [
-    { id: 'history', label: 'Gare/Allenamenti', icon: 'fa-list-ul' },
+    { id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' },
     { id: 'dashboard', label: 'Report Gare', icon: 'fa-chart-pie' },
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
-    { id: 'events', label: 'Eventi', icon: 'fa-calendar-alt' },
+    { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
     ...(hasTiratoriAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
     { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
   ];
@@ -108,35 +116,85 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             </div>
           </button>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 relative profile-dropdown-container">
             <button 
-              onClick={() => {
-                if (user?.role === 'society') {
-                  onNavigate('admin', 'results');
-                } else if (user?.role === 'admin') {
-                  onNavigate('admin', 'users');
-                } else {
-                  onNavigate('admin', 'profile');
-                }
-              }}
-              className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' || isProfileOpen ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
             >
               <div className="hidden sm:block text-right">
-                <div className={`text-xs font-black uppercase tracking-widest ${currentView === 'admin' ? 'text-orange-200' : 'text-slate-500'}`}>
+                <div className={`text-xs font-black uppercase tracking-widest ${currentView === 'admin' || isProfileOpen ? 'text-orange-200' : 'text-slate-500'}`}>
                   {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
                 </div>
-                <div className={`text-sm font-bold ${currentView === 'admin' ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                <div className={`text-sm font-bold ${currentView === 'admin' || isProfileOpen ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
                   {user?.name} {user?.surname}
                 </div>
               </div>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all overflow-hidden ${currentView === 'admin' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-orange-500'}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all overflow-hidden ${currentView === 'admin' || isProfileOpen ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-orange-500'}`}>
                 {user?.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <i className={`fas ${user?.role === 'admin' ? 'fa-users-cog' : 'fa-user'}`}></i>
                 )}
               </div>
+              <i className={`fas fa-chevron-down text-[10px] transition-transform duration-200 ${isProfileOpen ? 'rotate-180 text-white' : 'text-slate-500'}`}></i>
             </button>
+
+            {/* Profile Dropdown Menu */}
+            {isProfileOpen && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-2 z-[1100] animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 py-3 border-b border-slate-800 mb-1">
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Account</div>
+                  <div className="text-sm font-bold text-white truncate">{user?.email}</div>
+                </div>
+                
+                <button 
+                  onClick={() => { onNavigate('admin', 'profile'); setIsProfileOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  <i className="fas fa-user-circle w-5 text-slate-500"></i>
+                  Il Tuo Profilo
+                </button>
+
+                {(user?.role === 'admin' || user?.role === 'society') && (
+                  <div className="py-1">
+                    <div className="px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">Gestione</div>
+                    <button 
+                      onClick={() => { onNavigate('events', 'managed'); setIsProfileOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+                    >
+                      <i className="fas fa-tasks w-5 text-indigo-500 group-hover:text-white"></i>
+                      Gare Gestite
+                    </button>
+                    {user?.role === 'admin' && (
+                      <button 
+                        onClick={() => { onNavigate('admin', 'users'); setIsProfileOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                      >
+                        <i className="fas fa-users w-5 text-slate-500"></i>
+                        Gestione Utenti
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => { onNavigate('admin', 'settings'); setIsProfileOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                    >
+                      <i className="fas fa-cog w-5 text-slate-500"></i>
+                      Impostazioni
+                    </button>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-800 mt-1 pt-1">
+                  <button 
+                    onClick={() => { onLogout?.(); setIsProfileOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <i className="fas fa-sign-out-alt w-5"></i>
+                    Esci
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button 
               onClick={toggleTheme} 

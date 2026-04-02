@@ -75,6 +75,17 @@ export interface Competition {
   status?: string;
   ranking_preference?: 'categoria' | 'qualifica';
   ranking_preference_override?: 'categoria' | 'qualifica';
+  is_registered_only?: boolean;
+  registration_id?: number;
+  registration_day?: string;
+  registration_type?: string;
+  shotgun_brand?: string;
+  shotgun_model?: string;
+  cartridge_brand?: string;
+  cartridge_model?: string;
+  shooting_session?: string;
+  registration_notes?: string;
+  registration_phone?: string;
 }
 
 export interface Cartridge {
@@ -122,6 +133,7 @@ export interface User {
   shooter_code?: string;
   avatar?: string;
   birth_date?: string;
+  phone?: string;
   is_logged_in?: boolean;
 }
 
@@ -148,12 +160,58 @@ export interface SocietyEvent {
   ranking_preference_override?: 'categoria' | 'qualifica' | null;
   has_society_ranking?: boolean;
   has_team_ranking?: boolean;
+  registration_count?: number;
 }
 
 export interface PrizeSetting {
   type: 'categoria' | 'qualifica';
   name: string;
   count: number;
+}
+
+export interface EventRegistration {
+  id: number;
+  event_id: string;
+  user_id: number;
+  registration_day: string;
+  registration_type: string;
+  shotgun_brand: string;
+  shotgun_model?: string;
+  cartridge_brand: string;
+  cartridge_model?: string;
+  shooting_session: string;
+  notes?: string;
+  phone?: string;
+  created_at: string;
+  // Joined fields
+  first_name?: string;
+  last_name?: string;
+  shooter_code?: string;
+  society?: string;
+  category?: string;
+  qualification?: string;
+  email?: string;
+}
+
+export interface EventSquadMember {
+  id?: number;
+  position: number;
+  registration_id: number;
+  first_name: string;
+  last_name: string;
+  shooter_code?: string;
+  society?: string;
+  category?: string;
+  qualification?: string;
+}
+
+export interface EventSquad {
+  id: number;
+  event_id: string;
+  squad_number: number;
+  field_number: number;
+  start_time: string;
+  members: EventSquadMember[];
 }
 
 export interface AppData {

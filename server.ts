@@ -490,6 +490,45 @@ const initDB = async () => {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS event_registrations (
+        id SERIAL PRIMARY KEY,
+        event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        registration_day TEXT NOT NULL,
+        registration_type TEXT NOT NULL,
+        shotgun_brand TEXT NOT NULL,
+        shotgun_model TEXT,
+        cartridge_brand TEXT NOT NULL,
+        cartridge_model TEXT,
+        shooting_session TEXT NOT NULL,
+        notes TEXT,
+        phone TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(event_id, user_id)
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS event_squads (
+        id SERIAL PRIMARY KEY,
+        event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        squad_number INTEGER NOT NULL,
+        field_number INTEGER NOT NULL,
+        start_time TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS event_squad_members (
+        squad_id INTEGER REFERENCES event_squads(id) ON DELETE CASCADE,
+        registration_id INTEGER REFERENCES event_registrations(id) ON DELETE CASCADE,
+        position INTEGER NOT NULL,
+        PRIMARY KEY (squad_id, registration_id)
+      );
+    `);
+
     // Initialize VAPID keys
     try {
       const { rows: vapidRows } = await pool.query("SELECT * FROM vapid_keys WHERE id = 1");
@@ -2552,7 +2591,8 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
     // 1. Fetch regular events with result count
     let eventQuery = `
       SELECT e.*, 
-      (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count 
+      (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count,
+      (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count
       FROM events e
     `;
     let eventParams: any[] = [];
@@ -2560,16 +2600,17 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
     if (req.user.role === 'admin') {
       // Admin sees all
     } else if (req.user.role === 'society') {
-      // Society sees their own and public
-      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica'";
-      eventParams.push(req.user.society);
+      // Society sees their own, public, and those they created
+      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica' OR created_by = $2";
+      eventParams.push(req.user.society, req.user.id);
     } else {
-      // User sees their society's and public
-      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica'";
-      eventParams.push(req.user.society || '');
+      // User sees their society's, public, and those they created
+      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica' OR created_by = $2";
+      eventParams.push(req.user.society || '', req.user.id);
     }
 
     const { rows: events } = await pool.query(eventQuery, eventParams);
+    console.log('API: /api/events fetched events count:', events.length, 'for user:', req.user.email, 'role:', req.user.role);
 
     // 4. Combine and sort
     const allEvents = [...events].sort((a, b) => {
@@ -2823,28 +2864,248 @@ app.delete('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, 
 app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
   try {
     const eventId = req.params.id;
+    // Include all registered shooters, even if they don't have a result yet
     const results = await pool.query(`
-      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification, u.society, u.shooter_code
-      FROM competitions c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.event_id = $1
-      ORDER BY c.totalscore DESC, c.shoot_off DESC NULLS LAST
+      SELECT 
+        c.*, 
+        u.id as user_id,
+        u.name as user_name, 
+        u.surname as user_surname, 
+        u.category, 
+        u.qualification, 
+        u.society, 
+        u.shooter_code,
+        r.id as registration_id,
+        r.registration_day,
+        r.registration_type,
+        r.shotgun_brand,
+        r.shotgun_model,
+        r.cartridge_brand,
+        r.cartridge_model,
+        r.shooting_session,
+        r.notes as registration_notes,
+        r.phone as registration_phone
+      FROM users u
+      LEFT JOIN event_registrations r ON r.user_id = u.id AND r.event_id = $1
+      LEFT JOIN competitions c ON c.user_id = u.id AND c.event_id = $1
+      WHERE r.id IS NOT NULL OR c.id IS NOT NULL
+      ORDER BY c.totalscore DESC NULLS LAST, c.shoot_off DESC NULLS LAST
     `, [eventId]);
     
     // Parse JSON fields
     const parsedResults = results.rows.map(r => ({
       ...r,
-      scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
+      scores: r.scores ? (typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores) : [],
       detailedScores: r.detailedscores ? (typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores) : null,
       weather: r.weather ? (typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather) : null,
       seriesImages: r.seriesimages ? (typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages) : null,
       usedCartridges: r.usedcartridges ? (typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges) : null,
       chokes: r.chokes ? (typeof r.chokes === 'string' ? JSON.parse(r.chokes) : r.chokes) : null,
+      is_registered_only: !r.id // if c.id is null, it's just a registration
     }));
 
     res.json(parsedResults);
   } catch (err: any) {
+    console.error('Error fetching event results:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Register for an event
+app.post('/api/events/:id/register', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const {
+    registration_day,
+    registration_type,
+    shotgun_brand,
+    shotgun_model,
+    cartridge_brand,
+    cartridge_model,
+    shooting_session,
+    notes,
+    phone
+  } = req.body;
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO event_registrations (
+        event_id, user_id, registration_day, registration_type,
+        shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
+        shooting_session, notes, phone
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (event_id, user_id) DO UPDATE SET
+        registration_day = EXCLUDED.registration_day,
+        registration_type = EXCLUDED.registration_type,
+        shotgun_brand = EXCLUDED.shotgun_brand,
+        shotgun_model = EXCLUDED.shotgun_model,
+        cartridge_brand = EXCLUDED.cartridge_brand,
+        cartridge_model = EXCLUDED.cartridge_model,
+        shooting_session = EXCLUDED.shooting_session,
+        notes = EXCLUDED.notes,
+        phone = EXCLUDED.phone
+      RETURNING *`,
+      [id, req.user.id, registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone]
+    );
+
+    // Also update user phone if provided and not already set
+    if (phone) {
+      await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, req.user.id]);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error registering for event:', {
+      eventId: id,
+      userId: req.user?.id,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    res.status(500).json({ 
+      error: 'Errore durante la registrazione. Riprova più tardi.',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get registrations for an event
+app.get('/api/events/:id/registrations', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT r.*, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email
+       FROM event_registrations r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.event_id = $1`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching registrations:', error);
+    res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
+});
+
+// Generate squads for an event
+app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const { fieldsCount, startTime } = req.body;
+
+  try {
+    // Check authorization
+    const eventResult = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+    if (eventResult.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    const event = eventResult.rows[0];
+
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SOCIETY') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Get all registrations
+    const regResult = await pool.query('SELECT id FROM event_registrations WHERE event_id = $1', [id]);
+    let registrations = regResult.rows.map(r => r.id);
+
+    // Shuffle registrations
+    for (let i = registrations.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [registrations[i], registrations[j]] = [registrations[j], registrations[i]];
+    }
+
+    // Clear existing squads
+    await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
+
+    let currentRegIndex = 0;
+    let squadNumber = 1;
+
+    const startHour = parseInt(startTime.split(':')[0]);
+    const startMinute = parseInt(startTime.split(':')[1]);
+
+    while (currentRegIndex < registrations.length) {
+      const fieldNumber = ((squadNumber - 1) % fieldsCount) + 1;
+      const roundNumber = Math.floor((squadNumber - 1) / fieldsCount);
+      
+      const totalMinutes = startHour * 60 + startMinute + roundNumber * 20;
+      const squadHour = Math.floor(totalMinutes / 60);
+      const squadMinute = totalMinutes % 60;
+      const squadStartTime = `${squadHour.toString().padStart(2, '0')}:${squadMinute.toString().padStart(2, '0')}`;
+
+      const squadInsert = await pool.query(
+        'INSERT INTO event_squads (event_id, squad_number, field_number, start_time) VALUES ($1, $2, $3, $4) RETURNING id',
+        [id, squadNumber, fieldNumber, squadStartTime]
+      );
+      const squadId = squadInsert.rows[0].id;
+
+      for (let pos = 1; pos <= 6 && currentRegIndex < registrations.length; pos++) {
+        await pool.query(
+          'INSERT INTO event_squad_members (squad_id, registration_id, position) VALUES ($1, $2, $3)',
+          [squadId, registrations[currentRegIndex], pos]
+        );
+        currentRegIndex++;
+      }
+      squadNumber++;
+    }
+
+    res.json({ message: 'Squads generated successfully' });
+  } catch (error) {
+    console.error('Error generating squads:', error);
+    res.status(500).json({ error: 'Failed to generate squads' });
+  }
+});
+
+// Get squads for an event
+app.get('/api/events/:id/squads', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  try {
+    const squadsResult = await pool.query(
+      'SELECT * FROM event_squads WHERE event_id = $1 ORDER BY squad_number',
+      [id]
+    );
+    const squads = squadsResult.rows;
+
+    for (const squad of squads) {
+      const membersResult = await pool.query(
+        `SELECT m.position, r.id as registration_id, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification
+         FROM event_squad_members m
+         JOIN event_registrations r ON m.registration_id = r.id
+         JOIN users u ON r.user_id = u.id
+         WHERE m.squad_id = $1
+         ORDER BY m.position`,
+        [squad.id]
+      );
+      squad.members = membersResult.rows;
+    }
+
+    res.json(squads);
+  } catch (error) {
+    console.error('Error fetching squads:', error);
+    res.status(500).json({ error: 'Failed to fetch squads' });
+  }
+});
+
+// Update squad members
+app.put('/api/events/:id/squads/update-members', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const { squads } = req.body;
+
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SOCIETY') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    for (const squad of squads) {
+      await pool.query('DELETE FROM event_squad_members WHERE squad_id = $1', [squad.id]);
+      for (let i = 0; i < squad.members.length; i++) {
+        const member = squad.members[i];
+        await pool.query(
+          'INSERT INTO event_squad_members (squad_id, registration_id, position) VALUES ($1, $2, $3)',
+          [squad.id, member.registration_id, i + 1]
+        );
+      }
+    }
+
+    res.json({ message: 'Squads updated successfully' });
+  } catch (error) {
+    console.error('Error updating squads:', error);
+    res.status(500).json({ error: 'Failed to update squads' });
   }
 });
 
@@ -3275,7 +3536,7 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
         c.seriesImages ? JSON.stringify(c.seriesImages) : null,
         c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
         c.chokes ? JSON.stringify(c.chokes) : null,
-        c.eventId || null,
+        (req.user.role === 'admin' || req.user.role === 'society') ? (c.eventId || null) : null,
         c.shootOff !== undefined ? c.shootOff : null,
         cat, qual, soc,
         c.ranking_preference || 'categoria',
@@ -3353,7 +3614,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.seriesImages ? JSON.stringify(c.seriesImages) : null,
           c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
           c.chokes ? JSON.stringify(c.chokes) : null,
-          c.eventId || null,
+          compEventId,
           c.shootOff !== undefined ? c.shootOff : null,
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
@@ -3407,7 +3668,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.seriesImages ? JSON.stringify(c.seriesImages) : null,
           c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
           c.chokes ? JSON.stringify(c.chokes) : null,
-          c.eventId || null,
+          compEventId,
           c.shootOff !== undefined ? c.shootOff : null,
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
@@ -3427,7 +3688,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.seriesImages ? JSON.stringify(c.seriesImages) : null,
           c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
           c.chokes ? JSON.stringify(c.chokes) : null,
-          c.eventId || null,
+          compEventId,
           c.shootOff !== undefined ? c.shootOff : null,
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
@@ -3823,7 +4084,7 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
-  const buildPath = path.resolve(process.cwd(), 'build');
+  const buildPath = path.resolve(process.cwd(), 'dist');
 
   if (!isProd) {
     try {
@@ -3858,7 +4119,7 @@ async function setupVite(app: any) {
 }
 
 function serveStatic(app: any) {
-  const buildPath = path.resolve(process.cwd(), 'build');
+  const buildPath = path.resolve(process.cwd(), 'dist');
   app.use(express.static(buildPath));
   app.use((req: any, res: any) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));

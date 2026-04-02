@@ -6,6 +6,7 @@ import ShareCard from './ShareCard';
 
 interface HistoryListProps {
   competitions: Competition[];
+  events?: any[];
   societies: any[];
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
@@ -13,10 +14,25 @@ interface HistoryListProps {
   onSocietyClick?: (name: string) => void;
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   user?: any;
+  token?: string;
+  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const HistoryList: React.FC<HistoryListProps> = ({ competitions, societies, onDelete, onEdit, onUpdate, onSocietyClick, triggerConfirm, user }) => {
+const HistoryList: React.FC<HistoryListProps> = ({ 
+  competitions, 
+  events = [], 
+  societies, 
+  onDelete, 
+  onEdit, 
+  onUpdate, 
+  onSocietyClick, 
+  triggerConfirm, 
+  user,
+  token,
+  triggerToast
+}) => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});

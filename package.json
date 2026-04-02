@@ -5,10 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "start": "tsx server.ts",
-    "prebuild": "rm -rf build",
+    "start": "node server.ts",
     "build": "vite build",
-    "gcp-build": "npm run build && ls -la build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
@@ -30,6 +28,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",

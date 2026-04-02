@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [cartridgeTypes, setCartridgeTypes] = useState<CartridgeType[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | 'event-results'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(null);
+  const [initialViewMode, setInitialViewMode] = useState<string | null>(null);
   const [initialSocietyName, setInitialSocietyName] = useState<string | null>(null);
   const [appSettings, setAppSettings] = useState<any>({});
   
@@ -146,11 +148,12 @@ const App: React.FC = () => {
     if (!token) return;
     setError(null);
     try {
-      const [compsRes, cartsRes, socsRes, cartTypesRes] = await Promise.all([
+      const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes] = await Promise.all([
         fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal })
+        fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
+        fetch('/api/events', { headers: { 'Authorization': `Bearer ${token}` }, signal })
       ]);
 
       if (compsRes.status === 401 || compsRes.status === 403) {
@@ -161,17 +164,19 @@ const App: React.FC = () => {
         return;
       }
 
-      const [comps, carts, socs, types] = await Promise.all([
+      const [comps, carts, socs, types, evts] = await Promise.all([
         compsRes.ok ? compsRes.json() : Promise.resolve([]),
         cartsRes.ok ? cartsRes.json() : Promise.resolve([]),
         socsRes.ok ? socsRes.json() : Promise.resolve([]),
-        cartTypesRes.ok ? cartTypesRes.json() : Promise.resolve([])
+        cartTypesRes.ok ? cartTypesRes.json() : Promise.resolve([]),
+        eventsRes.ok ? eventsRes.json() : Promise.resolve([])
       ]);
 
       setCompetitions(comps);
       setCartridges(carts);
       setSocieties(socs);
       setCartridgeTypes(types);
+      setEvents(evts);
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Error fetching data:', err);
@@ -485,6 +490,12 @@ const App: React.FC = () => {
     } else {
       setInitialAdminTab(null);
     }
+
+    if (newView === 'events' && tab) {
+      setInitialViewMode(tab);
+    } else {
+      setInitialViewMode(null);
+    }
     
     if (newView !== 'societies' && newView !== 'admin') {
       setInitialSocietyName(null);
@@ -551,6 +562,7 @@ const App: React.FC = () => {
             <Dashboard 
               competitions={competitions} 
               societies={societies}
+              events={events}
               user={user} 
               onAddClick={() => { 
                 setPreviousView('dashboard'); 
@@ -558,6 +570,7 @@ const App: React.FC = () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }} 
               onCoachClick={() => { setPreviousView('dashboard'); setView('ai-coach'); }}
+              onNavigate={handleNavigate}
             />
           </div>
         )}
@@ -594,6 +607,7 @@ const App: React.FC = () => {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <HistoryList 
               competitions={competitions} 
+              events={events}
               societies={societies}
               onDelete={deleteCompetition}
               onEdit={(comp) => {
@@ -606,6 +620,8 @@ const App: React.FC = () => {
               onSocietyClick={handleSocietyClick}
               triggerConfirm={triggerConfirm}
               user={user}
+              token={token || undefined}
+              triggerToast={triggerToast}
             />
           </div>
         )}
@@ -638,6 +654,8 @@ const App: React.FC = () => {
               onCreateTeam={handleCreateTeamFromEvent}
               initialEventId={initialEventId}
               onInitialEventHandled={() => setInitialEventId(null)}
+              initialViewMode={initialViewMode as any}
+              onInitialViewModeHandled={() => setInitialViewMode(null)}
               appSettings={appSettings}
             />
           </div>
@@ -645,38 +663,47 @@ const App: React.FC = () => {
 
         {view === 'event-results' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {(user?.role === 'admin' || (
-              typeof appSettings?.event_results_access?.tiratori === 'boolean' ? appSettings?.event_results_access?.tiratori : (
-                appSettings?.event_results_access?.tiratori?.enabled && (
-                  appSettings?.event_results_access?.tiratori?.accessType === 'all' || 
-                  (appSettings?.event_results_access?.tiratori?.accessType === 'specific' && appSettings?.event_results_access?.tiratori?.allowedSocieties?.includes(user?.society))
-                )
-              )
-            )) ? (
-              <EventsManager 
-                user={user} 
-                token={token} 
-                triggerConfirm={triggerConfirm} 
-                triggerToast={triggerToast}
-                societies={societies} 
-                onParticipate={handleParticipateInEvent}
-                onCreateTeam={handleCreateTeamFromEvent}
-                initialEventId={initialEventId}
-                onInitialEventHandled={() => setInitialEventId(null)}
-                initialViewMode="results"
-                hideViewSwitcher={true}
-                appSettings={appSettings}
-              />
-            ) : (
-              <div className="text-center py-20">
-                <div className="bg-orange-600/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-orange-500">
-                  <i className="fas fa-lock text-3xl"></i>
+            {(() => {
+              const resultsAccess = appSettings?.event_results_access || {};
+              const checkAccess = (access: any, userSociety: string | undefined) => {
+                if (typeof access === 'boolean') return access;
+                if (!access?.enabled) return false;
+                if (access.accessType === 'all') return true;
+                if (access.accessType === 'specific' && Array.isArray(access.allowedSocieties)) {
+                  return access.allowedSocieties.some((s: string) => s?.trim().toLowerCase() === userSociety?.trim().toLowerCase());
+                }
+                return false;
+              };
+              const hasSocietaAccess = user?.role === 'admin' || checkAccess(resultsAccess.societa, user?.society);
+              const hasTiratoriAccess = user?.role === 'admin' || checkAccess(resultsAccess.tiratori, user?.society);
+              const canViewResults = (user?.role === 'user' && hasTiratoriAccess) || (user?.role === 'society' && hasSocietaAccess) || user?.role === 'admin';
+              
+              return canViewResults ? (
+                <EventsManager 
+                  user={user} 
+                  token={token} 
+                  triggerConfirm={triggerConfirm} 
+                  triggerToast={triggerToast}
+                  societies={societies} 
+                  onParticipate={handleParticipateInEvent}
+                  onCreateTeam={handleCreateTeamFromEvent}
+                  initialEventId={initialEventId}
+                  onInitialEventHandled={() => setInitialEventId(null)}
+                  initialViewMode="results"
+                  hideViewSwitcher={true}
+                  appSettings={appSettings}
+                />
+              ) : (
+                <div className="text-center py-20">
+                  <div className="bg-orange-600/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-orange-500">
+                    <i className="fas fa-lock text-3xl"></i>
+                  </div>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Accesso Limitato</h2>
+                  <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Questa sezione è attualmente riservata agli amministratori</p>
+                  <button onClick={() => setView('history')} className="mt-8 bg-slate-800 hover:bg-slate-700 text-white font-black px-8 py-3 rounded-xl uppercase text-xs tracking-widest transition-all">Torna alla Home</button>
                 </div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Accesso Limitato</h2>
-                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Questa sezione è attualmente riservata agli amministratori</p>
-                <button onClick={() => setView('history')} className="mt-8 bg-slate-800 hover:bg-slate-700 text-white font-black px-8 py-3 rounded-xl uppercase text-xs tracking-widest transition-all">Torna alla Home</button>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
 

@@ -60,8 +60,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   const availableShooters = useMemo(() => {
     if (!formData.society) return [];
     
+    const registeredUserIds = new Set(results.map(r => r.user_id));
+    
     // Get all users belonging to the selected society
     return users.filter(u => {
+      if (!registeredUserIds.has(u.id)) return false;
+      
       const s = (u.society || '').toLowerCase().trim();
       const formSoc = (formData.society || '').toLowerCase().trim();
       if (s !== formSoc) return false;

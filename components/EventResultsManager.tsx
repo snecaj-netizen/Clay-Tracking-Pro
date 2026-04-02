@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { SocietyEvent, PrizeSetting, User } from '../types';
+import { SocietyEvent, PrizeSetting, User, Discipline } from '../types';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
 import QuickAddShooterModal from './QuickAddShooterModal';
@@ -207,6 +207,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
 
   const sortResults = (a: any, b: any) => {
+    // Registered only always at the bottom
+    if (a.is_registered_only && !b.is_registered_only) return 1;
+    if (!a.is_registered_only && b.is_registered_only) return -1;
+    if (a.is_registered_only && b.is_registered_only) {
+      return (a.user_surname || '').localeCompare(b.user_surname || '');
+    }
+
     // 1. Sort by total score descending
     if (b.totalscore !== a.totalscore) {
       return (b.totalscore || 0) - (a.totalscore || 0);
@@ -586,7 +593,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     
     const societyMap = new Map<string, any[]>();
     
-    results.forEach(r => {
+    results.filter(r => !r.is_registered_only).forEach(r => {
       const soc = r.society_at_time || r.society;
       if (!soc) return;
       if (!societyMap.has(soc)) {
@@ -743,10 +750,34 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
   };
 
+  const getDotColors = (isHit: boolean) => {
+    const isElica = event.discipline === Discipline.EL;
+    if (isHit) {
+      return isElica 
+        ? 'bg-white border-slate-200 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.3)]' 
+        : 'bg-[#a3e635] border-[#65a30d] text-green-900 shadow-[0_0_10px_rgba(163,230,53,0.2)]';
+    } else {
+      return 'bg-[#ef4444] border-[#b91c1c] text-red-900 shadow-[0_0_10px_rgba(239,68,68,0.2)]';
+    }
+  };
+
+  const getSmallDotColors = (isHit: boolean) => {
+    const isElica = event.discipline === Discipline.EL;
+    if (isHit) {
+      return isElica 
+        ? 'bg-white border-slate-200 text-slate-900' 
+        : 'bg-green-500/20 text-green-500 border-green-500/30';
+    } else {
+      return 'bg-red-500/20 text-red-500 border-red-500/30';
+    }
+  };
+
   const maxSeriesCount = React.useMemo(() => {
-    if (filteredResults.length === 0) return 0;
-    return Math.max(...filteredResults.map(r => Array.isArray(r.scores) ? r.scores.length : 0));
-  }, [filteredResults]);
+    const eventSeriesCount = Math.ceil((event.targets || 100) / 25);
+    if (filteredResults.length === 0) return eventSeriesCount;
+    const resultSeriesCounts = filteredResults.map(r => Array.isArray(r.scores) ? r.scores.length : 0);
+    return Math.max(eventSeriesCount, ...resultSeriesCounts);
+  }, [filteredResults, event.targets]);
 
   const handleSavePrizeSettings = async () => {
     try {
@@ -1088,7 +1119,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               key={targetIdx}
                               type="button"
                               onClick={() => handleDetailedScoreChange(expandedSeries, targetIdx)}
-                              className={`w-full aspect-square rounded-full border-2 transition-all active:scale-90 flex items-center justify-center text-[10px] font-bold ${isHit ? 'bg-[#a3e635] border-[#65a30d] text-green-900 shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] text-red-900 shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
+                              className={`w-full aspect-square rounded-full border-2 transition-all active:scale-90 flex items-center justify-center text-[10px] font-bold ${getDotColors(isHit)}`}
                             >
                               {targetIdx + 1}
                             </button>
@@ -1473,6 +1504,61 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
                       const isOverridden = !!(event.ranking_preference_override || r.ranking_preference_override);
                       
+                      if (r.is_registered_only) {
+                        return (
+                          <tr key={`reg-${r.registration_id}`} className="border-b border-slate-800/50 bg-slate-900/30">
+                            <td className="p-2 sm:p-3 text-slate-500 font-bold text-xs sm:text-sm">-</td>
+                            <td className="p-2 sm:p-3 text-center">
+                              <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[8px] uppercase font-bold">
+                                Iscritto
+                              </span>
+                            </td>
+                            <td className="p-2 sm:p-3 text-slate-300 font-medium text-xs sm:text-sm">
+                              <div className="flex flex-col">
+                                <span>{r.user_surname} {r.user_name}</span>
+                                {r.shooter_code && (
+                                  <span className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mt-0.5">{r.shooter_code}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 sm:p-3 text-slate-500 text-[10px] sm:text-xs">
+                              {r.category} / {r.qualification}
+                            </td>
+                            {Array.from({ length: maxSeriesCount }).map((_, i) => (
+                              <td key={i} className="p-2 sm:p-3 text-center text-slate-700">-</td>
+                            ))}
+                            <td className="p-2 sm:p-3 text-right text-slate-700 font-bold">-</td>
+                            <td className="p-2 sm:p-3 text-right text-slate-700">-</td>
+                            {!readOnly && event.status !== 'validated' && (
+                              <td className="p-2 sm:p-3 text-center">
+                                  <button
+                                    onClick={() => {
+                                      if (r.user_id) {
+                                        setSelectedUserId(r.user_id.toString());
+                                        setEditingResultId(null);
+                                        // Reset form for new result
+                                        const numSeries = Math.ceil((event.targets || 100) / 25);
+                                        setSeries(Array(numSeries).fill('0'));
+                                        setDetailedScores(Array.from({ length: numSeries }, () => []));
+                                        setShootOff('');
+                                        setExpandedSeries(null);
+                                        setIsDirty(true);
+                                        // Scroll to form on mobile
+                                        const form = document.getElementById('result-form');
+                                        if (form) form.scrollIntoView({ behavior: 'smooth' });
+                                      }
+                                    }}
+                                    className="p-2 text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
+                                    title="Inserisci Risultato"
+                                  >
+                                  <i className="fas fa-plus-circle"></i>
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      }
+
                       return (
                         <React.Fragment key={r.id}>
                           <tr className="border-b border-slate-800/50 transition-colors">
@@ -1566,7 +1652,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                         {dScore.map((hit: boolean, tIdx: number) => (
                                           <div 
                                             key={tIdx} 
-                                            className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold ${hit ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
+                                            className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold border ${getSmallDotColors(hit)}`}
                                             title={`Piattello ${tIdx + 1}: ${hit ? 'Colpito' : 'Zero'}`}
                                           >
                                             {hit ? '1' : '0'}

@@ -951,12 +951,24 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                           {Array.from({ length: targetCount }).map((_, targetOffset) => {
                             const targetIdx = startIndex + targetOffset;
                             const isHit = detailedScores[idx][targetIdx];
+                            
+                            const getDotColors = (hit: boolean) => {
+                              const isElica = discipline === Discipline.EL;
+                              if (hit) {
+                                return isElica 
+                                  ? 'bg-white border-slate-200 shadow-[0_0_10px_rgba(255,255,255,0.3)]' 
+                                  : 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]';
+                              } else {
+                                return 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]';
+                              }
+                            };
+
                             return (
                               <button
                                 key={targetIdx}
                                 type="button"
                                 onClick={() => handleDetailedScoreChange(idx, targetIdx)}
-                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all active:scale-90 ${isHit ? 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
+                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all active:scale-90 ${getDotColors(isHit)}`}
                                 title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
                               />
                             );

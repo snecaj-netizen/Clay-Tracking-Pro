@@ -1807,7 +1807,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
                 <i className={`fas ${
                   activeTab === 'results' ? 'fa-history' :
-                  activeTab === 'event-results' ? 'fa-trophy' :
                   activeTab === 'events' ? 'fa-calendar-alt' :
                   activeTab === 'halloffame' ? 'fa-trophy' :
                   activeTab === 'notifications' ? 'fa-bell' :
@@ -1819,7 +1818,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <span className="uppercase tracking-widest text-[10px] font-black">
                 {activeTab === 'results' ? 'Risultati Individuali' :
-                 activeTab === 'event-results' ? 'Classifiche Risultati' :
                  activeTab === 'events' ? 'Gare' :
                  activeTab === 'halloffame' ? 'Hall of Fame' :
                  activeTab === 'notifications' ? 'Notifiche' :
@@ -1841,14 +1839,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
                     <i className="fas fa-history w-5 text-center"></i> Risultati Individuali
-                  </button>
-                )}
-                {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
-                  <button 
-                    onClick={() => { setActiveTab('event-results'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                  >
-                    <i className="fas fa-trophy w-5 text-center"></i> Classifiche Risultati
                   </button>
                 )}
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1906,14 +1896,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati Individuali</span><span className="md:hidden">Ris. Ind.</span>
-              </button>
-            )}
-            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
-              <button 
-                onClick={() => setActiveTab('event-results')}
-                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-              >
-                <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Classifiche Risultati</span><span className="md:hidden">Class. Ris.</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -3184,28 +3166,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             triggerToast={triggerToast}
             societies={societies} 
             restrictToSociety={true}
-            onCreateTeam={(ev) => {
-              setActiveTab('team');
-              setShowTeamForm(true);
-              setNewTeamCompetitionName(ev.name || '');
-              setNewTeamDiscipline(ev.discipline || '');
-              setNewTeamSociety(ev.location || '');
-              setNewTeamDate(ev.start_date ? ev.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        </div>
-      ) : activeTab === 'event-results' ? (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <EventsManager 
-            user={currentUser} 
-            token={token} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
-            societies={societies} 
-            restrictToSociety={true}
-            initialViewMode="results"
-            hideViewSwitcher={true}
             onCreateTeam={(ev) => {
               setActiveTab('team');
               setShowTeamForm(true);
