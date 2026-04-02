@@ -366,6 +366,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS ranking_preference_override TEXT`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_society_ranking BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_team_ranking BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_management_enabled BOOLEAN DEFAULT FALSE`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -1063,6 +1064,26 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
     res.json({ success: true });
   } catch (_) {
     res.status(400).json({ error: 'Email already in use or other error' });
+  }
+});
+
+app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+
+    const result = await pool.query(
+      'UPDATE events SET is_management_enabled = $1 WHERE id = $2 RETURNING *',
+      [enabled, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Evento non trovato' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -2749,6 +2770,11 @@ app.post('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
     }
     
     const event = eventCheck.rows[0];
+    if (!event.is_management_enabled && req.user.role !== 'admin') {
+      client.release();
+      return res.status(403).json({ error: 'La gestione squadre per questa gara non è attiva.' });
+    }
+    
     if (event.status === 'validated' && req.user.role !== 'admin') {
       client.release();
       return res.status(403).json({ error: 'Questa gara è stata convalidata e le squadre non possono più essere modificate.' });
@@ -3015,6 +3041,15 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
   } = req.body;
 
   try {
+    // Check if event exists and management is enabled
+    const eventResult = await pool.query('SELECT is_management_enabled FROM events WHERE id = $1', [id]);
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Evento non trovato' });
+    }
+    if (!eventResult.rows[0].is_management_enabled && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Le iscrizioni per questa gara non sono ancora attive.' });
+    }
+
     // Determine the target user ID
     let targetUserId = req.user.id;
     if (user_id && (req.user.role === 'admin' || req.user.role === 'society')) {
@@ -3089,6 +3124,10 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
     const eventResult = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
     if (eventResult.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
     const event = eventResult.rows[0];
+
+    if (!event.is_management_enabled && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'La gestione batterie per questa gara non è attiva.' });
+    }
 
     if (req.user.role !== 'admin' && req.user.role !== 'society') {
       return res.status(403).json({ error: 'Unauthorized' });
@@ -3181,6 +3220,13 @@ app.put('/api/events/:id/squads/update-members', authenticateToken, async (req: 
   const { squads } = req.body;
 
   try {
+    // Check if management is enabled
+    const eventResult = await pool.query('SELECT is_management_enabled FROM events WHERE id = $1', [id]);
+    if (eventResult.rows.length === 0) return res.status(404).json({ error: 'Evento non trovato' });
+    if (!eventResult.rows[0].is_management_enabled && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'La gestione batterie per questa gara non è attiva.' });
+    }
+
     if (req.user.role !== 'admin' && req.user.role !== 'society') {
       return res.status(403).json({ error: 'Unauthorized' });
     }
@@ -3418,6 +3464,9 @@ app.post('/api/events/:id/validate', authenticateToken, async (req: any, res) =>
     if (events.length === 0) return res.status(404).json({ error: 'Gara non trovata' });
 
     const event = events[0];
+    if (!event.is_management_enabled && role !== 'admin') {
+      return res.status(403).json({ error: 'La gestione classifiche per questa gara non è attiva.' });
+    }
     if (role !== 'admin') {
       if (role === 'society' && event.location === req.user.society) {
         // Society can validate events at their location
@@ -3541,9 +3590,12 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
       if (!c.userId) {
         return res.status(400).json({ error: 'Devi specificare un tiratore.' });
       }
-      const eventCheck = await pool.query('SELECT location, created_by, status FROM events WHERE id = $1', [c.eventId]);
+      const eventCheck = await pool.query('SELECT location, created_by, status, is_management_enabled FROM events WHERE id = $1', [c.eventId]);
       if (eventCheck.rows.length > 0) {
         const ev = eventCheck.rows[0];
+        if (!ev.is_management_enabled && req.user.role !== 'admin') {
+          return res.status(403).json({ error: 'La gestione classifiche per questa gara non è attiva.' });
+        }
         if (ev.status === 'validated') {
           return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
         }
@@ -3681,9 +3733,14 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
 
     // Check if competition is linked to a validated event
     if (compEventId) {
-      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [compEventId]);
-      if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated' && req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+      const eventCheck = await pool.query('SELECT status, is_management_enabled FROM events WHERE id = $1', [compEventId]);
+      if (eventCheck.rows.length > 0) {
+        if (!eventCheck.rows[0].is_management_enabled && req.user.role !== 'admin') {
+          return res.status(403).json({ error: 'La gestione classifiche per questa gara non è attiva.' });
+        }
+        if (eventCheck.rows[0].status === 'validated' && req.user.role !== 'admin') {
+          return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+        }
       }
     }
 

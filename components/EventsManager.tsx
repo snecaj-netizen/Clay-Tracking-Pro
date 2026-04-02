@@ -382,12 +382,29 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                   </div>
 
                   <div className="mt-auto space-y-3">
+                    {!ev.is_management_enabled && user?.role !== 'admin' && (
+                      <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 mb-2">
+                        <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                          <i className="fas fa-exclamation-triangle"></i>
+                          In attesa di attivazione Admin
+                        </p>
+                      </div>
+                    )}
                     <button 
                       onClick={() => {
+                        if (!ev.is_management_enabled && user?.role !== 'admin') {
+                          triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                          return;
+                        }
                         setInitialManagementTab('registrations');
                         setManagingEventDetail(ev);
                       }}
-                      className="w-full py-4 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3"
+                      disabled={!ev.is_management_enabled && user?.role !== 'admin'}
+                      className={`w-full py-4 rounded-2xl text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
+                        !ev.is_management_enabled && user?.role !== 'admin'
+                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
+                          : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+                      }`}
                     >
                       <i className="fas fa-users-cog text-sm"></i>
                       Gestione Gara
@@ -396,10 +413,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     <div className="grid grid-cols-2 gap-3">
                       <button 
                         onClick={() => {
+                          if (!ev.is_management_enabled && user?.role !== 'admin') {
+                            triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                            return;
+                          }
                           setInitialManagementTab('results');
                           setManagingEventDetail(ev);
                         }}
-                        className="py-3 rounded-2xl bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-all active:scale-95 border border-slate-700 hover:border-orange-500 flex items-center justify-center gap-2"
+                        disabled={!ev.is_management_enabled && user?.role !== 'admin'}
+                        className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-2 ${
+                          !ev.is_management_enabled && user?.role !== 'admin'
+                            ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-orange-600 hover:text-white hover:border-orange-500'
+                        }`}
                       >
                         <i className="fas fa-trophy"></i>
                         Classifica
@@ -1749,7 +1775,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 </div>
               )}
 
-              {selectedEvent.registration_link && (
+              {selectedEvent.registration_link && (selectedEvent.is_management_enabled || user?.role === 'admin') && (
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscrizione Online</p>
@@ -1835,7 +1861,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 {/* Iscriviti Button for Shooters */}
                 {(user?.role === 'user' || user?.role === 'admin') && !isPastEvent(selectedEvent) && (
                   <>
-                    {selectedEvent.is_registered ? (
+                    {!(selectedEvent.is_management_enabled || user?.role === 'admin') ? (
+                      <div className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800/50 text-slate-500 flex items-center justify-center gap-2 border border-slate-800 text-[9px] font-black uppercase tracking-widest cursor-default">
+                        <i className="fas fa-lock"></i> Iscrizioni non attive
+                      </div>
+                    ) : selectedEvent.is_registered ? (
                       <div className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[9px] font-black uppercase tracking-widest cursor-default">
                         <i className="fas fa-check-circle"></i> Già Iscritto
                       </div>
@@ -1867,10 +1897,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                 {(user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id))) && !isPastEvent(selectedEvent) && (
                   <button 
                     onClick={() => {
+                      if (!selectedEvent.is_management_enabled && user?.role !== 'admin') {
+                        triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                        return;
+                      }
                       setManagingEventDetail(selectedEvent);
                       setSelectedEvent(null);
                     }}
-                    className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-indigo-600 text-white flex items-center justify-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 active:scale-95 text-[9px] font-black uppercase tracking-widest"
+                    disabled={!selectedEvent.is_management_enabled && user?.role !== 'admin'}
+                    className={`flex-1 min-w-[120px] h-9 px-3 rounded-xl text-white flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 text-[9px] font-black uppercase tracking-widest ${
+                      !selectedEvent.is_management_enabled && user?.role !== 'admin'
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
+                        : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+                    }`}
                     title="Gestione Iscritti e Batterie"
                   >
                     <i className="fas fa-tasks"></i> Gestisci

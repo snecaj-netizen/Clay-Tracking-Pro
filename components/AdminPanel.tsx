@@ -9,6 +9,7 @@ import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
+import { EventControlManager } from './EventControlManager';
 import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
 import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
@@ -53,7 +54,7 @@ function MapResizer() {
   return null;
 }
 
-type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications';
+type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications' | 'event-control';
 
 interface AdminPanelProps {
   user: any;
@@ -1807,6 +1808,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
                 <i className={`fas ${
                   activeTab === 'results' ? 'fa-history' :
+                  activeTab === 'event-control' ? 'fa-tasks' :
                   activeTab === 'events' ? 'fa-calendar-alt' :
                   activeTab === 'halloffame' ? 'fa-trophy' :
                   activeTab === 'notifications' ? 'fa-bell' :
@@ -1818,6 +1820,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <span className="uppercase tracking-widest text-[10px] font-black">
                 {activeTab === 'results' ? 'Risultati Individuali' :
+                 activeTab === 'event-control' ? 'Attivazione Gare' :
                  activeTab === 'events' ? 'Gare' :
                  activeTab === 'halloffame' ? 'Hall of Fame' :
                  activeTab === 'notifications' ? 'Notifiche' :
@@ -1833,6 +1836,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {isMobileMenuOpen && (
             <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[1030]">
               <div className="p-2 grid grid-cols-1 gap-1">
+                {currentUser?.role === 'admin' && (
+                  <button 
+                    onClick={() => { setActiveTab('event-control'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-control' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <i className="fas fa-tasks w-5 text-center"></i> Attivazione Gare
+                  </button>
+                )}
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                   <button 
                     onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
@@ -1892,12 +1903,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
         <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
-            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
                 onClick={() => setActiveTab('results')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati Individuali</span><span className="md:hidden">Ris. Ind.</span>
+              </button>
+            )}
+            {currentUser?.role === 'admin' && (
+              <button 
+                onClick={() => setActiveTab('event-control')}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-control' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <i className="fas fa-tasks mr-1 lg:mr-2"></i> <span className="hidden md:inline">Attivazione Gare</span><span className="md:hidden">Attiv.</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -3159,6 +3178,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
         </div>
       </div>
+      ) : activeTab === 'event-control' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <EventControlManager 
+            token={token} 
+            triggerToast={triggerToast}
+          />
+        </div>
       ) : activeTab === 'events' ? (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <EventsManager 
