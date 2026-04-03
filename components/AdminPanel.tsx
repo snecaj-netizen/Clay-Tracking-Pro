@@ -4428,7 +4428,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {activeTab === 'results' && currentUser?.role === 'admin' && (
         <button 
           onClick={() => onEditCompetition && onEditCompetition()}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
+          className="fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
           title="Aggiungi Gara"
         >
           <i className="fas fa-plus text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
@@ -4450,7 +4450,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               }
             }
           }}
-          className={`fixed bottom-8 right-8 w-16 h-16 ${showTeamForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          className={`fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 ${showTeamForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showTeamForm ? 'Chiudi' : 'Nuova Squadra'}
         >
           <i className={`fas ${showTeamForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
@@ -4472,7 +4472,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               }
             }
           }}
-          className={`fixed bottom-8 right-8 w-16 h-16 ${showUserForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          className={`fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 ${showUserForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
         >
           <i className={`fas ${showUserForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
@@ -4502,7 +4502,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             setShowSocietyForm(!showSocietyForm);
             if (!showSocietyForm) window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className={`fixed bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          className={`fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showSocietyForm ? 'Chiudi' : 'Nuova Società'}
         >
           <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
