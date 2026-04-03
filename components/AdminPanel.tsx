@@ -264,27 +264,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [editingScore, setEditingScore] = useState<{teamId: number, userId: number, score: number} | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   useEffect(() => {
     const handleCloseAllMenus = () => {
-      setIsMobileMenuOpen(false);
+      // No longer needed for mobile menu as it's scrollable tabs now
     };
 
     window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
     return () => window.removeEventListener('clay-tracker-close-menus', handleCloseAllMenus);
   }, []);
-  
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     if (currentUser?.role === 'society' && currentUser?.society) {
@@ -1798,119 +1786,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Overlay for mobile menu */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1010] sm:hidden transition-opacity duration-300"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Tab Switcher - Mobile (Custom Elegant Dropdown) */}
+      {/* Tab Switcher - Mobile (Scrollable Tabs) */}
       {!hideTabs && (
-        <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg">
-          <button 
-            onClick={() => {
-              if (!isMobileMenuOpen) {
-                window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
-              }
-              setIsMobileMenuOpen(!isMobileMenuOpen);
-            }}
-            className="w-full bg-slate-900 border border-slate-700 text-white py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-between shadow-inner active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
-                <i className={`fas ${
-                  activeTab === 'results' ? 'fa-history' :
-                  activeTab === 'event-control' ? 'fa-tasks' :
-                  activeTab === 'events' ? 'fa-calendar-alt' :
-                  activeTab === 'halloffame' ? 'fa-trophy' :
-                  activeTab === 'notifications' ? 'fa-bell' :
-                  activeTab === 'team' ? 'fa-users-cog' :
-                  activeTab === 'users' ? 'fa-users' :
-                  activeTab === 'profile' ? 'fa-user' :
-                  'fa-cog'
-                }`}></i>
-              </div>
-              <span className="uppercase tracking-widest text-[10px] font-black">
-                {activeTab === 'results' ? 'Risultati Individuali' :
-                 activeTab === 'event-control' ? 'Attivazione gare' :
-                 activeTab === 'events' ? (currentUser?.role === 'admin' ? 'Gare gestite' : (currentUser?.role === 'society' ? 'Gestione tue Gare' : 'Gare')) :
-                 activeTab === 'halloffame' ? 'Hall of Fame' :
-                 activeTab === 'notifications' ? 'Notifiche' :
-                 activeTab === 'team' ? 'Squadre' :
-                 activeTab === 'users' ? (currentUser?.role === 'society' ? 'I tuoi Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Utenti')) :
-                 activeTab === 'profile' ? 'Profilo' :
-                 (currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup')}
-              </span>
-            </div>
-            <i className={`fas fa-chevron-down text-xs transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-180' : ''}`}></i>
-          </button>
-
-          {isMobileMenuOpen && (
-            <div className="absolute top-full left-4 right-4 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[1030]">
-              <div className="p-2 grid grid-cols-1 gap-1">
-                {currentUser?.role === 'admin' && (
-                  <button 
-                    onClick={() => { setActiveTab('event-control'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'event-control' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                  >
-                    <i className="fas fa-tasks w-5 text-center"></i> Attivazione gare
-                  </button>
-                )}
-                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-                  <button 
-                    onClick={() => { setActiveTab('results'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                  >
-                    <i className="fas fa-history w-5 text-center"></i> Risultati Individuali
-                  </button>
-                )}
-                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-                  <button 
-                    onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                  >
-                    <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Gestione tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}
-                  </button>
-                )}
-                {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-                  <>
-                    <button 
-                      onClick={() => { setActiveTab('halloffame'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                      <i className="fas fa-trophy w-5 text-center"></i> Hall of Fame
-                    </button>
-                    <button 
-                      onClick={() => { setActiveTab('team'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                      <i className="fas fa-users-cog w-5 text-center"></i> Squadre
-                    </button>
-                    <button 
-                      onClick={() => { setActiveTab('users'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                    >
-                      <i className="fas fa-users w-5 text-center"></i> {currentUser?.role === 'society' ? 'I tuoi Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Utenti')}
-                    </button>
-                  </>
-                )}
+        <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 min-w-max">
+            {currentUser?.role === 'admin' && (
+              <button 
+                onClick={() => setActiveTab('event-control')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'event-control' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+              >
+                <i className="fas fa-tasks"></i> Attivazione
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+              <button 
+                onClick={() => setActiveTab('results')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'results' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+              >
+                <i className="fas fa-history"></i> Risultati
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+              <button 
+                onClick={() => setActiveTab('events')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'events' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+              >
+                <i className="fas fa-calendar-alt"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+              <>
                 <button 
-                  onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  onClick={() => setActiveTab('halloffame')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'halloffame' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
                 >
-                  <i className="fas fa-user w-5 text-center"></i> Profilo
+                  <i className="fas fa-trophy"></i> HoF
                 </button>
                 <button 
-                  onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  onClick={() => setActiveTab('team')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'team' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
                 >
-                  <i className="fas fa-cog w-5 text-center"></i> {currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup'}
+                  <i className="fas fa-users-cog"></i> Squadre
                 </button>
-              </div>
-            </div>
-          )}
+                <button 
+                  onClick={() => setActiveTab('users')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'users' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+                >
+                  <i className="fas fa-users"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
+                </button>
+              </>
+            )}
+            <button 
+              onClick={() => setActiveTab('profile')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'profile' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+            >
+              <i className="fas fa-user"></i> Profilo
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'settings' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+            >
+              <i className="fas fa-cog"></i> {currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup'}
+            </button>
+          </div>
         </div>
       )}
 

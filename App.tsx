@@ -14,6 +14,7 @@ import Toast from './components/Toast';
 import NotificationsManager from './components/NotificationsManager';
 import InstallPrompt from './components/InstallPrompt';
 import OnboardingTour from './components/OnboardingTour';
+import BottomNavigation from './components/BottomNavigation';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -311,9 +312,10 @@ const App: React.FC = () => {
   };
 
   const saveCompetition = async (comp: Competition) => {
-    const isEdit = !!editingCompetition && !!editingCompetition.id;
+    // If we have an ID, it's an update, regardless of editingCompetition state
+    const isEdit = (!!editingCompetition && !!editingCompetition.id) || (!!comp.id && comp.id !== '');
     const method = isEdit ? 'PUT' : 'POST';
-    const compId = isEdit ? editingCompetition.id : (comp.id || generateUUID());
+    const compId = (isEdit && editingCompetition?.id) ? editingCompetition.id : (comp.id || generateUUID());
     const endpoint = isEdit ? `/api/competitions/${compId}` : '/api/competitions';
     
     // Ensure the competition object has the correct ID
@@ -336,11 +338,13 @@ const App: React.FC = () => {
         // Show success toast
         triggerToast(isEdit ? 'Gara aggiornata con successo!' : 'Gara registrata con successo!', 'success');
         
-        // Always close the form and redirect
-        setView(previousView || 'history');
-        setPreviousView(null);
-        setEditingCompetition(null);
-        setPrefillCompetition(null);
+        // Only close the form and redirect if we were actually in the 'new' view or editing
+        if (view === 'new' || editingCompetition) {
+          setView(previousView || 'history');
+          setPreviousView(null);
+          setEditingCompetition(null);
+          setPrefillCompetition(null);
+        }
       } else {
         const errorData = await res.json();
         console.error('Save error:', errorData);
@@ -935,6 +939,16 @@ const App: React.FC = () => {
       <InstallPrompt />
       {showTour && user && (
         <OnboardingTour role={user.role} onClose={handleCloseTour} />
+      )}
+      
+      {/* Bottom Navigation for Mobile (Shooters) */}
+      {user && user.role !== 'society' && (
+        <BottomNavigation 
+          currentView={view} 
+          onNavigate={handleNavigate} 
+          user={user}
+          appSettings={appSettings}
+        />
       )}
     </div>
   );

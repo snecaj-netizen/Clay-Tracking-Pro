@@ -16,12 +16,10 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward }) => {
   const [isLightMode, setIsLightMode] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     const handleCloseAllMenus = () => {
-      setIsMenuOpen(false);
       setIsProfileOpen(false);
     };
 
@@ -39,17 +37,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMenuOpen]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -103,14 +90,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   return (
     <>
-      {/* Overlay for mobile menu - Moved outside header for better event handling */}
-      {isMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[995] sm:hidden transition-opacity duration-300"
-          onClick={() => setIsMenuOpen(false)}
-        />
-      )}
-      
       <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[1050]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
@@ -157,7 +136,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 }
                 setIsProfileOpen(!isProfileOpen);
               }}
-              className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' || isProfileOpen ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
+              className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' || isProfileOpen ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
             >
               <div className="hidden sm:block text-right">
                 <div className={`text-xs font-black uppercase tracking-widest ${currentView === 'admin' || isProfileOpen ? 'text-orange-200' : 'text-slate-500'}`}>
@@ -167,6 +146,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   {user?.name} {user?.surname}
                 </div>
               </div>
+              
+              {/* Explicit Label for Mobile */}
+              <span className={`sm:hidden text-[10px] font-black uppercase tracking-widest ${currentView === 'admin' || isProfileOpen ? 'text-white' : 'text-slate-400'}`}>
+                {isProfileOpen ? 'CHIUDI' : 'MENU'}
+              </span>
+
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all overflow-hidden ${currentView === 'admin' || isProfileOpen ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-orange-500'}`}>
                 {user?.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -252,19 +237,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             </button>
 
             <NotificationBell token={localStorage.getItem('auth_token') || ''} />
-
-            {/* Kebab Menu Button (Mobile Only) */}
-            <button 
-              onClick={() => {
-                if (!isMenuOpen) {
-                  window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
-                }
-                setIsMenuOpen(!isMenuOpen);
-              }}
-              className="sm:hidden w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-orange-500 transition-all active:scale-95"
-            >
-              <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-ellipsis-v'}`}></i>
-            </button>
           </div>
         </div>
 
@@ -281,63 +253,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             </button>
           ))}
         </nav>
-
-        {/* Mobile Dropdown Menu */}
-        {isMenuOpen && (
-          <div className="sm:hidden py-4 border-t border-slate-900/50 animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="flex flex-col gap-2">
-              {menuItems.map((item) => (
-                <button 
-                  key={item.id}
-                  onClick={() => { onNavigate(item.id, (item as any).tab); setIsMenuOpen(false); }} 
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${currentView === item.id ? 'bg-orange-600 text-white' : 'text-slate-400 bg-slate-900/50'}`}
-                >
-                  <i className={`fas ${item.icon} w-5`}></i>
-                  <span>{item.label}</span>
-                </button>
-              ))}
-              <div className="mt-2 px-4 py-3 bg-slate-900/30 rounded-xl border border-slate-800/50 flex items-center justify-between">
-                <button 
-                  onClick={() => { 
-                    if (user?.role === 'society') {
-                      onNavigate('admin', 'results');
-                    } else if (user?.role === 'admin') {
-                      onNavigate('admin', 'users');
-                    } else {
-                      onNavigate('admin', 'profile');
-                    }
-                    setIsMenuOpen(false); 
-                  }}
-                  className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity active:scale-95 overflow-hidden pr-2"
-                >
-                  {user?.avatar ? (
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-700 shrink-0">
-                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center border border-slate-700 shrink-0">
-                      <i className={`fas ${user?.role === 'admin' ? 'fa-users-cog' : 'fa-user'}`}></i>
-                    </div>
-                  )}
-                  <div className="truncate">
-                    <div className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 truncate">
-                      {user?.role === 'admin' ? 'Amministratore' : user?.role === 'society' ? 'Società' : 'Tiratore'}
-                    </div>
-                    <div className="text-sm font-bold text-white truncate">{user?.name} {user?.surname}</div>
-                  </div>
-                </button>
-                {onLogout && (
-                  <button 
-                    onClick={onLogout}
-                    className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                  >
-                    <i className="fas fa-sign-out-alt"></i>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </header>
     </>

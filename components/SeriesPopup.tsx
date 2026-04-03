@@ -13,13 +13,27 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
   const seriesLayoutObj = getSeriesLayout(competition.discipline);
   const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
 
-  const [score, setScore] = useState<number>(competition.scores[seriesIndex] || 0);
+  const [score, setScore] = useState<number>(() => {
+    if (competition.scores[seriesIndex] !== undefined && competition.scores[seriesIndex] > 0) {
+      return competition.scores[seriesIndex];
+    }
+    // If detailed scores exist, use their count
+    if (competition.detailedScores && competition.detailedScores[seriesIndex] && competition.detailedScores[seriesIndex].length === targetsPerSeries) {
+      return competition.detailedScores[seriesIndex].filter(Boolean).length;
+    }
+    return targetsPerSeries; // Default to 25 as requested by user
+  });
   const [detailedScore, setDetailedScore] = useState<boolean[]>(() => {
     if (competition.detailedScores && competition.detailedScores[seriesIndex] && competition.detailedScores[seriesIndex].length === targetsPerSeries) {
       return [...competition.detailedScores[seriesIndex]];
     } else {
+      // Default to all hits (green) as requested by user if no score is present
+      const initialCount = (competition.scores[seriesIndex] !== undefined && competition.scores[seriesIndex] > 0) 
+        ? competition.scores[seriesIndex] 
+        : targetsPerSeries;
+      
       const initial = Array(targetsPerSeries).fill(false);
-      for (let i = 0; i < (competition.scores[seriesIndex] || 0); i++) {
+      for (let i = 0; i < initialCount; i++) {
         initial[i] = true;
       }
       return initial;
