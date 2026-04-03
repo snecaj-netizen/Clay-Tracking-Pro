@@ -674,13 +674,13 @@ const HistoryList: React.FC<HistoryListProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2"><i className="fas fa-list-ul text-orange-600"></i>Cronologia Attività</h2>
-          <div className="flex items-center gap-3 self-start sm:self-auto">
+      <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><i className="fas fa-list-ul text-orange-600"></i>Cronologia Attività</h2>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <button 
               onClick={() => setShowFilters(!showFilters)} 
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
               title="Filtri"
             >
               <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
@@ -691,19 +691,19 @@ const HistoryList: React.FC<HistoryListProps> = ({
             <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
               <button 
                 onClick={() => setViewMode('list')} 
-                className={`h-9 px-3 flex items-center justify-center gap-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                 title="Elenco"
               >
                 <i className="fas fa-list text-sm"></i>
-                <span className="text-[10px] font-black uppercase tracking-widest hidden xs:inline">Elenco</span>
+                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">Elenco</span>
               </button>
               <button 
                 onClick={() => setViewMode('calendar')} 
-                className={`h-9 px-3 flex items-center justify-center gap-2 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                 title="Calendario"
               >
                 <i className="fas fa-calendar-alt text-sm"></i>
-                <span className="text-[10px] font-black uppercase tracking-widest hidden xs:inline">Calendario</span>
+                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">Calendario</span>
               </button>
             </div>
           </div>

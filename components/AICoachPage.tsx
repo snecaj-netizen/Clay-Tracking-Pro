@@ -229,7 +229,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
   ];
 
   return (
-    <div className="flex flex-col w-full max-w-5xl mx-auto h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-10rem)]">
+    <div className="flex flex-col w-full max-w-5xl mx-auto flex-1 min-h-[calc(100dvh-12rem)] sm:min-h-[calc(100dvh-14rem)]">
       {/* Coach Header */}
       <div className="bg-slate-900 border border-slate-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-xl flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 sm:gap-4">

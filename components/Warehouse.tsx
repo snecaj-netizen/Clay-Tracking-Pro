@@ -263,22 +263,21 @@ const Warehouse: React.FC<WarehouseProps> = ({
   return (
     <div className="space-y-4">
       {/* Sticky Header Section for Warehouse */}
-      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 space-y-4 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-warehouse text-orange-600"></i>
             Magazzino
           </h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-900/60 p-3 rounded-2xl border border-slate-800 border-l-4 border-l-orange-600">
-            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Stock Totale</p>
-            <p className="text-xl font-black text-white">{stats.totalQuantity} <span className="text-[10px] text-slate-500 uppercase">Pz</span></p>
-          </div>
-          <div className="bg-slate-900/60 p-3 rounded-2xl border border-slate-800 border-l-4 border-l-blue-600">
-            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Scatole</p>
-            <p className="text-xl font-black text-white">{(stats.totalQuantity / 25).toFixed(0)} <span className="text-[10px] text-slate-500 uppercase">Pec</span></p>
+          <div className="flex gap-2">
+            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Stock</p>
+              <p className="text-xs font-black text-white">{stats.totalQuantity} <span className="text-[8px] text-slate-500 uppercase">Pz</span></p>
+            </div>
+            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Scatole</p>
+              <p className="text-xs font-black text-white">{(stats.totalQuantity / 25).toFixed(0)} <span className="text-[8px] text-slate-500 uppercase">Pec</span></p>
+            </div>
           </div>
         </div>
 
