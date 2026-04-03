@@ -79,9 +79,47 @@ const App: React.FC = () => {
     setShowTour(false);
   };
 
-  // Handle deep links from notifications
+  // Handle deep links from notifications and browser history
   useEffect(() => {
-    const handleNavigation = () => {
+    // Initialize browser history state if it doesn't exist
+    if (!window.history.state || window.history.state.index === undefined) {
+      window.history.replaceState({ view, tab: null, index: 0 }, '', window.location.pathname + window.location.search);
+    }
+
+    const handleNavigation = (event?: PopStateEvent) => {
+      // If triggered by popstate (browser back/forward), use the state object
+      if (event && event.state && event.state.view) {
+        const { view: newView, tab, index } = event.state;
+        
+        if (newView === 'admin' && tab) {
+          setInitialAdminTab(tab);
+        } else if (newView === 'admin' && user?.role === 'society') {
+          setInitialAdminTab('results');
+        } else {
+          setInitialAdminTab(null);
+        }
+
+        if (newView === 'events' && tab) {
+          setInitialViewMode(tab);
+        } else {
+          setInitialViewMode(null);
+        }
+        
+        if (newView !== 'societies' && newView !== 'admin') {
+          setInitialSocietyName(null);
+        }
+        
+        setPreviousView(null);
+        setView(newView);
+        
+        // Sync internal index for desktop buttons
+        if (index !== undefined) {
+          setHistoryIndex(index);
+        }
+        return;
+      }
+
+      // Fallback for deep links (initial load or external links)
       const path = window.location.pathname;
       const searchParams = new URLSearchParams(window.location.search);
       
@@ -105,10 +143,9 @@ const App: React.FC = () => {
     };
 
     handleNavigation();
-    // Also listen for popstate if needed, though sw.js usually reloads or opens new window
     window.addEventListener('popstate', handleNavigation);
     return () => window.removeEventListener('popstate', handleNavigation);
-  }, []);
+  }, [user]);
 
   // Confirm Modal state
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -484,7 +521,7 @@ const App: React.FC = () => {
     );
   };
 
-  const handleNavigate = (newView: any, tab?: string, isHistoryAction = false) => {
+  const handleNavigate = (newView: any, tab?: string) => {
     if (newView === 'admin' && tab) {
       setInitialAdminTab(tab);
     } else if (newView === 'admin' && user?.role === 'society') {
@@ -506,31 +543,34 @@ const App: React.FC = () => {
     setPreviousView(null);
     setView(newView);
 
-    if (!isHistoryAction) {
-      setHistoryStack(prev => {
-        const newStack = prev.slice(0, historyIndex + 1);
-        newStack.push({ view: newView, tab });
-        return newStack;
-      });
-      setHistoryIndex(prev => prev + 1);
-    }
+    const newIndex = historyIndex + 1;
+    
+    // Update browser history
+    let newUrl = '/';
+    if (newView === 'history') newUrl = '/history';
+    if (newView === 'events') newUrl = tab ? `/events?tab=${tab}` : '/events';
+    if (newView === 'admin') newUrl = tab ? `/admin?tab=${tab}` : '/admin';
+    if (newView === 'notifications') newUrl = '/notifications';
+    
+    window.history.pushState({ view: newView, tab, index: newIndex }, '', newUrl);
+
+    setHistoryStack(prev => {
+      const newStack = prev.slice(0, newIndex);
+      newStack.push({ view: newView, tab });
+      return newStack;
+    });
+    setHistoryIndex(newIndex);
   };
 
   const handleGoBack = () => {
     if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      const state = historyStack[newIndex];
-      handleNavigate(state.view, state.tab, true);
+      window.history.back();
     }
   };
 
   const handleGoForward = () => {
     if (historyIndex < historyStack.length - 1) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      const state = historyStack[newIndex];
-      handleNavigate(state.view, state.tab, true);
+      window.history.forward();
     }
   };
 
