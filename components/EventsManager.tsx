@@ -1089,10 +1089,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className={`fas ${viewMode === 'results' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-500`}></i> 
-              {viewMode === 'results' ? 'Risultati Gare' : 'Gestione Eventi'}
-            </h2>
+            <div>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                <i className={`fas ${viewMode === 'results' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-500`}></i> 
+                {viewMode === 'results' ? 'Risultati Gare' : (restrictToSociety ? 'Gestione delle tue Gare' : 'Gestione Eventi')}
+              </h2>
+              {!showForm && viewMode !== 'results' && (
+                <p className="text-slate-400 text-sm mt-1">
+                  {restrictToSociety 
+                    ? "In questa sezione puoi gestire le iscrizioni dei tuoi tiratori, formare le squadre per le competizioni e monitorare le gare a cui partecipa la tua società."
+                    : "Calendario ufficiale delle competizioni. Esplora le gare pubbliche organizzate dalle società, consulta i programmi e segui i risultati in tempo reale."}
+                </p>
+              )}
+            </div>
             
             {!showForm && (
               <div className="flex items-center gap-2 self-start sm:self-auto">

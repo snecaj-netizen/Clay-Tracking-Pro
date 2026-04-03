@@ -8,9 +8,13 @@ interface HeaderProps {
   onLogout?: () => void;
   user?: any;
   appSettings?: any;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+  onGoBack?: () => void;
+  onGoForward?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward }) => {
   const [isLightMode, setIsLightMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -111,19 +115,39 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
-          <button 
-            onClick={() => onNavigate(user?.role === 'society' ? 'admin' : 'history')}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity active:scale-95"
-          >
-            <div className="bg-orange-600 p-2 rounded-lg shadow-inner">
-              <i className="fas fa-bullseye text-xl text-white"></i>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-1 mr-2">
+              <button 
+                onClick={onGoBack} 
+                disabled={!canGoBack}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoBack ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
+                title="Indietro"
+              >
+                <i className="fas fa-chevron-left text-xs"></i>
+              </button>
+              <button 
+                onClick={onGoForward} 
+                disabled={!canGoForward}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoForward ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
+                title="Avanti"
+              >
+                <i className="fas fa-chevron-right text-xs"></i>
+              </button>
             </div>
-            <div className="text-left">
-              <h1 className="text-xl font-black tracking-tight text-white leading-none text-left">
-                Clay Tracker <span className="text-orange-600">Pro</span>
-              </h1>
-            </div>
-          </button>
+            <button 
+              onClick={() => onNavigate(user?.role === 'society' ? 'admin' : 'history')}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity active:scale-95"
+            >
+              <div className="bg-orange-600 p-2 rounded-lg shadow-inner">
+                <i className="fas fa-bullseye text-xl text-white"></i>
+              </div>
+              <div className="text-left">
+                <h1 className="text-xl font-black tracking-tight text-white leading-none text-left">
+                  Clay Tracker <span className="text-orange-600">Pro</span>
+                </h1>
+              </div>
+            </button>
+          </div>
 
           <div className="flex items-center gap-2 sm:gap-4 relative profile-dropdown-container">
             <button 

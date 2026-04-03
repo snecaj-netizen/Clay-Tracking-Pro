@@ -1835,7 +1835,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <span className="uppercase tracking-widest text-[10px] font-black">
                 {activeTab === 'results' ? 'Risultati Individuali' :
                  activeTab === 'event-control' ? 'Attivazione gare' :
-                 activeTab === 'events' ? (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare') :
+                 activeTab === 'events' ? (currentUser?.role === 'admin' ? 'Gare gestite' : (currentUser?.role === 'society' ? 'Gestione tue Gare' : 'Gare')) :
                  activeTab === 'halloffame' ? 'Hall of Fame' :
                  activeTab === 'notifications' ? 'Notifiche' :
                  activeTab === 'team' ? 'Squadre' :
@@ -1871,7 +1871,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => { setActiveTab('events'); setIsMobileMenuOpen(false); }}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                   >
-                    <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}
+                    <i className="fas fa-calendar-alt w-5 text-center"></i> {currentUser?.role === 'society' ? 'Gestione tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}
                   </button>
                 )}
                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
@@ -1938,7 +1938,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setActiveTab('events')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Le tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Le tue Gare' : (currentUser?.role === 'admin' ? 'Gare gest.' : 'Gare')}</span>
+                <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Gestione tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Gestione tue Gare' : (currentUser?.role === 'admin' ? 'Gare gest.' : 'Gare')}</span>
               </button>
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (

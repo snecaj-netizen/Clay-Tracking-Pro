@@ -34,6 +34,8 @@ const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | 'event-results'>(
     user?.role === 'society' ? 'admin' : 'history'
   );
+  const [historyStack, setHistoryStack] = useState<{view: string, tab?: string}[]>([{ view: user?.role === 'society' ? 'admin' : 'history' }]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const [previousView, setPreviousView] = useState<'dashboard' | 'new' | 'history' | 'warehouse' | 'settings' | 'admin' | 'events' | 'societies' | 'ai-coach' | 'notifications' | 'event-results' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
@@ -482,7 +484,7 @@ const App: React.FC = () => {
     );
   };
 
-  const handleNavigate = (newView: any, tab?: string) => {
+  const handleNavigate = (newView: any, tab?: string, isHistoryAction = false) => {
     if (newView === 'admin' && tab) {
       setInitialAdminTab(tab);
     } else if (newView === 'admin' && user?.role === 'society') {
@@ -503,6 +505,33 @@ const App: React.FC = () => {
     
     setPreviousView(null);
     setView(newView);
+
+    if (!isHistoryAction) {
+      setHistoryStack(prev => {
+        const newStack = prev.slice(0, historyIndex + 1);
+        newStack.push({ view: newView, tab });
+        return newStack;
+      });
+      setHistoryIndex(prev => prev + 1);
+    }
+  };
+
+  const handleGoBack = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      const state = historyStack[newIndex];
+      handleNavigate(state.view, state.tab, true);
+    }
+  };
+
+  const handleGoForward = () => {
+    if (historyIndex < historyStack.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      const state = historyStack[newIndex];
+      handleNavigate(state.view, state.tab, true);
+    }
   };
 
   const handleSocietyClick = (name: string) => {
@@ -554,6 +583,10 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         user={user}
         appSettings={appSettings}
+        canGoBack={historyIndex > 0}
+        canGoForward={historyIndex < historyStack.length - 1}
+        onGoBack={handleGoBack}
+        onGoForward={handleGoForward}
       />
       
       <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 flex-1 w-full ${view === 'ai-coach' ? 'flex flex-col pb-4 sm:pb-8' : 'pb-20 sm:pb-8'}`}>
