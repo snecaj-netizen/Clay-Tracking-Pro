@@ -57,7 +57,7 @@ const UpdateNotification: React.FC = () => {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-80 z-[2000]"
+          className="fixed bottom-28 left-4 right-4 sm:left-auto sm:right-8 sm:w-80 z-[2000]"
         >
           <div className="bg-slate-900 border border-orange-500/50 rounded-2xl p-4 shadow-2xl shadow-orange-600/20 backdrop-blur-xl">
             <div className="flex items-start gap-4">

@@ -2466,16 +2466,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                    <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0">
                       <button 
                         onClick={() => handleEditTeam(team)}
-                        className="w-7 h-7 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
+                        className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
+                        title="Modifica"
                       >
                         <i className="fas fa-edit text-[10px]"></i>
                       </button>
                       <button 
                         onClick={() => handleDeleteTeam(team.id)}
-                        className="w-7 h-7 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white"
+                        className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg shadow-red-600/20"
+                        title="Elimina"
                       >
                         <i className="fas fa-trash-alt text-[10px]"></i>
                       </button>
@@ -2545,7 +2547,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
                                   <button 
                                     onClick={() => setEditingScore({ teamId: team.id, userId: m.id, score: m.score || 0 })}
-                                    className="text-slate-600 hover:text-orange-500 transition-all p-1"
+                                    className="text-orange-600 hover:text-orange-500 transition-all p-1.5 bg-orange-600/10 rounded-lg"
                                   >
                                     <i className="fas fa-pencil-alt text-[10px]"></i>
                                   </button>
@@ -3106,7 +3108,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           setSelectedSociety(null);
                           handleEditSociety(selectedSociety);
                         }} 
-                        className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg"
+                        className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20"
                       >
                         <i className="fas fa-edit"></i> Modifica
                       </button>
@@ -3117,7 +3119,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           setSelectedSociety(null);
                           handleDeleteSociety(selectedSociety.id);
                         }} 
-                        className="flex-1 py-4 rounded-2xl bg-red-900/30 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-900/50 transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-lg"
+                        className="flex-1 py-4 rounded-2xl bg-red-600 text-white font-black text-xs uppercase tracking-widest hover:bg-red-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
                       >
                         <i className="fas fa-trash-alt"></i> Elimina
                       </button>
@@ -3609,7 +3611,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                           onEditCompetition(mappedComp);
                                         }
                                       }}
-                                      className="w-9 h-9 rounded-xl bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-600/5"
+                                      className="w-9 h-9 rounded-xl bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
                                       title="Modifica"
                                     >
                                       <i className="fas fa-edit text-xs"></i>
@@ -3635,7 +3637,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                           'danger'
                                         );
                                       }}
-                                      className="w-9 h-9 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5"
+                                      className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg shadow-red-600/20"
                                       title="Elimina"
                                     >
                                       <i className="fas fa-trash-alt text-xs"></i>
@@ -4203,7 +4205,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <button 
                         onClick={() => { editUser(u); setShowUserForm(true); }} 
                         disabled={currentUser?.role === 'society' && u.role === 'admin'}
-                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all disabled:opacity-30"
+                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 disabled:opacity-30"
                         title={currentUser?.role === 'society' && u.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
                       >
                         <i className="fas fa-edit text-sm sm:text-xs"></i>
@@ -4211,7 +4213,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <button 
                         onClick={() => handleDelete(u.id)} 
                         disabled={u.email === 'snecaj@gmail.com' || currentUser?.role === 'society'} 
-                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all disabled:opacity-30"
+                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg shadow-red-600/20 disabled:opacity-30"
                         title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (u.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
                       >
                         <i className="fas fa-trash-alt text-sm sm:text-xs"></i>
@@ -4428,7 +4430,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {activeTab === 'results' && currentUser?.role === 'admin' && (
         <button 
           onClick={() => onEditCompetition && onEditCompetition()}
-          className="fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
+          className="fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
           title="Aggiungi Gara"
         >
           <i className="fas fa-plus text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
@@ -4450,7 +4452,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               }
             }
           }}
-          className={`fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 ${showTeamForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showTeamForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showTeamForm ? 'Chiudi' : 'Nuova Squadra'}
         >
           <i className={`fas ${showTeamForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
@@ -4472,7 +4474,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               }
             }
           }}
-          className={`fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 ${showUserForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showUserForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
         >
           <i className={`fas ${showUserForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
@@ -4502,7 +4504,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             setShowSocietyForm(!showSocietyForm);
             if (!showSocietyForm) window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className={`fixed bottom-24 sm:bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
+          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
           title={showSocietyForm ? 'Chiudi' : 'Nuova Società'}
         >
           <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>

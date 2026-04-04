@@ -31,6 +31,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
     { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
     { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
+    { id: 'societies', label: 'Società', icon: 'fa-shield-alt' },
   ];
 
   // If user has access to event results, we might want to add it, but space is limited.

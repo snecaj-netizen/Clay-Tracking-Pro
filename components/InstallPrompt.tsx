@@ -89,7 +89,7 @@ const InstallPrompt: React.FC = () => {
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 50, scale: 0.9 }}
-          className="fixed bottom-24 left-4 right-4 md:left-auto md:right-8 md:bottom-8 md:w-96 z-[100]"
+          className="fixed bottom-28 left-4 right-4 md:left-auto md:right-8 md:bottom-8 md:w-96 z-[100]"
         >
           <div className="bg-slate-900/95 [.light-theme_&]:bg-white backdrop-blur-xl border border-slate-800 [.light-theme_&]:border-slate-300 rounded-3xl p-5 shadow-2xl shadow-orange-600/10 flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg shadow-orange-600/20 flex-shrink-0">

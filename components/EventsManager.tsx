@@ -424,7 +424,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-2 ${
                           !ev.is_management_enabled && user?.role !== 'admin'
                             ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-orange-600 hover:text-white hover:border-orange-500'
+                            : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
                         }`}
                       >
                         <i className="fas fa-trophy"></i>
@@ -1090,12 +1090,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
             <div className="flex flex-col gap-2 sm:gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <h2 className="text-base sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                     <i className={`fas ${viewMode === 'results' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-500`}></i> 
                     {viewMode === 'results' ? 'Risultati Gare' : (restrictToSociety ? 'Gestione delle tue Gare' : 'Gestione Eventi')}
                   </h2>
                   {!showForm && viewMode !== 'results' && (
-                    <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 leading-tight max-w-2xl">
+                    <p className="text-slate-400 text-[9px] sm:text-xs mt-0.5 leading-tight max-w-2xl">
                       {restrictToSociety 
                         ? "In questa sezione puoi gestire le iscrizioni dei tuoi tiratori, formare le squadre per le competizioni e monitorare le gare a cui partecipa la tua società."
                         : "Calendario ufficiale delle competizioni. Esplora le gare pubbliche organizzate dalle società, consulta i programmi e segui i risultati in tempo reale."}
@@ -1123,19 +1123,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     
                     <button 
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[9px] sm:text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
                     >
                       <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
                       {hasActiveFilters && (
-                        <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
                       )}
                     </button>
 
                     {!hideViewSwitcher && (
-                      <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+                      <div className="flex bg-slate-900 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0">
                         <button 
                           onClick={() => setViewMode('list')} 
-                          className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                          className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                           title="Elenco"
                         >
                           <i className="fas fa-list"></i>
@@ -1143,7 +1143,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         </button>
                         <button 
                           onClick={() => setViewMode('calendar')} 
-                          className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                          className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                           title="Calendario"
                         >
                           <i className="fas fa-calendar-alt"></i>
@@ -1152,7 +1152,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         {(user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) && (
                           <button 
                             onClick={() => setViewMode('results')} 
-                            className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'results' || viewMode === 'managed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                            className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'results' || viewMode === 'managed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                             title="Risultati"
                           >
                             <i className="fas fa-trophy"></i>
@@ -1945,7 +1945,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         handleEdit(selectedEvent);
                         setSelectedEvent(null);
                       }} 
-                      className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
+                      className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-orange-600/20"
                       title="Modifica"
                     >
                       <i className="fas fa-edit"></i> Modifica
@@ -1955,7 +1955,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         handleDelete(selectedEvent.id);
                         setSelectedEvent(null);
                       }} 
-                      className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all border border-red-900/30 active:scale-95 text-[9px] font-black uppercase tracking-widest"
+                      className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-red-600 text-white flex items-center justify-center gap-2 hover:bg-red-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20"
                       title="Elimina"
                     >
                       <i className="fas fa-trash-alt"></i> Elimina
@@ -2022,22 +2022,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         document.body
       )}
 
-      {/* Floating Add Button for Events */}
-      {(user?.role === 'admin' || user?.role === 'society') && viewMode !== 'results' && !managingEventDetail && (
-        <button 
-          onClick={() => {
-            if (!showForm) {
-              resetForm();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-            setShowForm(!showForm);
-          }}
-          className={`fixed bottom-8 right-8 w-16 h-16 ${showForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={showForm ? 'Chiudi' : 'Nuovo Evento'}
-        >
-          <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
-        </button>
-      )}
     </div>
   );
 };
