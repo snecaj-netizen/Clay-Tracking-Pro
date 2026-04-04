@@ -431,7 +431,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         Classifica
                       </button>
                       <button 
-                        onClick={() => setEditingEvent(ev)}
+                        onClick={() => handleEdit(ev)}
                         className="py-3 rounded-2xl bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-2"
                       >
                         <i className="fas fa-edit"></i>
