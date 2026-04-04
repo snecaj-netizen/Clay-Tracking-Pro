@@ -78,6 +78,7 @@ interface AdminPanelProps {
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   onEditCompetition?: (comp?: Competition, userId?: number) => void;
   onDeleteCompetition?: (id: string) => Promise<boolean | void> | void;
+  onNavigate?: (view: any, tab?: string) => void;
   initialTab?: Tab;
   initialSocietyName?: string;
   onCloseSocietyDetail?: () => void;
@@ -144,7 +145,7 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   user: currentUser, token, competitions, cartridges, cartridgeTypes, societies: initialSocieties, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
-  triggerConfirm, onEditCompetition, onDeleteCompetition, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, triggerToast, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour,
+  triggerConfirm, onEditCompetition, onDeleteCompetition, onNavigate, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, triggerToast, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour,
   appSettings, onSettingsUpdate
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(
@@ -436,8 +437,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [fetchDashboardStats, showDashboard]);
 
   const filteredTeamStats = useMemo(() => {
-    if (!statsFilterDiscipline) return teamStats;
-    return teamStats.filter(s => s.discipline === statsFilterDiscipline);
+    let filtered = teamStats;
+    if (statsFilterDiscipline) {
+      filtered = teamStats.filter(s => s.discipline === statsFilterDiscipline);
+    }
+    return [...filtered].sort((a, b) => {
+      const avgA = a.avg_score ? parseFloat(a.avg_score) : 0;
+      const avgB = b.avg_score ? parseFloat(b.avg_score) : 0;
+      return avgB - avgA;
+    });
   }, [teamStats, statsFilterDiscipline]);
 
   const statsDisciplines = useMemo(() => {
@@ -1800,7 +1808,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <i className="fas fa-tasks"></i> Attivazione
               </button>
             )}
-            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
+              <button 
+                onClick={() => onNavigate ? onNavigate('event-results') : setActiveTab('event-results')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'event-results' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+              >
+                <i className="fas fa-trophy"></i> Classifiche
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
                 onClick={() => setActiveTab('results')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'results' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
@@ -1857,7 +1873,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
         <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
-             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+             {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
+              <button 
+                onClick={() => onNavigate ? onNavigate('event-results') : setActiveTab('event-results')}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Classifiche</span><span className="md:hidden">Class.</span>
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
                 onClick={() => setActiveTab('results')}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
@@ -1920,7 +1944,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {activeTab === 'settings' ? (
+      {activeTab === 'event-results' ? (
+        <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+          <EventsManager 
+            user={currentUser} 
+            token={token} 
+            initialViewMode="results"
+            triggerConfirm={triggerConfirm}
+            triggerToast={triggerToast}
+            societies={societies}
+          />
+        </div>
+      ) : activeTab === 'settings' ? (
         <div className="animate-in fade-in slide-in-from-right-4 duration-500">
           <Settings 
             user={currentUser}
@@ -3139,6 +3174,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <EventControlManager 
             token={token} 
             triggerToast={triggerToast}
+            triggerConfirm={triggerConfirm}
           />
         </div>
       ) : activeTab === 'events' ? (

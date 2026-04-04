@@ -17,9 +17,10 @@ const urlBase64ToUint8Array = (base64String: string) => {
 
 interface NotificationBellProps {
   token: string;
+  onToggle?: (isOpen: boolean) => void;
 }
 
-export default function NotificationBell({ token }: NotificationBellProps) {
+export default function NotificationBell({ token, onToggle }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -31,16 +32,22 @@ export default function NotificationBell({ token }: NotificationBellProps) {
   useEffect(() => {
     const handleCloseAllMenus = () => {
       setShowDropdown(false);
+      onToggle?.(false);
     };
 
     window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
-    return () => window.removeEventListener('clay-tracker-close-menus', handleCloseAllMenus);
-  }, []);
+    return () => {
+      window.removeEventListener('clay-tracker-close-menus', handleCloseAllMenus);
+    };
+  }, [onToggle]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
+        if (showDropdown) {
+          setShowDropdown(false);
+          onToggle?.(false);
+        }
       }
     };
 
@@ -178,10 +185,12 @@ export default function NotificationBell({ token }: NotificationBellProps) {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => {
-          if (!showDropdown) {
+          const nextState = !showDropdown;
+          if (nextState) {
             window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
           }
-          setShowDropdown(!showDropdown);
+          setShowDropdown(nextState);
+          onToggle?.(nextState);
         }}
         className={`w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition-all relative ${showDropdown ? 'text-orange-500 border-orange-500/50' : 'text-slate-400 hover:text-orange-500 hover:border-orange-500/50'}`}
       >
@@ -194,7 +203,7 @@ export default function NotificationBell({ token }: NotificationBellProps) {
       </button>
 
       {showDropdown && (
-        <div className="fixed top-[72px] left-4 right-4 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-2 sm:w-80 sm:max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top-right">
+        <div className="fixed top-[72px] left-4 right-4 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-2 sm:w-80 sm:max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[1200] origin-top-right">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-sm font-black text-white uppercase tracking-tight">Notifiche</h3>
             {!isSubscribed && permission !== 'granted' && permission !== 'denied' && (

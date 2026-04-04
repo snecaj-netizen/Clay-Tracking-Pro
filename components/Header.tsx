@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
@@ -17,10 +17,12 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward }) => {
   const [isLightMode, setIsLightMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   useEffect(() => {
     const handleCloseAllMenus = () => {
       setIsProfileOpen(false);
+      setIsNotificationOpen(false);
     };
 
     window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
@@ -58,6 +60,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     }
   };
 
+  const handleNotificationToggle = useCallback((isOpen: boolean) => {
+    setIsNotificationOpen(isOpen);
+  }, []);
+
   const resultsAccess = appSettings?.event_results_access || {};
 
   const checkAccess = (access: any, userSociety: string | undefined) => {
@@ -72,6 +78,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   const hasSocietaAccess = user?.role === 'admin' || checkAccess(resultsAccess.societa, user?.society);
   const hasTiratoriAccess = user?.role === 'admin' || checkAccess(resultsAccess.tiratori, user?.society);
+
+  const isAnyMenuOpen = isProfileOpen || isNotificationOpen;
 
   const menuItems = user?.role === 'society' ? [
     ...(hasSocietaAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
@@ -90,7 +98,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-b border-slate-900/50 z-[1050]">
+      {isAnyMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[1080] sm:hidden animate-in fade-in duration-200"
+          onClick={() => {
+            setIsProfileOpen(false);
+            setIsNotificationOpen(false);
+            window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
+          }}
+        ></div>
+      )}
+      <header className="fixed top-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-b border-slate-900/50 z-[1100]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
@@ -236,7 +254,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               <i className={`fas ${isLightMode ? 'fa-moon' : 'fa-sun'}`}></i>
             </button>
 
-            <NotificationBell token={localStorage.getItem('auth_token') || ''} />
+            <NotificationBell 
+              token={localStorage.getItem('auth_token') || ''} 
+              onToggle={handleNotificationToggle}
+            />
           </div>
         </div>
 

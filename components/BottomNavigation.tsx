@@ -22,33 +22,47 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
     return false;
   };
 
+  const hasSocietaAccess = user?.role === 'admin' || checkAccess(resultsAccess.societa, user?.society);
   const hasTiratoriAccess = user?.role === 'admin' || checkAccess(resultsAccess.tiratori, user?.society);
+  const canViewResults = (user?.role === 'user' && hasTiratoriAccess) || (user?.role === 'society' && hasSocietaAccess) || user?.role === 'admin';
 
-  // Define the main navigation items for shooters
-  const navItems = [
-    { id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' },
-    { id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' },
-    { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
-    { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
-    { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
-    { id: 'societies', label: 'Società', icon: 'fa-shield-alt' },
-  ];
+  // Define the main navigation items
+  const navItems = [];
 
-  // If user has access to event results, we might want to add it, but space is limited.
-  // Let's keep it to the most essential 5 items for the bottom bar.
-  // If we have more, we might need a "More" button or just prioritize.
-  
-  if (user?.role === 'society') return null; // Societies use the Admin Panel navigation
+  if (user?.role === 'admin' || user?.role === 'society') {
+    navItems.push({ id: 'admin', label: 'Pannello', icon: 'fa-user-shield' });
+  }
+
+  if (user?.role === 'user') {
+    navItems.push({ id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' });
+    navItems.push({ id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' });
+  }
+
+  navItems.push({ id: 'events', label: 'Gare', icon: 'fa-calendar-alt' });
+
+  if (canViewResults) {
+    navItems.push({ id: 'event-results', label: 'Classifiche', icon: 'fa-trophy' });
+  }
+
+  navItems.push({ id: 'societies', label: 'Società', icon: 'fa-shield-alt' });
+
+  if (user?.role === 'user') {
+    navItems.push({ id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' });
+    navItems.push({ id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' });
+  }
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t-2 border-orange-600 z-[1000] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-16 px-1 overflow-x-auto no-scrollbar">
         {navItems.map((item) => {
           const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className={`flex flex-col items-center justify-center flex-1 min-w-0 transition-all active:scale-95 ${
                 isActive ? 'text-orange-500' : 'text-slate-500'
               }`}

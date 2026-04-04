@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SocietyEvent } from '../types';
 import { Search, Calendar, MapPin, CheckCircle2, XCircle, Loader2, Settings2 } from 'lucide-react';
 
 interface EventControlManagerProps {
   token: string;
   triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  triggerConfirm?: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'primary' | 'danger') => void;
 }
 
-export const EventControlManager: React.FC<EventControlManagerProps> = ({ token, triggerToast }) => {
+export const EventControlManager: React.FC<EventControlManagerProps> = ({ token, triggerToast, triggerConfirm }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +36,26 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token,
   }, [token]);
 
   const handleToggleManagement = async (eventId: string, currentStatus: boolean) => {
+    if (!currentStatus) {
+      if (triggerConfirm) {
+        triggerConfirm(
+          'Attiva Gestione',
+          'Sei sicuro di voler attivare la gestione per questa gara? Questa operazione abiliterà il sistema di iscrizioni e classifiche.',
+          () => executeToggle(eventId, currentStatus),
+          'Attiva',
+          'primary'
+        );
+        return;
+      } else {
+        const confirmed = window.confirm('Sei sicuro di voler attivare la gestione per questa gara?');
+        if (!confirmed) return;
+      }
+    }
+
+    executeToggle(eventId, currentStatus);
+  };
+
+  const executeToggle = async (eventId: string, currentStatus: boolean) => {
     setTogglingId(eventId);
     try {
       const res = await fetch(`/api/admin/events/${eventId}/toggle-management`, {
@@ -63,10 +84,26 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token,
     }
   };
 
-  const filteredEvents = events.filter(ev => 
-    ev.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ev.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEvents = useMemo(() => {
+    const filtered = events.filter(ev => 
+      ev.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ev.location.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const futureEvents = filtered.filter(ev => new Date(ev.start_date) >= now);
+    const pastEvents = filtered.filter(ev => new Date(ev.start_date) < now);
+
+    // Future: closest to today first
+    futureEvents.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+    
+    // Past: most recent first
+    pastEvents.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+
+    return [...futureEvents, ...pastEvents];
+  }, [events, searchTerm]);
 
   return (
     <div className="space-y-6">

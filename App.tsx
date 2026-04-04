@@ -237,6 +237,13 @@ const App: React.FC = () => {
     return () => controller.abort();
   }, [token, fetchData]);
 
+  useEffect(() => {
+    if (view === 'history' && user?.role === 'society') {
+      setView('admin');
+      setInitialAdminTab('results');
+    }
+  }, [view, user]);
+
   const handleLogin = (newToken: string, newUser: any) => {
     localStorage.setItem('auth_token', newToken);
     localStorage.setItem('auth_user', JSON.stringify(newUser));
@@ -527,6 +534,12 @@ const App: React.FC = () => {
   };
 
   const handleNavigate = (newView: any, tab?: string) => {
+    // Restrict history for society
+    if (newView === 'history' && user?.role === 'society') {
+      newView = 'admin';
+      tab = 'results';
+    }
+
     if (newView === 'admin' && tab) {
       setInitialAdminTab(tab);
     } else if (newView === 'admin' && user?.role === 'society') {
@@ -681,7 +694,7 @@ const App: React.FC = () => {
           </div>
         )}
         
-        {view === 'history' && (
+        {view === 'history' && user?.role !== 'society' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <HistoryList 
               competitions={competitions} 
@@ -844,6 +857,7 @@ const App: React.FC = () => {
               syncStatus="idle"
               lastSync={null}
               triggerConfirm={triggerConfirm}
+              onNavigate={handleNavigate}
               onEditCompetition={(comp, userId) => {
                 setPreviousView('admin');
                 if (comp) {
@@ -942,8 +956,8 @@ const App: React.FC = () => {
         <OnboardingTour role={user.role} onClose={handleCloseTour} />
       )}
       
-      {/* Bottom Navigation for Mobile (Shooters) */}
-      {user && user.role !== 'society' && (
+      {/* Bottom Navigation for Mobile */}
+      {user && (
         <BottomNavigation 
           currentView={view} 
           onNavigate={handleNavigate} 

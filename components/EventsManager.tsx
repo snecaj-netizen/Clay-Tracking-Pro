@@ -174,9 +174,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       return [];
     }
 
-    if (user.role === 'society' && !hasSocietaAccess) {
-      return [];
-    }
+    // Societies should always be able to see their own managed events
+    // even if they don't have general results access
+    
     const userSociety = (user.society || '').toLowerCase().trim();
     const userId = Number(user.id);
 
@@ -192,10 +192,34 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
     console.log('EventsManager: managedEvents filtered count:', filtered.length);
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return filtered.sort((a, b) => {
-      const countA = Number(a.registration_count) || 0;
-      const countB = Number(b.registration_count) || 0;
-      return countB - countA;
+      const startA = new Date(a.start_date);
+      startA.setHours(0, 0, 0, 0);
+      const endA = new Date(a.end_date || a.start_date);
+      endA.setHours(0, 0, 0, 0);
+
+      const startB = new Date(b.start_date);
+      startB.setHours(0, 0, 0, 0);
+      const endB = new Date(b.end_date || b.start_date);
+      endB.setHours(0, 0, 0, 0);
+
+      const isPastA = endA < today;
+      const isPastB = endB < today;
+
+      // If one is past and the other is not, non-past comes first
+      if (!isPastA && isPastB) return -1;
+      if (isPastA && !isPastB) return 1;
+
+      // If both are past, sort descending (newest past event first)
+      if (isPastA && isPastB) {
+        return startB.getTime() - startA.getTime();
+      }
+
+      // If both are future, sort ascending (closest future event first)
+      return startA.getTime() - startB.getTime();
     });
   }, [events, user, hasSocietaAccess]);
 
@@ -347,101 +371,109 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {managedEvents.map(ev => (
-              <div key={ev.id} className="bg-slate-900/80 rounded-[2rem] border border-slate-800 p-8 hover:border-indigo-500/50 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-600/10 transition-colors"></div>
-                
-                <div className="relative z-10 flex flex-col h-full">
-                  <div className="flex items-start justify-between mb-8">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[9px] font-black uppercase tracking-widest border border-indigo-500/20">
-                          {ev.discipline}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
-                          {ev.status === 'validated' ? 'Conclusa' : 'In Corso'}
-                        </span>
-                      </div>
-                      <h3 className="text-xl font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-tight">{ev.name}</h3>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
-                        <i className="fas fa-calendar-alt text-indigo-500/50"></i>
-                        {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
-                      </p>
-                    </div>
-                  </div>
+            {managedEvents.map(ev => {
+              const isPast = isPastEvent(ev);
+              return (
+                <div key={ev.id} className={`rounded-[2rem] border p-8 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-indigo-500/50'}`}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-600/10 transition-colors"></div>
                   
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscritti</div>
-                      <div className="text-2xl font-black text-white">{ev.registration_count || 0}</div>
-                    </div>
-                    <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Piattelli</div>
-                      <div className="text-2xl font-black text-white">{ev.targets}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-auto space-y-3">
-                    {!ev.is_management_enabled && user?.role !== 'admin' && (
-                      <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 mb-2">
-                        <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                          <i className="fas fa-exclamation-triangle"></i>
-                          In attesa di attivazione Admin
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-8">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[9px] font-black uppercase tracking-widest border border-indigo-500/20">
+                            {ev.discipline}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
+                            {ev.status === 'validated' ? 'Conclusa' : 'In Corso'}
+                          </span>
+                          {isPast && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[9px] font-black uppercase tracking-widest border border-slate-700">
+                              Passata
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-tight">{ev.name}</h3>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
+                          <i className="fas fa-calendar-alt text-indigo-500/50"></i>
+                          {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
                         </p>
                       </div>
-                    )}
-                    <button 
-                      onClick={() => {
-                        if (!ev.is_management_enabled && user?.role !== 'admin') {
-                          triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
-                          return;
-                        }
-                        setInitialManagementTab('registrations');
-                        setManagingEventDetail(ev);
-                      }}
-                      disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                      className={`w-full py-4 rounded-2xl text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
-                        !ev.is_management_enabled && user?.role !== 'admin'
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
-                          : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
-                      }`}
-                    >
-                      <i className="fas fa-users-cog text-sm"></i>
-                      Gestione Gara
-                    </button>
+                    </div>
                     
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                      <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50 text-center flex flex-col items-center justify-center">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscritti</div>
+                        <div className="text-2xl font-black text-white">{ev.registration_count || 0}</div>
+                      </div>
+                      <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50 text-center flex flex-col items-center justify-center">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Piattelli</div>
+                        <div className="text-2xl font-black text-white">{ev.targets}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto space-y-3">
+                      {!ev.is_management_enabled && user?.role !== 'admin' && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 mb-2">
+                          <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                            <i className="fas fa-exclamation-triangle"></i>
+                            In attesa di attivazione Admin
+                          </p>
+                        </div>
+                      )}
                       <button 
                         onClick={() => {
                           if (!ev.is_management_enabled && user?.role !== 'admin') {
                             triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
                             return;
                           }
-                          setInitialManagementTab('results');
+                          setInitialManagementTab('registrations');
                           setManagingEventDetail(ev);
                         }}
                         disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                        className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-2 ${
+                        className={`w-full py-4 rounded-2xl text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
                           !ev.is_management_enabled && user?.role !== 'admin'
-                            ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                            : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
+                            : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
                         }`}
                       >
-                        <i className="fas fa-trophy"></i>
-                        Classifica
+                        <i className="fas fa-users-cog text-sm"></i>
+                        Gestione Gara
                       </button>
-                      <button 
-                        onClick={() => handleEdit(ev)}
-                        className="py-3 rounded-2xl bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-2"
-                      >
-                        <i className="fas fa-edit"></i>
-                        Modifica
-                      </button>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <button 
+                          onClick={() => {
+                            if (!ev.is_management_enabled && user?.role !== 'admin') {
+                              triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                              return;
+                            }
+                            setInitialManagementTab('results');
+                            setManagingEventDetail(ev);
+                          }}
+                          disabled={!ev.is_management_enabled && user?.role !== 'admin'}
+                          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-2 ${
+                            !ev.is_management_enabled && user?.role !== 'admin'
+                              ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                              : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
+                          }`}
+                        >
+                          <i className="fas fa-trophy"></i>
+                          Classifica
+                        </button>
+                        <button 
+                          onClick={() => handleEdit(ev)}
+                          className="py-3 rounded-2xl bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-2"
+                        >
+                          <i className="fas fa-edit"></i>
+                          Modifica
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1651,6 +1683,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         {isNext && !ongoing && (
                           <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
                             PROSSIMA GARA
+                          </span>
+                        )}
+                        {past && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-800 text-slate-400 border border-slate-700">
+                            PASSATA
                           </span>
                         )}
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
