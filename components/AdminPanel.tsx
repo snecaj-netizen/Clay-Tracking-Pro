@@ -9,6 +9,7 @@ import EventsManager from './EventsManager';
 import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
+import FitavScoreSheet from './FitavScoreSheet';
 import { EventControlManager } from './EventControlManager';
 import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
@@ -214,6 +215,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   
   // Society Form State
   const [showSocietyForm, setShowSocietyForm] = useState(false);
+  const [selectedTeamForSheet, setSelectedTeamForSheet] = useState<any>(null);
   const [societyViewMode, setSocietyViewMode] = useState<'list' | 'map'>('list');
   const [editingSociety, setEditingSociety] = useState<any>(null);
   const [socName, setSocName] = useState('');
@@ -2466,7 +2468,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0">
+                    <div className="flex gap-1 transition-all shrink-0">
                       <button 
                         onClick={() => handleEditTeam(team)}
                         className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
@@ -4517,6 +4519,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           user={shareData.user} 
           onClose={() => setShareData(null)} 
         />
+      )}
+      {selectedTeamForSheet && createPortal(
+        <FitavScoreSheet 
+          team={selectedTeamForSheet}
+          event={events.find(ev => String(ev.id) === String(selectedTeamForSheet.event_id))}
+          onClose={() => setSelectedTeamForSheet(null)}
+        />,
+        document.body
       )}
     </div>
   );

@@ -3,11 +3,12 @@ import { motion } from 'motion/react';
 import { 
   Users, RefreshCw, Save, Clock, Target, ArrowRight, 
   ChevronLeft, Mail, Phone, Shield, User, Calendar,
-  Download, Trash2, Edit3, Search, Plus, AlertCircle
+  Download, Trash2, Edit3, Search, Plus, AlertCircle, Printer
 } from 'lucide-react';
 import { SocietyEvent, EventSquad, EventRegistration } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import FitavScoreSheet from './FitavScoreSheet';
 
 interface EventManagementDetailProps {
   event: SocietyEvent;
@@ -54,6 +55,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     fromMemberIndex: number;
     toSquadIndex: number;
   } | null>(null);
+  const [selectedSquadForSheet, setSelectedSquadForSheet] = useState<any>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -703,19 +705,42 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                         />
                       </div>
                     </div>
-                    <button 
-                      onClick={() => {
-                        if (confirm('Sei sicuro di voler eliminare questa batteria? I tiratori torneranno nella lista da assegnare.')) {
-                          const newSquads = squads.filter((_, idx) => idx !== sIdx);
-                          setSquads(newSquads);
-                          setHasUnsavedChanges(true);
-                        }
-                      }}
-                      className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                      title="Elimina batteria"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          const teamData = {
+                            name: `Batteria ${squad.squad_number}`,
+                            members: squad.members.map(m => ({
+                              id: String(m.registration_id),
+                              name: m.first_name,
+                              surname: m.last_name,
+                              category: [m.category, m.qualification].filter(Boolean).join(' - ')
+                            })),
+                            competition_name: event.name,
+                            society: event.location,
+                            date: event.start_date
+                          };
+                          setSelectedSquadForSheet(teamData);
+                        }}
+                        className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                        title="Stampa Statino FITAV"
+                      >
+                        <Printer className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (confirm('Sei sicuro di voler eliminare questa batteria? I tiratori torneranno nella lista da assegnare.')) {
+                            const newSquads = squads.filter((_, idx) => idx !== sIdx);
+                            setSquads(newSquads);
+                            setHasUnsavedChanges(true);
+                          }
+                        }}
+                        className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                        title="Elimina batteria"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -933,6 +958,13 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
             </button>
           </div>
         </div>
+      )}
+      {selectedSquadForSheet && (
+        <FitavScoreSheet 
+          team={selectedSquadForSheet}
+          event={event}
+          onClose={() => setSelectedSquadForSheet(null)}
+        />
       )}
     </div>
   );
