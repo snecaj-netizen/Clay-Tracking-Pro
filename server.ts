@@ -26,6 +26,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Initialize PostgreSQL Database (Supabase)
 const pool = new Pool({
