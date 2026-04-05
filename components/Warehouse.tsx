@@ -282,13 +282,13 @@ const Warehouse: React.FC<WarehouseProps> = ({
         </div>
 
         <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar">
-          <button onClick={() => { setActiveTab('types'); setShowForm(false); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
+          <button onClick={() => { setActiveTab('types'); setShowForm(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
             TIPI CARTUCCE
           </button>
-          <button onClick={() => { setActiveTab('inventory'); setShowForm(false); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
+          <button onClick={() => { setActiveTab('inventory'); setShowForm(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
             GIACENZA ATTUALE
           </button>
-          <button onClick={() => { setActiveTab('history'); setShowForm(false); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'history' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
+          <button onClick={() => { setActiveTab('history'); setShowForm(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'history' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
             STORICO CARICHI
           </button>
         </div>

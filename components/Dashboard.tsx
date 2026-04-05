@@ -14,7 +14,15 @@ interface DashboardProps {
   user?: any;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ competitions, societies, events, onAddClick, onCoachClick, onNavigate, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+  competitions = [], 
+  societies = [], 
+  events = [], 
+  onAddClick, 
+  onCoachClick, 
+  onNavigate, 
+  user 
+}) => {
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
   const availableEvents = React.useMemo(() => {

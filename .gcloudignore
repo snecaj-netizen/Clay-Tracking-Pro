@@ -2,12 +2,5 @@
 .git
 .gitignore
 node_modules
-src
-tsconfig.json
-tsconfig.node.json
-vite.config.ts
-server.ts
-Dockerfile
-app.yaml
 # But we WANT the build folder
 !build/

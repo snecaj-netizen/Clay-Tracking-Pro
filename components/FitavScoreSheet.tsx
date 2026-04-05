@@ -2,167 +2,189 @@ import React from 'react';
 import { SocietyEvent } from '../types';
 
 interface FitavScoreSheetProps {
-  team: {
+  teams: {
     name: string;
     members: { id: string; name: string; surname: string; category?: string }[];
     competition_name?: string;
     society?: string;
     date?: string;
-  };
+  }[];
   event?: SocietyEvent;
   onClose: () => void;
 }
 
-const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ team, event, onClose }) => {
+const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose }) => {
   const handlePrint = () => {
     window.print();
+  };
+
+  // Helper to get Pedana number and target range for a specific cell
+  const getCellInfo = (rowIndex: number, colIndex: number) => {
+    const attesaPos = 5 - rowIndex;
+    if (colIndex === attesaPos) {
+      return { isAttesa: true };
+    }
+    
+    // Calculate Pedana number
+    const pedanaNum = ((colIndex + rowIndex) % 6) + 1;
+    
+    // Calculate target range (1-25)
+    let nonAttesaBefore = 0;
+    for (let i = 0; i < colIndex; i++) {
+      if (i !== attesaPos) nonAttesaBefore++;
+    }
+    const startNum = nonAttesaBefore * 5 + 1;
+    
+    return { isAttesa: false, pedanaNum, startNum };
   };
 
   return (
     <div 
       onClick={onClose}
-      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto cursor-pointer"
+      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto cursor-pointer"
     >
-      <div 
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white text-black w-full max-w-[297mm] min-h-[210mm] p-6 shadow-2xl relative print:shadow-none print:max-w-none print:p-0 print:m-0 cursor-default animate-in zoom-in-95 duration-300"
-      >
-        {/* Close Button (Hidden on Print) */}
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center print:hidden shadow-xl z-50 group"
-          title="Chiudi anteprima"
-        >
-          <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform"></i>
-        </button>
-
-        {/* Print Button (Hidden on Print) */}
-        <button 
-          onClick={handlePrint}
-          className="absolute top-4 right-20 px-6 py-3 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center gap-2 print:hidden shadow-xl z-50"
-        >
-          <i className="fas fa-print text-sm"></i> Stampa Statino
-        </button>
-
-        {/* Header Section - Matching the image layout */}
-        <div className="flex justify-between items-start mb-2 px-2">
-          <div className="space-y-1 pt-4">
-            <p className="text-[10px] font-bold uppercase">Pedana N°: <span className="border-b border-black inline-block w-24 ml-1"></span></p>
-            <p className="text-[10px] font-bold uppercase">Serie N°: <span className="border-b border-black inline-block w-24 ml-1"></span></p>
-          </div>
-          
-          <div className="text-center flex-1">
-            <div className="flex items-center justify-center gap-4 mb-1">
-              <div className="w-12 h-12 border border-black flex items-center justify-center text-[6px] font-bold uppercase text-center">Logo<br/>FITAV</div>
-              <h1 className="text-xl font-black uppercase tracking-tighter">FEDERAZIONE ITALIANA TIRO A VOLO</h1>
-              <div className="w-12 h-12 border border-black flex items-center justify-center text-[6px] font-bold uppercase text-center">Logo<br/>Società</div>
-            </div>
-            <div className="h-[1px] bg-black w-full mb-2"></div>
-            <div className="flex justify-center gap-8">
-              <p className="text-[10px] font-bold uppercase">Gara: <span className="font-black border-b border-black min-w-[200px] inline-block">{team.competition_name || event?.name || '____________________'}</span></p>
-              <p className="text-[10px] font-bold uppercase">Società: <span className="font-black border-b border-black min-w-[200px] inline-block">{team.society || event?.location || '____________________'}</span></p>
-            </div>
-          </div>
-
-          <div className="pt-4 text-right">
-            <p className="text-[10px] font-bold uppercase">Arbitro: <span className="border-b border-black inline-block w-40 ml-1"></span></p>
-          </div>
+      <div className="flex flex-col gap-8 w-full max-w-[297mm] print:gap-0 print:max-w-none">
+        {/* Controls (Hidden on Print) */}
+        <div className="fixed top-6 right-6 flex gap-4 z-[2100] print:hidden">
+          <button 
+            onClick={handlePrint}
+            className="px-6 py-3 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center gap-2 shadow-2xl"
+          >
+            <i className="fas fa-print text-sm"></i> Stampa {teams.length > 1 ? 'Tutti' : 'Statino'}
+          </button>
+          <button 
+            onClick={onClose}
+            className="w-12 h-12 rounded-2xl bg-white text-slate-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-2xl group border border-slate-200"
+            title="Chiudi anteprima"
+          >
+            <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform"></i>
+          </button>
         </div>
 
-        {/* Scoring Table */}
-        <table className="w-full border-collapse border-[1.5px] border-black text-[9px]">
-          <thead>
-            <tr className="h-8">
-              <th className="border border-black p-1 w-6">N°</th>
-              <th className="border border-black p-1 w-40 text-left uppercase">Cognome e Nome</th>
-              <th className="border border-black p-1 w-8 uppercase">Cat.</th>
-              <th className="border border-black p-0" colSpan={30}>
-                <div className="border-b border-black p-0.5 uppercase font-black text-center">Piattelli</div>
-                <div className="grid grid-cols-6 h-4">
-                  <div className="border-r border-black uppercase font-bold text-[7px] flex items-center justify-center">Pedana 1</div>
-                  <div className="border-r border-black uppercase font-bold text-[7px] flex items-center justify-center">Pedana 2</div>
-                  <div className="border-r border-black uppercase font-bold text-[7px] flex items-center justify-center">Pedana 3</div>
-                  <div className="border-r border-black uppercase font-bold text-[7px] flex items-center justify-center">Pedana 4</div>
-                  <div className="border-r border-black uppercase font-bold text-[7px] flex items-center justify-center">Pedana 5</div>
-                  <div className="uppercase font-bold text-[7px] flex items-center justify-center">Attesa</div>
-                </div>
-              </th>
-              <th className="border border-black p-1 w-10 uppercase">Totale</th>
-              <th className="border border-black p-1 w-16 uppercase">Firma</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[0, 1, 2, 3, 4, 5].map((rowIndex) => {
-              const member = team.members[rowIndex];
-              const waitIndex = 5 - rowIndex;
-              
-              return (
-                <tr key={rowIndex} className="h-10">
-                  <td className="border border-black text-center font-bold">{rowIndex + 1}</td>
-                  <td className="border border-black px-2 font-black uppercase truncate text-[10px]">
-                    {member ? `${member.surname} ${member.name}` : ''}
-                  </td>
-                  <td className="border border-black text-center font-bold uppercase">
-                    {member?.category || ''}
-                  </td>
-                  
-                  {[0, 1, 2, 3, 4, 5].map((stationIndex) => {
-                    const isWait = stationIndex === waitIndex;
-                    
-                    if (isWait) {
-                      return (
-                        <td key={stationIndex} colSpan={5} className="border border-black bg-gray-100 text-center uppercase font-black text-[8px] h-10">
-                          Attesa
-                        </td>
-                      );
-                    }
+        {teams.map((team, tIdx) => (
+          <div 
+            key={tIdx}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-0 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page"
+          >
+            {/* Header Section */}
+            <div className="flex items-center justify-center mb-6 relative pt-2">
+              <div className="text-center">
+                <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none">FEDERAZIONE ITALIANA TIRO A VOLO</h1>
+              </div>
+            </div>
 
-                    // Calculate pedana number based on rotation
-                    let pedanaNum;
-                    if (stationIndex < waitIndex) {
-                      pedanaNum = rowIndex + stationIndex + 1;
-                    } else {
-                      pedanaNum = stationIndex - waitIndex;
-                    }
+            {/* Info Bar (Requested by user) */}
+            <div className="grid grid-cols-3 gap-4 mb-4 px-2 text-[10px] font-black uppercase">
+              <div className="flex items-end gap-2">
+                <span className="text-slate-500">Gara:</span>
+                <span className="flex-1 border-b border-black pb-0.5 truncate">{event?.name || team.competition_name || 'N.D.'}</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-slate-500">Data:</span>
+                <span className="flex-1 border-b border-black pb-0.5 text-center">{team.date || (event?.start_date ? new Date(event.start_date).toLocaleDateString('it-IT') : '____/____/________')}</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-slate-500">Campo:</span>
+                <span className="flex-1 border-b border-black pb-0.5 truncate">{team.society || event?.location || 'N.D.'}</span>
+              </div>
+            </div>
 
+            {/* Sub-header Bar (From official image) */}
+            <div className="grid grid-cols-3 gap-12 mb-4 px-2 text-[10px] font-bold uppercase">
+              <div className="flex items-end gap-2">
+                <span>Batteria: <span className="ml-2 font-black text-xs">{team.name}</span></span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span>Serie N°:</span>
+                <span className="flex-1 border-b border-black pb-0.5"></span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span>Arbitro:</span>
+                <span className="flex-1 border-b border-black pb-0.5"></span>
+              </div>
+            </div>
+
+            {/* Scoring Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border-[2px] border-black text-[9px]">
+                <thead>
+                  <tr className="h-10">
+                    <th className="border border-black w-8 uppercase font-black">N°</th>
+                    <th className="border border-black w-64 uppercase font-black text-left px-2">Cognome e Nome</th>
+                    <th className="border border-black w-10 uppercase font-black">Cat.</th>
+                    <th className="border border-black uppercase font-black text-center" colSpan={6}>Piattelli</th>
+                    <th className="border border-black w-16 uppercase font-black">Totale</th>
+                    <th className="border border-black w-24 uppercase font-black">Firma</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0, 1, 2, 3, 4, 5].map((rowIndex) => {
+                    const member = team.members[rowIndex];
                     return (
-                      <React.Fragment key={stationIndex}>
-                        <td colSpan={5} className="border border-black p-0 h-10">
-                          <div className="text-[5px] font-bold text-center border-b border-black bg-gray-50 py-0.5 uppercase leading-none">Pedana {pedanaNum}</div>
-                          <div className="grid grid-cols-5 h-full">
-                            {[1, 2, 3, 4, 5].map((targetNum) => {
-                              const absoluteTargetNum = (pedanaNum - 1) * 5 + targetNum;
-                              return (
-                                <div key={targetNum} className="border-r last:border-r-0 border-black flex items-center justify-center text-[7px] text-gray-400 relative h-full min-w-[14px]">
-                                  <span className="absolute top-0 left-0.5 text-[5px]">{absoluteTargetNum}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                      <tr key={rowIndex} className="h-14">
+                        <td className="border border-black text-center font-black text-xs">{rowIndex + 1}</td>
+                        <td className="border border-black px-2 font-black uppercase text-xs truncate">
+                          {member ? `${member.surname} ${member.name}` : ''}
                         </td>
-                      </React.Fragment>
+                        <td className="border border-black text-center font-black uppercase text-[10px]">{member?.category || ''}</td>
+                        
+                        {/* Piattelli Blocks */}
+                        {[0, 1, 2, 3, 4, 5].map((colIndex) => {
+                          const info = getCellInfo(rowIndex, colIndex);
+                          
+                          if (info.isAttesa) {
+                            return (
+                              <td key={colIndex} className="border border-black bg-slate-50 w-28">
+                                <div className="flex items-center justify-center h-full font-black uppercase text-slate-400 tracking-widest text-[10px]">
+                                  Attesa
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td key={colIndex} className="border border-black p-0 w-28">
+                              <div className="flex flex-col h-full">
+                                <div className="text-[7px] font-black text-center border-b border-black py-0.5 bg-slate-50 uppercase">
+                                  Pedana {info.pedanaNum}
+                                </div>
+                                <div className="grid grid-cols-5 flex-1">
+                                  {[0, 1, 2, 3, 4].map(targetIdx => (
+                                    <div key={targetIdx} className="border-r last:border-r-0 border-black flex flex-col">
+                                      <div className="text-[5px] font-bold text-center border-b border-black/20 py-0.5 bg-white">
+                                        {(info.startNum || 0) + targetIdx}
+                                      </div>
+                                      <div className="flex-1 min-h-[24px]"></div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        <td className="border border-black"></td>
+                        <td className="border border-black"></td>
+                      </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
 
-                  <td className="border border-black text-center font-black text-base"></td>
-                  <td className="border border-black"></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {/* Footer Info */}
-        <div className="mt-4 flex justify-between items-end px-2">
-          <div className="w-1/2">
-            <p className="text-[8px] font-bold uppercase">Note dell'Arbitro:</p>
-            <div className="border-b border-black h-4 mt-1"></div>
-            <div className="border-b border-black h-4 mt-1"></div>
+            {/* Footer Info */}
+            <div className="mt-6 flex justify-between items-end text-[9px] font-bold uppercase italic text-slate-400">
+              <p>Documento generato da Clay Tracker Pro</p>
+              <div className="flex gap-8">
+                <div className="flex items-end gap-2">
+                  <span>Direttore di Tiro:</span>
+                  <span className="w-40 border-b border-black"></span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="text-right pb-1">
-            <p className="text-[10px] font-bold uppercase">Firma dell'Arbitro: ___________________________</p>
-          </div>
-        </div>
+        ))}
 
         {/* Print Styles */}
         <style dangerouslySetInnerHTML={{ __html: `
@@ -175,8 +197,18 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ team, event, onClose 
               background: white !important;
               -webkit-print-color-adjust: exact;
             }
-            .no-scrollbar::-webkit-scrollbar {
-              display: none;
+            .fixed {
+              position: static !important;
+            }
+            .shadow-2xl {
+              box-shadow: none !important;
+            }
+            .border-double {
+              border-style: solid !important;
+              border-width: 2px !important;
+            }
+            .print\\:break-after-page {
+              break-after: page;
             }
           }
         `}} />
@@ -184,5 +216,6 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ team, event, onClose 
     </div>
   );
 };
+
 
 export default FitavScoreSheet;

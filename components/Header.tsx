@@ -82,18 +82,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const isAnyMenuOpen = isProfileOpen || isNotificationOpen;
 
   const menuItems = user?.role === 'society' ? [
-    ...(hasSocietaAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
-    { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
-    { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
-    { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
-  ] : [
-    { id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' },
-    { id: 'dashboard', label: 'Report Gare', icon: 'fa-chart-pie' },
-    { id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' },
+    { id: 'gare', label: 'Gare', icon: 'fa-calendar-alt' },
+    { id: 'la-mia-societa', label: 'La mia Società', icon: 'fa-building' },
+    { id: 'societies', label: 'Società TAV', icon: 'fa-shield-alt' },
+  ] : user?.role === 'admin' ? [
+    { id: 'le-tue-gare', label: 'Le Tue Gare', icon: 'fa-list-ul' },
     { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
-    { id: 'events', label: 'Gare', icon: 'fa-calendar-alt' },
-    ...(hasTiratoriAccess ? [{ id: 'event-results', label: 'Risultati Gare', icon: 'fa-trophy' }] : []),
-    { id: 'societies', label: 'Società TAV', icon: 'fa-building' },
+    { id: 'gare', label: 'Gare', icon: 'fa-calendar-alt' },
+    { id: 'la-mia-societa', label: 'La mia Società', icon: 'fa-building' },
+    { id: 'societies', label: 'Società TAV', icon: 'fa-shield-alt' },
+  ] : [
+    { id: 'le-tue-gare', label: 'Le Tue Gare', icon: 'fa-list-ul' },
+    { id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' },
+    { id: 'gare', label: 'Gare', icon: 'fa-calendar-alt' },
+    { id: 'societies', label: 'Società TAV', icon: 'fa-shield-alt' },
   ];
 
   return (
@@ -132,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               </button>
             </div>
             <button 
-              onClick={() => onNavigate(user?.role === 'society' ? 'admin' : 'history')}
+              onClick={() => onNavigate(user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare')}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity active:scale-95"
             >
               <div className="bg-orange-600 p-2 rounded-lg shadow-inner">
@@ -189,7 +191,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 </div>
                 
                 <button 
-                  onClick={() => { onNavigate('admin', 'profile'); setIsProfileOpen(false); }}
+                  onClick={() => { onNavigate('profile'); setIsProfileOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                 >
                   <i className="fas fa-user-circle w-5 text-slate-500"></i>
@@ -200,23 +202,23 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   <div className="py-1">
                     <div className="px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">Gestione</div>
                     <button 
-                      onClick={() => { onNavigate('events', 'managed'); setIsProfileOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+                      onClick={() => { onNavigate('admin-events'); setIsProfileOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-orange-600 hover:text-white transition-colors"
                     >
-                      <i className="fas fa-tasks w-5 text-indigo-500 group-hover:text-white"></i>
+                      <i className="fas fa-calendar-alt w-5 text-orange-500 group-hover:text-white"></i>
                       Gare gestite
                     </button>
                     {user?.role === 'admin' && (
                       <>
                         <button 
-                          onClick={() => { onNavigate('admin', 'event-control'); setIsProfileOpen(false); }}
+                          onClick={() => { onNavigate('admin-control'); setIsProfileOpen(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-orange-600 hover:text-white transition-colors"
                         >
                           <i className="fas fa-tasks w-5 text-orange-500 group-hover:text-white"></i>
                           Attivazione gare
                         </button>
                         <button 
-                          onClick={() => { onNavigate('admin', 'users'); setIsProfileOpen(false); }}
+                          onClick={() => { onNavigate('la-mia-societa', 'users'); setIsProfileOpen(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                         >
                           <i className="fas fa-users w-5 text-slate-500"></i>
@@ -225,7 +227,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                       </>
                     )}
                     <button 
-                      onClick={() => { onNavigate('admin', 'settings'); setIsProfileOpen(false); }}
+                      onClick={() => { onNavigate('settings'); setIsProfileOpen(false); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                     >
                       <i className="fas fa-cog w-5 text-slate-500"></i>

@@ -16,6 +16,10 @@ interface HistoryListProps {
   user?: any;
   token?: string;
   triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  viewModeProp?: 'list' | 'calendar';
+  showFiltersProp?: boolean;
+  onViewModeChange?: (mode: 'list' | 'calendar') => void;
+  onShowFiltersChange?: (show: boolean) => void;
 }
 
 const HistoryList: React.FC<HistoryListProps> = ({ 
@@ -29,9 +33,19 @@ const HistoryList: React.FC<HistoryListProps> = ({
   triggerConfirm, 
   user,
   token,
-  triggerToast
+  triggerToast,
+  viewModeProp = 'list',
+  showFiltersProp = false,
+  onViewModeChange,
+  onShowFiltersChange
 }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar'>('list');
+  const viewMode = viewModeProp || internalViewMode;
+  const setViewMode = onViewModeChange || setInternalViewMode;
+
+  const [internalShowFilters, setInternalShowFilters] = useState(false);
+  const showFilters = showFiltersProp || internalShowFilters;
+  const setShowFilters = onShowFiltersChange || setInternalShowFilters;
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -48,7 +62,6 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const [filterLocation, setFilterLocation] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'CONCLUDED' | 'UPCOMING'>('ALL');
   const [sortOrder, setSortOrder] = useState<'DESC' | 'ASC'>('ASC');
-  const [showFilters, setShowFilters] = useState(false);
 
   // Estrazione opzioni filtri dai dati reali
   const uniqueLocations = useMemo(() => {
@@ -100,7 +113,24 @@ const HistoryList: React.FC<HistoryListProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return [...filteredCompetitions].sort((a, b) => {
+    const upcoming = filteredCompetitions.filter(c => {
+      const start = new Date(c.date);
+      start.setHours(0, 0, 0, 0);
+      const end = c.endDate ? new Date(c.endDate) : start;
+      end.setHours(0, 0, 0, 0);
+      return end >= today;
+    });
+
+    const past = filteredCompetitions.filter(c => {
+      const start = new Date(c.date);
+      start.setHours(0, 0, 0, 0);
+      const end = c.endDate ? new Date(c.endDate) : start;
+      end.setHours(0, 0, 0, 0);
+      return end < today;
+    });
+
+    // Upcoming: closest to today first (ASC), with priority to ongoing
+    upcoming.sort((a, b) => {
       const startA = new Date(a.date);
       startA.setHours(0, 0, 0, 0);
       const endA = a.endDate ? new Date(a.endDate) : startA;
@@ -116,16 +146,21 @@ const HistoryList: React.FC<HistoryListProps> = ({
       if (isOngoingA && !isOngoingB) return -1;
       if (!isOngoingA && isOngoingB) return 1;
 
+      // Then by next upcoming highlight
       const isNextA = a.id === nextUpcomingCompId;
       const isNextB = b.id === nextUpcomingCompId;
-
       if (isNextA && !isNextB) return -1;
       if (!isNextA && isNextB) return 1;
 
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      return sortOrder === 'DESC' ? timeB - timeA : timeA - timeB;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
+
+    // Past: most recent first (DESC)
+    past.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // Respect manual sort order if user toggles it (reverses the entire smart list)
+    const result = [...upcoming, ...past];
+    return sortOrder === 'DESC' ? result.reverse() : result;
   }, [filteredCompetitions, sortOrder, nextUpcomingCompId]);
 
   // Helper per verificare se una data è compresa in un intervallo
@@ -673,43 +708,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const hasActiveFilters = filterDiscipline !== 'ALL' || filterLocation !== 'ALL';
 
   return (
-    <div className="space-y-2">
-      <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><i className="fas fa-list-ul text-orange-600"></i>Cronologia Attività</h2>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button 
-              onClick={() => setShowFilters(!showFilters)} 
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC' ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
-              title="Filtri"
-            >
-              <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
-              {(hasActiveFilters || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
-                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-              )}
-            </button>
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
-              <button 
-                onClick={() => setViewMode('list')} 
-                className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                title="Elenco"
-              >
-                <i className="fas fa-list text-sm"></i>
-                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">Elenco</span>
-              </button>
-              <button 
-                onClick={() => setViewMode('calendar')} 
-                className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                title="Calendario"
-              >
-                <i className="fas fa-calendar-alt text-sm"></i>
-                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">Calendario</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-4">
       {showFilters && (
         <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-800 flex flex-wrap items-end gap-3 mt-4 animate-in fade-in slide-in-from-top-2">
           <div className="flex-1 min-w-[140px] space-y-1.5">

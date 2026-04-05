@@ -16,7 +16,7 @@ import cron from 'node-cron';
 // import { createServer as createViteServer } from 'vite'; // Removed top-level import
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // 1. IMMEDIATE HEALTH CHECK (Must be first)
 app.get('/ping', (req, res) => res.send('pong'));
@@ -1244,6 +1244,37 @@ app.post('/api/admin/notification-settings', authenticateToken, requireAdmin, as
   }
 });
 
+// Society Stats API
+app.get('/api/society/stats', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  try {
+    const isSociety = req.user.role === 'society';
+    const societyName = req.user.society;
+
+    let userQuery = 'SELECT COUNT(*) FROM users WHERE role = \'user\'';
+    let teamQuery = 'SELECT COUNT(*) FROM teams';
+    const params: any[] = [];
+
+    if (isSociety && societyName) {
+      userQuery += ' AND society = $1';
+      teamQuery += ' WHERE society = $1';
+      params.push(societyName);
+    }
+
+    const [userCount, teamCount] = await Promise.all([
+      pool.query(userQuery, params),
+      pool.query(teamQuery, params)
+    ]);
+
+    res.json({
+      users: parseInt(userCount.rows[0].count),
+      teams: parseInt(teamCount.rows[0].count)
+    });
+  } catch (error) {
+    console.error('Error fetching society stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Dashboard Stats API
 app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (req: any, res) => {
   try {
@@ -1375,6 +1406,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const limit = parseInt(req.query.limit as string);
     const search = req.query.search as string;
     const role = req.query.role as string;
+    const excludeRole = req.query.excludeRole as string;
     
     let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
@@ -1390,10 +1422,21 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
       whereClauses.push("role = $" + (params.length + 1));
       params.push(role);
     }
+
+    if (excludeRole) {
+      whereClauses.push("role != $" + (params.length + 1));
+      params.push(excludeRole);
+    }
     
     if (search) {
       const searchParam = "%" + search.toLowerCase() + "%";
-      whereClauses.push("(LOWER(name) LIKE $" + (params.length + 1) + " OR LOWER(surname) LIKE $" + (params.length + 1) + " OR LOWER(email) LIKE $" + (params.length + 1) + " OR LOWER(society) LIKE $" + (params.length + 1) + " OR LOWER(shooter_code) LIKE $" + (params.length + 1) + ")");
+      whereClauses.push("(LOWER(name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(name || ' ' || surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(surname || ' ' || name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(email) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(society) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(shooter_code) LIKE $" + (params.length + 1) + ")");
       params.push(searchParam);
     }
     
@@ -1606,6 +1649,53 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
 
 app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
+    const search = req.query.search as string;
+    const society = req.query.society as string;
+    const discipline = req.query.discipline as string;
+    const location = req.query.location as string;
+    const year = req.query.year as string;
+
+    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
+    let params: any[] = [];
+
+    if (req.user.role === 'society') {
+      whereClauses.push("u.society = $" + (params.length + 1));
+      params.push(req.user.society);
+    }
+
+    if (search) {
+      const searchParam = "%" + search.toLowerCase() + "%";
+      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.name || ' ' || u.surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.surname || ' ' || u.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(c.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
+      params.push(searchParam);
+    }
+
+    if (society) {
+      whereClauses.push("u.society = $" + (params.length + 1));
+      params.push(society);
+    }
+
+    if (discipline) {
+      whereClauses.push("c.discipline = $" + (params.length + 1));
+      params.push(discipline);
+    }
+
+    if (location) {
+      whereClauses.push("c.location = $" + (params.length + 1));
+      params.push(location);
+    }
+
+    if (year) {
+      whereClauses.push("EXTRACT(YEAR FROM c.date::TIMESTAMP) = $" + (params.length + 1));
+      params.push(parseInt(year));
+    }
+
+    const whereString = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
+
     let query = `
       SELECT 
         u.id as user_id, 
@@ -1620,16 +1710,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
         AVG(c.averageperseries) as avg_score
       FROM users u
       JOIN competitions c ON u.id = c.user_id
-      WHERE c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0
-    `;
-    let params: any[] = [];
-
-    if (req.user.role === 'society') {
-      query += " AND u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' ";
-      params.push(req.user.society);
-    }
-
-    query += `
+      ${whereString}
       GROUP BY u.id, u.name, u.surname, u.category, u.qualification, u.society, u.shooter_code, c.discipline
       ORDER BY u.surname, u.name, c.discipline
     `;
@@ -1657,7 +1738,7 @@ app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, a
 
     const disciplinesQuery = `SELECT DISTINCT discipline FROM competitions c ${whereClause} ORDER BY discipline`;
     const locationsQuery = `SELECT DISTINCT location FROM competitions c ${whereClause} ORDER BY location`;
-    const yearsQuery = `SELECT DISTINCT EXTRACT(YEAR FROM date) as year FROM competitions c ${whereClause} ORDER BY year DESC`;
+    const yearsQuery = `SELECT DISTINCT EXTRACT(YEAR FROM date::TIMESTAMP) as year FROM competitions c ${whereClause} ORDER BY year DESC`;
 
     const [disciplinesRes, locationsRes, yearsRes] = await Promise.all([
       pool.query(disciplinesQuery, params),
@@ -1695,7 +1776,12 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
 
     if (search) {
       const searchParam = "%" + search.toLowerCase() + "%";
-      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + " OR LOWER(u.surname) LIKE $" + (params.length + 1) + " OR LOWER(c.name) LIKE $" + (params.length + 1) + " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
+      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.name || ' ' || u.surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.surname || ' ' || u.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(c.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
       params.push(searchParam);
     }
 
@@ -1715,7 +1801,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     }
 
     if (year) {
-      whereClauses.push("EXTRACT(YEAR FROM c.date) = $" + (params.length + 1));
+      whereClauses.push("EXTRACT(YEAR FROM c.date::TIMESTAMP) = $" + (params.length + 1));
       params.push(parseInt(year));
     }
 
@@ -1794,7 +1880,12 @@ app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrS
 
     if (search) {
       const searchParam = "%" + search.toLowerCase() + "%";
-      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + " OR LOWER(u.surname) LIKE $" + (params.length + 1) + " OR LOWER(c.name) LIKE $" + (params.length + 1) + " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
+      whereClauses.push("(LOWER(u.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.name || ' ' || u.surname) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(u.surname || ' ' || u.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(c.name) LIKE $" + (params.length + 1) + 
+                        " OR LOWER(c.location) LIKE $" + (params.length + 1) + ")");
       params.push(searchParam);
     }
 
@@ -1814,7 +1905,7 @@ app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrS
     }
 
     if (year) {
-      whereClauses.push("EXTRACT(YEAR FROM c.date) = $" + (params.length + 1));
+      whereClauses.push("EXTRACT(YEAR FROM c.date::TIMESTAMP) = $" + (params.length + 1));
       params.push(parseInt(year));
     }
 
@@ -4246,7 +4337,7 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
-  const buildPath = path.resolve(process.cwd(), 'dist');
+  const buildPath = path.resolve(process.cwd(), 'build');
 
   if (!isProd) {
     try {
@@ -4281,7 +4372,7 @@ async function setupVite(app: any) {
 }
 
 function serveStatic(app: any) {
-  const buildPath = path.resolve(process.cwd(), 'dist');
+  const buildPath = path.resolve(process.cwd(), 'build');
   app.use(express.static(buildPath));
   app.use((req: any, res: any) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));

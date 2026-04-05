@@ -16,7 +16,11 @@ interface AICoachPageProps {
   user: any;
 }
 
-const AICoachPage: React.FC<AICoachPageProps> = ({ competitions, cartridges, user }) => {
+const AICoachPage: React.FC<AICoachPageProps> = ({ 
+  competitions = [], 
+  cartridges = [], 
+  user 
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

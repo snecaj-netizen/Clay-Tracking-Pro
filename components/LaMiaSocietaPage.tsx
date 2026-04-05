@@ -1,0 +1,155 @@
+import React, { useState, useEffect } from 'react';
+import AdminPanel from './AdminPanel';
+
+interface LaMiaSocietaPageProps {
+  user: any;
+  token: string;
+  competitions: any[];
+  cartridges: any[];
+  cartridgeTypes: any[];
+  societies: any[];
+  triggerConfirm: any;
+  triggerToast: any;
+  onEditCompetition: any;
+  onDeleteCompetition: any;
+  handleImport: any;
+  handleCloseSocietyDetail: any;
+  handleUserUpdate: any;
+  setShowTour: any;
+  appSettings: any;
+  fetchSettings: any;
+  initialTab?: 'results' | 'users' | 'team' | 'halloffame';
+}
+
+const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
+  user,
+  token,
+  competitions,
+  cartridges,
+  cartridgeTypes,
+  societies,
+  triggerConfirm,
+  triggerToast,
+  onEditCompetition,
+  onDeleteCompetition,
+  handleImport,
+  handleCloseSocietyDetail,
+  handleUserUpdate,
+  setShowTour,
+  appSettings,
+  fetchSettings,
+  initialTab
+}) => {
+  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame'>(initialTab || 'results');
+  const [stats, setStats] = useState({ users: 0, teams: 0 });
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/society/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStats({ users: data.users, teams: data.teams });
+        }
+      } catch (err) {
+        console.error('Error fetching society stats:', err);
+      }
+    };
+
+    if (token) fetchStats();
+  }, [token]);
+
+  return (
+    <div className="space-y-4">
+      {/* Sticky Header Section */}
+      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+            <i className="fas fa-building text-orange-600"></i>
+            La mia Società
+          </h2>
+          <div className="flex gap-2">
+            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Tiratori</p>
+              <p className="text-xs font-black text-white">{stats.users}</p>
+            </div>
+            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Squadre</p>
+              <p className="text-xs font-black text-white">{stats.teams}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+          >
+            RISULTATI GARE
+          </button>
+          <button
+            onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+          >
+            TIRATORI
+          </button>
+          <button
+            onClick={() => { setActiveTab('team'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+          >
+            SQUADRE
+          </button>
+          <button
+            onClick={() => { setActiveTab('halloffame'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+          >
+            HALL OF FAME
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="pt-2">
+        <AdminPanel 
+          user={user}
+          token={token}
+          competitions={competitions}
+          cartridges={cartridges}
+          cartridgeTypes={cartridgeTypes}
+          clientId=""
+          onClientIdChange={() => {}}
+          onImport={handleImport}
+          isDriveConnected={false}
+          onConnectDrive={() => {}}
+          onDisconnectDrive={() => {}}
+          onSaveDrive={() => {}}
+          onLoadDrive={() => {}}
+          syncStatus="idle"
+          lastSync={null}
+          triggerConfirm={triggerConfirm}
+          onEditCompetition={onEditCompetition}
+          onDeleteCompetition={onDeleteCompetition}
+          initialTab={activeTab}
+          onCloseSocietyDetail={handleCloseSocietyDetail}
+          onUserUpdate={handleUserUpdate}
+          triggerToast={triggerToast}
+          societies={societies}
+          hideTabs={true}
+          onReplayTour={setShowTour}
+          appSettings={appSettings}
+          onSettingsUpdate={fetchSettings}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default LaMiaSocietaPage;

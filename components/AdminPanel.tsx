@@ -97,6 +97,7 @@ interface AdminPanelProps {
   onReplayTour?: () => void;
   appSettings?: any;
   onSettingsUpdate?: () => void;
+  initialEventViewMode?: 'list' | 'calendar' | 'results' | 'managed';
 }
 
 // User Search Input Component to avoid re-rendering the whole AdminPanel on every keystroke
@@ -146,7 +147,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   user: currentUser, token, competitions, cartridges, cartridgeTypes, societies: initialSocieties, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm, onEditCompetition, onDeleteCompetition, onNavigate, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, triggerToast, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour,
-  appSettings, onSettingsUpdate
+  appSettings, onSettingsUpdate, initialEventViewMode
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
@@ -293,22 +294,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [resultsPage, setResultsPage] = useState(1);
   const [resultsPerPage] = useState(20);
   const [totalResults, setTotalResults] = useState(0);
-  const resultsPageRef = React.useRef(resultsPage);
-  const resultsPerPageRef = React.useRef(resultsPerPage);
-  
-  const filterShooterRef = React.useRef(filterShooter);
-  const filterSocietyRef = React.useRef(filterSociety);
-  const filterDisciplineRef = React.useRef(filterDiscipline);
-  const filterLocationRef = React.useRef(filterLocation);
-  const filterYearRef = React.useRef(filterYear);
-
-  useEffect(() => { resultsPageRef.current = resultsPage; }, [resultsPage]);
-  useEffect(() => { resultsPerPageRef.current = resultsPerPage; }, [resultsPerPage]);
-  useEffect(() => { filterShooterRef.current = filterShooter; }, [filterShooter]);
-  useEffect(() => { filterSocietyRef.current = filterSociety; }, [filterSociety]);
-  useEffect(() => { filterDisciplineRef.current = filterDiscipline; }, [filterDiscipline]);
-  useEffect(() => { filterLocationRef.current = filterLocation; }, [filterLocation]);
-  useEffect(() => { filterYearRef.current = filterYear; }, [filterYear]);
 
   const [selectedShooterResults, setSelectedShooterResults] = useState<any | null>(null);
   const [shareData, setShareData] = useState<{ comp: Competition, user: User } | null>(null);
@@ -566,7 +551,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         page: usersPageRef.current.toString(),
         limit: usersPerPageRef.current.toString(),
         search: userSearchTermRef.current,
-        role: filterRoleRef.current
+        role: filterRoleRef.current,
+        excludeRole: 'society'
       });
       
       const res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
@@ -605,7 +591,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
     try {
       // Fetch a large number of users to ensure we have all shooters for team selection
-      const res = await fetch(`/api/admin/users?limit=2000`, {
+      // Exclude society users as they are not shooters
+      const res = await fetch(`/api/admin/users?limit=2000&excludeRole=society`, {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
@@ -623,7 +610,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!isBackground) setLoading(true);
     else setBackgroundLoading(true);
     try {
-      const res = await fetch('/api/admin/team-stats', {
+      const queryParams = new URLSearchParams({
+        search: filterShooter,
+        society: filterSociety,
+        discipline: filterDiscipline,
+        location: filterLocation,
+        year: filterYear
+      });
+      
+      const res = await fetch(`/api/admin/team-stats?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         signal
       });
@@ -646,7 +641,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!isBackground) setLoading(false);
       else setBackgroundLoading(false);
     }
-  }, [currentUser?.role, token]);
+  }, [currentUser?.role, token, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
 
   const fetchAllResults = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
@@ -654,13 +649,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     else setBackgroundLoading(true);
     try {
       const queryParams = new URLSearchParams({
-        page: resultsPageRef.current.toString(),
-        limit: resultsPerPageRef.current.toString(),
-        search: filterShooterRef.current,
-        society: filterSocietyRef.current,
-        discipline: filterDisciplineRef.current,
-        location: filterLocationRef.current,
-        year: filterYearRef.current
+        page: resultsPage.toString(),
+        limit: resultsPerPage.toString(),
+        search: filterShooter,
+        society: filterSociety,
+        discipline: filterDiscipline,
+        location: filterLocation,
+        year: filterYear
       });
       
       const res = await fetch(`/api/admin/all-results?${queryParams.toString()}`, {
@@ -693,7 +688,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!isBackground) setLoading(false);
       else setBackgroundLoading(false);
     }
-  }, [currentUser?.role, token]);
+  }, [currentUser?.role, token, resultsPage, resultsPerPage, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
 
   const fetchTeams = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
@@ -773,18 +768,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       fetchTeamStats(controller.signal, activeTab === 'results');
       return () => controller.abort();
     }
-  }, [activeTab, currentUser?.role, fetchTeamStats]);
+  }, [activeTab, currentUser?.role, fetchTeamStats, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
 
   useEffect(() => {
-    if ((activeTab === 'users' || activeTab === 'team') && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
+    if ((activeTab === 'users' || activeTab === 'team' || activeTab === 'results') && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
       const controller = new AbortController();
-      fetchUsers(controller.signal);
-      if (activeTab === 'team') {
+      if (activeTab === 'users' || activeTab === 'team') {
+        fetchUsers(controller.signal);
+      }
+      if (activeTab === 'team' || activeTab === 'results') {
         fetchAllUsers(controller.signal);
       }
       const interval = setInterval(() => {
-        fetchUsers(controller.signal, true);
-        if (activeTab === 'team') {
+        if (activeTab === 'users' || activeTab === 'team') {
+          fetchUsers(controller.signal, true);
+        }
+        if (activeTab === 'team' || activeTab === 'results') {
           fetchAllUsers(controller.signal);
         }
       }, 30000); // Refresh every 30 seconds
@@ -1802,7 +1801,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="flex items-center gap-2 min-w-max">
             {currentUser?.role === 'admin' && (
               <button 
-                onClick={() => setActiveTab('event-control')}
+                onClick={() => { setActiveTab('event-control'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'event-control' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
               >
                 <i className="fas fa-tasks"></i> Attivazione
@@ -1810,7 +1809,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
-                onClick={() => onNavigate ? onNavigate('event-results') : setActiveTab('event-results')}
+                onClick={() => { onNavigate ? onNavigate('event-results') : setActiveTab('event-results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'event-results' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
               >
                 <i className="fas fa-trophy"></i> Classifiche
@@ -1818,7 +1817,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
-                onClick={() => setActiveTab('results')}
+                onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'results' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
               >
                 <i className="fas fa-history"></i> Risultati
@@ -1826,7 +1825,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
-                onClick={() => setActiveTab('events')}
+                onClick={() => { setActiveTab('events'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'events' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
               >
                 <i className="fas fa-calendar-alt"></i> {currentUser?.role === 'society' ? 'Le tue Gare' : 'Gare'}
@@ -1835,19 +1834,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <>
                 <button 
-                  onClick={() => setActiveTab('halloffame')}
+                  onClick={() => { setActiveTab('halloffame'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'halloffame' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
                 >
                   <i className="fas fa-trophy"></i> HoF
                 </button>
                 <button 
-                  onClick={() => setActiveTab('team')}
+                  onClick={() => { setActiveTab('team'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'team' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
                 >
                   <i className="fas fa-users-cog"></i> Squadre
                 </button>
                 <button 
-                  onClick={() => setActiveTab('users')}
+                  onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'users' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
                 >
                   <i className="fas fa-users"></i> {currentUser?.role === 'society' ? 'Tiratori' : 'Utenti'}
@@ -1855,13 +1854,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </>
             )}
             <button 
-              onClick={() => setActiveTab('profile')}
+              onClick={() => { setActiveTab('profile'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'profile' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
             >
               <i className="fas fa-user"></i> Profilo
             </button>
             <button 
-              onClick={() => setActiveTab('settings')}
+              onClick={() => { setActiveTab('settings'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeTab === 'settings' ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
             >
               <i className="fas fa-cog"></i> {currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup'}
@@ -1875,7 +1874,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 p-1 rounded-2xl border border-slate-700 w-full shadow-xl flex-wrap">
              {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
-                onClick={() => onNavigate ? onNavigate('event-results') : setActiveTab('event-results')}
+                onClick={() => { onNavigate ? onNavigate('event-results') : setActiveTab('event-results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Classifiche</span><span className="md:hidden">Class.</span>
@@ -1883,7 +1882,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && hasSocietaAccess)) && (
               <button 
-                onClick={() => setActiveTab('results')}
+                onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-history mr-1 lg:mr-2"></i> <span className="hidden md:inline">Risultati Individuali</span><span className="md:hidden">Ris. Ind.</span>
@@ -1891,7 +1890,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {currentUser?.role === 'admin' && (
               <button 
-                onClick={() => setActiveTab('event-control')}
+                onClick={() => { setActiveTab('event-control'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'event-control' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-tasks mr-1 lg:mr-2"></i> <span className="hidden md:inline">Attivazione gare</span><span className="md:hidden">Attiv.</span>
@@ -1899,7 +1898,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
-                onClick={() => setActiveTab('events')}
+                onClick={() => { setActiveTab('events'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'events' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-calendar-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'Gestione tue Gare' : (currentUser?.role === 'admin' ? 'Gare gestite' : 'Gare')}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Gestione tue Gare' : (currentUser?.role === 'admin' ? 'Gare gest.' : 'Gare')}</span>
@@ -1907,7 +1906,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
-                onClick={() => setActiveTab('halloffame')}
+                onClick={() => { setActiveTab('halloffame'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-trophy mr-1 lg:mr-2"></i> <span className="hidden md:inline">Hall of Fame</span><span className="md:hidden">HoF</span>
@@ -1915,7 +1914,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
-                onClick={() => setActiveTab('team')}
+                onClick={() => { setActiveTab('team'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-users-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">Squadre</span><span className="md:hidden">Sq.</span>
@@ -1923,20 +1922,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <button 
-                onClick={() => setActiveTab('users')}
+                onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? 'I tuoi Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Utenti')}</span><span className="md:hidden">{currentUser?.role === 'society' ? 'Tir.' : (currentUser?.role === 'admin' ? 'Gest. Ut.' : 'Ut.')}</span>
               </button>
             )}
             <button 
-              onClick={() => setActiveTab('profile')}
+              onClick={() => { setActiveTab('profile'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
               <i className="fas fa-user mr-1 lg:mr-2"></i> <span className="hidden md:inline">Profilo</span><span className="md:hidden">Prof.</span>
             </button>
             <button 
-              onClick={() => setActiveTab('settings')}
+              onClick={() => { setActiveTab('settings'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs lg:text-sm font-black uppercase transition-all ${activeTab === 'settings' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
               <i className="fas fa-cog mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'admin' ? 'Impostazioni' : 'Backup'}</span><span className="md:hidden">{currentUser?.role === 'admin' ? 'Imp.' : 'Bk.'}</span>
@@ -1949,7 +1948,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <EventsManager 
             user={currentUser} 
             token={token} 
-            initialViewMode="results"
+            initialViewMode={initialEventViewMode || "results"}
             triggerConfirm={triggerConfirm}
             triggerToast={triggerToast}
             societies={societies}
@@ -2677,34 +2676,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       ) : activeTab === 'societies' ? (
         <div className="space-y-2">
-          <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-4 border-b border-slate-900/50 shadow-2xl transition-all">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                  <i className="fas fa-building text-orange-500"></i> {currentUser?.role === 'society' ? 'Elenco Società' : 'Gestione Società (TAV)'}
+          <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all">
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <i className="fas fa-shield-alt text-orange-600"></i>
+                  Società TAV
                 </h2>
-                {currentUser?.role === 'admin' && !showSocietyForm && (
-                  <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-                    <button 
-                      onClick={handleExportSocietiesExcel}
-                      className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
-                      title="Esporta"
-                    >
-                      <i className="fas fa-file-excel"></i>
-                      <span>Esporta</span>
-                    </button>
-                    <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
-                      <i className="fas fa-sync-alt"></i>
-                      <span>Aggiorna Codici</span>
-                      <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
-                    </label>
-                    <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
-                      <i className="fas fa-file-import"></i>
-                      <span>Importa</span>
-                      <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
-                    </label>
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
+                    <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Società</p>
+                    <p className="text-xs font-black text-white">{societies.length} <span className="text-[8px] text-slate-500 uppercase">Tot</span></p>
                   </div>
-                )}
+                  {currentUser?.role === 'admin' && !showSocietyForm && (
+                    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                      <button 
+                        onClick={handleExportSocietiesExcel}
+                        className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
+                        title="Esporta"
+                      >
+                        <i className="fas fa-file-excel"></i>
+                        <span>Esporta</span>
+                      </button>
+                      <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
+                        <i className="fas fa-sync-alt"></i>
+                        <span>Aggiorna Codici</span>
+                        <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
+                      </label>
+                      <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
+                        <i className="fas fa-file-import"></i>
+                        <span>Importa</span>
+                        <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {!showSocietyForm && (
@@ -2730,13 +2736,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
                     <button
-                      onClick={() => setSocietyViewMode('list')}
+                      onClick={() => { setSocietyViewMode('list'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
                     >
                       <i className="fas fa-list mr-2"></i> Lista
                     </button>
                     <button
-                      onClick={() => setSocietyViewMode('map')}
+                      onClick={() => { setSocietyViewMode('map'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
                     >
                       <i className="fas fa-map-marked-alt mr-2"></i> Mappa
@@ -3217,8 +3223,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300">
-                <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300">
+                <div className="sm:col-span-1 lg:col-span-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
                   <ShooterSearch 
                     value={filterShooter}
@@ -3227,16 +3233,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     placeholder="Tutti"
                   />
                 </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-                <SocietySearch 
-                  value={filterSociety}
-                  onChange={handleFilterChange(setFilterSociety)}
-                  societies={societies}
-                  placeholder="Tutte"
-                />
-              </div>
-              <div>
+              {currentUser?.role === 'admin' && (
+                <div className="sm:col-span-1 lg:col-span-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
+                  <SocietySearch 
+                    value={filterSociety}
+                    onChange={handleFilterChange(setFilterSociety)}
+                    societies={societies}
+                    placeholder="Tutte"
+                  />
+                </div>
+              )}
+              <div className="sm:col-span-1 lg:col-span-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
                 <div className="relative group">
                   <select 
@@ -3252,7 +3260,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
-              <div>
+              <div className="sm:col-span-1 lg:col-span-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo</label>
                 <div className="relative group">
                   <select 
@@ -3268,7 +3276,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
-              <div>
+              <div className="sm:col-span-1 lg:col-span-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Anno</label>
                 <div className="relative group">
                   <select 
@@ -3284,7 +3292,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="sm:col-span-5 flex justify-end">
+              <div className="sm:col-span-2 lg:col-span-5 flex justify-end">
                 <button 
                   onClick={() => { setFilterShooter(''); setFilterSociety(''); setFilterDiscipline(''); setFilterLocation(''); setFilterYear(''); setResultsPage(1); }}
                   className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
@@ -3583,6 +3591,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 >
                                   {r.name}
                                 </h4>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Società TAV:</span>
+                                  <span className="text-[9px] font-bold text-orange-500/80 uppercase tracking-widest truncate">{r.location || 'Campo N.D.'}</span>
+                                </div>
                               </div>
                               
                               <div className="flex items-center justify-between sm:justify-end gap-6 relative z-10">
@@ -4558,7 +4570,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
       {selectedTeamForSheet && createPortal(
         <FitavScoreSheet 
-          team={selectedTeamForSheet}
+          teams={[selectedTeamForSheet]}
           event={events.find(ev => String(ev.id) === String(selectedTeamForSheet.event_id))}
           onClose={() => setSelectedTeamForSheet(null)}
         />,

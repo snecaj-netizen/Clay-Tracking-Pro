@@ -55,7 +55,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     fromMemberIndex: number;
     toSquadIndex: number;
   } | null>(null);
-  const [selectedSquadForSheet, setSelectedSquadForSheet] = useState<any>(null);
+  const [selectedSquadsForSheet, setSelectedSquadsForSheet] = useState<any[] | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -593,6 +593,28 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                     <Download className="w-3.5 h-3.5" />
                     Stampa
                   </button>
+                  <button
+                    onClick={() => {
+                      const allTeamsData = squads.map(s => ({
+                        name: `${s.squad_number}`,
+                        members: s.members.map(m => ({
+                          id: String(m.registration_id),
+                          name: m.first_name,
+                          surname: m.last_name,
+                          category: [m.category, m.qualification].filter(Boolean).join(' - ')
+                        })),
+                        competition_name: event.name,
+                        society: event.location,
+                        date: event.start_date
+                      }));
+                      setSelectedSquadsForSheet(allTeamsData);
+                    }}
+                    disabled={squads.length === 0}
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Stampa Tutti Statini
+                  </button>
                 </div>
               </div>
               
@@ -709,7 +731,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       <button 
                         onClick={() => {
                           const teamData = {
-                            name: `Batteria ${squad.squad_number}`,
+                            name: `${squad.squad_number}`,
                             members: squad.members.map(m => ({
                               id: String(m.registration_id),
                               name: m.first_name,
@@ -720,7 +742,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             society: event.location,
                             date: event.start_date
                           };
-                          setSelectedSquadForSheet(teamData);
+                          setSelectedSquadsForSheet([teamData]);
                         }}
                         className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
                         title="Stampa Statino FITAV"
@@ -959,11 +981,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           </div>
         </div>
       )}
-      {selectedSquadForSheet && (
+      {selectedSquadsForSheet && (
         <FitavScoreSheet 
-          team={selectedSquadForSheet}
+          teams={selectedSquadsForSheet}
           event={event}
-          onClose={() => setSelectedSquadForSheet(null)}
+          onClose={() => setSelectedSquadsForSheet(null)}
         />
       )}
     </div>

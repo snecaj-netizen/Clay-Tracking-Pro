@@ -22,10 +22,12 @@ interface EventsManagerProps {
   initialViewMode?: 'list' | 'calendar' | 'results' | 'managed';
   onInitialViewModeHandled?: () => void;
   hideViewSwitcher?: boolean;
+  filterRegistrationOpen?: boolean;
   appSettings?: any;
+  onCreateEventTrigger?: number;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, appSettings }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, appSettings, onCreateEventTrigger }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -82,6 +84,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     }
   }, [initialEventId, events, onInitialEventHandled]);
 
+  useEffect(() => {
+    if (onCreateEventTrigger && onCreateEventTrigger > 0) {
+      resetForm();
+      setShowForm(true);
+    }
+  }, [onCreateEventTrigger]);
+
   const nextUpcomingEventId = React.useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -123,6 +132,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
         if (evMonth !== filterMonth) return false;
       }
+      if (filterRegistrationOpen && !ev.is_management_enabled) return false;
       return true;
     });
     
@@ -165,7 +175,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       // If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user, nextUpcomingEventId, viewMode, hasSocietaAccess, hasTiratoriAccess]);
+  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user, nextUpcomingEventId, viewMode, hasSocietaAccess, hasTiratoriAccess, filterRegistrationOpen]);
 
   const managedEvents = React.useMemo(() => {
     console.log('EventsManager: Calculating managedEvents', { user, eventsCount: events.length });
@@ -394,10 +404,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                           )}
                         </div>
                         <h3 className="text-xl font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-tight">{ev.name}</h3>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
-                          <i className="fas fa-calendar-alt text-indigo-500/50"></i>
-                          {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
-                        </p>
+                        <div className="flex flex-col gap-1 mt-2">
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i className="fas fa-calendar-alt text-indigo-500/50 w-4"></i>
+                            {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                          </p>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i className="fas fa-map-marker-alt text-indigo-500/50 w-4"></i>
+                            {ev.location || 'Campo N.D.'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     
@@ -1153,6 +1169,18 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       </div>
                     )}
                     
+                    {(user?.role === 'admin' || user?.role === 'society') && viewMode !== 'results' && (
+                      <button 
+                        onClick={() => {
+                          resetForm();
+                          setShowForm(true);
+                        }}
+                        className="hidden items-center gap-2 px-3 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 text-[10px] sm:text-xs font-black uppercase transition-all shadow-lg shadow-orange-600/20 active:scale-95"
+                      >
+                        <i className="fas fa-plus"></i> <span className="hidden sm:inline">Nuovo Evento</span>
+                      </button>
+                    )}
+                    
                     <button 
                       onClick={() => setShowFilters(!showFilters)}
                       className={`flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[9px] sm:text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
@@ -1526,9 +1554,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
                           <h3 className="font-black text-white text-xl group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight mb-1">{ev.name}</h3>
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                            <i className="fas fa-map-marker-alt text-orange-500/50"></i> {ev.location}
-                          </p>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                              <i className="fas fa-map-marker-alt text-orange-500/50 w-3"></i> {ev.location || 'Campo N.D.'}
+                            </p>
+                          </div>
                         </div>
                         <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-lg">
                           <i className="fas fa-chevron-right"></i>

@@ -29,27 +29,18 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
   // Define the main navigation items
   const navItems = [];
 
+  if (user?.role !== 'society') {
+    navItems.push({ id: 'le-tue-gare', label: 'Le Tue Gare', icon: 'fa-list-ul' });
+    navItems.push({ id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' });
+  }
+
+  navItems.push({ id: 'gare', label: 'Gare', icon: 'fa-calendar-alt' });
+
   if (user?.role === 'admin' || user?.role === 'society') {
-    navItems.push({ id: 'admin', label: 'Pannello', icon: 'fa-user-shield' });
-  }
-
-  if (user?.role === 'user') {
-    navItems.push({ id: 'history', label: 'Le Tue Gare', icon: 'fa-list-ul' });
-    navItems.push({ id: 'dashboard', label: 'Report', icon: 'fa-chart-pie' });
-  }
-
-  navItems.push({ id: 'events', label: 'Gare', icon: 'fa-calendar-alt' });
-
-  if (canViewResults) {
-    navItems.push({ id: 'event-results', label: 'Classifiche', icon: 'fa-trophy' });
+    navItems.push({ id: 'la-mia-societa', label: 'La mia Società', icon: 'fa-building' });
   }
 
   navItems.push({ id: 'societies', label: 'Società', icon: 'fa-shield-alt' });
-
-  if (user?.role === 'user') {
-    navItems.push({ id: 'ai-coach', label: 'Coach AI', icon: 'fa-user-tie' });
-    navItems.push({ id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' });
-  }
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t-2 border-orange-600 z-[1000] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">

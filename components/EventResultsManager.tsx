@@ -98,7 +98,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       }
 
       // Fetch users (shooters) regardless of readOnly to show names in team rankings
-      const resUsers = await fetch('/api/admin/users?limit=10000', {
+      const resUsers = await fetch('/api/admin/users?limit=10000&excludeRole=society', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (resUsers.ok) {
