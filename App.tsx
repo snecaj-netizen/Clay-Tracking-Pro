@@ -88,6 +88,7 @@ const App: React.FC = () => {
   };
 
   const [leTueGareTab, setLeTueGareTab] = useState('history');
+  const [gareCreateEvent, setGareCreateEvent] = useState<number>(0);
   
   // Handle deep links from notifications and browser history
   useEffect(() => {
@@ -777,6 +778,7 @@ const App: React.FC = () => {
               initialEventId={initialEventId}
               onInitialEventHandled={() => setInitialEventId(null)}
               appSettings={appSettings}
+              onCreateEventTrigger={gareCreateEvent}
             />
           </div>
         )}
@@ -982,7 +984,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Floating Add Button - Only on Dashboard/History/New Page and not for society role */}
-      {((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new')) && user?.role !== 'society' && (
+      {((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new' || (view === 'gare' && (user?.role === 'admin' || user?.role === 'society')))) && (
         <button 
           onClick={() => { 
             if (view === 'new') {
@@ -990,6 +992,8 @@ const App: React.FC = () => {
               setPreviousView(null);
               setEditingCompetition(null);
               setPrefillCompetition(null);
+            } else if (view === 'gare') {
+              setGareCreateEvent(prev => prev + 1);
             } else {
               setPreviousView(view);
               setEditingCompetition(null); 
@@ -998,7 +1002,7 @@ const App: React.FC = () => {
             }
           }}
           className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${view === 'new' ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={view === 'new' ? 'Chiudi' : 'Nuova Gara'}
+          title={view === 'new' ? 'Chiudi' : (view === 'gare' ? 'Nuovo Evento' : 'Nuova Gara')}
         >
           <i className={`fas ${view === 'new' ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
         </button>

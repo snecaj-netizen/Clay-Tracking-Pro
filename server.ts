@@ -26,6 +26,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Initialize PostgreSQL Database (Supabase)
 const pool = new Pool({
@@ -565,10 +569,11 @@ const initDB = async () => {
         ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin']
       );
     } else {
-      // Admin already exists, do not reset password every time
-      // const salt = bcrypt.genSaltSync(10);
-      // const hash = bcrypt.hashSync('admin', salt);
-      // await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
+      // Force admin password reset to 'admin' to ensure access
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync('admin', salt);
+      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
+      console.log("✅ Admin password reset to 'admin' for snecaj@gmail.com");
     }
 
     // Reset admin notifications and settings as requested (one-time)
@@ -1011,12 +1016,17 @@ const getTargetUserIds = async (targetType: string, targetId: string | null) => 
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
+  console.log(`Login attempt for: ${email} on database: ${process.env.DATABASE_URL?.substring(0, 30)}...`);
   try {
-    const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const { rows } = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
     const user = rows[0];
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    if (!user) {
+      console.log(`Login failed: User not found (${email})`);
+      return res.status(400).json({ error: 'User not found' });
+    }
 
     if (user.status === 'suspended') {
+      console.log(`Login failed: User suspended (${email})`);
       return res.status(403).json({ 
         error: 'Account sospeso', 
         message: 'Il tuo account è stato sospeso. Contatta l\'amministratore per maggiori informazioni.' 
@@ -1024,8 +1034,12 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const validPassword = bcrypt.compareSync(password, user.password);
-    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+    if (!validPassword) {
+      console.log(`Login failed: Invalid password (${email})`);
+      return res.status(400).json({ error: 'Invalid password' });
+    }
 
+    console.log(`Login successful: ${email}`);
     // Update login count and last login
     await pool.query("UPDATE users SET login_count = login_count + 1, last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
     await pool.query("INSERT INTO login_logs (user_id) VALUES ($1)", [user.id]);
@@ -4337,7 +4351,7 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
-  const buildPath = path.resolve(process.cwd(), 'dist');
+  const buildPath = path.resolve(process.cwd(), 'build');
 
   if (!isProd) {
     try {
@@ -4372,7 +4386,7 @@ async function setupVite(app: any) {
 }
 
 function serveStatic(app: any) {
-  const buildPath = path.resolve(process.cwd(), 'dist');
+  const buildPath = path.resolve(process.cwd(), 'build');
   app.use(express.static(buildPath));
   app.use((req: any, res: any) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));

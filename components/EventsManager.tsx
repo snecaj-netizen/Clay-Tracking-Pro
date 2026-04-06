@@ -24,9 +24,10 @@ interface EventsManagerProps {
   hideViewSwitcher?: boolean;
   filterRegistrationOpen?: boolean;
   appSettings?: any;
+  onCreateEventTrigger?: number;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, appSettings }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, appSettings, onCreateEventTrigger }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -82,6 +83,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       }
     }
   }, [initialEventId, events, onInitialEventHandled]);
+
+  useEffect(() => {
+    if (onCreateEventTrigger && onCreateEventTrigger > 0) {
+      resetForm();
+      setShowForm(true);
+    }
+  }, [onCreateEventTrigger]);
 
   const nextUpcomingEventId = React.useMemo(() => {
     const today = new Date();
@@ -1167,7 +1175,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                           resetForm();
                           setShowForm(true);
                         }}
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 text-[10px] sm:text-xs font-black uppercase transition-all shadow-lg shadow-orange-600/20 active:scale-95"
+                        className="hidden items-center gap-2 px-3 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 text-[10px] sm:text-xs font-black uppercase transition-all shadow-lg shadow-orange-600/20 active:scale-95"
                       >
                         <i className="fas fa-plus"></i> <span className="hidden sm:inline">Nuovo Evento</span>
                       </button>
