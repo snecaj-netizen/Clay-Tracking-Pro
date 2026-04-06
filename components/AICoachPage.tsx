@@ -26,14 +26,22 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [needsKey, setNeedsKey] = useState(false);
   const [coachStatus, setCoachStatus] = useState<'idle' | 'thinking'>('idle');
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (smooth = true) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: smooth ? "smooth" : "auto"
+      });
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // Only scroll if there's more than one message (i.e., after initial greeting)
+    if (messages.length > 1) {
+      scrollToBottom(true);
+    }
   }, [messages]);
 
   // Initial greeting and analysis
@@ -265,9 +273,12 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
 
       {/* Chat Area */}
       <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
+        >
           {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-500`}>
               <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl ${
                 m.role === 'user' 
                   ? 'bg-orange-600 text-white rounded-tr-none shadow-lg shadow-orange-600/20' 
@@ -293,7 +304,6 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
               </div>
             </div>
           )}
-          <div ref={chatEndRef} />
         </div>
 
         {/* Suggested Questions */}
