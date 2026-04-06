@@ -61,6 +61,9 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
   }, [value, shooters, useId, multiple]);
 
   const filteredShooters = shooters.filter(s => {
+    // Always exclude society role from shooter search
+    if (s.role === 'society') return false;
+
     const searchStr = `${s.surname} ${s.name} ${s.email || ''} ${s.shooter_code || ''}`.toLowerCase();
     const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
     

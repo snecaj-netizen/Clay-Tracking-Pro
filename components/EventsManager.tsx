@@ -455,6 +455,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                           }
                           setInitialManagementTab('registrations');
                           setManagingEventDetail(ev);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         disabled={!ev.is_management_enabled && user?.role !== 'admin'}
                         className={`w-full py-4 rounded-2xl text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
@@ -476,6 +477,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                             }
                             setInitialManagementTab('results');
                             setManagingEventDetail(ev);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           disabled={!ev.is_management_enabled && user?.role !== 'admin'}
                           className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-2 ${
@@ -1547,8 +1549,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
 
                       if (canManage) {
                         setManagingResultsEvent(ev);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       } else if (canView) {
                         setViewingResultsEvent(ev);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }
                     }}
                     className={`group relative bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden hover:border-orange-500/50 transition-all duration-300 ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:shadow-2xl hover:shadow-orange-500/10' : 'opacity-75 cursor-default'}`}
@@ -1805,9 +1809,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     if (canManage) {
                       setManagingResultsEvent(selectedEvent);
                       setSelectedEvent(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else if (canView) {
                       setViewingResultsEvent(selectedEvent);
                       setSelectedEvent(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                   }}
                   className={`text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words transition-colors ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:text-orange-500' : ''}`}
@@ -1930,6 +1936,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                     onClick={() => {
                       setViewingResultsEvent(selectedEvent);
                       setSelectedEvent(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }} 
                     className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title="Classifica"
@@ -1983,6 +1990,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                       }
                       setManagingEventDetail(selectedEvent);
                       setSelectedEvent(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     disabled={!selectedEvent.is_management_enabled && user?.role !== 'admin'}
                     className={`flex-1 min-w-[120px] h-9 px-3 rounded-xl text-white flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 text-[9px] font-black uppercase tracking-widest ${
@@ -2009,6 +2017,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         setViewingResultsEvent(selectedEvent);
                       }
                       setSelectedEvent(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }} 
                     className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest"
                     title={user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id)) ? "Gestisci Risultati" : "Vedi Risultati"}

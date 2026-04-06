@@ -35,6 +35,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        html { color-scheme: dark; }
+        html.light-theme { color-scheme: light; }
         
         /* Chart Variables */
         :root {
@@ -92,6 +94,10 @@
         html.light-theme .bg-slate-950\/80 { background-color: rgba(248, 250, 252, 0.8) !important; }
         html.light-theme .border-slate-800\/50 { border-color: rgba(226, 232, 240, 0.5) !important; }
         html.light-theme .border-slate-900\/50 { border-color: rgba(226, 232, 240, 0.5) !important; }
+        
+        html.light-theme input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: none !important;
+        }
         
         /* Error and Success Messages in Light Mode */
         html.light-theme .bg-red-950\/50 { background-color: #fee2e2 !important; } /* red-100 */
