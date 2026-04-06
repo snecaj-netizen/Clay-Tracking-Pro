@@ -435,7 +435,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">Categoria:</span>
-                    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 overflow-x-auto no-scrollbar">
+                    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 overflow-x-auto no-scrollbar scroll-shadows">
                       {categories.map(cat => (
                         <button 
                           key={cat}
@@ -449,7 +449,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">Qualifica:</span>
-                    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar">
+                    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
                       {qualifications.map(qual => (
                         <button 
                           key={qual}

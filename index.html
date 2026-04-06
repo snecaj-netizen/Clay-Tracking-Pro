@@ -264,6 +264,30 @@
             width: auto;
             filter: invert(1);
         }
+
+        /* Scroll shadows for horizontal tabs */
+        .scroll-shadows {
+            background:
+                linear-gradient(to right, var(--scroll-bg) 30%, transparent),
+                linear-gradient(to left, var(--scroll-bg) 30%, transparent) 100% 0,
+                radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.4), transparent),
+                radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.4), transparent) 100% 0;
+            background-repeat: no-repeat;
+            background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+            background-attachment: local, local, scroll, scroll;
+            --scroll-bg: #0f172a;
+        }
+        html.light-theme .scroll-shadows {
+            --scroll-bg: #ffffff;
+            background:
+                linear-gradient(to right, var(--scroll-bg) 30%, transparent),
+                linear-gradient(to left, var(--scroll-bg) 30%, transparent) 100% 0,
+                radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.1), transparent),
+                radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.1), transparent) 100% 0;
+            background-repeat: no-repeat;
+            background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+            background-attachment: local, local, scroll, scroll;
+        }
     </style>
 <!-- Google API Client & Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>

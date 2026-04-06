@@ -264,7 +264,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
         </div>
 
         {/* Row 2: Desktop/Tablet Navigation (Hidden on Mobile) */}
-        <nav className="hidden sm:flex items-center gap-1 pb-3 overflow-x-auto no-scrollbar">
+        <nav className="hidden sm:flex items-center gap-1 pb-3 overflow-x-auto no-scrollbar scroll-shadows">
           {menuItems.map((item) => (
             <button 
               key={item.id}

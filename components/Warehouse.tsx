@@ -282,7 +282,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
           </div>
         </div>
 
-        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar">
+        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
           <button onClick={() => { setActiveTab('types'); setShowForm(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}>
             TIPI CARTUCCE
           </button>

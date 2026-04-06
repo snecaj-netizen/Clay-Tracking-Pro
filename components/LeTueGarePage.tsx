@@ -33,11 +33,11 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
 
   const stats = useMemo(() => {
     const totalGare = competitions.length;
-    const totalPiattelli = competitions.reduce((acc, c) => acc + (c.totalTargets || 0), 0);
-    const totalRotti = competitions.reduce((acc, c) => {
-      const seriesTotal = c.series?.reduce((sAcc, s) => sAcc + (s.score || 0), 0) || 0;
-      return acc + seriesTotal;
-    }, 0);
+    // Consider only competitions that have results entered (score > 0)
+    const competitionsWithResults = competitions.filter(c => (c.totalScore || 0) > 0);
+    
+    const totalPiattelli = competitionsWithResults.reduce((acc, c) => acc + (c.totalTargets || 0), 0);
+    const totalRotti = competitionsWithResults.reduce((acc, c) => acc + (c.totalScore || 0), 0);
     const media = totalPiattelli > 0 ? (totalRotti / totalPiattelli * 100).toFixed(1) : '0.0';
     
     return { totalGare, totalRotti, media };
@@ -64,7 +64,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
           </div>
         </div>
 
-        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar">
+        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
           {user?.role !== 'society' && (
             <>
               <button 

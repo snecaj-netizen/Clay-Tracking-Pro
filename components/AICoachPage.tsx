@@ -308,7 +308,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
 
         {/* Suggested Questions */}
         {messages.length < 3 && (
-          <div className="px-6 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+          <div className="px-6 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0 scroll-shadows">
             {suggestedQuestions.map((q, i) => (
               <button
                 key={i}

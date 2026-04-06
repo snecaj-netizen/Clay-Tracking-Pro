@@ -44,7 +44,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t-2 border-orange-600 z-[1000] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-around h-16 px-1 overflow-x-auto no-scrollbar">
+      <div className="flex items-center justify-around h-16 px-1 overflow-x-auto no-scrollbar scroll-shadows">
         {navItems.map((item) => {
           const isActive = currentView === item.id;
           return (

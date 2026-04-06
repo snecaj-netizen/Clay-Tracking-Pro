@@ -1805,7 +1805,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="space-y-6">
       {/* Tab Switcher - Mobile (Scrollable Tabs) */}
       {!hideTabs && (
-        <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg overflow-x-auto no-scrollbar">
+        <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg overflow-x-auto no-scrollbar scroll-shadows">
           <div className="flex items-center gap-2 min-w-max">
             {currentUser?.role === 'admin' && (
               <button 
@@ -2698,7 +2698,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <p className="text-xs font-black text-white">{societies.length} <span className="text-[8px] text-slate-500 uppercase">Tot</span></p>
                   </div>
                   {currentUser?.role === 'admin' && !showSocietyForm && (
-                    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide scroll-shadows">
                       <button 
                         onClick={handleExportSocietiesExcel}
                         className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
@@ -3218,7 +3218,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-list-ol text-orange-500"></i> Tutti i Risultati
             </h2>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide scroll-shadows">
               <button 
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
@@ -3312,7 +3312,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          <div className="overflow-x-auto -mx-6 px-6">
+          <div className="overflow-x-auto -mx-6 px-6 scroll-shadows">
             <table className="w-full border-separate border-spacing-y-2">
               <thead>
                 <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
@@ -3731,7 +3731,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:justify-end">
               {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !showUserForm && (
-                <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide scroll-shadows">
                   {currentUser?.role === 'admin' && (
                     <>
                       <button 
@@ -4172,7 +4172,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             document.body
           )}
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scroll-shadows">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">

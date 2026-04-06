@@ -43,11 +43,12 @@ const GarePage: React.FC<GarePageProps> = ({
   const stats = useMemo(() => {
     const totalEvents = events.length;
     const openRegistrations = events.filter(e => {
-      if (!e.registration_open) return false;
+      if (!e.is_management_enabled) return false;
       const now = new Date();
-      const start = e.registration_start_date ? new Date(e.registration_start_date) : null;
-      const end = e.registration_end_date ? new Date(e.registration_end_date) : null;
-      return (!start || now >= start) && (!end || now <= end);
+      now.setHours(0, 0, 0, 0);
+      const end = new Date(e.end_date);
+      end.setHours(0, 0, 0, 0);
+      return now <= end;
     }).length;
     
     return { totalEvents, openRegistrations };
@@ -74,7 +75,7 @@ const GarePage: React.FC<GarePageProps> = ({
           </div>
         </div>
 
-        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar">
+        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
           <button 
             onClick={() => { setActiveTab('eventi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'eventi' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
