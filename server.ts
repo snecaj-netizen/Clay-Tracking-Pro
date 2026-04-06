@@ -462,7 +462,7 @@ const initDB = async () => {
         user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         global_enabled BOOLEAN DEFAULT TRUE,
         rate_limit INTEGER DEFAULT 5,
-        templates JSONB DEFAULT '{"new_competition": "Nuova gara pubblicata: {competition_name} presso {society_name}!", "score_update": "Risultati aggiornati per {competition_name}. Controlla la tua posizione!", "new_challenge": "{shooter_name} ti ha sfidato! Accetta la sfida nel tuo profilo.", "challenge_completed": "Sfida completata! {winner_name} ha vinto contro {loser_name}!", "competition_reminder": "Com''è andata oggi a {competition_name}? Inserisci il risultato per vedere come cambia la tua media!"}'::jsonb,
+        templates JSONB DEFAULT '{"new_competition": "Nuova gara pubblicata: {competition_name} presso {society_name}!", "score_update": "Risultati aggiornati per {competition_name}. Controlla la tua posizione!", "new_challenge": "{shooter_name} ti ha sfidato! Accetta la sfida nel tuo profilo.", "challenge_completed": "Sfida completata! {winner_name} ha vinto contro {loser_name}!", "competition_reminder": "Com''è andata oggi a {competition_name}? Inserisci il risultato per vedere come cambia la tua media!", "registrations_opened": "Le iscrizioni per la gara {competition_name} presso {society_name} sono ora aperte! Iscriviti subito!"}'::jsonb,
         muted_entities JSONB DEFAULT '[]'::jsonb,
         admin_notifications_enabled BOOLEAN DEFAULT TRUE,
         admin_compact_mode BOOLEAN DEFAULT FALSE,
@@ -594,6 +594,7 @@ const initDB = async () => {
               admin_notifications_enabled = false, 
               muted_entities = '[]'::jsonb
           `, [adminId]);
+
           fs.writeFileSync('.admin_reset_done', 'true');
           console.log("Admin notifications and settings reset successfully for Stefano Necaj.");
         }
@@ -651,6 +652,25 @@ const initDB = async () => {
     }
 
     console.log('Connected to PostgreSQL database and initialized tables.');
+
+    // Ensure admin has the registrations_opened template
+    try {
+      const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
+      if (adminRows.length > 0) {
+        const adminId = adminRows[0].id;
+        const { rows: settingsRows } = await pool.query("SELECT templates FROM notification_settings WHERE user_id = $1", [adminId]);
+        if (settingsRows.length > 0) {
+          let currentTemplates = settingsRows[0].templates || {};
+          if (!currentTemplates.registrations_opened) {
+            currentTemplates.registrations_opened = "Le iscrizioni per la gara {competition_name} presso {society_name} sono ora aperte! Iscriviti subito!";
+            await pool.query("UPDATE notification_settings SET templates = $1 WHERE user_id = $2", [JSON.stringify(currentTemplates), adminId]);
+            console.log("Added registrations_opened template to admin settings.");
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Error ensuring admin template:", e);
+    }
   } catch (err) {
     console.error('Error initializing database', err);
   }
@@ -1095,7 +1115,57 @@ app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdm
       return res.status(404).json({ error: 'Evento non trovato' });
     }
 
-    res.json(result.rows[0]);
+    const event = result.rows[0];
+
+    // Send notifications if management (registrations) is enabled
+    if (enabled) {
+      try {
+        // 1. Get all shooters (role 'user' and 'admin')
+        const { rows: shooters } = await pool.query("SELECT id FROM users WHERE role IN ('user', 'admin')");
+        const shooterIds = shooters.map(u => u.id);
+
+        // 2. Get the society user for this event
+        // We match by the event's location (which is the society name) or the creator if it's a society
+        const { rows: societyUsers } = await pool.query(
+          "SELECT id FROM users WHERE role = 'society' AND (id = $1 OR society = $2)",
+          [event.created_by, event.location]
+        );
+        const societyIds = societyUsers.map(u => u.id);
+
+        // Combine and deduplicate recipient IDs
+        const recipientIds = [...new Set([...shooterIds, ...societyIds])];
+
+        if (recipientIds.length > 0) {
+          // Get template from admin settings if available
+          const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
+          const adminId = adminRows[0]?.id;
+          
+          let body = `Le iscrizioni per la gara "${event.name}" presso ${event.location} sono ora aperte! Iscriviti subito!`;
+          
+          if (adminId) {
+            const { rows: settingsRows } = await pool.query("SELECT templates FROM notification_settings WHERE user_id = $1", [adminId]);
+            if (settingsRows.length > 0 && settingsRows[0].templates?.registrations_opened) {
+              body = settingsRows[0].templates.registrations_opened
+                .replace(/{competition_name}/g, event.name)
+                .replace(/{society_name}/g, event.location);
+            }
+          }
+
+          await sendPushNotification(
+            recipientIds,
+            "Iscrizioni Aperte!",
+            body,
+            `/gare?id=${event.id}`,
+            'all'
+          );
+        }
+      } catch (notifyErr) {
+        console.error("Error sending notifications for opened registrations:", notifyErr);
+        // We don't fail the main request if notifications fail
+      }
+    }
+
+    res.json(event);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
