@@ -9,6 +9,7 @@ import { SocietyEvent, EventSquad, EventRegistration } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import FitavScoreSheet from './FitavScoreSheet';
+import ExpandingFAB from './ExpandingFAB';
 
 interface EventManagementDetailProps {
   event: SocietyEvent;
@@ -932,15 +933,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       </div>
 
       {/* Floating Add Button for Registrations */}
-      {activeTab === 'registrations' && (user?.role === 'admin' || user?.role === 'society') && onRegisterShooter && (
-        <button 
-          onClick={onRegisterShooter}
-          className="fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
-          title="Iscrivi Tiratore"
-        >
-          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      )}
+      <ExpandingFAB 
+        show={activeTab === 'registrations' && (user?.role === 'admin' || user?.role === 'society') && !!onRegisterShooter}
+        label="Iscrivi Tiratore"
+        onClick={onRegisterShooter}
+      />
 
       {/* Swap Modal */}
       {swapConfig && (

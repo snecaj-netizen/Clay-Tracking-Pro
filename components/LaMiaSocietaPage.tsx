@@ -19,6 +19,7 @@ interface LaMiaSocietaPageProps {
   appSettings: any;
   fetchSettings: any;
   initialTab?: 'results' | 'users' | 'team' | 'halloffame';
+  onToggleFAB?: (hide: boolean) => void;
 }
 
 const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
@@ -38,7 +39,8 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   setShowTour,
   appSettings,
   fetchSettings,
-  initialTab
+  initialTab,
+  onToggleFAB
 }) => {
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame'>(initialTab || 'results');
   const [stats, setStats] = useState({ users: 0, teams: 0 });
@@ -146,6 +148,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
           onReplayTour={setShowTour}
           appSettings={appSettings}
           onSettingsUpdate={fetchSettings}
+          onToggleFAB={onToggleFAB}
         />
       </div>
     </div>

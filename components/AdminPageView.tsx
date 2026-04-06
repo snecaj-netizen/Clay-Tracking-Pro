@@ -25,6 +25,7 @@ interface AdminPageViewProps {
   kpi2?: { label: string; value: string | number; color: string };
   hideHeader?: boolean;
   initialEventViewMode?: 'list' | 'calendar' | 'results' | 'managed';
+  onToggleFAB?: (hide: boolean) => void;
 }
 
 const AdminPageView: React.FC<AdminPageViewProps> = ({
@@ -32,7 +33,7 @@ const AdminPageView: React.FC<AdminPageViewProps> = ({
   triggerConfirm, triggerToast, onEditCompetition, onDeleteCompetition,
   handleImport, handleCloseSocietyDetail, handleUserUpdate, setShowTour,
   appSettings, fetchSettings, title, icon, initialTab, kpi1, kpi2, hideHeader,
-  initialEventViewMode
+  initialEventViewMode, onToggleFAB
 }) => {
   return (
     <div className="space-y-4">
@@ -92,6 +93,7 @@ const AdminPageView: React.FC<AdminPageViewProps> = ({
           appSettings={appSettings}
           onSettingsUpdate={fetchSettings}
           initialEventViewMode={initialEventViewMode}
+          onToggleFAB={onToggleFAB}
         />
       </div>
     </div>

@@ -21,6 +21,7 @@ import InstallPrompt from './components/InstallPrompt';
 import OnboardingTour from './components/OnboardingTour';
 import BottomNavigation from './components/BottomNavigation';
 import UpdateNotification from './components/UpdateNotification';
+import ExpandingFAB from './components/ExpandingFAB';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -53,6 +54,8 @@ const App: React.FC = () => {
   const [initialSocietyName, setInitialSocietyName] = useState<string | null>(null);
   const [initialEventViewMode, setInitialEventViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | null>(null);
   const [appSettings, setAppSettings] = useState<any>({});
+  const [hideGlobalFAB, setHideGlobalFAB] = useState(false);
+  const [gareActiveTab, setGareActiveTab] = useState<string>('eventi');
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -779,6 +782,8 @@ const App: React.FC = () => {
               onInitialEventHandled={() => setInitialEventId(null)}
               appSettings={appSettings}
               onCreateEventTrigger={gareCreateEvent}
+              onToggleFAB={setHideGlobalFAB}
+              onTabChange={setGareActiveTab}
             />
           </div>
         )}
@@ -808,6 +813,7 @@ const App: React.FC = () => {
               appSettings={appSettings}
               fetchSettings={fetchSettings}
               initialTab={initialAdminTab as any}
+              onToggleFAB={setHideGlobalFAB}
             />
           </div>
         )}
@@ -874,6 +880,7 @@ const App: React.FC = () => {
               initialTab="event-results"
               initialEventViewMode="managed"
               kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
+              onToggleFAB={setHideGlobalFAB}
             />
           </div>
         )}
@@ -984,15 +991,18 @@ const App: React.FC = () => {
       </main>
 
       {/* Floating Add Button - Only on Dashboard/History/New Page and not for society role */}
-      {((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new' || (view === 'gare' && (user?.role === 'admin' || user?.role === 'society')))) && (
-        <button 
-          onClick={() => { 
-            if (view === 'new') {
-              setView(previousView || 'history');
-              setPreviousView(null);
-              setEditingCompetition(null);
-              setPrefillCompetition(null);
-            } else if (view === 'gare') {
+      <ExpandingFAB 
+        show={!hideGlobalFAB && ((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new' || view === 'gare'))}
+        label={view === 'new' ? 'Chiudi' : (view === 'gare' && gareActiveTab === 'gestione' ? 'Nuovo Evento' : 'Nuova Gara')}
+        isClose={view === 'new'}
+        onClick={() => { 
+          if (view === 'new') {
+            setView(previousView || 'history');
+            setPreviousView(null);
+            setEditingCompetition(null);
+            setPrefillCompetition(null);
+          } else if (view === 'gare') {
+            if (gareActiveTab === 'gestione') {
               setGareCreateEvent(prev => prev + 1);
             } else {
               setPreviousView(view);
@@ -1000,13 +1010,14 @@ const App: React.FC = () => {
               setView('new'); 
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-          }}
-          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${view === 'new' ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={view === 'new' ? 'Chiudi' : (view === 'gare' ? 'Nuovo Evento' : 'Nuova Gara')}
-        >
-          <i className={`fas ${view === 'new' ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
-        </button>
-      )}
+          } else {
+            setPreviousView(view);
+            setEditingCompetition(null); 
+            setView('new'); 
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }}
+      />
 
       {/* Footer */}
       {view !== 'ai-coach' && (

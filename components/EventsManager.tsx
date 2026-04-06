@@ -25,9 +25,10 @@ interface EventsManagerProps {
   filterRegistrationOpen?: boolean;
   appSettings?: any;
   onCreateEventTrigger?: number;
+  onToggleFAB?: (hide: boolean) => void;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, appSettings, onCreateEventTrigger }) => {
+const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, appSettings, onCreateEventTrigger, onToggleFAB }) => {
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -46,6 +47,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   
   const resultsAccess = appSettings?.event_results_access || {};
+
+  useEffect(() => {
+    if (onToggleFAB) {
+      onToggleFAB(!!managingEventDetail);
+    }
+    return () => {
+      if (onToggleFAB) onToggleFAB(false);
+    };
+  }, [managingEventDetail, onToggleFAB]);
 
   const checkAccess = (access: any, userSociety: string | undefined) => {
     if (typeof access === 'boolean') return access;

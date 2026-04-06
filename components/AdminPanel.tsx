@@ -13,6 +13,7 @@ import FitavScoreSheet from './FitavScoreSheet';
 import { EventControlManager } from './EventControlManager';
 import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
+import ExpandingFAB from './ExpandingFAB';
 import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
 
 // Fix Leaflet default icon issue
@@ -98,6 +99,7 @@ interface AdminPanelProps {
   appSettings?: any;
   onSettingsUpdate?: () => void;
   initialEventViewMode?: 'list' | 'calendar' | 'results' | 'managed';
+  onToggleFAB?: (hide: boolean) => void;
 }
 
 // User Search Input Component to avoid re-rendering the whole AdminPanel on every keystroke
@@ -147,11 +149,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   user: currentUser, token, competitions, cartridges, cartridgeTypes, societies: initialSocieties, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   triggerConfirm, onEditCompetition, onDeleteCompetition, onNavigate, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, triggerToast, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour,
-  appSettings, onSettingsUpdate, initialEventViewMode
+  appSettings, onSettingsUpdate, initialEventViewMode, onToggleFAB
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab || (currentUser?.role === 'admin' || currentUser?.role === 'society' ? 'results' : 'profile')
   );
+  const [hideInternalFAB, setHideInternalFAB] = useState(false);
 
   useEffect(() => {
     if (initialTab) {
@@ -499,6 +502,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       topUserTargetsTotal: topUserByTargetsId ? userTargetCounts[Number(topUserByTargetsId)] : 0
     };
   }, [users, allResults]);
+
+  const handleToggleFAB = useCallback((hide: boolean) => {
+    setHideInternalFAB(hide);
+    if (onToggleFAB) onToggleFAB(hide);
+  }, [onToggleFAB]);
 
   const fetchSocieties = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -1952,6 +1960,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             triggerConfirm={triggerConfirm}
             triggerToast={triggerToast}
             societies={societies}
+            onToggleFAB={handleToggleFAB}
           />
         </div>
       ) : activeTab === 'settings' ? (
@@ -4477,89 +4486,79 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
       {/* Floating Add Button for Competitions */}
-      {activeTab === 'results' && currentUser?.role === 'admin' && (
-        <button 
-          onClick={() => onEditCompetition && onEditCompetition()}
-          className="fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 bg-orange-600 shadow-orange-600/40 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group"
-          title="Aggiungi Gara"
-        >
-          <i className="fas fa-plus text-2xl group-hover:rotate-90 transition-transform duration-300"></i>
-        </button>
-      )}
+      <ExpandingFAB 
+        show={activeTab === 'results' && currentUser?.role === 'admin' && !hideInternalFAB}
+        label="Aggiungi Gara"
+        onClick={() => onEditCompetition && onEditCompetition()}
+      />
+
       {/* Floating Add Button for Teams */}
-      {activeTab === 'team' && (currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-        <button 
-          onClick={() => {
-            if (showTeamForm) {
-              setShowTeamForm(false);
+      <ExpandingFAB 
+        show={activeTab === 'team' && (currentUser?.role === 'admin' || currentUser?.role === 'society') && !hideInternalFAB}
+        label={showTeamForm ? 'Chiudi' : 'Nuova Squadra'}
+        isClose={showTeamForm}
+        onClick={() => {
+          if (showTeamForm) {
+            setShowTeamForm(false);
+          } else {
+            setShowTeamForm(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (currentUser?.role === 'society' && currentUser?.society) {
+              setNewTeamSociety(currentUser.society);
             } else {
-              setShowTeamForm(true);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              if (currentUser?.role === 'society' && currentUser?.society) {
-                setNewTeamSociety(currentUser.society);
-              } else {
-                setNewTeamSociety('');
-              }
+              setNewTeamSociety('');
             }
-          }}
-          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showTeamForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={showTeamForm ? 'Chiudi' : 'Nuova Squadra'}
-        >
-          <i className={`fas ${showTeamForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
-        </button>
-      )}
+          }
+        }}
+      />
+
       {/* Floating Add Button for Users */}
-      {activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-        <button 
-          onClick={() => { 
-            if (showUserForm) {
-              setShowUserForm(false);
-              setEditingUser(null);
-            } else {
-              setEditingUser(null);
-              setShowUserForm(true);
-              if (currentUser?.role === 'society') {
-                setSociety(currentUser.society);
-                setRole('user');
-              }
+      <ExpandingFAB 
+        show={activeTab === 'users' && (currentUser?.role === 'admin' || currentUser?.role === 'society') && !hideInternalFAB}
+        label={showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
+        isClose={showUserForm}
+        onClick={() => { 
+          if (showUserForm) {
+            setShowUserForm(false);
+            setEditingUser(null);
+          } else {
+            setEditingUser(null);
+            setShowUserForm(true);
+            if (currentUser?.role === 'society') {
+              setSociety(currentUser.society);
+              setRole('user');
             }
-          }}
-          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showUserForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={showUserForm ? 'Chiudi' : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
-        >
-          <i className={`fas ${showUserForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
-        </button>
-      )}
+          }
+        }}
+      />
+
       {/* Floating Add Button for Societies */}
-      {activeTab === 'societies' && currentUser?.role === 'admin' && (
-        <button 
-          onClick={() => {
-            if (!showSocietyForm) {
-              setEditingSociety(null);
-              setSocName('');
-              setSocCode('');
-              setSocEmail('');
-              setSocAddress('');
-              setSocCity('');
-              setSocRegion('');
-              setSocZip('');
-              setSocPhone('');
-              setSocMobile('');
-              setSocWebsite('');
-              setSocContactName('');
-              setSocLogo('');
-              setSocOpeningHours('');
-              setSocGoogleMapsLink('');
-            }
-            setShowSocietyForm(!showSocietyForm);
-            if (!showSocietyForm) window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showSocietyForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={showSocietyForm ? 'Chiudi' : 'Nuova Società'}
-        >
-          <i className={`fas ${showSocietyForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
-        </button>
-      )}
+      <ExpandingFAB 
+        show={activeTab === 'societies' && currentUser?.role === 'admin' && !hideInternalFAB}
+        label={showSocietyForm ? 'Chiudi' : 'Nuova Società'}
+        isClose={showSocietyForm}
+        onClick={() => {
+          if (!showSocietyForm) {
+            setEditingSociety(null);
+            setSocName('');
+            setSocCode('');
+            setSocEmail('');
+            setSocAddress('');
+            setSocCity('');
+            setSocRegion('');
+            setSocZip('');
+            setSocPhone('');
+            setSocMobile('');
+            setSocWebsite('');
+            setSocContactName('');
+            setSocLogo('');
+            setSocOpeningHours('');
+            setSocGoogleMapsLink('');
+          }
+          setShowSocietyForm(!showSocietyForm);
+          if (!showSocietyForm) window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
       {shareData && (
         <ShareCard 
           competition={shareData.comp} 
