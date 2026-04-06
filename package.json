@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "start": "node server.ts",
-    "build": "vite build && mkdir -p build && touch build/.keep",
+    "start": "tsx server.ts",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
