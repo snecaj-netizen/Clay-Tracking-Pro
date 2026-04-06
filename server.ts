@@ -1015,12 +1015,17 @@ const getTargetUserIds = async (targetType: string, targetId: string | null) => 
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
+  console.log(`Login attempt for: ${email}`);
   try {
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     const user = rows[0];
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    if (!user) {
+      console.log(`Login failed: User not found (${email})`);
+      return res.status(400).json({ error: 'User not found' });
+    }
 
     if (user.status === 'suspended') {
+      console.log(`Login failed: User suspended (${email})`);
       return res.status(403).json({ 
         error: 'Account sospeso', 
         message: 'Il tuo account è stato sospeso. Contatta l\'amministratore per maggiori informazioni.' 
@@ -1028,8 +1033,12 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const validPassword = bcrypt.compareSync(password, user.password);
-    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+    if (!validPassword) {
+      console.log(`Login failed: Invalid password (${email})`);
+      return res.status(400).json({ error: 'Invalid password' });
+    }
 
+    console.log(`Login successful: ${email}`);
     // Update login count and last login
     await pool.query("UPDATE users SET login_count = login_count + 1, last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
     await pool.query("INSERT INTO login_logs (user_id) VALUES ($1)", [user.id]);
