@@ -4374,7 +4374,7 @@ async function setupVite(app: any) {
 function serveStatic(app: any) {
   const buildPath = path.resolve(process.cwd(), 'dist');
   app.use(express.static(buildPath));
-  app.use((req: any, res: any) => {
+  app.get('*', (req: any, res: any) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));
   });
 }
