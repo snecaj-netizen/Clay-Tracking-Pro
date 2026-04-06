@@ -4350,9 +4350,18 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 });
 
 async function setupVite(app: any) {
-  const isProd = process.env.NODE_ENV === "production";
   const buildPath = path.resolve(process.cwd(), 'build');
 
+  // Always prefer serving the pre-built static files if they exist.
+  // This covers both production deployments and dev environments where a build is present.
+  if (fs.existsSync(buildPath)) {
+    console.log('Serving static files from build directory');
+    serveStatic(app);
+    return;
+  }
+
+  // No build found — try Vite dev server only in non-production environments
+  const isProd = process.env.NODE_ENV === "production";
   if (!isProd) {
     try {
       const { createServer: createViteServer } = await import('vite');
@@ -4363,32 +4372,25 @@ async function setupVite(app: any) {
       app.use(vite.middlewares);
       console.log('Vite middleware initialized');
     } catch (e) {
-      console.error('Vite initialization failed, falling back to static serving', e);
-      if (fs.existsSync(buildPath)) {
-        serveStatic(app);
-      } else {
-        app.get('*', (req: any, res: any) => {
-          res.status(500).send('Vite failed to start and no build found. Please check server logs.');
-        });
-      }
-    }
-  } else {
-    if (fs.existsSync(buildPath)) {
-      console.log('Serving static files from build directory');
-      serveStatic(app);
-    } else {
-      console.error('Production mode enabled but build directory not found');
+      console.error('Vite initialization failed and no build directory found', e);
       app.get('*', (req: any, res: any) => {
-        res.status(500).send('Production build not found. Run npm run build.');
+        res.status(500).send('Vite failed to start and no build found. Please check server logs.');
       });
     }
+  } else {
+    console.error('Production mode: build directory not found at', buildPath);
+    app.get('*', (req: any, res: any) => {
+      res.status(500).send('Production build not found. Run npm run build.');
+    });
   }
 }
 
 function serveStatic(app: any) {
   const buildPath = path.resolve(process.cwd(), 'build');
+  // Serve static assets (JS, CSS, images, etc.)
   app.use(express.static(buildPath));
-  app.use((req: any, res: any) => {
+  // SPA catch-all: serve index.html for all non-API GET requests so client-side routing works
+  app.get(/^(?!\/api\/).*$/, (req: any, res: any) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));
   });
 }
