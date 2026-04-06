@@ -14,6 +14,9 @@ COPY . .
 # Build the Vite frontend
 RUN npm run build
 
+# Set production environment so Express serves the Vite build
+ENV NODE_ENV=production
+
 # Expose the port
 EXPOSE 3000
 
