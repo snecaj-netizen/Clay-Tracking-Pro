@@ -79,19 +79,19 @@ export const MyCompetitions: React.FC<MyCompetitionsProps> = ({
 
         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar">
           <button 
-            onClick={() => setActiveTab('history')} 
+            onClick={() => { setActiveTab('history'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'history' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
             GARE/ALLENAMENTI
           </button>
           <button 
-            onClick={() => setActiveTab('report')} 
+            onClick={() => { setActiveTab('report'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'report' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
             REPORT
           </button>
           <button 
-            onClick={() => setActiveTab('coach')} 
+            onClick={() => { setActiveTab('coach'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'coach' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
             COACH AI

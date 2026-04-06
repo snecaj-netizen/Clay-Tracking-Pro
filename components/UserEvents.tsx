@@ -23,6 +23,7 @@ export const UserEvents: React.FC<UserEventsProps> = ({
   const handleTabChange = (tab: 'list' | 'registration' | 'results') => {
     setActiveTab(tab);
     setViewModeProp(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resultsAccess = appSettings?.event_results_access || {};

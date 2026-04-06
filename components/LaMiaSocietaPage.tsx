@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminPanel from './AdminPanel';
+import AICoachPage from './AICoachPage';
 
 interface LaMiaSocietaPageProps {
   user: any;
@@ -42,7 +43,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   initialTab,
   onToggleFAB
 }) => {
-  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame'>(initialTab || 'results');
+  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach'>(initialTab || 'results');
   const [stats, setStats] = useState({ users: 0, teams: 0 });
 
   useEffect(() => {
@@ -115,41 +116,51 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
           >
             HALL OF FAME
           </button>
+          <button
+            onClick={() => { setActiveTab('coach'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'coach' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+          >
+            COACH AI
+          </button>
         </div>
       </div>
 
       {/* Content */}
       <div className="pt-2">
-        <AdminPanel 
-          user={user}
-          token={token}
-          competitions={competitions}
-          cartridges={cartridges}
-          cartridgeTypes={cartridgeTypes}
-          clientId=""
-          onClientIdChange={() => {}}
-          onImport={handleImport}
-          isDriveConnected={false}
-          onConnectDrive={() => {}}
-          onDisconnectDrive={() => {}}
-          onSaveDrive={() => {}}
-          onLoadDrive={() => {}}
-          syncStatus="idle"
-          lastSync={null}
-          triggerConfirm={triggerConfirm}
-          onEditCompetition={onEditCompetition}
-          onDeleteCompetition={onDeleteCompetition}
-          initialTab={activeTab}
-          onCloseSocietyDetail={handleCloseSocietyDetail}
-          onUserUpdate={handleUserUpdate}
-          triggerToast={triggerToast}
-          societies={societies}
-          hideTabs={true}
-          onReplayTour={setShowTour}
-          appSettings={appSettings}
-          onSettingsUpdate={fetchSettings}
-          onToggleFAB={onToggleFAB}
-        />
+        {activeTab === 'coach' ? (
+          <AICoachPage competitions={competitions} cartridges={cartridges} user={user} />
+        ) : (
+          <AdminPanel 
+            user={user}
+            token={token}
+            competitions={competitions}
+            cartridges={cartridges}
+            cartridgeTypes={cartridgeTypes}
+            clientId=""
+            onClientIdChange={() => {}}
+            onImport={handleImport}
+            isDriveConnected={false}
+            onConnectDrive={() => {}}
+            onDisconnectDrive={() => {}}
+            onSaveDrive={() => {}}
+            onLoadDrive={() => {}}
+            syncStatus="idle"
+            lastSync={null}
+            triggerConfirm={triggerConfirm}
+            onEditCompetition={onEditCompetition}
+            onDeleteCompetition={onDeleteCompetition}
+            initialTab={activeTab as any}
+            onCloseSocietyDetail={handleCloseSocietyDetail}
+            onUserUpdate={handleUserUpdate}
+            triggerToast={triggerToast}
+            societies={societies}
+            hideTabs={true}
+            onReplayTour={setShowTour}
+            appSettings={appSettings}
+            onSettingsUpdate={fetchSettings}
+            onToggleFAB={onToggleFAB}
+          />
+        )}
       </div>
     </div>
   );

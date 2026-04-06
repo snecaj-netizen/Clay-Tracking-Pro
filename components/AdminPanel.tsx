@@ -3574,7 +3574,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </div>
                                 <h4 
                                   onClick={() => {
-                                    if (onEditCompetition) {
+                                    if (onEditCompetition && (currentUser?.role === 'admin' || (currentUser?.role === 'society' && r.location === currentUser?.society))) {
                                       const mappedComp = {
                                         ...r,
                                         userId: r.user_id,
@@ -3648,7 +3648,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     
                                     <button 
                                       onClick={() => {
-                                        if (onEditCompetition) {
+                                        if (onEditCompetition && (currentUser?.role === 'admin' || (currentUser?.role === 'society' && r.location === currentUser?.society))) {
                                           const mappedComp = {
                                             ...r,
                                             userId: r.user_id,

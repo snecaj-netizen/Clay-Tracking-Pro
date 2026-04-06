@@ -367,7 +367,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
           <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
             <button
-              onClick={() => setActiveTab('registrations')}
+              onClick={() => { setActiveTab('registrations'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === 'registrations' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
@@ -377,7 +377,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
               Iscritti ({registrations.length})
             </button>
             <button
-              onClick={() => setActiveTab('squads')}
+              onClick={() => { setActiveTab('squads'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === 'squads' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
@@ -387,7 +387,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
               Batterie ({squads.length})
             </button>
             <button
-              onClick={() => setActiveTab('results')}
+              onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === 'results' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 

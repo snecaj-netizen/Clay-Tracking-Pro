@@ -46,7 +46,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
 
         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar">
           <button 
-            onClick={() => setActiveTab('list')} 
+            onClick={() => { setActiveTab('list'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
             EVENTI
@@ -54,7 +54,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
           
           {(user?.role === 'admin' || user?.role === 'user') && (
             <button 
-              onClick={() => setActiveTab('my-competitions')} 
+              onClick={() => { setActiveTab('my-competitions'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'my-competitions' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
               LE MIE GARE
@@ -63,7 +63,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
 
           {canManage && (
             <button 
-              onClick={() => setActiveTab('managed')} 
+              onClick={() => { setActiveTab('managed'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'managed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
               GESTIONE GARE
@@ -72,7 +72,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
 
           {canRegister && (
             <button 
-              onClick={() => setActiveTab('registration')} 
+              onClick={() => { setActiveTab('registration'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'registration' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
               ISCRIVITI ALLE GARE
