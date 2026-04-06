@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import EventsManager from './EventsManager';
 import { EventControlManager } from './EventControlManager';
 
@@ -16,23 +16,15 @@ interface GarePageProps {
   initialViewMode?: string | null;
   onInitialViewModeHandled?: () => void;
   appSettings?: any;
-  onCreateEventTrigger?: number;
 }
 
 const GarePage: React.FC<GarePageProps> = ({
   user, token, triggerConfirm, triggerToast, societies, events, onParticipate, onCreateTeam,
-  initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings,
-  onCreateEventTrigger
+  initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings
 }) => {
   const [activeTab, setActiveTab] = useState<'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione'>(
     (initialViewMode as any) || 'eventi'
   );
-
-  useEffect(() => {
-    if (onCreateEventTrigger && onCreateEventTrigger > 0 && (user?.role === 'admin' || user?.role === 'society')) {
-      setActiveTab('gestione');
-    }
-  }, [onCreateEventTrigger, user?.role]);
 
   const stats = useMemo(() => {
     const totalEvents = events.length;
@@ -198,7 +190,6 @@ const GarePage: React.FC<GarePageProps> = ({
             initialViewMode="managed"
             hideViewSwitcher={true}
             appSettings={appSettings}
-            onCreateEventTrigger={onCreateEventTrigger}
           />
         )}
 

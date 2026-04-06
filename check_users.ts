@@ -1,15 +1,14 @@
-
-import { Pool } from 'pg';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : undefined
 });
 
 async function checkUsers() {
   try {
-    const { rows } = await pool.query("SELECT id, email, role, status FROM users");
-    console.log('Users in database:', rows);
+    const { rows } = await pool.query('SELECT id, email, role, society FROM users');
+    console.log('Users:', JSON.stringify(rows, null, 2));
   } catch (err) {
     console.error('Error checking users:', err);
   } finally {
