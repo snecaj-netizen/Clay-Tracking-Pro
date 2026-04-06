@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "start": "tsx server.ts",
+    "start": "npx tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
@@ -38,9 +38,8 @@
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-pwa": "^1.2.0",
     "web-push": "^3.6.7",
@@ -55,7 +54,6 @@
     "@types/react-dom": "^19.2.3",
     "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.1",
-    "typescript": "~5.8.2"
+    "@typescript-eslint/parser": "^8.57.1"
   }
 }
