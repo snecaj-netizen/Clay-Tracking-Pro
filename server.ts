@@ -4351,7 +4351,7 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
-  const buildPath = path.resolve(process.cwd(), 'build');
+  const distPath = path.resolve(process.cwd(), 'dist');
 
   if (!isProd) {
     try {
@@ -4364,21 +4364,21 @@ async function setupVite(app: any) {
       console.log('Vite middleware initialized');
     } catch (e) {
       console.error('Vite initialization failed, falling back to static serving', e);
-      if (fs.existsSync(buildPath)) {
+      if (fs.existsSync(distPath)) {
         serveStatic(app);
       } else {
-        app.get('*', (req: any, res: any) => {
+        app.get(/^(?!\/api\/).*$/, (req: any, res: any) => {
           res.status(500).send('Vite failed to start and no build found. Please check server logs.');
         });
       }
     }
   } else {
-    if (fs.existsSync(buildPath)) {
-      console.log('Serving static files from build directory');
+    if (fs.existsSync(distPath)) {
+      console.log('Serving static files from dist directory');
       serveStatic(app);
     } else {
-      console.error('Production mode enabled but build directory not found');
-      app.get('*', (req: any, res: any) => {
+      console.error('Production mode enabled but dist directory not found');
+      app.get(/^(?!\/api\/).*$/, (req: any, res: any) => {
         res.status(500).send('Production build not found. Run npm run build.');
       });
     }
@@ -4386,10 +4386,10 @@ async function setupVite(app: any) {
 }
 
 function serveStatic(app: any) {
-  const buildPath = path.resolve(process.cwd(), 'build');
-  app.use(express.static(buildPath));
-  app.use((req: any, res: any) => {
-    res.sendFile(path.resolve(buildPath, 'index.html'));
+  const distPath = path.resolve(process.cwd(), 'dist');
+  app.use(express.static(distPath));
+  app.get(/^(?!\/api\/).*$/, (req: any, res: any) => {
+    res.sendFile(path.resolve(distPath, 'index.html'));
   });
 }
 
