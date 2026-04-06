@@ -3289,6 +3289,87 @@ app.get('/api/events/:id/registrations', authenticateToken, async (req: any, res
   }
 });
 
+// Update a registration
+app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken, async (req: any, res) => {
+  const { eventId, registrationId } = req.params;
+  const {
+    registration_day,
+    registration_type,
+    shotgun_brand,
+    shotgun_model,
+    cartridge_brand,
+    cartridge_model,
+    shooting_session,
+    notes,
+    phone
+  } = req.body;
+
+  try {
+    // Check authorization: only admin, society of the event, or the user themselves
+    const regCheck = await pool.query('SELECT user_id FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
+    if (regCheck.rows.length === 0) return res.status(404).json({ error: 'Registrazione non trovata' });
+
+    const eventCheck = await pool.query('SELECT location FROM events WHERE id = $1', [eventId]);
+    const isOwner = regCheck.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    const isSociety = req.user.role === 'society' && req.user.society === eventCheck.rows[0]?.location;
+
+    if (!isOwner && !isAdmin && !isSociety) {
+      return res.status(403).json({ error: 'Non hai i permessi per modificare questa iscrizione' });
+    }
+
+    const result = await pool.query(
+      `UPDATE event_registrations SET 
+        registration_day = $1, registration_type = $2, shotgun_brand = $3, 
+        shotgun_model = $4, cartridge_brand = $5, cartridge_model = $6, 
+        shooting_session = $7, notes = $8, phone = $9, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $10 AND event_id = $11
+      RETURNING *`,
+      [registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone, registrationId, eventId]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating registration:', error);
+    res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'iscrizione' });
+  }
+});
+
+// Delete a registration
+app.delete('/api/events/:eventId/registrations/:registrationId', authenticateToken, async (req: any, res) => {
+  const { eventId, registrationId } = req.params;
+
+  try {
+    // Check authorization
+    const regCheck = await pool.query('SELECT user_id FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
+    if (regCheck.rows.length === 0) return res.status(404).json({ error: 'Registrazione non trovata' });
+
+    const eventCheck = await pool.query('SELECT location FROM events WHERE id = $1', [eventId]);
+    const isOwner = regCheck.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    const isSociety = req.user.role === 'society' && req.user.society === eventCheck.rows[0]?.location;
+
+    if (!isOwner && !isAdmin && !isSociety) {
+      return res.status(403).json({ error: 'Non hai i permessi per eliminare questa iscrizione' });
+    }
+
+    // Check if user is in any squad
+    const squadCheck = await pool.query(
+      'SELECT squad_id FROM event_squad_members WHERE registration_id = $1',
+      [registrationId]
+    );
+    if (squadCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Impossibile eliminare l\'iscrizione: il tiratore è già assegnato a una batteria. Rimuovilo prima dalla batteria.' });
+    }
+
+    await pool.query('DELETE FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
+    res.json({ message: 'Iscrizione eliminata con successo' });
+  } catch (error) {
+    console.error('Error deleting registration:', error);
+    res.status(500).json({ error: 'Errore durante l\'eliminazione dell\'iscrizione' });
+  }
+});
+
 // Generate squads for an event
 app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, res) => {
   const { id } = req.params;

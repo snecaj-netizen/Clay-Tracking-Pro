@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
-import { User, SocietyEvent } from '../types';
+import { User, SocietyEvent, EventRegistration } from '../types';
 import ShooterSearch from './ShooterSearch';
 
 interface EventRegistrationModalProps {
@@ -9,6 +9,7 @@ interface EventRegistrationModalProps {
   user: User;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: EventRegistration;
 }
 
 const SHOTGUN_BRANDS = [
@@ -27,26 +28,37 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   event,
   user,
   onClose,
-  onSuccess
+  onSuccess,
+  initialData
 }) => {
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
-    user_id: isAdminOrSociety ? '' : user.id,
-    registration_day: 'Nessuna scelta',
-    registration_type: 'Iscrizione per Categoria',
-    shotgun_brand: 'Beretta',
-    shotgun_model: '',
-    cartridge_brand: 'Fiocchi',
-    cartridge_model: '',
-    shooting_session: 'Nessuna scelta',
-    notes: '',
-    phone: isAdminOrSociety ? '' : (user.phone || '')
+    user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
+    registration_day: initialData?.registration_day || 'Nessuna scelta',
+    registration_type: initialData?.registration_type || 'Iscrizione per Categoria',
+    shotgun_brand: initialData?.shotgun_brand || 'Beretta',
+    shotgun_model: initialData?.shotgun_model || '',
+    cartridge_brand: initialData?.cartridge_brand || 'Fiocchi',
+    cartridge_model: initialData?.cartridge_model || '',
+    shooting_session: initialData?.shooting_session || 'Nessuna scelta',
+    notes: initialData?.notes || '',
+    phone: initialData?.phone || (isAdminOrSociety ? '' : (user.phone || ''))
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shooters, setShooters] = useState<any[]>([]);
-  const [selectedShooter, setSelectedShooter] = useState<any>(isAdminOrSociety ? null : user);
+  const [selectedShooter, setSelectedShooter] = useState<any>(
+    initialData ? { 
+      id: initialData.user_id, 
+      name: initialData.first_name, 
+      surname: initialData.last_name,
+      shooter_code: initialData.shooter_code,
+      society: initialData.society,
+      category: initialData.category,
+      qualification: initialData.qualification
+    } : (isAdminOrSociety ? null : user)
+  );
 
   useEffect(() => {
     if (user.role === 'admin' || user.role === 'society') {
@@ -91,8 +103,14 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/events/${event.id}/register`, {
-        method: 'POST',
+      const url = initialData 
+        ? `/api/events/${event.id}/registrations/${initialData.id}`
+        : `/api/events/${event.id}/register`;
+      
+      const method = initialData ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -102,7 +120,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Errore durante la registrazione');
+        throw new Error(errorData.error || 'Errore durante l\'operazione');
       }
 
       onSuccess();
@@ -124,7 +142,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
       >
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
           <div>
-            <h2 className="text-xl font-bold text-white">Iscrizione Gara</h2>
+            <h2 className="text-xl font-bold text-white">{initialData ? 'Modifica Iscrizione' : 'Iscrizione Gara'}</h2>
             <p className="text-sm text-orange-500 font-medium">{event.name}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
@@ -332,7 +350,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Conferma Iscrizione
+                  {initialData ? 'Salva Modifiche' : 'Conferma Iscrizione'}
                 </>
               )}
             </button>

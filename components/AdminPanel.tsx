@@ -2705,16 +2705,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         title="Esporta"
                       >
                         <i className="fas fa-file-excel"></i>
-                        <span>Esporta</span>
+                        <span className="hidden sm:inline">Esporta</span>
                       </button>
                       <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
                         <i className="fas fa-sync-alt"></i>
-                        <span>Aggiorna Codici</span>
+                        <span className="hidden sm:inline">Aggiorna Codici</span>
                         <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
                       </label>
-                      <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
+                      <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Importa">
                         <i className="fas fa-file-import"></i>
-                        <span>Importa</span>
+                        <span className="hidden sm:inline">Importa</span>
                         <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
                       </label>
                     </div>

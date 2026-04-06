@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import FitavScoreSheet from './FitavScoreSheet';
 import ExpandingFAB from './ExpandingFAB';
+import { EventRegistrationModal } from './EventRegistrationModal';
 
 interface EventManagementDetailProps {
   event: SocietyEvent;
@@ -57,6 +58,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     toSquadIndex: number;
   } | null>(null);
   const [selectedSquadsForSheet, setSelectedSquadsForSheet] = useState<any[] | null>(null);
+  const [editingRegistration, setEditingRegistration] = useState<EventRegistration | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -94,6 +96,41 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   useEffect(() => {
     fetchData();
   }, [event.id, refreshVersion]);
+
+  const handleEditRegistration = (reg: EventRegistration) => {
+    setEditingRegistration(reg);
+  };
+
+  const handleDeleteRegistration = (reg: EventRegistration) => {
+    if (!triggerConfirm) return;
+
+    triggerConfirm(
+      'Elimina Iscrizione',
+      `Sei sicuro di voler eliminare l'iscrizione di ${reg.first_name} ${reg.last_name}?`,
+      async () => {
+        try {
+          const response = await fetch(`/api/events/${event.id}/registrations/${reg.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Errore durante l\'eliminazione');
+          }
+
+          triggerToast?.('Iscrizione eliminata con successo', 'success');
+          fetchData();
+        } catch (err: any) {
+          triggerToast?.(err.message, 'error');
+        }
+      },
+      'Elimina',
+      'danger'
+    );
+  };
 
   const generateSquadsPDF = () => {
     const fields = Array.from(new Set(squads.map(s => s.field_number))).sort((a, b) => a - b);
@@ -455,7 +492,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Società</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Dettagli</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Contatti</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Azioni</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Azioni</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -512,11 +549,19 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <button className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => handleEditRegistration(reg)}
+                              className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
+                              title="Modifica iscrizione"
+                            >
                               <Edit3 className="w-4 h-4" />
                             </button>
-                            <button className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                            <button 
+                              onClick={() => handleDeleteRegistration(reg)}
+                              className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg shadow-red-600/20"
+                              title="Elimina iscrizione"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -983,6 +1028,19 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           teams={selectedSquadsForSheet}
           event={event}
           onClose={() => setSelectedSquadsForSheet(null)}
+        />
+      )}
+
+      {editingRegistration && (
+        <EventRegistrationModal
+          event={event}
+          user={user}
+          initialData={editingRegistration}
+          onClose={() => setEditingRegistration(null)}
+          onSuccess={() => {
+            fetchData();
+            triggerToast?.('Iscrizione aggiornata con successo', 'success');
+          }}
         />
       )}
     </div>
