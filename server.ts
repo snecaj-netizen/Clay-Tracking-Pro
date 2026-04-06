@@ -569,10 +569,11 @@ const initDB = async () => {
         ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin']
       );
     } else {
-      // Admin already exists, do not reset password every time
-      // const salt = bcrypt.genSaltSync(10);
-      // const hash = bcrypt.hashSync('admin', salt);
-      // await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
+      // Force admin password reset to 'admin' to ensure access
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync('admin', salt);
+      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
+      console.log("✅ Admin password reset to 'admin' for snecaj@gmail.com");
     }
 
     // Reset admin notifications and settings as requested (one-time)
@@ -1015,9 +1016,9 @@ const getTargetUserIds = async (targetType: string, targetId: string | null) => 
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  console.log(`Login attempt for: ${email}`);
+  console.log(`Login attempt for: ${email} on database: ${process.env.DATABASE_URL?.substring(0, 30)}...`);
   try {
-    const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const { rows } = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
     const user = rows[0];
     if (!user) {
       console.log(`Login failed: User not found (${email})`);
