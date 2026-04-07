@@ -3770,7 +3770,84 @@ app.post('/api/events/:id/validate', authenticateToken, async (req: any, res) =>
 
     await pool.query('UPDATE events SET status = $1 WHERE id = $2', ['validated', id]);
 
-    res.json({ message: 'Gara convalidata con successo' });
+    // Sync positions for all participants
+    const { rows: comps } = await pool.query('SELECT * FROM competitions WHERE event_id = $1', [id]);
+    
+    if (comps.length > 0) {
+      const sortResults = (a: any, b: any) => {
+        if (b.totalscore !== a.totalscore) return (b.totalscore || 0) - (a.totalscore || 0);
+        const aShootOff = a.shoot_off ?? -1;
+        const bShootOff = b.shoot_off ?? -1;
+        if (bShootOff !== aShootOff) return bShootOff - aShootOff;
+        
+        let aDetailed = a.detailedscores;
+        let bDetailed = b.detailedscores;
+        
+        try {
+          if (typeof aDetailed === 'string') aDetailed = JSON.parse(aDetailed);
+          if (typeof bDetailed === 'string') bDetailed = JSON.parse(bDetailed);
+        } catch (e) {
+          // Ignore parse errors
+        }
+        
+        if (Array.isArray(aDetailed) && Array.isArray(bDetailed)) {
+          const maxSeries = Math.max(aDetailed.length, bDetailed.length);
+          for (let sIdx = maxSeries - 1; sIdx >= 0; sIdx--) {
+            const aSeries = aDetailed[sIdx] || [];
+            const bSeries = bDetailed[sIdx] || [];
+            // Assuming 25 targets per series
+            for (let tIdx = 24; tIdx >= 0; tIdx--) {
+              const aHit = aSeries[tIdx] === true;
+              const bHit = bSeries[tIdx] === true;
+              if (aHit !== bHit) return aHit ? -1 : 1;
+            }
+          }
+        }
+        return 0;
+      };
+
+      // Group by category and qualification
+      const byCategory: Record<string, any[]> = {};
+      const byQualification: Record<string, any[]> = {};
+      const absolute = [...comps].sort(sortResults);
+
+      comps.forEach(c => {
+        const cat = c.category_at_time || '';
+        const qual = c.qualification_at_time || '';
+        if (cat) {
+          if (!byCategory[cat]) byCategory[cat] = [];
+          byCategory[cat].push(c);
+        }
+        if (qual) {
+          if (!byQualification[qual]) byQualification[qual] = [];
+          byQualification[qual].push(c);
+        }
+      });
+
+      // Sort each group
+      Object.keys(byCategory).forEach(cat => byCategory[cat].sort(sortResults));
+      Object.keys(byQualification).forEach(qual => byQualification[qual].sort(sortResults));
+
+      // Update positions
+      for (const c of comps) {
+        const effectivePref = event.ranking_preference_override || c.ranking_preference_override || c.ranking_preference || 'categoria';
+        let position = 0;
+
+        if (effectivePref === 'categoria' && c.category_at_time && byCategory[c.category_at_time]) {
+          position = byCategory[c.category_at_time].findIndex(r => r.id === c.id) + 1;
+        } else if (effectivePref === 'qualifica' && c.qualification_at_time && byQualification[c.qualification_at_time]) {
+          position = byQualification[c.qualification_at_time].findIndex(r => r.id === c.id) + 1;
+        } else {
+          position = absolute.findIndex(r => r.id === c.id) + 1;
+        }
+
+        if (position > 0) {
+          await pool.query('UPDATE competitions SET position = $1 WHERE id = $2', [position, c.id]);
+        }
+      }
+    }
+
+    res.json({ message: 'Gara convalidata con successo e posizioni sincronizzate' });
   } catch (error) {
     console.error('Error validating event:', error);
     res.status(500).json({ error: 'Errore durante la convalida della gara' });
