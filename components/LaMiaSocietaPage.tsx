@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './AdminPanel';
 import AICoachPage from './AICoachPage';
 
@@ -44,7 +45,45 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   onToggleFAB
 }) => {
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach'>(initialTab || 'results');
+  const [direction, setDirection] = useState(0);
   const [stats, setStats] = useState({ users: 0, teams: 0 });
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (tabsRef.current) {
+      const activeTabElement = tabsRef.current.querySelector(`[data-tab="${activeTab}"]`);
+      if (activeTabElement) {
+        activeTabElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [activeTab]);
+
+  const availableTabs: ('results' | 'users' | 'team' | 'halloffame' | 'coach')[] = ['results', 'users', 'team', 'halloffame', 'coach'];
+
+  const handleTabChange = (newTab: 'results' | 'users' | 'team' | 'halloffame' | 'coach') => {
+    const currentIndex = availableTabs.indexOf(activeTab);
+    const nextIndex = availableTabs.indexOf(newTab);
+    setDirection(nextIndex > currentIndex ? 1 : -1);
+    setActiveTab(newTab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSwipe = (event: any, info: any) => {
+    const threshold = 50;
+    const currentIndex = availableTabs.indexOf(activeTab);
+    
+    if (info.offset.x < -threshold && currentIndex < availableTabs.length - 1) {
+      // Swipe left -> go to next tab
+      handleTabChange(availableTabs[currentIndex + 1]);
+    } else if (info.offset.x > threshold && currentIndex > 0) {
+      // Swipe right -> go to previous tab
+      handleTabChange(availableTabs[currentIndex - 1]);
+    }
+  };
 
   useEffect(() => {
     if (initialTab) {
@@ -91,77 +130,74 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
           </div>
         </div>
 
-        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
-          <button
-            onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            RISULTATI GARE
-          </button>
-          <button
-            onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            TIRATORI
-          </button>
-          <button
-            onClick={() => { setActiveTab('team'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'team' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            SQUADRE
-          </button>
-          <button
-            onClick={() => { setActiveTab('halloffame'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'halloffame' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            HALL OF FAME
-          </button>
-          <button
-            onClick={() => { setActiveTab('coach'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'coach' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            COACH AI
-          </button>
+        <div ref={tabsRef} className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
+          {availableTabs.map((tab) => (
+            <button
+              key={tab}
+              data-tab={tab}
+              onClick={() => handleTabChange(tab)}
+              className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+            >
+              {tab === 'results' ? 'RISULTATI GARE' : tab === 'users' ? 'TIRATORI' : tab === 'team' ? 'SQUADRE' : tab === 'halloffame' ? 'HALL OF FAME' : 'COACH AI'}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Content */}
-      <div className="pt-2">
-        {activeTab === 'coach' ? (
-          <AICoachPage competitions={competitions} cartridges={cartridges} user={user} />
-        ) : (
-          <AdminPanel 
-            user={user}
-            token={token}
-            competitions={competitions}
-            cartridges={cartridges}
-            cartridgeTypes={cartridgeTypes}
-            clientId=""
-            onClientIdChange={() => {}}
-            onImport={handleImport}
-            isDriveConnected={false}
-            onConnectDrive={() => {}}
-            onDisconnectDrive={() => {}}
-            onSaveDrive={() => {}}
-            onLoadDrive={() => {}}
-            syncStatus="idle"
-            lastSync={null}
-            triggerConfirm={triggerConfirm}
-            onEditCompetition={onEditCompetition}
-            onDeleteCompetition={onDeleteCompetition}
-            initialTab={activeTab as any}
-            onCloseSocietyDetail={handleCloseSocietyDetail}
-            onUserUpdate={handleUserUpdate}
-            triggerToast={triggerToast}
-            societies={societies}
-            hideTabs={true}
-            onReplayTour={setShowTour}
-            appSettings={appSettings}
-            onSettingsUpdate={fetchSettings}
-            onToggleFAB={onToggleFAB}
-          />
-        )}
-      </div>
+      <motion.div 
+        className="pt-2 overflow-x-hidden"
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.2}
+        onDragEnd={handleSwipe}
+      >
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            initial={{ opacity: 0, x: direction > 0 ? 20 : -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction > 0 ? -20 : 20 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+          >
+            {activeTab === 'coach' ? (
+              <AICoachPage competitions={competitions} cartridges={cartridges} user={user} />
+            ) : (
+              <AdminPanel 
+                user={user}
+                token={token}
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                clientId=""
+                onClientIdChange={() => {}}
+                onImport={handleImport}
+                isDriveConnected={false}
+                onConnectDrive={() => {}}
+                onDisconnectDrive={() => {}}
+                onSaveDrive={() => {}}
+                onLoadDrive={() => {}}
+                syncStatus="idle"
+                lastSync={null}
+                triggerConfirm={triggerConfirm}
+                onEditCompetition={onEditCompetition}
+                onDeleteCompetition={onDeleteCompetition}
+                initialTab={activeTab as any}
+                onCloseSocietyDetail={handleCloseSocietyDetail}
+                onUserUpdate={handleUserUpdate}
+                triggerToast={triggerToast}
+                societies={societies}
+                hideTabs={true}
+                onReplayTour={setShowTour}
+                appSettings={appSettings}
+                onSettingsUpdate={fetchSettings}
+                onToggleFAB={onToggleFAB}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 };

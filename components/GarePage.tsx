@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import EventsManager from './EventsManager';
 import { EventControlManager } from './EventControlManager';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface GarePageProps {
   user: any;
@@ -21,14 +22,40 @@ interface GarePageProps {
   onTabChange?: (tab: string) => void;
 }
 
+type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione';
+
 const GarePage: React.FC<GarePageProps> = ({
   user, token, triggerConfirm, triggerToast, societies, events, onParticipate, onCreateTeam,
   initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings,
   onCreateEventTrigger, onToggleFAB, onTabChange
 }) => {
-  const [activeTab, setActiveTab] = useState<'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione'>(
-    'eventi'
-  );
+  const [activeTab, setActiveTab] = useState<TabType>('eventi');
+  const [direction, setDirection] = useState(0);
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (tabsRef.current) {
+      const activeTabElement = tabsRef.current.querySelector(`[data-tab="${activeTab}"]`);
+      if (activeTabElement) {
+        activeTabElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [activeTab]);
+
+  // Define tab order based on user role
+  const availableTabs = useMemo(() => {
+    const tabs: TabType[] = ['eventi'];
+    if (user?.role === 'society') tabs.push('le-tue-gare');
+    tabs.push('iscrizione');
+    tabs.push('risultati');
+    if (user?.role === 'admin' || user?.role === 'society') tabs.push('gestione');
+    if (user?.role === 'admin') tabs.push('attivazione');
+    return tabs;
+  }, [user?.role]);
 
   useEffect(() => {
     if (initialViewMode) {
@@ -47,6 +74,25 @@ const GarePage: React.FC<GarePageProps> = ({
     }
   }, [onCreateEventTrigger, user?.role]);
 
+  const handleTabChange = (newTab: TabType) => {
+    const currentIndex = availableTabs.indexOf(activeTab);
+    const newIndex = availableTabs.indexOf(newTab);
+    setDirection(newIndex > currentIndex ? 1 : -1);
+    setActiveTab(newTab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSwipe = (offset: number) => {
+    const currentIndex = availableTabs.indexOf(activeTab);
+    if (offset < -50 && currentIndex < availableTabs.length - 1) {
+      // Swipe Left -> Next Tab
+      handleTabChange(availableTabs[currentIndex + 1]);
+    } else if (offset > 50 && currentIndex > 0) {
+      // Swipe Right -> Previous Tab
+      handleTabChange(availableTabs[currentIndex - 1]);
+    }
+  };
+
   const stats = useMemo(() => {
     const totalEvents = events.length;
     const openRegistrations = events.filter(e => {
@@ -62,7 +108,7 @@ const GarePage: React.FC<GarePageProps> = ({
   }, [events]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       {/* Sticky Header Section */}
       <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex items-center justify-between">
@@ -82,155 +128,135 @@ const GarePage: React.FC<GarePageProps> = ({
           </div>
         </div>
 
-        <div className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
-          <button 
-            onClick={() => { setActiveTab('eventi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-            className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'eventi' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            EVENTI
-          </button>
-          
-          {user?.role === 'society' && (
+        <div ref={tabsRef} className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
+          {availableTabs.map((tab) => (
             <button 
-              onClick={() => { setActiveTab('le-tue-gare'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-              className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'le-tue-gare' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+              key={tab}
+              data-tab={tab}
+              onClick={() => handleTabChange(tab)} 
+              className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap uppercase ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
-              LE TUE GARE
+              {tab.replace(/-/g, ' ')}
             </button>
-          )}
-          
-          <button 
-            onClick={() => { setActiveTab('iscrizione'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'iscrizione' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            ISCRIZIONE ALLE GARE
-          </button>
-          
-          <button 
-            onClick={() => { setActiveTab('risultati'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-            className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'risultati' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-          >
-            RISULTATI GARE
-          </button>
-          
-          {(user?.role === 'admin' || user?.role === 'society') && (
-            <button 
-              onClick={() => { setActiveTab('gestione'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-              className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'gestione' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-            >
-              GESTIONE GARE
-            </button>
-          )}
-          
-          {user?.role === 'admin' && (
-            <button 
-              onClick={() => { setActiveTab('attivazione'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-              className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'attivazione' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-            >
-              ATTIVAZIONE GARE
-            </button>
-          )}
+          ))}
         </div>
       </div>
 
-      <div className="pt-2">
-        {activeTab === 'eventi' && (
-          <EventsManager 
-            user={user} 
-            token={token} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
-            societies={societies} 
-            onParticipate={onParticipate}
-            onCreateTeam={onCreateTeam}
-            initialEventId={initialEventId}
-            onInitialEventHandled={onInitialEventHandled}
-            initialViewMode="list"
-            hideViewSwitcher={true}
-            appSettings={appSettings}
-            onToggleFAB={onToggleFAB}
-          />
-        )}
+      <motion.div 
+        className="pt-2 min-h-[60vh]"
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.2}
+        onDragEnd={(_, info) => handleSwipe(info.offset.x)}
+      >
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            initial={{ opacity: 0, x: direction * 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -50 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            {activeTab === 'eventi' && (
+              <EventsManager 
+                user={user} 
+                token={token} 
+                triggerConfirm={triggerConfirm} 
+                triggerToast={triggerToast}
+                societies={societies} 
+                onParticipate={onParticipate}
+                onCreateTeam={onCreateTeam}
+                initialEventId={initialEventId}
+                onInitialEventHandled={onInitialEventHandled}
+                initialViewMode="list"
+                hideViewSwitcher={true}
+                appSettings={appSettings}
+                onToggleFAB={onToggleFAB}
+              />
+            )}
 
-        {activeTab === 'le-tue-gare' && user?.role === 'society' && (
-          <div className="relative">
-            <EventsManager 
-              user={user} 
-              token={token} 
-              triggerConfirm={triggerConfirm} 
-              triggerToast={triggerToast}
-              societies={societies} 
-              onParticipate={onParticipate}
-              onCreateTeam={onCreateTeam}
-              restrictToSociety={true}
-              initialViewMode="list"
-              hideViewSwitcher={true}
-              appSettings={appSettings}
-              onToggleFAB={onToggleFAB}
-            />
-          </div>
-        )}
+            {activeTab === 'le-tue-gare' && user?.role === 'society' && (
+              <div className="relative">
+                <EventsManager 
+                  user={user} 
+                  token={token} 
+                  triggerConfirm={triggerConfirm} 
+                  triggerToast={triggerToast}
+                  societies={societies} 
+                  onParticipate={onParticipate}
+                  onCreateTeam={onCreateTeam}
+                  restrictToSociety={true}
+                  initialViewMode="list"
+                  hideViewSwitcher={true}
+                  appSettings={appSettings}
+                  onToggleFAB={onToggleFAB}
+                />
+              </div>
+            )}
 
-        {activeTab === 'iscrizione' && (
-          <EventsManager 
-            user={user} 
-            token={token} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
-            societies={societies} 
-            onParticipate={onParticipate}
-            onCreateTeam={onCreateTeam}
-            initialEventId={initialEventId}
-            onInitialEventHandled={onInitialEventHandled}
-            initialViewMode="list"
-            hideViewSwitcher={true}
-            filterRegistrationOpen={true}
-            appSettings={appSettings}
-          />
-        )}
+            {activeTab === 'iscrizione' && (
+              <EventsManager 
+                user={user} 
+                token={token} 
+                triggerConfirm={triggerConfirm} 
+                triggerToast={triggerToast}
+                societies={societies} 
+                onParticipate={onParticipate}
+                onCreateTeam={onCreateTeam}
+                initialEventId={initialEventId}
+                onInitialEventHandled={onInitialEventHandled}
+                initialViewMode="list"
+                hideViewSwitcher={true}
+                filterRegistrationOpen={true}
+                appSettings={appSettings}
+              />
+            )}
 
-        {activeTab === 'risultati' && (
-          <EventsManager 
-            user={user} 
-            token={token} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
-            societies={societies} 
-            onParticipate={onParticipate}
-            onCreateTeam={onCreateTeam}
-            initialViewMode="results"
-            hideViewSwitcher={true}
-            appSettings={appSettings}
-          />
-        )}
+            {activeTab === 'risultati' && (
+              <EventsManager 
+                user={user} 
+                token={token} 
+                triggerConfirm={triggerConfirm} 
+                triggerToast={triggerToast}
+                societies={societies} 
+                onParticipate={onParticipate}
+                onCreateTeam={onCreateTeam}
+                initialViewMode="results"
+                hideViewSwitcher={true}
+                appSettings={appSettings}
+              />
+            )}
 
-        {activeTab === 'gestione' && (user?.role === 'admin' || user?.role === 'society') && (
-          <EventsManager 
-            user={user} 
-            token={token} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
-            societies={societies} 
-            onParticipate={onParticipate}
-            onCreateTeam={onCreateTeam}
-            initialViewMode="managed"
-            hideViewSwitcher={true}
-            appSettings={appSettings}
-            onCreateEventTrigger={onCreateEventTrigger}
-            onToggleFAB={onToggleFAB}
-          />
-        )}
+            {activeTab === 'gestione' && (user?.role === 'admin' || user?.role === 'society') && (
+              <EventsManager 
+                user={user} 
+                token={token} 
+                triggerConfirm={triggerConfirm} 
+                triggerToast={triggerToast}
+                societies={societies} 
+                onParticipate={onParticipate}
+                onCreateTeam={onCreateTeam}
+                initialViewMode="managed"
+                hideViewSwitcher={true}
+                appSettings={appSettings}
+                onCreateEventTrigger={onCreateEventTrigger}
+                onToggleFAB={onToggleFAB}
+              />
+            )}
 
-        {activeTab === 'attivazione' && user?.role === 'admin' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <EventControlManager 
-              token={token} 
-              triggerToast={triggerToast}
-              triggerConfirm={triggerConfirm}
-            />
-          </div>
-        )}
-      </div>
+            {activeTab === 'attivazione' && user?.role === 'admin' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <EventControlManager 
+                  token={token} 
+                  triggerToast={triggerToast}
+                  triggerConfirm={triggerConfirm}
+                />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 };
