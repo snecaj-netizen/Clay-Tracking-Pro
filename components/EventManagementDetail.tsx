@@ -24,6 +24,7 @@ interface EventManagementDetailProps {
   setManagingResultsEvent?: (ev: SocietyEvent | null) => void;
   setViewingResultsEvent?: (ev: SocietyEvent | null) => void;
   onRegisterShooter?: () => void;
+  onEventUpdate?: () => void;
   refreshVersion?: number;
 }
 
@@ -39,6 +40,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   setManagingResultsEvent,
   setViewingResultsEvent,
   onRegisterShooter,
+  onEventUpdate,
   refreshVersion = 0
 }) => {
   const [activeTab, setActiveTab] = useState<'registrations' | 'squads' | 'results'>(initialTab);
@@ -917,7 +919,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                 });
                                 if (res.ok) {
                                   triggerToast?.('Classifica riaperta con successo', 'success');
-                                  // The parent should refresh
+                                  // Refresh local data
+                                  fetchData();
+                                  // Notify parent to refresh events list
+                                  if (onEventUpdate) onEventUpdate();
                                 } else {
                                   triggerToast?.('Errore durante la riapertura', 'error');
                                 }

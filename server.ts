@@ -4057,11 +4057,11 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
     }
 
     if (req.user.role === 'admin') {
-      const targetUserId = c.userId || req.user.id;
+      const finalUserId = c.userId || targetUserId;
       result = await pool.query(
         `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24, team_id=$25, team_name=$26 WHERE id=$27`,
         [
-          targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
+          finalUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
           c.weather ? JSON.stringify(c.weather) : null,
           JSON.stringify(c.scores),

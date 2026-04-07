@@ -263,58 +263,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     });
   }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterRegistrationOpen]);
 
-  const handleQuickRegister = async (event: SocietyEvent) => {
-    if (!user) {
-      triggerToast?.('Devi essere loggato per iscriverti', 'error');
-      return;
-    }
-
-    // Se non ha il telefono, apriamo il modal completo
-    if (!user.phone) {
-      setRegisteringEvent(event);
-      return;
-    }
-
-    triggerConfirm(
-      'Iscrizione Rapida',
-      `Vuoi iscriverti alla gara "${event.name}"? Verranno usati i tuoi dati di profilo predefiniti.`,
-      async () => {
-        try {
-          const response = await fetch(`/api/events/${event.id}/register`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              registration_day: 'Giorno1',
-              registration_type: 'Iscrizione per Categoria',
-              shotgun_brand: 'Beretta',
-              shotgun_model: '',
-              cartridge_brand: 'Fiocchi',
-              cartridge_model: '',
-              shooting_session: 'Mattina',
-              notes: 'Iscrizione rapida',
-              phone: user.phone
-            })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Errore durante la registrazione');
-          }
-
-          triggerToast?.('Iscrizione completata!', 'success');
-          fetchEvents();
-          if (selectedEvent?.id === event.id) setSelectedEvent(null);
-        } catch (err: any) {
-          triggerToast?.(err.message, 'error');
-        }
-      },
-      'Conferma Iscrizione'
-    );
-  };
-
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
     const day = new Date(year, month, 1).getDay();
@@ -1164,6 +1112,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
           setManagingResultsEvent={setManagingResultsEvent}
           setViewingResultsEvent={setViewingResultsEvent}
           onRegisterShooter={() => setRegisteringEvent(managingEventDetail)}
+          onEventUpdate={fetchEvents}
           refreshVersion={refreshDetailVersion}
         />
       ) : (
@@ -1977,25 +1926,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         <i className="fas fa-check-circle"></i> Già Iscritto
                       </div>
                     ) : (
-                      <>
-                        <button 
-                          onClick={() => {
-                            handleQuickRegister(selectedEvent);
-                          }}
-                          className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[9px] font-black uppercase tracking-widest"
-                        >
-                          <i className="fas fa-bolt"></i> Iscr. Rapida
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setRegisteringEvent(selectedEvent);
-                            setSelectedEvent(null);
-                          }}
-                          className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
-                        >
-                          <i className="fas fa-list-ul"></i> Iscr. Dettagliata
-                        </button>
-                      </>
+                      <button 
+                        onClick={() => {
+                          setRegisteringEvent(selectedEvent);
+                          setSelectedEvent(null);
+                        }}
+                        className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[9px] font-black uppercase tracking-widest"
+                      >
+                        <i className="fas fa-user-plus"></i> Iscriviti alla gara
+                      </button>
                     )}
                   </>
                 )}

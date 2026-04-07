@@ -378,7 +378,7 @@ const App: React.FC = () => {
       });
       if (res.ok) {
         // If the admin created/edited a competition for another user, don't add it to their own list
-        if (compToSave.userId && compToSave.userId !== user?.id) {
+        if (compToSave.userId && compToSave.userId !== user?.id && user?.role !== 'admin') {
           setCompetitions(prev => prev.filter(c => c.id !== compToSave.id));
         } else {
           setCompetitions(prev => !isEdit ? [compToSave, ...prev] : prev.map(c => c.id === compToSave.id ? compToSave : c));
