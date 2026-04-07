@@ -205,13 +205,29 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     const userId = Number(user.id);
 
     const filtered = events.filter(ev => {
-      if (user.role === 'admin') return true;
-      
-      const isCreator = Number(ev.created_by) === userId;
-      const eventLocation = (ev.location || '').toLowerCase().trim();
-      const isSocietyLocation = userSociety !== '' && eventLocation === userSociety;
-      
-      return isCreator || isSocietyLocation;
+      // Base access check
+      let hasAccess = false;
+      if (user.role === 'admin') {
+        hasAccess = true;
+      } else {
+        const isCreator = Number(ev.created_by) === userId;
+        const eventLocation = (ev.location || '').toLowerCase().trim();
+        const isSocietyLocation = userSociety !== '' && eventLocation === userSociety;
+        hasAccess = isCreator || isSocietyLocation;
+      }
+
+      if (!hasAccess) return false;
+
+      // Apply filters
+      if (filterSociety && ev.location?.toLowerCase().trim() !== filterSociety.toLowerCase().trim()) return false;
+      if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
+      if (filterMonth) {
+        const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
+        if (evMonth !== filterMonth) return false;
+      }
+      if (filterRegistrationOpen && !ev.is_management_enabled) return false;
+
+      return true;
     });
 
     console.log('EventsManager: managedEvents filtered count:', filtered.length);
@@ -245,7 +261,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       // If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, user, hasSocietaAccess]);
+  }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterRegistrationOpen]);
 
   const handleQuickRegister = async (event: SocietyEvent) => {
     if (!user) {
