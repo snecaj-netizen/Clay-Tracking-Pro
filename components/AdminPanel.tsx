@@ -15,6 +15,7 @@ import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
 import ExpandingFAB from './ExpandingFAB';
 import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
+import { calculateRTE } from '../ratingUtils';
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -3314,19 +3315,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="overflow-x-auto -mx-6 px-6 scroll-shadows">
             <table className="w-full border-separate border-spacing-y-2">
-              <thead>
+              <thead className="relative z-20">
                 <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
                   <th className="px-4 py-2 text-left">Tiratore</th>
                   <th className="px-4 py-2 text-left">Cat / Qual</th>
                   <th className="px-4 py-2 text-center">Gare</th>
-                  <th className="px-4 py-2 text-center">Media Globale</th>
+                  <th className="px-4 py-2 text-center relative">
+                    <div className="flex items-center justify-center gap-1.5">
+                      Rating RTE
+                      <div className="group relative">
+                        <i className="fas fa-info-circle text-xs text-slate-600 cursor-help hover:text-orange-500 transition-colors p-1"></i>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed">
+                          <p className="mb-1 text-white font-bold">Rating Tecnico di Eccellenza (RTE)</p>
+                          La media dei <span className="text-white">migliori 5 risultati</span> degli ultimi 12 mesi. 
+                          Diventa <span className="text-amber-500 font-bold">Qualificato</span> con almeno 3 gare, altrimenti è <span className="text-slate-500 font-bold">Provvisorio</span>.
+                        </div>
+                      </div>
+                    </div>
+                  </th>
                   <th className="px-4 py-2 text-right">Azioni</th>
                 </tr>
               </thead>
               <tbody>
                 {allResults.map((result) => {
-                  const avg = result.totalTargets > 0 ? (result.totalScore / result.totalTargets) * 25 : 0;
-                  
                   return (
                     <tr 
                       key={result.userId}
@@ -3354,7 +3365,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               qualification: result.qualification,
                               shooter_code: result.shooter_code,
                               avatar: result.avatar,
-                              results: data
+                              results: data,
+                              rte: result.rte,
+                              rteCount: result.rteCount
                             });
                           }
                         } catch (err) {
@@ -3392,8 +3405,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <div className="text-sm font-black text-orange-500">
-                          {avg.toFixed(2)}
+                        <div className="flex flex-col items-center">
+                          <div className={`text-sm font-black ${result.rteCount < 3 ? 'text-slate-500' : 'text-amber-500'}`}>
+                            {result.rte > 0 ? result.rte.toFixed(2) : '-'}
+                          </div>
+                          {result.rte > 0 && (
+                            <span className={`text-[8px] font-black uppercase tracking-tighter ${result.rteCount < 3 ? 'text-slate-600' : 'text-amber-500/50'}`}>
+                              {result.rteCount < 3 ? 'Provvisorio' : 'Qualificato'}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right rounded-r-2xl">
@@ -3476,7 +3496,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {selectedShooterResults && createPortal(
-            <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
+            <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
               <div className="bg-slate-900 w-full h-full overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
                   <div className="flex items-center gap-5">
@@ -3504,7 +3524,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-6 mr-8">
+                    {(() => {
+                      const shooterRatings = calculateRTE(
+                        (selectedShooterResults.results || []).map((r: any) => ({
+                          ...r,
+                          totalScore: r.totalscore,
+                          totalTargets: r.totaltargets,
+                          averagePerSeries: r.averageperseries,
+                          scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
+                        }))
+                      );
+                      const bestRating = shooterRatings[0];
+                      if (!bestRating) return null;
+                      return (
+                        <div className="flex flex-col items-end">
+                          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Rating RTE</div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className={`text-4xl font-black ${bestRating.isProvvisorio ? 'text-slate-500' : 'text-amber-500'}`}>
+                              {bestRating.rating.toFixed(2)}
+                            </span>
+                            <span className="text-xs font-bold text-slate-500">/25</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border ${bestRating.isProvvisorio ? 'bg-slate-800 text-slate-500 border-slate-700' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                              {bestRating.isProvvisorio ? 'Provvisorio' : 'Qualificato'}
+                            </span>
+                            <span className="text-[8px] font-bold text-slate-600 uppercase">{bestRating.discipline}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div className="h-12 w-[1px] bg-slate-800"></div>
                     <button 
                       onClick={() => setSelectedShooterResults(null)}
                       className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"

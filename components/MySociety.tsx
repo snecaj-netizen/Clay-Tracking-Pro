@@ -30,6 +30,14 @@ const MySociety: React.FC<MySocietyProps> = ({ onNavigate }) => {
       icon: 'fa-award',
       color: 'bg-amber-500',
       tab: 'hall-of-fame'
+    },
+    {
+      id: 'risultati-gare',
+      title: 'Risultati Gare',
+      description: 'Monitora le prestazioni e il Rating RTE dei tuoi tiratori',
+      icon: 'fa-poll',
+      color: 'bg-orange-600',
+      tab: 'results'
     }
   ];
 

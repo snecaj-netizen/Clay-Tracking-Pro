@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Competition, Discipline } from '../types';
 import StatsCharts from './StatsCharts';
 import ShareCard from './ShareCard';
+import { calculateRTE } from '../ratingUtils';
 
 interface DashboardProps {
   competitions: Competition[];
@@ -10,7 +11,7 @@ interface DashboardProps {
   events: any[];
   onAddClick: () => void;
   onCoachClick: () => void;
-  onNavigate: (view: any) => void;
+  onNavigate: (view: any, tab?: string, eventId?: string) => void;
   user?: any;
 }
 
@@ -32,7 +33,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       .filter(e => {
         const endDate = new Date(e.end_date);
         endDate.setHours(23, 59, 59, 999);
-        return endDate >= now;
+        // Solo gare con iscrizione abilitata
+        return endDate >= now && e.is_management_enabled;
       })
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
   }, [events]);
@@ -96,6 +98,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     const totalWin = competitions.reduce((acc, c) => acc + (c.win || 0), 0);
     return { totalCost, totalWin, balance: totalWin - totalCost };
   }, [competitions]);
+
+  const ratings = React.useMemo(() => calculateRTE(competitions), [competitions]);
 
   if (competitions.length === 0) {
     return (
@@ -169,6 +173,78 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 1.5 Rating Tecnico di Eccellenza (RTE) */}
+      {ratings.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between ml-2">
+            <div className="flex items-center gap-2">
+              <i className="fas fa-star text-amber-500"></i>
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Rating Tecnico (RTE)</h2>
+            </div>
+            <div className="group relative">
+              <i className="fas fa-info-circle text-slate-600 cursor-help"></i>
+              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Il <span className="text-white font-bold">Rating Tecnico di Eccellenza (RTE)</span> è la media dei tuoi <span className="text-white font-bold">migliori 5 risultati</span> degli ultimi 12 mesi per ogni disciplina. È necessario aver disputato almeno <span className="text-white font-bold">3 gare</span> per validare il rating.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ratings.map((r) => (
+              <div key={r.discipline} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl relative overflow-hidden group">
+                {/* Background Decoration */}
+                <div className={`absolute -top-12 -right-12 w-24 h-24 rounded-full blur-3xl transition-colors ${r.isProvvisorio ? 'bg-slate-800/20' : 'bg-amber-500/10'}`}></div>
+                
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate max-w-[150px]" title={r.discipline}>
+                      {r.discipline}
+                    </p>
+                    <div className="flex items-baseline gap-1">
+                      <h3 className={`text-3xl font-black ${r.isProvvisorio ? 'text-slate-400' : 'text-amber-500'}`}>
+                        {r.rating.toFixed(2)}
+                      </h3>
+                      <span className="text-xs font-bold text-slate-500">/25</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {r.isProvvisorio ? (
+                      <span className="text-[8px] font-black bg-slate-800 text-slate-500 px-2 py-1 rounded-full uppercase tracking-tighter border border-slate-700">
+                        Provvisorio
+                      </span>
+                    ) : (
+                      <span className="text-[8px] font-black bg-amber-500/20 text-amber-500 px-2 py-1 rounded-full uppercase tracking-tighter border border-amber-500/30">
+                        Qualificato
+                      </span>
+                    )}
+                    <p className="text-[9px] font-bold text-slate-500 mt-2 uppercase">
+                      {r.count} {r.count === 1 ? 'Gara' : 'Gare'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar to qualification */}
+                {r.isProvvisorio && (
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest">
+                      <span className="text-slate-600">Qualificazione</span>
+                      <span className="text-orange-500">{r.count}/3</span>
+                    </div>
+                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-orange-600 transition-all duration-1000" 
+                        style={{ width: `${(r.count / 3) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 2. Statistiche Allenamento */}
       <div className="space-y-4">
@@ -314,7 +390,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </p>
                   </div>
                   <button 
-                    onClick={() => onNavigate('events')}
+                    onClick={() => onNavigate('gare', 'iscrizione', event.id)}
                     className="mt-4 w-full bg-orange-600 hover:bg-orange-500 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
                   >
                     Iscriviti Ora

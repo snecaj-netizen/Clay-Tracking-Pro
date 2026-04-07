@@ -1904,6 +1904,34 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     // Get paginated results grouped by shooter
     const offset = (page - 1) * limit;
     const resultsQuery = `
+      WITH recent_scores AS (
+        SELECT 
+          user_id,
+          discipline,
+          averageperseries,
+          ROW_NUMBER() OVER(PARTITION BY user_id, discipline ORDER BY averageperseries DESC) as rank
+        FROM competitions
+        WHERE level != 'Allenamento / Pratica' AND discipline != 'Allenamento' AND totalscore > 0
+          AND date::TIMESTAMP >= NOW() - INTERVAL '12 months'
+      ),
+      rte_stats AS (
+        SELECT 
+          user_id,
+          MAX(rte) as rte,
+          (ARRAY_AGG(count ORDER BY rte DESC))[1] as count
+        FROM (
+          SELECT 
+            user_id,
+            discipline,
+            AVG(averageperseries) as rte,
+            COUNT(*) as count
+          FROM recent_scores
+          WHERE rank <= 5
+          GROUP BY user_id, discipline
+        ) sub
+        ${discipline ? "WHERE discipline = $" + (params.indexOf(discipline) + 1) : ""}
+        GROUP BY user_id
+      )
       SELECT 
         u.id as user_id,
         u.name as user_name, 
@@ -1915,12 +1943,19 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         u.avatar,
         COUNT(c.id) as total_competitions,
         SUM(c.totalscore) as total_score,
-        SUM(c.totaltargets) as total_targets
-      FROM competitions c
-      JOIN users u ON c.user_id = u.id
+        SUM(c.totaltargets) as total_targets,
+        COALESCE(r.rte, 0) as rte,
+        COALESCE(r.count, 0) as rte_count
+      FROM users u
+      JOIN competitions c ON c.user_id = u.id
+      LEFT JOIN rte_stats r ON r.user_id = u.id
       ${whereString}
-      GROUP BY u.id, u.name, u.surname, u.society, u.category, u.qualification, u.shooter_code, u.avatar
-      ORDER BY (SUM(c.totalscore)::float / NULLIF(SUM(c.totaltargets), 0)) DESC NULLS LAST, user_surname ASC, user_name ASC
+      GROUP BY u.id, u.name, u.surname, u.society, u.category, u.qualification, u.shooter_code, u.avatar, r.rte, r.count
+      ORDER BY 
+        (CASE WHEN COALESCE(r.count, 0) >= 3 THEN 1 ELSE 0 END) DESC,
+        rte DESC NULLS LAST, 
+        (SUM(c.totalscore)::float / NULLIF(SUM(c.totaltargets), 0)) DESC NULLS LAST, 
+        user_surname ASC, user_name ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
     const { rows } = await pool.query(resultsQuery, [...params, limit, offset]);
@@ -1936,7 +1971,9 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       avatar: row.avatar,
       totalCompetitions: parseInt(row.total_competitions),
       totalScore: parseInt(row.total_score),
-      totalTargets: parseInt(row.total_targets)
+      totalTargets: parseInt(row.total_targets),
+      rte: parseFloat(row.rte),
+      rteCount: parseInt(row.rte_count)
     }));
 
     res.json({ results: comps, total });

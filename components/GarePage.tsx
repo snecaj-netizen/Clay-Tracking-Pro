@@ -27,8 +27,15 @@ const GarePage: React.FC<GarePageProps> = ({
   onCreateEventTrigger, onToggleFAB, onTabChange
 }) => {
   const [activeTab, setActiveTab] = useState<'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione'>(
-    (initialViewMode as any) || 'eventi'
+    'eventi'
   );
+
+  useEffect(() => {
+    if (initialViewMode) {
+      setActiveTab(initialViewMode as any);
+      if (onInitialViewModeHandled) onInitialViewModeHandled();
+    }
+  }, [initialViewMode, onInitialViewModeHandled]);
 
   useEffect(() => {
     if (onTabChange) onTabChange(activeTab);
@@ -173,6 +180,8 @@ const GarePage: React.FC<GarePageProps> = ({
             societies={societies} 
             onParticipate={onParticipate}
             onCreateTeam={onCreateTeam}
+            initialEventId={initialEventId}
+            onInitialEventHandled={onInitialEventHandled}
             initialViewMode="list"
             hideViewSwitcher={true}
             filterRegistrationOpen={true}

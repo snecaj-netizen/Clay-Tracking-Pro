@@ -574,7 +574,7 @@ const App: React.FC = () => {
     );
   };
 
-  const handleNavigate = (newView: any, tab?: string) => {
+  const handleNavigate = (newView: any, tab?: string, eventId?: string) => {
     // Restrict history for society
     if (newView === 'le-tue-gare' && user?.role === 'society') {
       newView = 'gare';
@@ -598,6 +598,12 @@ const App: React.FC = () => {
       setInitialViewMode(tab);
     } else {
       setInitialViewMode(null);
+    }
+    
+    if (eventId) {
+      setInitialEventId(eventId);
+    } else if (newView !== 'gare' && newView !== 'admin-events') {
+      setInitialEventId(null);
     }
     
     if (newView !== 'societies' && newView !== 'admin') {
@@ -780,6 +786,8 @@ const App: React.FC = () => {
               onCreateTeam={handleCreateTeamFromEvent}
               initialEventId={initialEventId}
               onInitialEventHandled={() => setInitialEventId(null)}
+              initialViewMode={initialViewMode}
+              onInitialViewModeHandled={() => setInitialViewMode(null)}
               appSettings={appSettings}
               onCreateEventTrigger={gareCreateEvent}
               onToggleFAB={setHideGlobalFAB}

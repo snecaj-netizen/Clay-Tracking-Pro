@@ -88,11 +88,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
     if (initialEventId && events.length > 0) {
       const event = events.find(e => e.id === initialEventId);
       if (event) {
-        setSelectedEvent(event);
+        if (filterRegistrationOpen) {
+          setRegisteringEvent(event);
+        } else {
+          setSelectedEvent(event);
+        }
         if (onInitialEventHandled) onInitialEventHandled();
       }
     }
-  }, [initialEventId, events, onInitialEventHandled]);
+  }, [initialEventId, events, onInitialEventHandled, filterRegistrationOpen]);
 
   useEffect(() => {
     if (onCreateEventTrigger && onCreateEventTrigger > 0) {
