@@ -83,7 +83,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[1100] flex items-start justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[1300] flex items-start justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="w-full max-w-md animate-in slide-in-from-top-10 duration-300 py-8">
         {/* Card Container */}
         <div className="mb-6 overflow-hidden rounded-[2.5rem] shadow-2xl bg-white mx-auto w-full max-w-[480px]">
@@ -159,6 +159,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
                     lineHeight: '1.2'
                   }}>
                     {competition.position === 1 ? '1° POSTO' : competition.position === 2 ? '2° POSTO' : '3° POSTO'}
+                    {competition.ranking_preference === 'categoria' ? ' CAT.' : competition.ranking_preference === 'qualifica' ? ' QUAL.' : ''}
                   </div>
                 </div>
               )}
@@ -177,7 +178,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
                 {user.name} {user.surname}
               </h2>
               <div className="text-[10px] font-black text-orange-600 uppercase tracking-[0.5em] mt-2 bg-orange-50 px-3 py-1.5 rounded-full leading-normal">
-                Tiratore
+                Tiratore {user.category ? `• ${user.category}` : ''}
               </div>
             </div>
 

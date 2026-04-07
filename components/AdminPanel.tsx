@@ -3356,6 +3356,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           });
                           if (res.ok) {
                             const data = await res.json();
+                            const mappedResults = (data || []).map((r: any) => ({
+                              ...r,
+                              totalScore: r.totalscore ?? r.totalScore,
+                              totalTargets: r.totaltargets ?? r.totalTargets,
+                              averagePerSeries: r.averageperseries ?? r.averagePerSeries,
+                              detailedScores: typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : (r.detailedscores ?? r.detailedScores),
+                              seriesImages: typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : (r.seriesimages ?? r.seriesImages),
+                              usedCartridges: typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : (r.usedcartridges ?? r.usedCartridges),
+                              scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : (r.scores ?? r.scores),
+                              weather: typeof r.weather === 'string' ? JSON.parse(r.weather) : (r.weather ?? r.weather),
+                              chokes: typeof r.chokes === 'string' ? JSON.parse(r.chokes) : (r.chokes ?? r.chokes),
+                              userId: r.user_id ?? r.userId,
+                              userName: r.user_name ?? r.userName,
+                              userSurname: r.user_surname ?? r.userSurname,
+                              eventId: r.event_id ?? r.eventId,
+                              shootOff: r.shoot_off ?? r.shootOff,
+                              endDate: r.enddate ?? r.endDate
+                            }));
+
                             setSelectedShooterResults({
                               userId: result.userId,
                               userName: result.userName,
@@ -3365,7 +3384,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               qualification: result.qualification,
                               shooter_code: result.shooter_code,
                               avatar: result.avatar,
-                              results: data,
+                              results: mappedResults,
                               rte: result.rte,
                               rteCount: result.rteCount
                             });
@@ -3498,13 +3517,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {selectedShooterResults && createPortal(
             <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedShooterResults(null)}>
               <div className="bg-slate-900 w-full h-full overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-                  <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-orange-600/20">
+                <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-orange-600 flex items-center justify-center text-white text-xl sm:text-2xl font-black shadow-lg shadow-orange-600/20">
                       {(selectedShooterResults.userName?.[0] || '')}{(selectedShooterResults.userSurname?.[0] || '')}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                      <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
                         {selectedShooterResults.userSurname || ''} {selectedShooterResults.userName || ''}
                       </h2>
                       {selectedShooterResults.shooter_code && (
@@ -3626,25 +3645,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <h4 
                                   onClick={() => {
                                     if (onEditCompetition && (currentUser?.role === 'admin' || (currentUser?.role === 'society' && r.location === currentUser?.society))) {
-                                      const mappedComp = {
-                                        ...r,
-                                        userId: r.user_id,
-                                        userName: r.user_name,
-                                        userSurname: r.user_surname,
-                                        totalScore: r.totalscore,
-                                        totalTargets: r.totaltargets,
-                                        averagePerSeries: r.averageperseries,
-                                        eventId: r.event_id,
-                                        shootOff: r.shoot_off,
-                                        endDate: r.enddate,
-                                        detailedScores: typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores,
-                                        seriesImages: typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages,
-                                        usedCartridges: typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges,
-                                        scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
-                                        weather: typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather,
-                                        chokes: typeof r.chokes === 'string' ? JSON.parse(r.chokes) : r.chokes
-                                      };
-                                      onEditCompetition(mappedComp);
+                                      onEditCompetition(r);
                                     }
                                   }}
                                   className="text-sm font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tight truncate cursor-pointer"
@@ -3700,25 +3701,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     <button 
                                       onClick={() => {
                                         if (onEditCompetition && (currentUser?.role === 'admin' || (currentUser?.role === 'society' && r.location === currentUser?.society))) {
-                                          const mappedComp = {
-                                            ...r,
-                                            userId: r.user_id,
-                                            userName: r.user_name,
-                                            userSurname: r.user_surname,
-                                            totalScore: r.totalscore,
-                                            totalTargets: r.totaltargets,
-                                            averagePerSeries: r.averageperseries,
-                                            eventId: r.event_id,
-                                            shootOff: r.shoot_off,
-                                            endDate: r.enddate,
-                                            detailedScores: typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores,
-                                            seriesImages: typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages,
-                                            usedCartridges: typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges,
-                                            scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
-                                            weather: typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather,
-                                            chokes: typeof r.chokes === 'string' ? JSON.parse(r.chokes) : r.chokes
-                                          };
-                                          onEditCompetition(mappedComp);
+                                          onEditCompetition(r);
                                         }
                                       }}
                                       className="w-9 h-9 rounded-xl bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
