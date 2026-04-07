@@ -23,62 +23,62 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
       icon: "fa-bullseye"
     },
     {
-      title: "Gare e Allenamenti",
-      description: "Inserisci i tuoi risultati in pochi secondi. Puoi aggiungere una gara da zero o iscriverti agli eventi organizzati dalle società nella sezione 'Eventi' per pre-compilare i dati. Monitora i tuoi progressi nel tempo!",
+      title: "Le Tue Gare",
+      description: "Qui trovi il riepilogo delle tue attività. Il tab 'Prossime' mostra i tuoi impegni futuri e le iscrizioni attive, mentre 'Storico' conserva tutti i tuoi risultati passati con statistiche dettagliate.",
       icon: "fa-list-ul"
     },
     {
       title: "Magazzino Cartucce",
-      description: "Tieni traccia delle tue scorte e delle spese. Inserisci i carichi nel 'Magazzino' e l'app scaricherà automaticamente le cartucce usate in ogni gara. Non restare mai senza munizioni!",
+      description: "Gestisci le tue scorte in modo intelligente. Carica i nuovi acquisti nel Magazzino e l'app scaricherà automaticamente le cartucce usate dopo ogni serie inserita. Non restare mai a secco!",
       icon: "fa-box-open"
     },
     {
-      title: "Statistiche e Coach AI",
-      description: "Analizza i tuoi progressi con grafici dettagliati. Il Coach AI analizzerà i tuoi dati per darti consigli tecnici personalizzati su come correggere i tuoi errori più frequenti e ottimizzare la tua tecnica.",
-      icon: "fa-user-tie"
+      title: "Gare ed Eventi",
+      description: "Esplora le gare disponibili in tutta Italia. Nel tab 'Iscrizioni' puoi iscriverti agli eventi con un tocco, mentre in 'Risultati' consulti le classifiche ufficiali e i punteggi di ogni competizione.",
+      icon: "fa-calendar-alt"
     },
     {
-      title: "Risultati Gare",
-      description: "Accedi alla sezione dedicata 'Risultati Gare' per consultare le classifiche ufficiali raggruppate per Società Organizzatrice. Troverai punteggi individuali e statistiche dettagliate per ogni evento validato.",
-      icon: "fa-trophy"
+      title: "Società TAV",
+      description: "Cerca i campi da tiro nel network nazionale. Visualizza info, contatti e posizioni sulla mappa per pianificare le tue prossime trasferte e scoprire nuove realtà del tiro a volo.",
+      icon: "fa-shield-alt"
     },
     {
-      title: "Profilo e Sicurezza",
-      description: "Personalizza il tuo profilo e installa l'app. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta (cambiala se necessario) e imposta una nuova password per maggiore sicurezza. Conserva le tue credenziali in un luogo sicuro!",
-      icon: "fa-user-shield"
+      title: "Menu e Profilo",
+      description: "Clicca sul tuo nome in alto a destra per accedere al profilo, cambiare password o consultare le notifiche. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta per ricevere aggiornamenti importanti.",
+      icon: "fa-user-circle"
     }
   ];
 
   const societySteps: TourStep[] = [
     {
       title: "Benvenuto, Società!",
-      description: "Gestisci la tua attività di tiro a volo in modo digitale e professionale. Semplifica la vita ai tuoi tiratori e alla tua segreteria con strumenti avanzati di gestione e comunicazione.",
+      description: "Gestisci il tuo club in modo digitale e professionale. Semplifica le iscrizioni, organizza eventi e comunica in tempo reale con i tuoi tiratori attraverso strumenti dedicati.",
       icon: "fa-building"
     },
     {
-      title: "Risultati in Tempo Reale",
-      description: "Monitora le prestazioni di tutti i tuoi tiratori iscritti. Avrai statistiche aggregate, medie e classifiche interne sempre aggiornate in tempo reale per ogni disciplina.",
+      title: "La mia Società",
+      description: "Il tuo centro di comando. Usa i tab per consultare la Dashboard (statistiche), gestire il tuo Team di tiratori, visualizzare i Risultati interni e personalizzare le Impostazioni della tua pagina.",
       icon: "fa-poll"
     },
     {
-      title: "Organizzazione Eventi",
-      description: "Crea gare ed eventi caricando la locandina. I tiratori riceveranno una notifica push istantanea e potranno iscriversi con un semplice tocco, facilitando l'organizzazione.",
+      title: "Organizzazione Gare",
+      description: "Crea e promuovi i tuoi eventi nella sezione Gare. Carica le locandine, definisci i dettagli e attiva le iscrizioni online per ricevere adesioni immediate dai tiratori di tutta Italia.",
       icon: "fa-calendar-plus"
     },
     {
-      title: "Gestione Squadre",
-      description: "Componi le squadre per le competizioni ufficiali in pochi clic. Seleziona i tiratori dai tuoi iscritti, assegna i pettorali e condividi la formazione istantaneamente con tutti.",
-      icon: "fa-users"
+      title: "Gestione Operativa",
+      description: "Dal menu in alto a destra, accedi a 'Gare gestite' per il controllo totale: gestisci le liste iscritti, componi le batterie (squadre) e convalida i punteggi ufficiali delle tue competizioni.",
+      icon: "fa-users-cog"
     },
     {
-      title: "Risultati e Convalida",
-      description: "Inserisci i risultati dei tuoi tiratori e convalida le prestazioni ufficiali. Una volta convalidati, i risultati saranno visibili a tutti i partecipanti e contribuiranno alle statistiche globali.",
-      icon: "fa-check-double"
+      title: "Network Società",
+      description: "Consulta l'elenco completo delle Società TAV. Resta aggiornato sul network nazionale, visualizza le altre realtà sulla mappa e mantieni i contatti con il mondo del tiro a volo.",
+      icon: "fa-shield-alt"
     },
     {
-      title: "Anagrafica e Sicurezza",
-      description: "Gestisci i tuoi iscritti e il tuo profilo. ⚠️ IMPORTANTE: Per proteggere i dati della società, verifica che la tua email sia corretta e imposta una password complessa, conservandola in un luogo sicuro.",
-      icon: "fa-id-card"
+      title: "Sicurezza e Account",
+      description: "Proteggi i dati della tua società. Verifica l'email e imposta una password sicura dal menu profilo. La sicurezza delle informazioni dei tuoi iscritti è la nostra priorità.",
+      icon: "fa-user-shield"
     }
   ];
 
