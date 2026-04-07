@@ -1,6 +1,6 @@
 {
-  "name": "Clay Tracker Pro",
-  "short_name": "ClayTracker",
+  "name": "Clay Performance",
+  "short_name": "ClayPerf",
   "description": "Professional Clay Shooting Performance Tracker",
   "start_url": "/",
   "display": "standalone",

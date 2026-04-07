@@ -2177,7 +2177,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <i className="fas fa-mobile-alt text-orange-500"></i> Guida all'installazione
                 </h3>
                 <p className="text-sm text-slate-400 mb-6">
-                  Clay Tracker Pro è una "Web App". Puoi installarla sul tuo telefono per usarla come una vera applicazione, senza dover passare dal browser ogni volta.
+                  Clay Performance è una "Web App". Puoi installarla sul tuo telefono per usarla come una vera applicazione, senza dover passare dal browser ogni volta.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

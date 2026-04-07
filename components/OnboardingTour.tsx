@@ -18,7 +18,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
 
   const shooterSteps: TourStep[] = [
     {
-      title: "Benvenuto su Clay Tracker Pro!",
+      title: "Benvenuto su Clay Performance!",
       description: "L'app definitiva per monitorare le tue prestazioni nel tiro a volo. Sei pronto a migliorare il tuo punteggio e scalare le classifiche? Qui potrai gestire ogni aspetto della tua attività sportiva.",
       icon: "fa-bullseye"
     },

@@ -56,8 +56,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl">
         <div className="text-center mb-8">
-          <img src="/icon.svg" alt="Clay Tracker Pro" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg shadow-orange-600/20" />
-          <h1 className="text-2xl font-black text-white uppercase tracking-tight">Clay Tracker Pro</h1>
+          <img src="/icon.svg" alt="Clay Performance" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg shadow-orange-600/20" />
+          <h1 className="text-2xl font-black text-white uppercase tracking-tight">
+            Clay <span className="text-orange-600">Performance</span>
+          </h1>
           <p className="text-slate-500 text-sm mt-2">Accedi al tuo account</p>
         </div>
 
@@ -115,7 +117,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <span className="text-orange-500 font-semibold mt-1 block">Chiedi alla tua Società le credenziali di accesso!</span>
             </p>
             <p className="text-slate-500 text-[10px] mt-4 italic">
-              Tip: Puoi installare Clay Tracker Pro come un'app sul tuo telefono per un accesso più rapido.
+              Tip: Puoi installare Clay Performance come un'app sul tuo telefono per un accesso più rapido.
             </p>
           </div>
         </div>

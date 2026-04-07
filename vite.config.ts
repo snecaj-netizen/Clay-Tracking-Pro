@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => {
             maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
           },
           manifest: {
-            name: 'Clay Tracker Pro',
-            short_name: 'ClayTracker',
+            name: 'Clay Performance',
+            short_name: 'ClayPerf',
             description: 'Professional Clay Shooting Performance Tracker',
             theme_color: '#0f172a',
             background_color: '#0f172a',

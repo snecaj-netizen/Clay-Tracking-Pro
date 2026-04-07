@@ -8,7 +8,7 @@ self.addEventListener('push', function(event) {
     }
   }
 
-  const title = data.title || 'Clay Tracker Pro';
+  const title = data.title || 'Clay Performance';
   const options = {
     body: data.body || 'Hai una nuova notifica',
     icon: '/app-logo.svg',

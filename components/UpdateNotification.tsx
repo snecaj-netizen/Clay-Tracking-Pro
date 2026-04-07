@@ -67,7 +67,7 @@ const UpdateNotification: React.FC = () => {
               <div className="flex-1">
                 <h4 className="text-white font-bold text-sm mb-1">Aggiornamento Disponibile</h4>
                 <p className="text-slate-400 text-xs leading-relaxed mb-3">
-                  È stata pubblicata una nuova versione di Clay Tracker Pro. Aggiorna ora per vedere le ultime modifiche.
+                  È stata pubblicata una nuova versione di Clay Performance. Aggiorna ora per vedere le ultime modifiche.
                 </p>
                 <div className="flex gap-2">
                   <button 

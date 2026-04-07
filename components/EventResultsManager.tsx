@@ -268,7 +268,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('CLAY TRACKER PRO', pageWidth / 2, 15, { align: 'center' });
+    doc.text('CLAY PERFORMANCE', pageWidth / 2, 15, { align: 'center' });
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -512,7 +512,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Pagina ${i} di ${pageCount} - Generato da Clay Tracker Pro`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      doc.text(`Pagina ${i} di ${pageCount} - Generato da Clay Performance`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     }
 
     if (shouldDownload) {

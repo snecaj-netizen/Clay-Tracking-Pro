@@ -142,7 +142,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               </div>
               <div className="text-left">
                 <h1 className="text-xl font-black tracking-tight text-white leading-none text-left">
-                  Clay Tracker <span className="text-orange-600">Pro</span>
+                  Clay <span className="text-orange-600">Performance</span>
                 </h1>
               </div>
             </button>

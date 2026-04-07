@@ -58,9 +58,9 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
       if (mode === 'share' && navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: 'Il mio risultato su Clay Tracker Pro',
+          title: 'Il mio risultato su Clay Performance',
           text: isPerfectSeries 
-            ? `Ho fatto 25/25! 🎯 Guarda il mio risultato su Clay Tracker Pro.` 
+            ? `Ho fatto 25/25! 🎯 Guarda il mio risultato su Clay Performance.` 
             : `Ho completato la gara ${competition.name} con un punteggio di ${competition.totalScore}/${competition.totalTargets}! 🎯`,
         });
       } else {
@@ -115,7 +115,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
                   </div>
                 </div>
                 <span className="text-2xl font-black tracking-tighter text-slate-900 pb-1">
-                  Clay Tracker <span className="text-orange-600">Pro</span>
+                  Clay <span className="text-orange-600">Performance</span>
                 </span>
               </div>
               <div className="h-1.5 w-16 bg-orange-600/20 rounded-full"></div>
@@ -244,7 +244,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
             {/* Footer Watermark */}
             <div className="mt-12 pt-6 border-t border-slate-100 w-full">
               <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.3em]">
-                Generato con Clay Tracker Pro
+                Generato con Clay Performance
               </p>
             </div>
           </div>

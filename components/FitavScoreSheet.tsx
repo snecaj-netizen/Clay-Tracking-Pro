@@ -175,7 +175,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
 
             {/* Footer Info */}
             <div className="mt-6 flex justify-between items-end text-[9px] font-bold uppercase italic text-slate-400">
-              <p>Documento generato da Clay Tracker Pro</p>
+              <p>Documento generato da Clay Performance</p>
               <div className="flex gap-8">
                 <div className="flex items-end gap-2">
                   <span>Direttore di Tiro:</span>

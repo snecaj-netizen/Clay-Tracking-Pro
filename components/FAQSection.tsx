@@ -32,7 +32,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ role, onReplayTour }) => {
     },
     {
       question: "Come installo l'app sul telefono?",
-      answer: "Clay Tracker Pro è una Web App. Su iPhone (Safari), tocca 'Condividi' e poi 'Aggiungi alla schermata Home'. Su Android (Chrome), tocca i tre puntini in alto a destra e seleziona 'Installa applicazione'."
+      answer: "Clay Performance è una Web App. Su iPhone (Safari), tocca 'Condividi' e poi 'Aggiungi alla schermata Home'. Su Android (Chrome), tocca i tre puntini in alto a destra e seleziona 'Installa applicazione'."
     }
   ];
 

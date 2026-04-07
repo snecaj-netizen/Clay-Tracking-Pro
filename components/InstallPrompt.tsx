@@ -134,7 +134,7 @@ const InstallPrompt: React.FC = () => {
                       )}
                     </div>
                   )
-                  : "Aggiungi Clay Tracker Pro al tuo telefono per aprirla in un attimo, ricevere notifiche e usarla come una vera applicazione."
+                  : "Aggiungi Clay Performance al tuo telefono per aprirla in un attimo, ricevere notifiche e usarla come una vera applicazione."
                 }
               </div>
             </div>
