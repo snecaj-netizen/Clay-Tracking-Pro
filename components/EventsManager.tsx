@@ -26,14 +26,48 @@ interface EventsManagerProps {
   appSettings?: any;
   onCreateEventTrigger?: number;
   onToggleFAB?: (hide: boolean) => void;
+  isSubPage?: boolean;
+  hideHeader?: boolean;
+  initialEvents?: SocietyEvent[];
+  viewMode?: 'list' | 'calendar' | 'results' | 'managed';
+  onViewModeChange?: (mode: 'list' | 'calendar' | 'results' | 'managed') => void;
+  showFilters?: boolean;
+  onShowFiltersChange?: (show: boolean) => void;
+  onExportExcel?: () => void;
+  onImportExcel?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onNewEvent?: () => void;
+  exportTrigger?: number;
+  importTrigger?: number;
+  newEventTrigger?: number;
+  filterSociety?: string;
+  onFilterSocietyChange?: (val: string) => void;
+  filterDiscipline?: string;
+  onFilterDisciplineChange?: (val: string) => void;
+  filterMonth?: string;
+  onFilterMonthChange?: (val: string) => void;
 }
 
-const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, appSettings, onCreateEventTrigger, onToggleFAB }) => {
-  const [events, setEvents] = useState<SocietyEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+const EventsManager: React.FC<EventsManagerProps> = ({ 
+  user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, 
+  restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', 
+  onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, 
+  appSettings, onCreateEventTrigger, onToggleFAB, isSubPage = false, hideHeader = false,
+  initialEvents,
+  viewMode: externalViewMode, onViewModeChange, showFilters: externalShowFilters, onShowFiltersChange,
+  onExportExcel, onImportExcel, onNewEvent,
+  exportTrigger, importTrigger, newEventTrigger,
+  filterSociety: externalFilterSociety, onFilterSocietyChange,
+  filterDiscipline: externalFilterDiscipline, onFilterDisciplineChange,
+  filterMonth: externalFilterMonth, onFilterMonthChange
+}) => {
+  const [events, setEvents] = useState<SocietyEvent[]>(initialEvents || []);
+  const [loading, setLoading] = useState(!initialEvents || initialEvents.length === 0);
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<SocietyEvent | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results' | 'managed'>(initialViewMode as any);
+  const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar' | 'results' | 'managed'>(initialViewMode as any);
+  const viewMode = externalViewMode || internalViewMode;
+  const setViewMode = onViewModeChange || setInternalViewMode;
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<SocietyEvent | null>(null);
@@ -45,6 +79,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [refreshDetailVersion, setRefreshDetailVersion] = useState(0);
   const [initialManagementTab, setInitialManagementTab] = useState<'registrations' | 'squads' | 'results'>('registrations');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const resultsAccess = appSettings?.event_results_access || {};
 
@@ -70,10 +105,21 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const hasSocietaAccess = user?.role === 'admin' || checkAccess(resultsAccess.societa, user?.society);
   const hasTiratoriAccess = user?.role === 'admin' || checkAccess(resultsAccess.tiratori, user?.society);
 
-  const [showFilters, setShowFilters] = useState(false);
-  const [filterSociety, setFilterSociety] = useState('');
-  const [filterDiscipline, setFilterDiscipline] = useState('');
-  const [filterMonth, setFilterMonth] = useState('');
+  const [internalShowFilters, setInternalShowFilters] = useState(false);
+  const showFilters = externalShowFilters !== undefined ? externalShowFilters : internalShowFilters;
+  const setShowFilters = onShowFiltersChange || setInternalShowFilters;
+
+  const [internalFilterSociety, setInternalFilterSociety] = useState('');
+  const filterSociety = externalFilterSociety !== undefined ? externalFilterSociety : internalFilterSociety;
+  const setFilterSociety = onFilterSocietyChange || setInternalFilterSociety;
+
+  const [internalFilterDiscipline, setInternalFilterDiscipline] = useState('');
+  const filterDiscipline = externalFilterDiscipline !== undefined ? externalFilterDiscipline : internalFilterDiscipline;
+  const setFilterDiscipline = onFilterDisciplineChange || setInternalFilterDiscipline;
+
+  const [internalFilterMonth, setInternalFilterMonth] = useState('');
+  const filterMonth = externalFilterMonth !== undefined ? externalFilterMonth : internalFilterMonth;
+  const setFilterMonth = onFilterMonthChange || setInternalFilterMonth;
   
   const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '';
 
@@ -83,6 +129,25 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
       onInitialViewModeHandled?.();
     }
   }, [initialViewMode, onInitialViewModeHandled]);
+
+  useEffect(() => {
+    if (exportTrigger && exportTrigger > 0) {
+      handleExportExcel();
+    }
+  }, [exportTrigger]);
+
+  useEffect(() => {
+    if (importTrigger && importTrigger > 0) {
+      fileInputRef.current?.click();
+    }
+  }, [importTrigger]);
+
+  useEffect(() => {
+    if (newEventTrigger && newEventTrigger > 0) {
+      resetForm();
+      setShowForm(true);
+    }
+  }, [newEventTrigger]);
 
   useEffect(() => {
     if (initialEventId && events.length > 0) {
@@ -537,6 +602,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
   const [hasSocietyRanking, setHasSocietyRanking] = useState(false);
   const [hasTeamRanking, setHasTeamRanking] = useState(false);
+
+  useEffect(() => {
+    if (initialEvents && initialEvents.length > 0 && events.length === 0) {
+      setEvents(initialEvents);
+      setLoading(false);
+    }
+  }, [initialEvents]);
 
   const fetchEvents = async (signal?: AbortSignal) => {
     console.log('EventsManager: fetchEvents called', { hasToken: !!token });
@@ -1117,7 +1189,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
         />
       ) : (
         <>
-          <div className="sticky top-16 sm:top-[104px] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all">
+          {!hideHeader && (
+            <div className={`sticky ${isSubPage ? 'top-[156px] sm:top-[208px]' : 'top-16 sm:top-[104px]'} z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all`}>
             <div className="flex flex-col gap-2 sm:gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -1147,7 +1220,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
                         </button>
                         <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px] font-black uppercase transition-all active:scale-95 cursor-pointer" title="Importa Excel">
                           <i className="fas fa-file-import"></i> Importa
-                          <input type="file" accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
+                          <input type="file" ref={fileInputRef} accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
                         </label>
                       </div>
                     )}
@@ -1209,9 +1282,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({ user, token, triggerConfi
               </div>
             </div>
           </div>
+        )}
 
-      <div className="pt-4">
-        {!showForm && showFilters && (
+      <div className={hideHeader ? "pt-0" : "pt-4"}>
+        {!hideHeader && !showForm && showFilters && (
           <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
             {!(restrictToSociety && user?.role === 'society') && (
               <div className="space-y-1.5">

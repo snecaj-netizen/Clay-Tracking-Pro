@@ -708,7 +708,7 @@ const App: React.FC = () => {
         onGoForward={handleGoForward}
       />
       
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 flex-1 w-full pb-24 sm:pb-8`}>
+      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-[104px] flex-1 w-full pb-24 sm:pb-8`}>
         {view === 'le-tue-gare' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <LeTueGarePage 
@@ -1000,7 +1000,7 @@ const App: React.FC = () => {
 
       {/* Floating Add Button - Only on Dashboard/History/New Page and not for society role */}
       <ExpandingFAB 
-        show={!hideGlobalFAB && ((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new' || view === 'gare'))}
+        show={!hideGlobalFAB && ((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new' || (view === 'gare' && gareActiveTab === 'eventi')))}
         label={view === 'new' ? 'Chiudi' : (view === 'gare' && gareActiveTab === 'gestione' ? 'Nuovo Evento' : 'Nuova Gara')}
         isClose={view === 'new'}
         onClick={() => { 

@@ -1962,6 +1962,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             triggerToast={triggerToast}
             societies={societies}
             onToggleFAB={handleToggleFAB}
+            isSubPage={true}
           />
         </div>
       ) : activeTab === 'settings' ? (
@@ -3202,6 +3203,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             triggerToast={triggerToast}
             societies={societies} 
             restrictToSociety={true}
+            isSubPage={true}
             onCreateTeam={(ev) => {
               setActiveTab('team');
               setShowTeamForm(true);

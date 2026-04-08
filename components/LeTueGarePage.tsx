@@ -73,6 +73,20 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
     }
   };
 
+  const goToPrevTab = () => {
+    const currentIndex = availableTabs.indexOf(activeTab);
+    if (currentIndex > 0) {
+      handleTabChange(availableTabs[currentIndex - 1]);
+    }
+  };
+
+  const goToNextTab = () => {
+    const currentIndex = availableTabs.indexOf(activeTab);
+    if (currentIndex < availableTabs.length - 1) {
+      handleTabChange(availableTabs[currentIndex + 1]);
+    }
+  };
+
   useEffect(() => {
     onTabChange?.(activeTab);
   }, [activeTab, onTabChange]);
@@ -92,7 +106,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   return (
     <div className="space-y-4">
       {/* Sticky Header Section */}
-      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-list-ul text-orange-600"></i>
@@ -110,17 +124,35 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
           </div>
         </div>
 
-        <div ref={tabsRef} className="flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
-          {availableTabs.map((tab) => (
-            <button 
-              key={tab}
-              data-tab={tab}
-              onClick={() => handleTabChange(tab)} 
-              className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-            >
-              {tab === 'history' ? 'GARE/ALLENAMENTI' : tab === 'report' ? 'REPORT' : 'COACH AI'}
-            </button>
-          ))}
+        <div className="relative flex items-center group/tabs">
+          <button 
+            onClick={goToPrevTab}
+            disabled={availableTabs.indexOf(activeTab) === 0}
+            className="hidden lg:flex absolute -left-10 z-10 items-center justify-center w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all disabled:opacity-0 shadow-lg"
+          >
+            <i className="fas fa-chevron-left text-[10px]"></i>
+          </button>
+
+          <div ref={tabsRef} className="flex-1 flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
+            {availableTabs.map((tab) => (
+              <button 
+                key={tab}
+                data-tab={tab}
+                onClick={() => handleTabChange(tab)} 
+                className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+              >
+                {tab === 'history' ? 'GARE/ALLENAMENTI' : tab === 'report' ? 'REPORT' : 'COACH AI'}
+              </button>
+            ))}
+          </div>
+
+          <button 
+            onClick={goToNextTab}
+            disabled={availableTabs.indexOf(activeTab) === availableTabs.length - 1}
+            className="hidden lg:flex absolute -right-10 z-10 items-center justify-center w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all disabled:opacity-0 shadow-lg"
+          >
+            <i className="fas fa-chevron-right text-[10px]"></i>
+          </button>
         </div>
       </div>
 
