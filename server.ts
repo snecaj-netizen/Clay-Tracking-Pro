@@ -1334,7 +1334,7 @@ app.get('/api/society/stats', authenticateToken, requireAdminOrSociety, async (r
     const isSociety = req.user.role === 'society';
     const societyName = req.user.society;
 
-    let userQuery = 'SELECT COUNT(*) FROM users WHERE role = \'user\'';
+    let userQuery = 'SELECT COUNT(*) FROM users WHERE role IN (\'user\', \'admin\')';
     let teamQuery = 'SELECT COUNT(*) FROM teams';
     const params: any[] = [];
 

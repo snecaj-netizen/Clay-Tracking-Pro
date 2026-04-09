@@ -560,9 +560,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         page: usersPageRef.current.toString(),
         limit: usersPerPageRef.current.toString(),
         search: userSearchTermRef.current,
-        role: filterRoleRef.current,
-        excludeRole: 'society'
+        role: filterRoleRef.current
       });
+      
+      // Escludi il ruolo 'society' dalla lista generale, a meno che non sia esplicitamente filtrato
+      if (filterRoleRef.current !== 'society') {
+        queryParams.append('excludeRole', 'society');
+      }
       
       const res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },

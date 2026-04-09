@@ -145,14 +145,6 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
         </div>
 
         <div className="relative flex items-center group/tabs">
-          <button 
-            onClick={goToPrevTab}
-            disabled={availableTabs.indexOf(activeTab) === 0}
-            className="hidden lg:flex absolute -left-10 z-10 items-center justify-center w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all disabled:opacity-0 shadow-lg"
-          >
-            <i className="fas fa-chevron-left text-[10px]"></i>
-          </button>
-
           <div ref={tabsRef} className="flex-1 flex bg-slate-900 p-1 rounded-xl gap-1 border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
             {availableTabs.map((tab) => (
               <button
@@ -165,14 +157,6 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
               </button>
             ))}
           </div>
-
-          <button 
-            onClick={goToNextTab}
-            disabled={availableTabs.indexOf(activeTab) === availableTabs.length - 1}
-            className="hidden lg:flex absolute -right-10 z-10 items-center justify-center w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all disabled:opacity-0 shadow-lg"
-          >
-            <i className="fas fa-chevron-right text-[10px]"></i>
-          </button>
         </div>
       </div>
 
