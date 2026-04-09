@@ -404,6 +404,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [fetchedDashboardStats, setFetchedDashboardStats] = useState<any>(null);
   const [showDashboard, setShowDashboard] = useState(false);
 
+  useEffect(() => {
+    if (currentUser?.role === 'society' && showUserForm && !editingUser) {
+      setSociety(currentUser.society || '');
+    }
+  }, [currentUser, showUserForm, editingUser]);
+
   const fetchDashboardStats = useCallback(async () => {
     if (currentUser?.role !== 'admin') return;
     try {
@@ -4122,7 +4128,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       onChange={setSociety}
                       societies={societies}
                       placeholder="Seleziona..."
-                      disabled={currentUser?.role === 'society' && !!editingUser}
+                      disabled={currentUser?.role === 'society'}
                     />
                   </div>
                   <div>

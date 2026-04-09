@@ -24,7 +24,6 @@ interface EventsManagerProps {
   hideViewSwitcher?: boolean;
   filterRegistrationOpen?: boolean;
   appSettings?: any;
-  onCreateEventTrigger?: number;
   onToggleFAB?: (hide: boolean) => void;
   isSubPage?: boolean;
   hideHeader?: boolean;
@@ -51,7 +50,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, 
   restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', 
   onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, 
-  appSettings, onCreateEventTrigger, onToggleFAB, isSubPage = false, hideHeader = false,
+  appSettings, onToggleFAB, isSubPage = false, hideHeader = false,
   initialEvents,
   viewMode: externalViewMode, onViewModeChange, showFilters: externalShowFilters, onShowFiltersChange,
   onExportExcel, onImportExcel, onNewEvent,
@@ -162,13 +161,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       }
     }
   }, [initialEventId, events, onInitialEventHandled, filterRegistrationOpen]);
-
-  useEffect(() => {
-    if (onCreateEventTrigger && onCreateEventTrigger > 0) {
-      resetForm();
-      setShowForm(true);
-    }
-  }, [onCreateEventTrigger]);
 
   const nextUpcomingEventId = React.useMemo(() => {
     const today = new Date();

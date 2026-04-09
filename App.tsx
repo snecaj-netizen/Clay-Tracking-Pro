@@ -599,6 +599,10 @@ const App: React.FC = () => {
     } else {
       setInitialViewMode(null);
     }
+
+    if (newView === 'gare') {
+      setGareCreateEvent(0);
+    }
     
     if (eventId) {
       setInitialEventId(eventId);
@@ -1000,8 +1004,14 @@ const App: React.FC = () => {
 
       {/* Floating Add Button - Only on Dashboard/History/New Page and not for society role */}
       <ExpandingFAB 
-        show={!hideGlobalFAB && ((view === 'dashboard' || (view === 'le-tue-gare' && leTueGareTab === 'history') || view === 'new' || (view === 'gare' && gareActiveTab === 'eventi')))}
-        label={view === 'new' ? 'Chiudi' : (view === 'gare' && gareActiveTab === 'gestione' ? 'Nuovo Evento' : 'Nuova Gara')}
+        show={!hideGlobalFAB && (
+          view === 'dashboard' || 
+          (view === 'le-tue-gare' && leTueGareTab === 'history') || 
+          view === 'new' || 
+          (view === 'gare' && gareActiveTab === 'eventi' && user?.role === 'admin') ||
+          (view === 'gare' && gareActiveTab === 'le-tue-gare' && user?.role === 'society')
+        )}
+        label={view === 'new' ? 'Chiudi' : (view === 'gare' && (gareActiveTab === 'gestione' || gareActiveTab === 'eventi' || gareActiveTab === 'le-tue-gare') ? 'Nuovo Evento' : 'Nuova Gara')}
         isClose={view === 'new'}
         onClick={() => { 
           if (view === 'new') {
@@ -1010,7 +1020,7 @@ const App: React.FC = () => {
             setEditingCompetition(null);
             setPrefillCompetition(null);
           } else if (view === 'gare') {
-            if (gareActiveTab === 'gestione') {
+            if (gareActiveTab === 'gestione' || (gareActiveTab === 'eventi' && user?.role === 'admin') || (gareActiveTab === 'le-tue-gare' && user?.role === 'society')) {
               setGareCreateEvent(prev => prev + 1);
             } else {
               setPreviousView(view);

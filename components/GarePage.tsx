@@ -78,11 +78,20 @@ const GarePage: React.FC<GarePageProps> = ({
     if (onTabChange) onTabChange(activeTab);
   }, [activeTab, onTabChange]);
 
+  const lastHandledTrigger = useRef(onCreateEventTrigger || 0);
+
   useEffect(() => {
-    if (onCreateEventTrigger && onCreateEventTrigger > 0 && (user?.role === 'admin' || user?.role === 'society')) {
-      setActiveTab('gestione');
+    if (onCreateEventTrigger && onCreateEventTrigger > lastHandledTrigger.current && (user?.role === 'admin' || user?.role === 'society')) {
+      lastHandledTrigger.current = onCreateEventTrigger;
+      if (user?.role === 'society' && activeTab === 'le-tue-gare') {
+        setNewEventTrigger(prev => prev + 1);
+      } else if (user?.role === 'admin' && activeTab === 'eventi') {
+        setNewEventTrigger(prev => prev + 1);
+      } else if (activeTab !== 'gestione') {
+        setActiveTab('gestione');
+      }
     }
-  }, [onCreateEventTrigger, user?.role]);
+  }, [onCreateEventTrigger, user?.role, activeTab]);
 
   const handleTabChange = (newTab: TabType) => {
     const currentIndex = availableTabs.indexOf(activeTab);
@@ -90,17 +99,6 @@ const GarePage: React.FC<GarePageProps> = ({
     setDirection(newIndex > currentIndex ? 1 : -1);
     setActiveTab(newTab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSwipe = (offset: number) => {
-    const currentIndex = availableTabs.indexOf(activeTab);
-    if (offset < -50 && currentIndex < availableTabs.length - 1) {
-      // Swipe Left -> Next Tab
-      handleTabChange(availableTabs[currentIndex + 1]);
-    } else if (offset > 50 && currentIndex > 0) {
-      // Swipe Right -> Previous Tab
-      handleTabChange(availableTabs[currentIndex - 1]);
-    }
   };
 
   const goToPrevTab = () => {
@@ -214,16 +212,6 @@ const GarePage: React.FC<GarePageProps> = ({
                   </button>
                 </div>
               )}
-
-              {(user?.role === 'admin' || user?.role === 'society') && activeTab === 'eventi' && (
-                <button 
-                  onClick={() => setNewEventTrigger(prev => prev + 1)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 text-[10px] font-black uppercase transition-all shadow-lg shadow-orange-600/20"
-                >
-                  <i className="fas fa-plus"></i>
-                  <span className="hidden sm:inline">Nuovo Evento</span>
-                </button>
-              )}
             </div>
 
             {activeTab === 'eventi' && (
@@ -308,21 +296,14 @@ const GarePage: React.FC<GarePageProps> = ({
         </AnimatePresence>
       </div>
 
-      <motion.div 
-        className="min-h-[60vh] overflow-x-hidden"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        onDragEnd={(_, info) => handleSwipe(info.offset.x)}
-      >
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
+      <div className="min-h-[60vh]">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeTab}
-            custom={direction}
-            initial={{ opacity: 0, x: direction * 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction * -50 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             {activeTab === 'eventi' && (
               <EventsManager 
@@ -351,7 +332,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 hideViewSwitcher={true}
                 hideHeader={true}
                 appSettings={appSettings}
-                onToggleFAB={onToggleFAB}
+                onToggleFAB={user?.role === 'society' ? undefined : onToggleFAB}
+                newEventTrigger={newEventTrigger}
                 isSubPage={true}
               />
             )}
@@ -382,6 +364,8 @@ const GarePage: React.FC<GarePageProps> = ({
                   filterMonth={filterMonth}
                   onFilterMonthChange={setFilterMonth}
                   appSettings={appSettings}
+                  onToggleFAB={onToggleFAB}
+                  newEventTrigger={newEventTrigger}
                   isSubPage={true}
                 />
               </div>
@@ -471,7 +455,6 @@ const GarePage: React.FC<GarePageProps> = ({
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
                 appSettings={appSettings}
-                onCreateEventTrigger={onCreateEventTrigger}
                 isSubPage={true}
               />
             )}
@@ -487,7 +470,7 @@ const GarePage: React.FC<GarePageProps> = ({
             )}
           </motion.div>
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   );
 };

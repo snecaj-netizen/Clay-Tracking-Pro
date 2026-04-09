@@ -57,22 +57,6 @@ const Warehouse: React.FC<WarehouseProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSwipe = (event: any, info: any) => {
-    // Non permettiamo lo swipe se il form è aperto per evitare conflitti con gli input
-    if (showForm) return;
-
-    const threshold = 50;
-    const currentIndex = availableTabs.indexOf(activeTab);
-    
-    if (info.offset.x < -threshold && currentIndex < availableTabs.length - 1) {
-      // Swipe left -> go to next tab
-      handleTabChange(availableTabs[currentIndex + 1]);
-    } else if (info.offset.x > threshold && currentIndex > 0) {
-      // Swipe right -> go to previous tab
-      handleTabChange(availableTabs[currentIndex - 1]);
-    }
-  };
-
   const goToPrevTab = () => {
     const currentIndex = availableTabs.indexOf(activeTab);
     if (currentIndex > 0) {
@@ -372,21 +356,14 @@ const Warehouse: React.FC<WarehouseProps> = ({
         </div>
       </div>
 
-      <motion.div 
-        className="pt-2 overflow-x-hidden"
-        drag={showForm ? false : "x"}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleSwipe}
-      >
-        <AnimatePresence mode="wait" custom={direction}>
+      <div className="pt-2">
+        <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            custom={direction}
-            initial={{ opacity: 0, x: direction > 0 ? 20 : -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction > 0 ? -20 : 20 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             {showForm && activeTab === 'types' && (
               <form onSubmit={handleTypeSubmit} className="bg-slate-900 border-2 border-orange-600/30 p-6 rounded-3xl space-y-4 mb-6 animate-in fade-in slide-in-from-top-4">
@@ -749,7 +726,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
             )}
           </motion.div>
         </AnimatePresence>
-      </motion.div>
+      </div>
 
       {/* Floating Add Button for Warehouse - Only on Types and History tabs */}
       <ExpandingFAB 

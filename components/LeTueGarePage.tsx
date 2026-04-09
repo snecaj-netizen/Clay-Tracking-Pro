@@ -61,19 +61,6 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSwipe = (event: any, info: any) => {
-    const threshold = 50;
-    const currentIndex = availableTabs.indexOf(activeTab);
-    
-    if (info.offset.x < -threshold && currentIndex < availableTabs.length - 1) {
-      // Swipe left -> go to next tab
-      handleTabChange(availableTabs[currentIndex + 1]);
-    } else if (info.offset.x > threshold && currentIndex > 0) {
-      // Swipe right -> go to previous tab
-      handleTabChange(availableTabs[currentIndex - 1]);
-    }
-  };
-
   useEffect(() => {
     onTabChange?.(activeTab);
   }, [activeTab, onTabChange]);
@@ -147,21 +134,14 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
         </div>
       </div>
 
-      <motion.div 
-        className="pt-2 overflow-x-hidden"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleSwipe}
-      >
-        <AnimatePresence mode="wait" custom={direction}>
+      <div className="pt-2">
+        <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            custom={direction}
-            initial={{ opacity: 0, x: direction > 0 ? 20 : -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction > 0 ? -20 : 20 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             {activeTab === 'history' && user?.role !== 'society' && (
               <HistoryList 
@@ -198,7 +178,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
             )}
           </motion.div>
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   );
 };
