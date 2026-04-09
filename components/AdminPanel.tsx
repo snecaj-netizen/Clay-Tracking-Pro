@@ -619,12 +619,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!isBackground) setLoading(true);
     else setBackgroundLoading(true);
     try {
+      // Per la tab squadre vogliamo tutte le statistiche della società per poterle mappare correttamente
+      // Ignoriamo i filtri globali se siamo in tab 'team'
       const queryParams = new URLSearchParams({
-        search: filterShooter,
         society: filterSociety,
-        discipline: filterDiscipline,
-        location: filterLocation,
-        year: filterYear
+        ...(activeTab === 'results' ? {
+          search: filterShooter,
+          discipline: filterDiscipline,
+          location: filterLocation,
+          year: filterYear
+        } : {})
       });
       
       const res = await fetch(`/api/admin/team-stats?${queryParams.toString()}`, {
@@ -650,7 +654,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!isBackground) setLoading(false);
       else setBackgroundLoading(false);
     }
-  }, [currentUser?.role, token, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
+  }, [currentUser?.role, token, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear, activeTab]);
 
   const fetchAllResults = useCallback(async (signal?: AbortSignal, isBackground = false) => {
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'society') return;
@@ -2564,7 +2568,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {catQual && (
                                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter shrink-0">{catQual}</span>
                                 )}
-                                <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest shrink-0">Avg: {avg}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest shrink-0">RTE: {avg}</span>
+                                  {shooterStats && Number(shooterStats.avg_score) > 0 && (
+                                    <span className={`text-[7px] font-black uppercase px-1 rounded-sm ${Number(shooterStats.total_competitions) < 3 ? 'bg-slate-800 text-slate-500 border border-slate-700' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
+                                      {Number(shooterStats.total_competitions) < 3 ? 'Prov' : 'Qual'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2651,7 +2662,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <th className="py-3 px-4">Cat./Qual.</th>
                     <th className="py-3 px-4">Disciplina</th>
                     <th className="py-3 px-4">Gare</th>
-                    <th className="py-3 px-4 text-right">Media</th>
+                    <th className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        Rating RTE
+                        <div className="group relative">
+                          <i className="fas fa-info-circle text-[10px] text-slate-600 cursor-help hover:text-orange-500 transition-colors p-1"></i>
+                          <div className="absolute top-full right-0 mt-1 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed text-left">
+                            <p className="mb-1 text-white font-bold">Rating Tecnico di Eccellenza (RTE)</p>
+                            La media dei <span className="text-white">migliori 5 risultati</span> degli ultimi 12 mesi. 
+                            Diventa <span className="text-amber-500 font-bold">Qualificato</span> con almeno 3 gare, altrimenti è <span className="text-slate-500 font-bold">Provvisorio</span>.
+                          </div>
+                        </div>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2674,9 +2697,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <td className="py-3 px-4 text-xs text-slate-300">{s.discipline || 'N/A'}</td>
                       <td className="py-3 px-4 text-xs text-slate-500">{s.total_competitions}</td>
                       <td className="py-3 px-4 text-right">
-                        <span className="text-sm font-black text-orange-500">
-                          {s.avg_score ? parseFloat(s.avg_score).toFixed(2) : '0.00'}
-                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className={`text-sm font-black ${Number(s.total_competitions) < 3 ? 'text-slate-500' : 'text-amber-500'}`}>
+                            {s.avg_score ? parseFloat(s.avg_score).toFixed(2) : '0.00'}
+                          </span>
+                          {s.avg_score && parseFloat(s.avg_score) > 0 && (
+                            <span className={`text-[8px] font-black uppercase tracking-tighter ${Number(s.total_competitions) < 3 ? 'text-slate-600' : 'text-amber-500/50'}`}>
+                              {Number(s.total_competitions) < 3 ? 'Provvisorio' : 'Qualificato'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -3560,7 +3590,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       if (!bestRating) return null;
                       return (
                         <div className="flex flex-col items-end">
-                          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Rating RTE</div>
+                          <div className="flex items-center justify-end gap-1.5 mb-1">
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rating RTE</div>
+                            <div className="group relative">
+                              <i className="fas fa-info-circle text-[10px] text-slate-600 cursor-help hover:text-orange-500 transition-colors p-1"></i>
+                              <div className="absolute top-full right-0 mt-1 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed text-left">
+                                <p className="mb-1 text-white font-bold">Rating Tecnico di Eccellenza (RTE)</p>
+                                La media dei <span className="text-white">migliori 5 risultati</span> degli ultimi 12 mesi. 
+                                Diventa <span className="text-amber-500 font-bold">Qualificato</span> con almeno 3 gare, altrimenti è <span className="text-slate-500 font-bold">Provvisorio</span>.
+                              </div>
+                            </div>
+                          </div>
                           <div className="flex items-baseline gap-1.5">
                             <span className={`text-4xl font-black ${bestRating.isProvvisorio ? 'text-slate-500' : 'text-amber-500'}`}>
                               {bestRating.rating.toFixed(2)}
@@ -3662,7 +3702,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               
                               <div className="flex items-center justify-between sm:justify-end gap-6 relative z-10">
                                 <div className="text-right">
-                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Media</p>
+                                  <div className="flex items-center justify-end gap-1 mb-0.5">
+                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Rating RTE</p>
+                                    <div className="group relative">
+                                      <i className="fas fa-info-circle text-[8px] text-slate-600 cursor-help hover:text-orange-500 transition-colors"></i>
+                                      <div className="absolute top-full right-0 mt-1 w-48 p-2 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[9px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed text-left">
+                                        Rating calcolato sulla singola prestazione.
+                                      </div>
+                                    </div>
+                                  </div>
                                   <div className="flex items-baseline gap-1">
                                     <span className="text-xl font-black text-orange-500">
                                       {avg.toFixed(2)}

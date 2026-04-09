@@ -1781,22 +1781,44 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     const whereString = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
 
     let query = `
+      WITH RankedScores AS (
+        SELECT 
+          u.id as user_id, 
+          u.name, 
+          u.surname, 
+          u.category, 
+          u.qualification,
+          u.society,
+          u.shooter_code,
+          c.discipline,
+          c.averageperseries,
+          ROW_NUMBER() OVER (
+            PARTITION BY u.id, c.discipline 
+            ORDER BY c.averageperseries DESC
+          ) as rank,
+          COUNT(*) OVER (
+            PARTITION BY u.id, c.discipline
+          ) as total_recent_competitions
+        FROM users u
+        JOIN competitions c ON u.id = c.user_id
+        ${whereString}
+        AND c.date >= TO_CHAR(CURRENT_DATE - INTERVAL '12 months', 'YYYY-MM-DD')
+      )
       SELECT 
-        u.id as user_id, 
-        u.name, 
-        u.surname, 
-        u.category, 
-        u.qualification,
-        u.society,
-        u.shooter_code,
-        c.discipline,
-        COUNT(c.id) as total_competitions,
-        AVG(c.averageperseries) as avg_score
-      FROM users u
-      JOIN competitions c ON u.id = c.user_id
-      ${whereString}
-      GROUP BY u.id, u.name, u.surname, u.category, u.qualification, u.society, u.shooter_code, c.discipline
-      ORDER BY u.surname, u.name, c.discipline
+        user_id, 
+        name, 
+        surname, 
+        category, 
+        qualification,
+        society,
+        shooter_code,
+        discipline,
+        MAX(total_recent_competitions) as total_competitions,
+        AVG(averageperseries) as avg_score
+      FROM RankedScores
+      WHERE rank <= 5
+      GROUP BY user_id, name, surname, category, qualification, society, shooter_code, discipline
+      ORDER BY surname, name, discipline
     `;
 
     const { rows } = await pool.query(query, params);

@@ -27,6 +27,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   onSocietyClick, triggerConfirm, triggerToast, onNavigate, onTabChange
 }) => {
   const [activeTab, setActiveTab] = useState<'history' | 'report' | 'coach'>('history');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [direction, setDirection] = useState(0);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -98,14 +99,36 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
             <i className="fas fa-list-ul text-orange-600"></i>
             Le Tue Gare
           </h2>
-          <div className="flex gap-2">
-            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Gare</p>
-              <p className="text-xs font-black text-white">{stats.totalGare}</p>
-            </div>
-            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Media</p>
-              <p className="text-xs font-black text-white">{stats.media}%</p>
+          <div className="flex items-center gap-2">
+            {activeTab === 'history' && (
+              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 mr-2">
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  title="Vista Elenco"
+                >
+                  <i className="fas fa-list"></i>
+                  <span className="hidden sm:inline ml-1">Elenco</span>
+                </button>
+                <button 
+                  onClick={() => setViewMode('calendar')}
+                  className={`flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  title="Vista Calendario"
+                >
+                  <i className="fas fa-calendar"></i>
+                  <span className="hidden sm:inline ml-1">Calendario</span>
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
+                <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Gare</p>
+                <p className="text-xs font-black text-white">{stats.totalGare}</p>
+              </div>
+              <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
+                <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Media</p>
+                <p className="text-xs font-black text-white">{stats.media}%</p>
+              </div>
             </div>
           </div>
         </div>
@@ -153,6 +176,8 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
                 user={user}
                 token={token}
                 triggerToast={triggerToast}
+                viewModeProp={viewMode}
+                onViewModeChange={setViewMode}
               />
             )}
             
