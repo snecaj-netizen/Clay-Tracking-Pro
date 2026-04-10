@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SocietySearch from './SocietySearch';
 import { createPortal } from 'react-dom';
+import ExpandingFAB from './ExpandingFAB';
 import { Discipline, Challenge, ChallengeMode, ChallengeRankingEntry } from '../types';
 
 interface HallOfFameProps {
@@ -560,26 +561,23 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
         document.body
       )}
       {/* Floating Add Button for Challenges */}
-      {(user?.role === 'admin' || user?.role === 'society') && (
-        <button 
-          onClick={() => {
-            if (showForm) {
-              resetForm();
-              setShowForm(false);
-            } else {
-              setShowForm(true);
-              if (user?.role === 'society') {
-                const mySoc = societies.find(s => s.name === user.society);
-                if (mySoc) setSocietyId(mySoc.id);
-              }
+      <ExpandingFAB 
+        show={user?.role === 'admin' || user?.role === 'society'}
+        label={showForm ? 'Chiudi' : 'Nuova Sfida'}
+        isClose={showForm}
+        onClick={() => {
+          if (showForm) {
+            resetForm();
+            setShowForm(false);
+          } else {
+            setShowForm(true);
+            if (user?.role === 'society') {
+              const mySoc = societies.find(s => s.name === user.society);
+              if (mySoc) setSocietyId(mySoc.id);
             }
-          }}
-          className={`fixed bottom-28 sm:bottom-8 right-8 w-16 h-16 ${showForm ? 'bg-orange-500 shadow-orange-500/40' : 'bg-orange-600 shadow-orange-600/40'} rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all active:scale-95 z-40 floating-add-btn group`}
-          title={showForm ? 'Chiudi' : 'Crea Sfida'}
-        >
-          <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} text-2xl group-hover:rotate-90 transition-transform duration-300`}></i>
-        </button>
-      )}
+          }
+        }}
+      />
     </div>
   );
 };
