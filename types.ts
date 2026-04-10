@@ -233,7 +233,11 @@ export enum ChallengeMode {
   PARTICIPATION = 'Numero di Gare',
   TOP_FIVE_AVG = 'Media Migliori 5',
   CLUTCH_PERFORMANCE = 'Performance Finale (Ultima Serie)',
-  PERFECT_SERIES = 'Numero Serie Perfette (25/25)'
+  PERFECT_SERIES = 'Numero Serie Perfette (25/25)',
+  POINTS_RANKING = 'Ranking a Punti (Stile F1)',
+  HANDICAP = 'Sfida Handicap (Bonus Categoria)',
+  SUM_BEST_THREE = 'Somma Migliori 3',
+  SUM_BEST_FIVE = 'Somma Migliori 5'
 }
 
 export interface Challenge {

@@ -162,6 +162,27 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
     setEditingChallenge(null);
   };
 
+  const getModeDescription = (m: ChallengeMode) => {
+    switch (m) {
+      case ChallengeMode.BEST_SCORE: return "Vince chi realizza il punteggio più alto in una singola gara.";
+      case ChallengeMode.AVERAGE: return "Classifica basata sulla media di tutti i piattelli rotti in tutte le gare disputate.";
+      case ChallengeMode.TOP_THREE_AVG: return "Vengono considerati solo i 3 migliori risultati di ogni tiratore. Ottimo per chi gareggia spesso.";
+      case ChallengeMode.TOTAL_HITS: return "Classifica di volume: vince chi rompe più piattelli in totale nel periodo.";
+      case ChallengeMode.ACCURACY: return "Percentuale di successo (Piattelli Rotti / Piattelli Lanciati).";
+      case ChallengeMode.CONSISTENCY: return "Premia la regolarità: vince chi ha la minor variazione di punteggio tra le serie (più sei costante, meglio è).";
+      case ChallengeMode.BEST_SERIES: return "Vince chi realizza la miglior serie singola (es. un 25/25).";
+      case ChallengeMode.PARTICIPATION: return "Premia la fedeltà: vince chi partecipa a più gare presso la società.";
+      case ChallengeMode.TOP_FIVE_AVG: return "Media calcolata sui 5 migliori risultati. Premia la costanza ad alto livello.";
+      case ChallengeMode.CLUTCH_PERFORMANCE: return "Media punti ottenuti solo nell'ultima serie di ogni gara. Premia i nervi saldi!";
+      case ChallengeMode.PERFECT_SERIES: return "Vince chi colleziona il maggior numero di serie perfette (25 su 25).";
+      case ChallengeMode.POINTS_RANKING: return "Punteggio stile F1 basato sulla posizione in classifica di ogni gara (1°: 25pt, 2°: 18pt, ecc.).";
+      case ChallengeMode.HANDICAP: return "Punteggio con bonus basato sulla categoria FITAV (Ecc: +0, 1^: +1, 2^: +2, 3^: +3).";
+      case ChallengeMode.SUM_BEST_THREE: return "Somma totale dei 3 migliori punteggi ottenuti nel periodo.";
+      case ChallengeMode.SUM_BEST_FIVE: return "Somma totale dei 5 migliori punteggi ottenuti nel periodo.";
+      default: return "";
+    }
+  };
+
   const categories = ['Tutte', ...Array.from(new Set(ranking.map(r => r.category)))].filter(c => c !== 'N/D');
   const qualifications = ['Tutte', ...Array.from(new Set(ranking.map(r => r.qualification)))].filter(q => q !== 'N/D');
   
@@ -252,6 +273,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
+              <p className="text-[10px] text-slate-500 italic ml-1 mt-1">
+                {getModeDescription(mode)}
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -422,6 +446,12 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                   <span><i className="fas fa-calendar-alt text-orange-500 mr-2"></i> {new Date(selectedChallenge.startDate).toLocaleDateString()} - {new Date(selectedChallenge.endDate).toLocaleDateString()}</span>
                   <span><i className="fas fa-trophy text-emerald-500 mr-2"></i> {selectedChallenge.prize}</span>
                 </div>
+                <div className="mt-4 p-3 bg-orange-600/10 border border-orange-500/20 rounded-xl">
+                  <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    Come scalare la classifica: {getModeDescription(selectedChallenge.mode)}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -515,6 +545,8 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) 
                            selectedChallenge.mode === ChallengeMode.PARTICIPATION ? 'Gare' :
                            selectedChallenge.mode === ChallengeMode.PERFECT_SERIES ? 'Serie' :
                            selectedChallenge.mode === ChallengeMode.CONSISTENCY ? 'Deviazione' :
+                           selectedChallenge.mode === ChallengeMode.POINTS_RANKING ? 'Punti F1' :
+                           selectedChallenge.mode === ChallengeMode.HANDICAP ? 'Punti + Bonus' :
                            selectedChallenge.mode.includes('Media') ? 'Media' : 'Punti'}
                         </div>
                       </div>

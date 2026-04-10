@@ -2452,12 +2452,14 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
           bestScore: 0,
           bestSeries: 0,
           lastSeriesScores: [],
-          perfectSeriesCount: 0
+          perfectSeriesCount: 0,
+          positions: []
         };
       }
       
       const stats = shooterStats[c.user_id];
       stats.scores.push(c.totalscore);
+      if (c.position) stats.positions.push(c.position);
       stats.totalHits += c.totalscore;
       stats.totalTargets += c.totaltargets;
       stats.competitionCount += 1;
@@ -2521,6 +2523,27 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
           break;
         case 'Numero Serie Perfette (25/25)':
           value = stats.perfectSeriesCount;
+          break;
+        case 'Ranking a Punti (Stile F1)':
+          // Calculate points based on positions in competitions
+          // Points: 1:25, 2:18, 3:15, 4:12, 5:10, 6:8, 7:6, 8:4, 9:2, 10:1
+          const pointMap: Record<number, number> = { 1: 25, 2: 18, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 2, 10: 1 };
+          value = stats.positions.reduce((acc: number, pos: number) => acc + (pointMap[pos] || 0), 0);
+          break;
+        case 'Sfida Handicap (Bonus Categoria)':
+          // Best score + bonus based on category
+          // Ecc: +0, 1: +1, 2: +2, 3: +3
+          const bonusMap: Record<string, number> = { 'Eccellenza': 0, 'Prima': 1, 'Seconda': 2, 'Terza': 3 };
+          const bonus = bonusMap[stats.category] || 0;
+          value = stats.bestScore + bonus;
+          break;
+        case 'Somma Migliori 3':
+          const sortedSum3 = [...stats.scores].sort((a, b) => b - a);
+          value = sortedSum3.slice(0, 3).reduce((a, b) => a + b, 0);
+          break;
+        case 'Somma Migliori 5':
+          const sortedSum5 = [...stats.scores].sort((a, b) => b - a);
+          value = sortedSum5.slice(0, 5).reduce((a, b) => a + b, 0);
           break;
         case 'Costanza (Serie)':
           // Calculate standard deviation of series scores
