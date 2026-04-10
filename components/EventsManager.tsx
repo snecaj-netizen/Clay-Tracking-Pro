@@ -44,6 +44,7 @@ interface EventsManagerProps {
   onFilterDisciplineChange?: (val: string) => void;
   filterMonth?: string;
   onFilterMonthChange?: (val: string) => void;
+  onSocietyClick?: (name: string) => void;
 }
 
 const EventsManager: React.FC<EventsManagerProps> = ({ 
@@ -57,7 +58,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   exportTrigger, importTrigger, newEventTrigger,
   filterSociety: externalFilterSociety, onFilterSocietyChange,
   filterDiscipline: externalFilterDiscipline, onFilterDisciplineChange,
-  filterMonth: externalFilterMonth, onFilterMonthChange
+  filterMonth: externalFilterMonth, onFilterMonthChange,
+  onSocietyClick
 }) => {
   const [events, setEvents] = useState<SocietyEvent[]>(initialEvents || []);
   const [loading, setLoading] = useState(!initialEvents || initialEvents.length === 0);
@@ -1791,7 +1793,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
                       <p className="text-[10px] text-slate-400 mt-1 truncate">
                         <i className="fas fa-map-marker-alt mr-1"></i>
-                        {ev.location}
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSocietyClick?.(ev.location);
+                          }}
+                          className="hover:text-orange-500 transition-colors text-left"
+                        >
+                          {ev.location}
+                        </button>
                         {societies.find(s => s.name === ev.location)?.code && (
                           <span className="text-orange-500 ml-1">({societies.find(s => s.name === ev.location)?.code})</span>
                         )}

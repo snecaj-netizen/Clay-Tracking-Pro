@@ -10,6 +10,7 @@ import HallOfFame from './HallOfFame';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import FitavScoreSheet from './FitavScoreSheet';
+import SocietyDetailModal from './SocietyDetailModal';
 import { EventControlManager } from './EventControlManager';
 import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
@@ -3059,169 +3060,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {selectedSociety && createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4" onClick={handleCloseSocietyDetail}>
-              <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" onClick={e => e.stopPropagation()}>
-                <div className="relative min-h-[160px] bg-slate-900 bg-gradient-to-br from-slate-900 to-slate-950 border-b border-slate-800 flex items-end p-4 sm:p-6 overflow-hidden">
-                  {/* Decorative background elements */}
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
-                  
-                  <button 
-                    onClick={handleCloseSocietyDetail} 
-                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg z-20"
-                  >
-                    <i className="fas fa-times text-lg"></i>
-                  </button>
-                  
-                  <div className="relative z-10 w-full pr-10 sm:pr-0">
-                    <div className="flex items-end gap-4 translate-y-6">
-                      {selectedSociety.logo ? (
-                        <img src={selectedSociety.logo} alt={selectedSociety.name} className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-950 bg-slate-900 shadow-xl" />
-                      ) : (
-                        <div className="w-24 h-24 rounded-2xl bg-slate-900 border-4 border-slate-950 flex items-center justify-center shadow-xl">
-                          <i className="fas fa-building text-3xl text-slate-600"></i>
-                        </div>
-                      )}
-                      <div className="mb-2">
-                        <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">{selectedSociety.name}</h2>
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          {selectedSociety.city && <p className="text-xs sm:text-sm text-slate-400 flex items-center gap-2"><i className="fas fa-map-marker-alt text-orange-500"></i>{selectedSociety.city} {selectedSociety.region ? `(${selectedSociety.region})` : ''}</p>}
-                          {(selectedSociety.google_maps_link || (selectedSociety.lat && selectedSociety.lng)) && (
-                            <a 
-                              href={selectedSociety.google_maps_link || `https://www.google.com/maps/dir/?api=1&destination=${selectedSociety.lat},${selectedSociety.lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] font-black bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-2 py-1 rounded-lg transition-colors flex items-center gap-1 uppercase tracking-wider"
-                            >
-                              <i className="fas fa-directions"></i> Naviga
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-6 pt-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                  <div className="grid grid-cols-2 gap-4">
-                    {selectedSociety.contact_name && (
-                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Referente</p>
-                        <p className="text-sm font-bold text-white">{selectedSociety.contact_name}</p>
-                      </div>
-                    )}
-                    {selectedSociety.email && (
-                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Email</p>
-                        <p className="text-sm font-bold text-white break-all">{selectedSociety.email}</p>
-                      </div>
-                    )}
-                    {selectedSociety.phone && (
-                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Telefono</p>
-                        <p className="text-sm font-bold text-white">{selectedSociety.phone}</p>
-                      </div>
-                    )}
-                    {selectedSociety.mobile && (
-                      <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Cellulare</p>
-                        <p className="text-sm font-bold text-white">{selectedSociety.mobile}</p>
-                      </div>
-                    )}
-                    {selectedSociety.address && (
-                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Indirizzo Completo</p>
-                        <p className="text-sm font-bold text-white">{selectedSociety.address}, {selectedSociety.zip_code} {selectedSociety.city} ({selectedSociety.region})</p>
-                      </div>
-                    )}
-                    {selectedSociety.website && (
-                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Sito Web</p>
-                        <a href={selectedSociety.website} target="_blank" rel="noreferrer" className="text-sm font-bold text-orange-500 hover:underline break-all">{selectedSociety.website}</a>
-                      </div>
-                    )}
-                    {selectedSociety.google_maps_link && (
-                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Link Google Maps</p>
-                        <a href={selectedSociety.google_maps_link} target="_blank" rel="noreferrer" className="text-sm font-bold text-orange-500 hover:underline break-all flex items-center gap-2">
-                          <i className="fas fa-map-marked-alt"></i> Apri Mappa
-                        </a>
-                      </div>
-                    )}
-                    {selectedSociety.opening_hours && (
-                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Giorni e Orari di Apertura</p>
-                        <p className="text-sm font-bold text-white">{selectedSociety.opening_hours}</p>
-                      </div>
-                    )}
-                    {selectedSociety.disciplines && (
-                      <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Discipline Disponibili</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedSociety.disciplines.split(',').map((d: string) => (
-                            <span key={d} className="px-2 py-1 rounded-lg bg-orange-600/20 text-orange-500 text-[10px] font-black border border-orange-600/30 uppercase tracking-wider">
-                              {d}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 border-t border-slate-800 flex flex-wrap gap-3">
-                  {currentUser?.role === 'admin' && !selectedSociety.has_account && (
-                    <button 
-                      onClick={() => {
-                        const soc = selectedSociety;
-                        setSelectedSociety(null);
-                        setActiveTab('users');
-                        setShowUserForm(true);
-                        setEditingUser(null);
-                        setName(soc.name);
-                        setSurname('TAV');
-                        setEmail(soc.email || '');
-                        setRole('society');
-                        setSociety(soc.name);
-                        setShooterCode(soc.code || '');
-                        setPassword('');
-                        setCategory('');
-                        setQualification('');
-                        setUserAvatar(soc.logo || '');
-                        setBirthDate('');
-                      }} 
-                      className="w-full py-4 rounded-2xl bg-blue-600/20 text-blue-500 font-black text-xs uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center justify-center gap-2 border border-blue-600/30 shadow-lg mb-2"
-                    >
-                      <i className="fas fa-user-plus"></i> Crea Account Società
-                    </button>
-                  )}
-                  {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === selectedSociety.name)) && (
-                    <button 
-                      onClick={() => {
-                        setSelectedSociety(null);
-                        handleEditSociety(selectedSociety);
-                      }} 
-                      className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20"
-                    >
-                      <i className="fas fa-edit"></i> Modifica
-                    </button>
-                  )}
-                  {currentUser?.role === 'admin' && (
-                    <button 
-                      onClick={() => {
-                        setSelectedSociety(null);
-                        handleDeleteSociety(selectedSociety.id);
-                      }} 
-                      className="flex-1 py-4 rounded-2xl bg-red-600 text-white font-black text-xs uppercase tracking-widest hover:bg-red-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
-                    >
-                      <i className="fas fa-trash-alt"></i> Elimina
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>,
-            document.body
+          {selectedSociety && (
+            <SocietyDetailModal
+              society={selectedSociety}
+              onClose={handleCloseSocietyDetail}
+              currentUser={currentUser}
+              onCreateAccount={currentUser?.role === 'admin' && !selectedSociety.has_account ? (soc) => {
+                setSelectedSociety(null);
+                setActiveTab('users');
+                setShowUserForm(true);
+                setEditingUser(null);
+                setName(soc.name);
+                setSurname('TAV');
+                setEmail(soc.email || '');
+                setRole('society');
+                setSociety(soc.name);
+                setShooterCode(soc.code || '');
+                setPassword('');
+                setCategory('');
+                setQualification('');
+                setUserAvatar(soc.logo || '');
+                setBirthDate('');
+              } : undefined}
+              onEdit={(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === selectedSociety.name)) ? (soc) => {
+                setSelectedSociety(null);
+                handleEditSociety(soc);
+              } : undefined}
+              onDelete={currentUser?.role === 'admin' ? (id) => {
+                setSelectedSociety(null);
+                handleDeleteSociety(id);
+              } : undefined}
+            />
           )}
         </div>
       </div>

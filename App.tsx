@@ -13,6 +13,7 @@ import LeTueGarePage from './components/LeTueGarePage';
 import GarePage from './components/GarePage';
 import LaMiaSocietaPage from './components/LaMiaSocietaPage';
 import AdminPageView from './components/AdminPageView';
+import SocietyDetailModal from './components/SocietyDetailModal';
 import ConfirmModal from './components/ConfirmModal';
 import Toast from './components/Toast';
 import NotificationsPage from './components/NotificationsPage';
@@ -52,6 +53,7 @@ const App: React.FC = () => {
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(user?.role === 'society' ? 'results' : null);
   const [initialViewMode, setInitialViewMode] = useState<string | null>(null);
   const [initialSocietyName, setInitialSocietyName] = useState<string | null>(null);
+  const [globalSelectedSociety, setGlobalSelectedSociety] = useState<any | null>(null);
   const [initialEventViewMode, setInitialEventViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | null>(null);
   const [appSettings, setAppSettings] = useState<any>({});
   const [hideGlobalFAB, setHideGlobalFAB] = useState(false);
@@ -658,10 +660,16 @@ const App: React.FC = () => {
   };
 
   const handleSocietyClick = (name: string) => {
-    setInitialSocietyName(name);
-    setPreviousView(view);
-    setView('societies');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const soc = societies.find(s => s.name === name);
+    if (soc) {
+      setGlobalSelectedSociety(soc);
+    } else {
+      // Fallback to old behavior if society not found in list (shouldn't happen)
+      setInitialSocietyName(name);
+      setPreviousView(view);
+      setView('societies');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleCloseSocietyDetail = () => {
@@ -794,6 +802,7 @@ const App: React.FC = () => {
               onCreateEventTrigger={gareCreateEvent}
               onToggleFAB={setHideGlobalFAB}
               onTabChange={setGareActiveTab}
+              onSocietyClick={handleSocietyClick}
             />
           </div>
         )}
@@ -1075,6 +1084,14 @@ const App: React.FC = () => {
           onNavigate={handleNavigate} 
           user={user}
           appSettings={appSettings}
+        />
+      )}
+      
+      {globalSelectedSociety && (
+        <SocietyDetailModal 
+          society={globalSelectedSociety}
+          onClose={() => setGlobalSelectedSociety(null)}
+          currentUser={user}
         />
       )}
       

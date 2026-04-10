@@ -22,6 +22,7 @@ interface GarePageProps {
   onCreateEventTrigger?: number;
   onToggleFAB?: (hide: boolean) => void;
   onTabChange?: (tab: string) => void;
+  onSocietyClick?: (name: string) => void;
 }
 
 type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione';
@@ -29,7 +30,7 @@ type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione
 const GarePage: React.FC<GarePageProps> = ({
   user, token, triggerConfirm, triggerToast, societies, events, onParticipate, onCreateTeam,
   initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings,
-  onCreateEventTrigger, onToggleFAB, onTabChange
+  onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('eventi');
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results' | 'managed'>('list');
@@ -338,6 +339,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 onToggleFAB={user?.role === 'society' ? undefined : onToggleFAB}
                 newEventTrigger={newEventTrigger}
                 isSubPage={true}
+                onSocietyClick={onSocietyClick}
               />
             )}
 
@@ -370,6 +372,7 @@ const GarePage: React.FC<GarePageProps> = ({
                   onToggleFAB={onToggleFAB}
                   newEventTrigger={newEventTrigger}
                   isSubPage={true}
+                  onSocietyClick={onSocietyClick}
                 />
               </div>
             )}
@@ -402,6 +405,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 filterRegistrationOpen={true}
                 appSettings={appSettings}
                 isSubPage={true}
+                onSocietyClick={onSocietyClick}
               />
             )}
 
@@ -430,6 +434,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterMonthChange={setFilterMonth}
                 appSettings={appSettings}
                 isSubPage={true}
+                onSocietyClick={onSocietyClick}
               />
             )}
 
@@ -459,6 +464,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterMonthChange={setFilterMonth}
                 appSettings={appSettings}
                 isSubPage={true}
+                onSocietyClick={onSocietyClick}
               />
             )}
 
