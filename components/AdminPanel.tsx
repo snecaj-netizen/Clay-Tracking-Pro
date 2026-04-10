@@ -2275,23 +2275,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
 
             {showTeamForm && createPortal(
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                     <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                       <i className="fas fa-users text-orange-500"></i>
                       {editingTeam ? 'Modifica Squadra' : 'Nuova Squadra'}
                     </h3>
                     <button 
                       onClick={() => setShowTeamForm(false)}
-                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700"
                     >
                       <i className="fas fa-times"></i>
                     </button>
                   </div>
 
-                  <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto no-scrollbar">
-                    <form onSubmit={handleCreateTeam} className="space-y-4 sm:space-y-6">
+                  <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+                    <form id="team-form" onSubmit={handleCreateTeam} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Squadra</label>
@@ -2455,49 +2455,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
 
-                <div className="flex flex-row gap-2">
-                  <button 
-                    type="submit" 
-                    disabled={selectedShooterIds.length !== newTeamSize}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-black py-3 px-1 rounded-xl transition-all shadow-lg text-[9px] sm:text-xs uppercase whitespace-nowrap"
-                  >
-                    {editingTeam ? 'Salva' : 'Crea'}
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={handleSaveAndSendCompetition}
-                    disabled={selectedShooterIds.length !== newTeamSize}
-                    className="flex-[1.5] bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black py-3 px-1 rounded-xl transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-1 text-[9px] sm:text-xs uppercase whitespace-nowrap"
-                  >
-                    <i className="fas fa-paper-plane text-[8px] hidden sm:block"></i>
-                    Invia Gara
-                  </button>
-                  {editingTeam && (
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        setEditingTeam(null);
-                        setNewTeamName('');
-                        setNewTeamCompetitionName('');
-                        setNewTeamDiscipline('');
-                        setNewTeamLocation('');
-                        setNewTeamDate(new Date().toISOString().split('T')[0]);
-                        setNewTeamTargets(100);
-                        if (currentUser?.role === 'society' && currentUser?.society) {
-                          setNewTeamSociety(currentUser.society);
-                        } else {
-                          setNewTeamSociety('');
-                        }
-                        setSelectedShooterIds([]);
-                        setShowTeamForm(false);
-                      }}
-                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-400 font-black py-3 px-1 rounded-xl transition-all border border-slate-800 text-[9px] sm:text-xs uppercase whitespace-nowrap"
-                    >
-                      Annulla
-                    </button>
-                  )}
-                </div>
               </form>
+            </div>
+            <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setEditingTeam(null);
+                  setNewTeamName('');
+                  setNewTeamCompetitionName('');
+                  setNewTeamDiscipline('');
+                  setNewTeamLocation('');
+                  setNewTeamDate(new Date().toISOString().split('T')[0]);
+                  setNewTeamTargets(100);
+                  if (currentUser?.role === 'society' && currentUser?.society) {
+                    setNewTeamSociety(currentUser.society);
+                  } else {
+                    setNewTeamSociety('');
+                  }
+                  setSelectedShooterIds([]);
+                  setShowTeamForm(false);
+                }}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700"
+              >
+                Annulla
+              </button>
+              <button 
+                type="submit" 
+                form="team-form"
+                disabled={selectedShooterIds.length !== newTeamSize}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800 disabled:opacity-50"
+              >
+                {editingTeam ? 'Salva' : 'Crea'}
+              </button>
+              <button 
+                type="button"
+                onClick={handleSaveAndSendCompetition}
+                disabled={selectedShooterIds.length !== newTeamSize}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 flex items-center justify-center gap-1 disabled:opacity-50"
+              >
+                <i className="fas fa-paper-plane text-[8px] hidden sm:block"></i>
+                Invia Gara
+              </button>
             </div>
           </div>
         </div>,
@@ -2806,23 +2805,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="pt-4">
             {showSocietyForm && createPortal(
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                     <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                       <i className="fas fa-building text-orange-500"></i>
                       {editingSociety ? 'Modifica Società' : 'Nuova Società'}
                     </h3>
                     <button 
                       onClick={() => setShowSocietyForm(false)}
-                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700"
                     >
                       <i className="fas fa-times"></i>
                     </button>
                   </div>
 
-                  <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto no-scrollbar">
-                    <form onSubmit={handleSocietySubmit} className="space-y-4 sm:space-y-6">
+                  <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+                    <form id="society-form" onSubmit={handleSocietySubmit} className="space-y-6">
                       <div className="flex flex-col items-center mb-6">
                         <div className="relative group">
                           <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
@@ -2919,15 +2918,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 pt-4">
-                        <button type="submit" className="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-orange-600/20">
-                          {editingSociety ? 'Salva Modifiche' : 'Crea Società'}
-                        </button>
-                        <button type="button" onClick={() => setShowSocietyForm(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-slate-700">
-                          Annulla
-                        </button>
-                      </div>
                     </form>
+                  </div>
+                  <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
+                    <button type="button" onClick={() => setShowSocietyForm(false)} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
+                      Annulla
+                    </button>
+                    <button type="submit" form="society-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
+                      {editingSociety ? 'Salva' : 'Crea'}
+                    </button>
                   </div>
                 </div>
               </div>,
@@ -3169,56 +3168,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     )}
                   </div>
+                </div>
 
-                  <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
-                    {currentUser?.role === 'admin' && !selectedSociety.has_account && (
-                      <button 
-                        onClick={() => {
-                          const soc = selectedSociety;
-                          setSelectedSociety(null);
-                          setActiveTab('users');
-                          setShowUserForm(true);
-                          setEditingUser(null);
-                          setName(soc.name);
-                          setSurname('TAV');
-                          setEmail(soc.email || '');
-                          setRole('society');
-                          setSociety(soc.name);
-                          setShooterCode(soc.code || '');
-                          setPassword('');
-                          setCategory('');
-                          setQualification('');
-                          setUserAvatar(soc.logo || '');
-                          setBirthDate('');
-                        }} 
-                        className="w-full py-4 rounded-2xl bg-blue-600/20 text-blue-500 font-black text-xs uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center justify-center gap-2 border border-blue-600/30 shadow-lg mb-2"
-                      >
-                        <i className="fas fa-user-plus"></i> Crea Account Società
-                      </button>
-                    )}
-                    {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === selectedSociety.name)) && (
-                      <button 
-                        onClick={() => {
-                          setSelectedSociety(null);
-                          handleEditSociety(selectedSociety);
-                        }} 
-                        className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20"
-                      >
-                        <i className="fas fa-edit"></i> Modifica
-                      </button>
-                    )}
-                    {currentUser?.role === 'admin' && (
-                      <button 
-                        onClick={() => {
-                          setSelectedSociety(null);
-                          handleDeleteSociety(selectedSociety.id);
-                        }} 
-                        className="flex-1 py-4 rounded-2xl bg-red-600 text-white font-black text-xs uppercase tracking-widest hover:bg-red-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
-                      >
-                        <i className="fas fa-trash-alt"></i> Elimina
-                      </button>
-                    )}
-                  </div>
+                <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 border-t border-slate-800 flex flex-wrap gap-3">
+                  {currentUser?.role === 'admin' && !selectedSociety.has_account && (
+                    <button 
+                      onClick={() => {
+                        const soc = selectedSociety;
+                        setSelectedSociety(null);
+                        setActiveTab('users');
+                        setShowUserForm(true);
+                        setEditingUser(null);
+                        setName(soc.name);
+                        setSurname('TAV');
+                        setEmail(soc.email || '');
+                        setRole('society');
+                        setSociety(soc.name);
+                        setShooterCode(soc.code || '');
+                        setPassword('');
+                        setCategory('');
+                        setQualification('');
+                        setUserAvatar(soc.logo || '');
+                        setBirthDate('');
+                      }} 
+                      className="w-full py-4 rounded-2xl bg-blue-600/20 text-blue-500 font-black text-xs uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center justify-center gap-2 border border-blue-600/30 shadow-lg mb-2"
+                    >
+                      <i className="fas fa-user-plus"></i> Crea Account Società
+                    </button>
+                  )}
+                  {(currentUser?.role === 'admin' || (currentUser?.role === 'society' && currentUser?.society === selectedSociety.name)) && (
+                    <button 
+                      onClick={() => {
+                        setSelectedSociety(null);
+                        handleEditSociety(selectedSociety);
+                      }} 
+                      className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20"
+                    >
+                      <i className="fas fa-edit"></i> Modifica
+                    </button>
+                  )}
+                  {currentUser?.role === 'admin' && (
+                    <button 
+                      onClick={() => {
+                        setSelectedSociety(null);
+                        handleDeleteSociety(selectedSociety.id);
+                      }} 
+                      className="flex-1 py-4 rounded-2xl bg-red-600 text-white font-black text-xs uppercase tracking-widest hover:bg-red-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+                    >
+                      <i className="fas fa-trash-alt"></i> Elimina
+                    </button>
+                  )}
                 </div>
               </div>
             </div>,
@@ -4071,9 +4070,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
 
           {showUserForm && createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
                   <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                     <i className={`fas ${editingUser ? 'fa-user-edit' : 'fa-user-plus'} text-orange-500`}></i> 
                     {editingUser ? (currentUser?.role === 'society' ? 'Modifica Tiratore' : 'Modifica Utente') : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
@@ -4083,8 +4082,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                 </div>
                 
-                <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                  <form id="admin-user-form" onSubmit={handleSubmit} className="space-y-4">
+                <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+                  <form id="admin-user-form" onSubmit={handleSubmit} className="space-y-6">
                     
                     <div className="flex flex-col items-center mb-6">
                 <div className="relative group">
@@ -4250,21 +4249,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
-                  </form>
-                </div>
-                
-                <div className="p-6 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-3">
-                  <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
-                    Annulla
-                  </button>
-                  <button type="submit" form="admin-user-form" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-6 rounded-xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-900/20">
-                    {editingUser ? 'Salva Modifiche' : (currentUser?.role === 'society' ? 'Crea Tiratore' : 'Crea Utente')}
-                  </button>
-                </div>
+            </form>
+          </div>
+
+              <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
+                <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
+                  Annulla
+                </button>
+                <button type="submit" form="admin-user-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
+                  {editingUser ? 'Salva' : (currentUser?.role === 'society' ? 'Crea' : 'Crea')}
+                </button>
               </div>
-            </div>,
-            document.body
-          )}
+            </div>
+          </div>,
+          document.body
+        )}
 
           <div className="overflow-x-auto scroll-shadows">
             <table className="w-full text-left border-collapse">
@@ -4543,36 +4542,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     )}
                   </div>
+                </div>
 
-                  <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-800">
-                    {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
-                      <button 
-                        onClick={() => {
-                          setSelectedUser(null);
-                          editUser(selectedUser);
-                          setShowUserForm(true);
-                        }} 
-                        disabled={currentUser?.role === 'society' && selectedUser.role === 'admin'}
-                        className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={currentUser?.role === 'society' && selectedUser.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
-                      >
-                        <i className="fas fa-edit"></i> Modifica
-                      </button>
-                    )}
-                    {currentUser?.role === 'admin' && (
-                      <button 
-                        onClick={() => {
-                          setSelectedUser(null);
-                          handleDelete(selectedUser.id);
-                        }} 
-                        disabled={selectedUser.email === 'snecaj@gmail.com' || currentUser?.role === 'society'}
-                        className="flex-1 py-4 rounded-2xl bg-red-900/30 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-900/50 transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (selectedUser.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
-                      >
-                        <i className="fas fa-trash-alt"></i> Elimina
-                      </button>
-                    )}
-                  </div>
+                <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 border-t border-slate-800 flex flex-wrap gap-3">
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+                    <button 
+                      onClick={() => {
+                        setSelectedUser(null);
+                        editUser(selectedUser);
+                        setShowUserForm(true);
+                      }} 
+                      disabled={currentUser?.role === 'society' && selectedUser.role === 'admin'}
+                      className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={currentUser?.role === 'society' && selectedUser.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
+                    >
+                      <i className="fas fa-edit"></i> Modifica
+                    </button>
+                  )}
+                  {currentUser?.role === 'admin' && (
+                    <button 
+                      onClick={() => {
+                        setSelectedUser(null);
+                        handleDelete(selectedUser.id);
+                      }} 
+                      disabled={selectedUser.email === 'snecaj@gmail.com' || currentUser?.role === 'society'}
+                      className="flex-1 py-4 rounded-2xl bg-red-900/30 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-900/50 transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (selectedUser.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
+                    >
+                      <i className="fas fa-trash-alt"></i> Elimina
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

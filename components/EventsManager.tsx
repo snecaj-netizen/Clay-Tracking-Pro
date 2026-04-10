@@ -79,6 +79,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [initialManagementTab, setInitialManagementTab] = useState<'registrations' | 'squads' | 'results'>('registrations');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const lastHandledExportTrigger = React.useRef(exportTrigger || 0);
+  const lastHandledImportTrigger = React.useRef(importTrigger || 0);
+  const lastHandledNewEventTrigger = React.useRef(newEventTrigger || 0);
   
   const resultsAccess = appSettings?.event_results_access || {};
 
@@ -130,19 +133,22 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   }, [initialViewMode, onInitialViewModeHandled]);
 
   useEffect(() => {
-    if (exportTrigger && exportTrigger > 0) {
+    if (exportTrigger && exportTrigger > lastHandledExportTrigger.current) {
+      lastHandledExportTrigger.current = exportTrigger;
       handleExportExcel();
     }
   }, [exportTrigger]);
 
   useEffect(() => {
-    if (importTrigger && importTrigger > 0) {
+    if (importTrigger && importTrigger > lastHandledImportTrigger.current) {
+      lastHandledImportTrigger.current = importTrigger;
       fileInputRef.current?.click();
     }
   }, [importTrigger]);
 
   useEffect(() => {
-    if (newEventTrigger && newEventTrigger > 0) {
+    if (newEventTrigger && newEventTrigger > lastHandledNewEventTrigger.current) {
+      lastHandledNewEventTrigger.current = newEventTrigger;
       resetForm();
       setShowForm(true);
     }
@@ -1334,23 +1340,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         )}
       
       {showForm && createPortal(
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-              <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+              <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                 <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                   <i className="fas fa-calendar-plus text-orange-500"></i>
                   {editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}
                 </h3>
                 <button 
                   onClick={resetForm}
-                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700"
                 >
                   <i className="fas fa-times"></i>
                 </button>
               </div>
 
-              <div className="p-6 sm:p-8 max-h-[80vh] overflow-y-auto no-scrollbar">
-                <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+                <form id="event-form" onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome Gara *</label>
@@ -1533,15 +1539,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-4 pt-6 border-t border-slate-800">
-                    <button type="button" onClick={resetForm} className="px-6 py-3 rounded-xl text-xs font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
-                      Annulla
-                    </button>
-                    <button type="submit" className="px-6 py-3 rounded-xl text-xs font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-                      {editingEvent ? 'Aggiorna' : 'Salva'}
-                    </button>
-                  </div>
                 </form>
+              </div>
+
+              <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+                <button type="button" onClick={resetForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
+                  Annulla
+                </button>
+                <button type="submit" form="event-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
+                  {editingEvent ? 'Aggiorna' : 'Salva'}
+                </button>
               </div>
             </div>
           </div>,

@@ -740,25 +740,23 @@ const App: React.FC = () => {
         )}
         
         {view === 'new' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <CompetitionForm 
-              currentUser={user}
-              onSubmit={saveCompetition} 
-              onCancel={() => {
-                setView(previousView || 'le-tue-gare');
-                setPreviousView(null);
-                setEditingCompetition(null);
-                setPrefillCompetition(null);
-              }}
-              initialData={editingCompetition || undefined}
-              prefillData={prefillCompetition || undefined}
-              availableCartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              onNavigateToWarehouse={() => setView('warehouse')}
-              societies={societies}
-              knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
-            />
-          </div>
+          <CompetitionForm 
+            currentUser={user}
+            onSubmit={saveCompetition} 
+            onCancel={() => {
+              setView(previousView || 'le-tue-gare');
+              setPreviousView(null);
+              setEditingCompetition(null);
+              setPrefillCompetition(null);
+            }}
+            initialData={editingCompetition || undefined}
+            prefillData={prefillCompetition || undefined}
+            availableCartridges={cartridges}
+            cartridgeTypes={cartridgeTypes}
+            onNavigateToWarehouse={() => setView('warehouse')}
+            societies={societies}
+            knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
+          />
         )}
         
         {view === 'warehouse' && user?.role !== 'society' && (

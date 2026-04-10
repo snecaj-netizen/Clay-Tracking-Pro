@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import ExpandingFAB from './ExpandingFAB';
 import { Cartridge, CartridgeType } from '../types';
@@ -365,143 +366,175 @@ const Warehouse: React.FC<WarehouseProps> = ({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            {showForm && activeTab === 'types' && (
-              <form onSubmit={handleTypeSubmit} className="bg-slate-900 border-2 border-orange-600/30 p-6 rounded-3xl space-y-4 mb-6 animate-in fade-in slide-in-from-top-4">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">
-                  {editingType ? 'Modifica Tipo Cartuccia' : 'Nuovo Tipo Cartuccia'}
-                </h3>
-                
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <div className="w-full sm:w-1/3 space-y-2 text-center">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block text-left">Immagine Scatola</label>
-                    <div 
-                        onClick={() => typeFileInputRef.current?.click()}
-                        className="aspect-square bg-slate-800 rounded-2xl border-2 border-dashed border-slate-700 hover:border-orange-500 transition-all cursor-pointer flex flex-col items-center justify-center overflow-hidden relative group"
-                    >
-                        {typeImageUrl ? (
-                          <>
-                            <img src={typeImageUrl} alt="Cartridge" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <i className="fas fa-camera text-white text-xl"></i>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="p-4">
-                            <i className="fas fa-box-open text-slate-600 text-3xl mb-2"></i>
-                            <p className="text-[10px] text-slate-500 font-bold">Carica Foto</p>
-                          </div>
-                        )}
-                    </div>
-                    <input type="file" ref={typeFileInputRef} onChange={(e) => handleImageUpload(e, true)} accept="image/*" className="hidden" />
+            {showForm && activeTab === 'types' && createPortal(
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                      <i className="fas fa-tags text-orange-500"></i>
+                      {editingType ? 'Modifica Tipo Cartuccia' : 'Nuovo Tipo Cartuccia'}
+                    </h3>
                     <button 
-                        type="button" 
-                        onClick={() => searchOnGoogle(typeProducer, typeModel)}
-                        className="text-[9px] font-black text-blue-500 uppercase hover:text-blue-400"
+                      onClick={resetTypeForm}
+                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
                     >
-                        <i className="fab fa-google mr-1"></i> Cerca Immagine
+                      <i className="fas fa-times"></i>
                     </button>
                   </div>
 
-                  <div className="flex-1 grid grid-cols-1 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Produttore</label>
-                      <input type="text" required value={typeProducer} onChange={e => setTypeProducer(e.target.value)} placeholder="Es: Baschieri" className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Modello</label>
-                      <input type="text" required value={typeModel} onChange={e => setTypeModel(e.target.value)} placeholder="Es: F2 Mach" className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Piombo</label>
-                        <input type="text" required value={typeLeadNumber} onChange={e => setTypeLeadNumber(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Grammi</label>
-                        <input type="number" required value={typeGrams} onChange={e => setTypeGrams(parseInt(e.target.value) || 0)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+                    <form id="type-form" onSubmit={handleTypeSubmit} className="space-y-6">
+                      <div className="flex flex-col sm:flex-row gap-8">
+                        <div className="w-full sm:w-1/3 space-y-3 text-center">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block text-left ml-1">Immagine Scatola</label>
+                          <div 
+                              onClick={() => typeFileInputRef.current?.click()}
+                              className="aspect-square bg-slate-950 rounded-2xl border-2 border-dashed border-slate-800 hover:border-orange-500 transition-all cursor-pointer flex flex-col items-center justify-center overflow-hidden relative group shadow-inner"
+                          >
+                              {typeImageUrl ? (
+                                <>
+                                  <img src={typeImageUrl} alt="Cartridge" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <i className="fas fa-camera text-white text-xl"></i>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="p-4">
+                                  <i className="fas fa-box-open text-slate-700 text-4xl mb-3"></i>
+                                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Carica Foto</p>
+                                </div>
+                              )}
+                          </div>
+                          <input type="file" ref={typeFileInputRef} onChange={(e) => handleImageUpload(e, true)} accept="image/*" className="hidden" />
+                          <button 
+                              type="button" 
+                              onClick={() => searchOnGoogle(typeProducer, typeModel)}
+                              className="text-[10px] font-black text-blue-500 uppercase hover:text-blue-400 tracking-widest mt-2"
+                          >
+                              <i className="fab fa-google mr-1"></i> Cerca Immagine
+                          </button>
+                        </div>
 
-                <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={resetTypeForm} className="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl">Annulla</button>
-                  <button type="submit" className="flex-2 bg-orange-600 text-white font-black py-3 px-8 rounded-xl shadow-lg active:scale-95 transition-all uppercase">
-                    {editingType ? 'Aggiorna' : 'Salva'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {showForm && activeTab === 'history' && (
-              <form onSubmit={handleStockSubmit} className="bg-slate-900 border-2 border-orange-600/30 p-6 rounded-3xl space-y-4 mb-6 animate-in fade-in slide-in-from-top-4">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">
-                  {editingCart ? 'Modifica Carico' : 'Registra Nuovo Acquisto'}
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Seleziona Tipo Cartuccia</label>
-                    <select 
-                      required 
-                      value={selectedTypeId} 
-                      onChange={e => setSelectedTypeId(e.target.value)}
-                      className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm appearance-none"
-                    >
-                      <option value="">Scegli un tipo...</option>
-                      {cartridgeTypes.map(t => (
-                        <option key={t.id} value={t.id}>{t.producer} {t.model} (P. {t.leadNumber})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Pezzi Acquistati</label>
-                      <input type="number" required value={initialQuantity} onChange={e => {
-                        const val = parseInt(e.target.value) || 0;
-                        setInitialQuantity(val);
-                        if (!editingCart) setQuantity(val);
-                      }} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Costo (€)</label>
-                      <input type="number" step="0.01" required value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                    </div>
-                  </div>
-
-                  {editingCart && (
-                    <div className="sm:col-span-2 space-y-1 bg-orange-600/5 p-3 rounded-xl border border-orange-600/20">
-                      <label className="text-[10px] font-bold text-orange-500 uppercase">Giacenza Attuale (Modifica solo se necessario)</label>
-                      <div className="flex items-center gap-4">
-                        <input type="number" required value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="flex-1 bg-slate-900 border-2 border-orange-600/30 rounded-xl px-4 py-2 text-white text-sm font-black" />
-                        <div className="text-[10px] text-slate-500 font-bold uppercase">
-                          Originariamente: {editingCart.initialQuantity} <br/>
-                          Rimanenti: {quantity}
+                        <div className="flex-1 grid grid-cols-1 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Produttore</label>
+                            <input type="text" required value={typeProducer} onChange={e => setTypeProducer(e.target.value)} placeholder="Es: Baschieri" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Modello</label>
+                            <input type="text" required value={typeModel} onChange={e => setTypeModel(e.target.value)} placeholder="Es: F2 Mach" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piombo</label>
+                              <input type="text" required value={typeLeadNumber} onChange={e => setTypeLeadNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Grammi</label>
+                              <input type="number" required value={typeGrams} onChange={e => setTypeGrams(parseInt(e.target.value) || 0)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Armeria</label>
-                    <input type="text" value={armory} onChange={e => setArmory(e.target.value)} list="armory-list" className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
-                    <datalist id="armory-list">{knownArmories.map(a => <option key={a} value={a} />)}</datalist>
+                    </form>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Data Acquisto</label>
-                    <input type="date" required value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white text-sm" />
+                  <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+                    <button type="button" onClick={resetTypeForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">Annulla</button>
+                    <button type="submit" form="type-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
+                      {editingType ? 'Salva' : 'Crea'}
+                    </button>
                   </div>
                 </div>
+              </div>,
+              document.body
+            )}
 
-                <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={resetForm} className="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl">Annulla</button>
-                  <button type="submit" className="flex-2 bg-orange-600 text-white font-black py-3 px-8 rounded-xl shadow-lg active:scale-95 transition-all uppercase">
-                    {editingCart ? 'Aggiorna' : 'Conferma'}
-                  </button>
+            {showForm && activeTab === 'history' && createPortal(
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                  <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                      <i className="fas fa-truck-loading text-orange-500"></i>
+                      {editingCart ? 'Modifica Carico' : 'Registra Nuovo Acquisto'}
+                    </h3>
+                    <button 
+                      onClick={resetForm}
+                      className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+
+                  <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+                    <form id="stock-form" onSubmit={handleStockSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="sm:col-span-2 space-y-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seleziona Tipo Cartuccia</label>
+                          <select 
+                            required 
+                            value={selectedTypeId} 
+                            onChange={e => setSelectedTypeId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                          >
+                            <option value="">Scegli un tipo...</option>
+                            {cartridgeTypes.map(t => (
+                              <option key={t.id} value={t.id}>{t.producer} {t.model} (P. {t.leadNumber})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Pezzi Acquistati</label>
+                            <input type="number" required value={initialQuantity} onChange={e => {
+                              const val = parseInt(e.target.value) || 0;
+                              setInitialQuantity(val);
+                              if (!editingCart) setQuantity(val);
+                            }} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
+                            <input type="number" step="0.01" required value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          </div>
+                        </div>
+
+                        {editingCart && (
+                          <div className="sm:col-span-2 space-y-2 bg-orange-600/5 p-4 rounded-2xl border border-orange-600/20">
+                            <label className="text-[10px] font-black text-orange-500 uppercase tracking-widest ml-1">Giacenza Attuale (Modifica solo se necessario)</label>
+                            <div className="flex items-center gap-4">
+                              <input type="number" required value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="flex-1 bg-slate-950 border-2 border-orange-600/30 rounded-xl px-4 py-3 text-white text-sm font-black focus:border-orange-600 outline-none transition-all" />
+                              <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-tight">
+                                Originariamente: {editingCart.initialQuantity} <br/>
+                                Rimanenti: {quantity}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Armeria</label>
+                          <input type="text" value={armory} onChange={e => setArmory(e.target.value)} list="armory-list" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                          <datalist id="armory-list">{knownArmories.map(a => <option key={a} value={a} />)}</datalist>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Acquisto</label>
+                          <input type="date" required value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+                    <button type="button" onClick={resetForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">Annulla</button>
+                    <button type="submit" form="stock-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
+                      {editingCart ? 'Aggiorna' : 'Conferma'}
+                    </button>
+                  </div>
                 </div>
-              </form>
+              </div>,
+              document.body
             )}
 
             {activeTab === 'types' && (

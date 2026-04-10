@@ -905,8 +905,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   return createPortal(
     <div className="fixed inset-0 z-[1200] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-slate-900 rounded-none sm:rounded-3xl w-full h-full sm:h-auto sm:max-w-[98vw] max-h-[100dvh] sm:max-h-[98vh] flex flex-col overflow-hidden border-0 sm:border border-slate-800 shadow-2xl">
-        <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 shadow-lg relative z-10">
+      <div className="bg-slate-900 rounded-none sm:rounded-[2.5rem] w-full h-full sm:h-auto sm:max-w-[98vw] max-h-[100dvh] sm:max-h-[98vh] flex flex-col overflow-hidden border-0 sm:border border-slate-800 shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="p-4 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 shadow-lg relative z-10">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg sm:text-xl shadow-inner border border-orange-500/20">
               <i className="fas fa-trophy"></i>

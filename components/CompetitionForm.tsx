@@ -213,15 +213,21 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   }, [availableCartridges]);
 
   useEffect(() => {
+    const seriesLayoutObj = getSeriesLayout(discipline);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+
     if (isTraining) {
       setLevel(CompetitionLevel.TRAINING);
       if (name === '') setName('Sessione di Allenamento');
+      
+      const expectedTotal = scores.length * targetsPerSeries;
+      if (totalTargets !== expectedTotal) {
+        setTotalTargets(expectedTotal);
+      }
     } else {
       if (level === CompetitionLevel.TRAINING) setLevel(CompetitionLevel.REGIONAL);
       
       // Update scores length based on totalTargets
-      const seriesLayoutObj = getSeriesLayout(discipline);
-      const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
       const numSeries = Math.ceil(totalTargets / targetsPerSeries);
 
       if (scores.length !== numSeries) {
@@ -241,7 +247,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         });
       }
     }
-  }, [eventType, totalTargets, discipline]);
+  }, [eventType, totalTargets, discipline, scores.length, isTraining]);
 
   const fetchWeatherWithAI = async () => {
     let currentLocation = location;
@@ -432,7 +438,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       date,
       endDate: isMultiDayEligible && endDate ? endDate : undefined,
       discipline,
-      totalTargets: isTraining ? scores.length * 25 : totalTargets,
+      totalTargets,
       level,
       scores,
       detailedScores,
@@ -455,16 +461,31 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     onSubmit(newComp);
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-8">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-black text-white uppercase tracking-tight">{initialData ? 'Modifica' : 'Nuova'} {isTraining ? 'Sessione' : 'Gara'}</h2>
-        <button type="button" onClick={onCancel} className="text-slate-400 hover:text-white transition-colors">
-          <i className="fas fa-times text-xl"></i>
-        </button>
-      </div>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4 overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+        <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${isTraining ? 'bg-blue-600/20 text-blue-500' : 'bg-orange-600/20 text-orange-500'}`}>
+              <i className={`fas ${isTraining ? 'fa-dumbbell' : 'fa-trophy'}`}></i>
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none">{initialData ? 'Modifica' : 'Nuova'} {isTraining ? 'Sessione' : 'Gara'}</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Compila i dettagli dell'attività</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+          <form id="competition-form" onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {currentUser?.role === 'admin' && (
           <div className="md:col-span-2 space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
@@ -509,7 +530,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
         {showEventSelector && createPortal(
           <div 
-            className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+            className="fixed inset-0 z-[1300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
             onClick={() => setShowEventSelector(false)}
           >
             <div 
@@ -640,9 +661,14 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           <div className="md:col-span-2 space-y-4 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Numero Serie</label>
-              <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded">
-                TOTALE: {scores.reduce((a, b) => a + b, 0)} PIATTELLI
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded">
+                  TOTALE: {totalTargets} PIATTELLI
+                </span>
+                <span className="text-[9px] text-slate-500 font-bold mt-1 uppercase">
+                  COLPITI: {scores.reduce((a, b) => a + b, 0)} / {totalTargets}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <button type="button" onClick={() => {
@@ -1068,13 +1094,19 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none h-24 resize-none" />
       </div>
 
-      <div className="flex gap-4 pt-4">
-        <button type="button" onClick={onCancel} className="flex-1 bg-slate-800 text-white font-bold py-4 rounded-xl">Annulla</button>
-        <button type="submit" className={`flex-[2] ${isTraining ? 'bg-blue-600' : 'bg-orange-600'} text-white font-black py-4 rounded-xl shadow-xl active:scale-95 transition-all`}>
-          {initialData ? 'AGGIORNA' : 'SALVA'}
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
+    <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
+      <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
+        Annulla
+      </button>
+      <button type="submit" form="competition-form" className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isTraining ? 'bg-blue-600 hover:bg-blue-500' : 'bg-orange-600 hover:bg-orange-500'} text-white shadow-lg shadow-orange-600/20`}>
+        {initialData ? 'Aggiorna' : 'Salva'}
+      </button>
+    </div>
+    </div>
+    </div>,
+    document.body
   );
 };
 

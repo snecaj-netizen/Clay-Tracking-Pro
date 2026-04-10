@@ -87,8 +87,11 @@ const GarePage: React.FC<GarePageProps> = ({
         setNewEventTrigger(prev => prev + 1);
       } else if (user?.role === 'admin' && activeTab === 'eventi') {
         setNewEventTrigger(prev => prev + 1);
-      } else if (activeTab !== 'gestione') {
+      } else if (activeTab === 'gestione') {
+        setNewEventTrigger(prev => prev + 1);
+      } else {
         setActiveTab('gestione');
+        setNewEventTrigger(prev => prev + 1);
       }
     }
   }, [onCreateEventTrigger, user?.role, activeTab]);

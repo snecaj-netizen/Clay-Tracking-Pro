@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
 import { User, SocietyEvent, EventRegistration } from '../types';
 import ShooterSearch from './ShooterSearch';
@@ -132,231 +133,231 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-800"
-      >
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+  return createPortal(
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-white">{initialData ? 'Modifica Iscrizione' : 'Iscrizione Gara'}</h2>
-            <p className="text-sm text-orange-500 font-medium">{event.name}</p>
+            <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">{initialData ? 'Modifica Iscrizione' : 'Iscrizione Gara'}</h3>
+            <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest mt-1">{event.name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
-            <X className="w-6 h-6 text-slate-400" />
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700">
+            <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
-          {/* User Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-950/50 rounded-xl border border-slate-800">
-            {(user.role === 'admin' || user.role === 'society') ? (
-              <div className="md:col-span-2">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Seleziona Tiratore</label>
-                <ShooterSearch 
-                  value={selectedShooter?.id || ''}
-                  onChange={handleShooterSelect}
-                  shooters={shooters}
-                  useId={true}
-                  className="w-full"
+        <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+          <form id="registration-form" onSubmit={handleSubmit} className="space-y-6">
+            {/* User Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
+              {(user.role === 'admin' || user.role === 'society') ? (
+                <div className="md:col-span-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Seleziona Tiratore</label>
+                  <ShooterSearch 
+                    value={selectedShooter?.id || ''}
+                    onChange={handleShooterSelect}
+                    shooters={shooters}
+                    useId={true}
+                    className="w-full"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore</label>
+                  <p className="font-bold text-white">{selectedShooter?.name} {selectedShooter?.surname}</p>
+                </div>
+              )}
+              
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Codice Tiratore</label>
+                <p className="font-bold text-white">{selectedShooter?.shooter_code || '-'}</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società</label>
+                <p className="font-bold text-white">{selectedShooter?.society || '-'}</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Categoria / Qualifica</label>
+                <p className="font-bold text-white">{selectedShooter?.category || '-'} / {selectedShooter?.qualification || '-'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Phone (Editable) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Phone className="w-3 h-3 text-orange-500" />
+                  Numero di Telefono
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="Inserisci il tuo numero"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
                 />
               </div>
-            ) : (
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tiratore</label>
-                <p className="font-medium text-white">{selectedShooter?.name} {selectedShooter?.surname}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Day Selection */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Calendar className="w-3 h-3 text-orange-500" />
+                    Seleziona il giorno
+                  </label>
+                  <select
+                    value={formData.registration_day}
+                    onChange={e => setFormData({ ...formData, registration_day: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="Nessuna scelta">Nessuna scelta</option>
+                    <option value="Giorno1">Giorno 1</option>
+                    <option value="Giorno2">Giorno 2</option>
+                  </select>
+                </div>
+
+                {/* Registration Type */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Target className="w-3 h-3 text-orange-500" />
+                    Tipologia Iscrizione
+                  </label>
+                  <select
+                    value={formData.registration_type}
+                    onChange={e => setFormData({ ...formData, registration_type: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="Iscrizione per Categoria">Iscrizione per Categoria</option>
+                    <option value="Iscrizione per Qualifica">Iscrizione per Qualifica</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Shotgun */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Shield className="w-3 h-3 text-orange-500" />
+                    Fucile
+                  </label>
+                  <select
+                    value={formData.shotgun_brand}
+                    onChange={e => setFormData({ ...formData, shotgun_brand: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    {SHOTGUN_BRANDS.map(brand => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
+                  {formData.shotgun_brand === 'Altro' && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Specifica marca fucile"
+                      value={formData.shotgun_model}
+                      onChange={e => setFormData({ ...formData, shotgun_model: e.target.value })}
+                      className="mt-2 w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
+                    />
+                  )}
+                </div>
+
+                {/* Cartridge */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Info className="w-3 h-3 text-orange-500" />
+                    Cartuccia
+                  </label>
+                  <select
+                    value={formData.cartridge_brand}
+                    onChange={e => setFormData({ ...formData, cartridge_brand: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    {CARTRIDGE_BRANDS.map(brand => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
+                  {formData.cartridge_brand === 'Altro' && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Specifica marca cartuccia"
+                      value={formData.cartridge_model}
+                      onChange={e => setFormData({ ...formData, cartridge_model: e.target.value })}
+                      className="mt-2 w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Session */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sessione di Tiro</label>
+                <div className="flex flex-wrap gap-2">
+                  {SESSIONS.map(session => (
+                    <button
+                      key={session}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, shooting_session: session })}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                        formData.shooting_session === session
+                          ? 'bg-orange-600 text-white border-orange-500 shadow-lg'
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-orange-500/50'
+                      }`}
+                    >
+                      {session}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Eventuali note o richieste particolari..."
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none min-h-[100px] resize-none"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-900/30 text-red-500 border border-red-800 rounded-xl text-xs font-bold">
+                {error}
               </div>
             )}
-            
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Codice Tiratore</label>
-              <p className="font-medium text-white">{selectedShooter?.shooter_code || '-'}</p>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Società</label>
-              <p className="font-medium text-white">{selectedShooter?.society || '-'}</p>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoria / Qualifica</label>
-              <p className="font-medium text-white">{selectedShooter?.category || '-'} / {selectedShooter?.qualification || '-'}</p>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            {/* Phone (Editable) */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
-                <Phone className="w-4 h-4 text-orange-500" />
-                Numero di Telefono
-              </label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Inserisci il tuo numero"
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Day Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-orange-500" />
-                  Seleziona il giorno
-                </label>
-                <select
-                  value={formData.registration_day}
-                  onChange={e => setFormData({ ...formData, registration_day: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                >
-                  <option value="Nessuna scelta">Nessuna scelta</option>
-                  <option value="Giorno1">Giorno 1</option>
-                  <option value="Giorno2">Giorno 2</option>
-                </select>
-              </div>
-
-              {/* Registration Type */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-orange-500" />
-                  Tipologia Iscrizione
-                </label>
-                <select
-                  value={formData.registration_type}
-                  onChange={e => setFormData({ ...formData, registration_type: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                >
-                  <option value="Iscrizione per Categoria">Iscrizione per Categoria</option>
-                  <option value="Iscrizione per Qualifica">Iscrizione per Qualifica</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Shotgun */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-orange-500" />
-                  Fucile
-                </label>
-                <select
-                  value={formData.shotgun_brand}
-                  onChange={e => setFormData({ ...formData, shotgun_brand: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                >
-                  {SHOTGUN_BRANDS.map(brand => (
-                    <option key={brand} value={brand}>{brand}</option>
-                  ))}
-                </select>
-                {formData.shotgun_brand === 'Altro' && (
-                  <input
-                    type="text"
-                    required
-                    placeholder="Specifica marca fucile"
-                    value={formData.shotgun_model}
-                    onChange={e => setFormData({ ...formData, shotgun_model: e.target.value })}
-                    className="mt-2 w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                  />
+            <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700"
+              >
+                Annulla
+              </button>
+              <button
+                type="submit"
+                form="registration-form"
+                disabled={isSubmitting || !formData.user_id}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {initialData ? 'Salva Modifiche' : 'Conferma Iscrizione'}
+                  </>
                 )}
-              </div>
-
-              {/* Cartridge */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
-                  <Info className="w-4 h-4 text-orange-500" />
-                  Cartuccia
-                </label>
-                <select
-                  value={formData.cartridge_brand}
-                  onChange={e => setFormData({ ...formData, cartridge_brand: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                >
-                  {CARTRIDGE_BRANDS.map(brand => (
-                    <option key={brand} value={brand}>{brand}</option>
-                  ))}
-                </select>
-                {formData.cartridge_brand === 'Altro' && (
-                  <input
-                    type="text"
-                    required
-                    placeholder="Specifica marca cartuccia"
-                    value={formData.cartridge_model}
-                    onChange={e => setFormData({ ...formData, cartridge_model: e.target.value })}
-                    className="mt-2 w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                  />
-                )}
-              </div>
+              </button>
             </div>
-
-            {/* Session */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Sessione di Tiro</label>
-              <div className="flex flex-wrap gap-2">
-                {SESSIONS.map(session => (
-                  <button
-                    key={session}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, shooting_session: session })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      formData.shooting_session === session
-                        ? 'bg-orange-500 text-white shadow-md'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                    }`}
-                  >
-                    {session}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Note</label>
-              <textarea
-                value={formData.notes}
-                onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Eventuali note o richieste particolari..."
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-lg focus:ring-2 focus:ring-orange-500 outline-none min-h-[100px]"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-900/30 text-red-500 border border-red-800 rounded-lg text-sm font-medium">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 border border-slate-800 text-slate-400 font-bold rounded-xl hover:bg-slate-800 transition-colors"
-            >
-              Annulla
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !formData.user_id}
-              className="flex-1 px-6 py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors shadow-lg shadow-orange-900/20 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  {initialData ? 'Salva Modifiche' : 'Conferma Iscrizione'}
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+          </form>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
+
 };
