@@ -45,9 +45,35 @@ const UpdateNotification: React.FC = () => {
     };
   }, [lastHash]);
 
-  const handleUpdate = () => {
-    // Force reload from server, bypassing cache
-    window.location.reload();
+  const handleUpdate = async () => {
+    try {
+      // 1. Unregister all service workers to ensure a fresh start
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      
+      // 2. Clear all browser caches
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        for (const cacheName of cacheNames) {
+          await caches.delete(cacheName);
+        }
+      }
+
+      // 3. Clear session storage as well just in case
+      sessionStorage.clear();
+    } catch (error) {
+      console.error('Errore durante la pulizia della cache:', error);
+    }
+
+    // 4. Force reload from server
+    // We use window.location.href with a cache-buster to be absolutely sure
+    const url = new URL(window.location.href);
+    url.searchParams.set('v', Date.now().toString());
+    window.location.href = url.toString();
   };
 
   return (
