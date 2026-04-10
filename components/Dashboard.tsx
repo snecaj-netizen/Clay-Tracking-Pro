@@ -26,19 +26,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
-  const availableEvents = React.useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return events
-      .filter(e => {
-        const endDate = new Date(e.end_date);
-        endDate.setHours(23, 59, 59, 999);
-        // Solo gare con iscrizione abilitata
-        return endDate >= now && e.is_management_enabled;
-      })
-      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
-  }, [events]);
-
   // Filtriamo solo le gare REALI (punteggio > 0) per le statistiche
   const upcomingCompetitions = React.useMemo(() => {
     const now = new Date();
@@ -345,56 +332,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                       "{comp.notes}"
                     </p>
                   )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 6. Gare Disponibili (Iscrizioni Aperte) */}
-      {user?.role !== 'society' && availableEvents.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between ml-2">
-            <div className="flex items-center gap-2">
-              <i className="fas fa-bullhorn text-orange-500"></i>
-              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Gare Disponibili</h2>
-            </div>
-            <button 
-              onClick={() => onNavigate('events')}
-              className="text-[10px] font-bold text-orange-500 hover:text-orange-400 uppercase tracking-widest"
-            >
-              Vedi Tutte <i className="fas fa-chevron-right ml-1"></i>
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {availableEvents.slice(0, 3).map(event => {
-              const start = new Date(event.start_date);
-              const end = new Date(event.end_date);
-              return (
-                <div key={event.id} className="bg-slate-900 p-5 rounded-2xl border border-white/10 shadow-xl flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[9px] font-black bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded uppercase">
-                        {event.discipline}
-                      </span>
-                    </div>
-                    <h4 className="text-lg font-black text-white leading-tight mb-1">{event.name}</h4>
-                    <p className="text-xs text-slate-400 flex items-center gap-1.5 mb-2">
-                      <i className="fas fa-location-dot text-slate-500"></i>
-                      {event.location}
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">
-                      <i className="far fa-calendar-alt mr-1.5"></i>
-                      {start.toLocaleDateString('it-IT')} {start.getTime() !== end.getTime() ? `- ${end.toLocaleDateString('it-IT')}` : ''}
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => onNavigate('gare', 'iscrizione', event.id)}
-                    className="mt-4 w-full bg-orange-600 hover:bg-orange-500 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                  >
-                    Iscriviti Ora
-                  </button>
                 </div>
               );
             })}

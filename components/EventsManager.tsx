@@ -1733,11 +1733,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 const isSelected = selectedEvents.includes(ev.id);
                 
                 return (
-                <div 
-                  key={ev.id} 
-                  onClick={() => setSelectedEvent(ev)}
-                  className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : ''} ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
-                >
+                  <div 
+                    key={ev.id} 
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button')) return;
+                      setSelectedEvent(ev);
+                    }}
+                    className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : ''} ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
+                  >
                   {user?.role === 'admin' && (
                     <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
                       <label className="relative flex items-center justify-center cursor-pointer">
@@ -1810,6 +1813,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   </div>
 
                   <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  {/* Registration Button for Shooters in Registration Tab */}
+                  {filterRegistrationOpen && (user?.role === 'user' || user?.role === 'admin') && !past && (
+                    <div className="mt-2 pt-3 border-t border-slate-800/50">
+                      {ev.is_registered ? (
+                        <div className="w-full py-2.5 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[10px] font-black uppercase tracking-widest cursor-default">
+                          <i className="fas fa-check-circle"></i> Già Iscritto
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setRegisteringEvent(ev);
+                          }}
+                          className="w-full py-2.5 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <i className="fas fa-user-plus"></i> Iscriviti ora
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 );
               })
@@ -1903,20 +1928,43 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 </div>
               )}
 
-              {selectedEvent.registration_link && (selectedEvent.is_management_enabled || user?.role === 'admin') && (
+              {(selectedEvent.registration_link || (selectedEvent.is_management_enabled || user?.role === 'admin')) && !isPastEvent(selectedEvent) && (
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscrizione Online</p>
-                    <p className="text-sm text-slate-300">Clicca sul pulsante per iscriverti alla gara.</p>
+                    <p className="text-sm text-slate-300">
+                      {selectedEvent.is_registered ? 'Sei già iscritto a questa gara.' : 'Clicca sul pulsante per iscriverti alla gara.'}
+                    </p>
                   </div>
-                  <a 
-                    href={selectedEvent.registration_link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="h-10 px-4 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 whitespace-nowrap active:scale-95"
-                  >
-                    <i className="fas fa-external-link-alt"></i> Iscriviti Ora
-                  </a>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {selectedEvent.registration_link && (
+                      <a 
+                        href={selectedEvent.registration_link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="h-10 px-4 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 border border-slate-700"
+                      >
+                        <i className="fas fa-external-link-alt"></i> Sito Esterno
+                      </a>
+                    )}
+                    {(user?.role === 'user' || user?.role === 'admin') && (selectedEvent.is_management_enabled || user?.role === 'admin') && (
+                      selectedEvent.is_registered ? (
+                        <div className="h-10 px-4 rounded-xl bg-green-900/30 text-green-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-green-900/50 cursor-default">
+                          <i className="fas fa-check-circle"></i> Già Iscritto
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            setRegisteringEvent(selectedEvent);
+                            setSelectedEvent(null);
+                          }}
+                          className="h-10 px-4 rounded-xl bg-green-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-green-500 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 whitespace-nowrap active:scale-95"
+                        >
+                          <i className="fas fa-user-plus"></i> Iscriviti Ora
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1985,31 +2033,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   >
                     <i className="fas fa-trophy"></i> Classifica
                   </button>
-                )}
-
-                {/* Iscriviti Button for Shooters */}
-                {(user?.role === 'user' || user?.role === 'admin') && !isPastEvent(selectedEvent) && (
-                  <>
-                    {!(selectedEvent.is_management_enabled || user?.role === 'admin') ? (
-                      <div className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800/50 text-slate-500 flex items-center justify-center gap-2 border border-slate-800 text-[9px] font-black uppercase tracking-widest cursor-default">
-                        <i className="fas fa-lock"></i> Iscrizioni non attive
-                      </div>
-                    ) : selectedEvent.is_registered ? (
-                      <div className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[9px] font-black uppercase tracking-widest cursor-default">
-                        <i className="fas fa-check-circle"></i> Già Iscritto
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => {
-                          setRegisteringEvent(selectedEvent);
-                          setSelectedEvent(null);
-                        }}
-                        className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[9px] font-black uppercase tracking-widest"
-                      >
-                        <i className="fas fa-user-plus"></i> Iscriviti alla gara
-                      </button>
-                    )}
-                  </>
                 )}
 
                 {/* Gestione Batterie Button for Societies/Admins */}

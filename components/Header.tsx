@@ -202,7 +202,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   <div className="py-1">
                     <div className="px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">Gestione</div>
                     <button 
-                      onClick={() => { onNavigate('admin-events'); setIsProfileOpen(false); }}
+                      onClick={() => { onNavigate('gare', 'gestione'); setIsProfileOpen(false); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-orange-600 hover:text-white transition-colors"
                     >
                       <i className="fas fa-calendar-alt w-5 text-orange-500 group-hover:text-white"></i>
