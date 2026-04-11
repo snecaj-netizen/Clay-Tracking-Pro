@@ -1498,7 +1498,12 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     let whereClauses: string[] = [];
     
     if (req.user.role === 'society') {
-      whereClauses.push("role != 'society'");
+      if (req.query.all === 'true') {
+        whereClauses.push("role != 'society'");
+      } else {
+        whereClauses.push("role = 'user' AND society = $" + (params.length + 1));
+        params.push(req.user.society);
+      }
     }
 
     if (role) {
@@ -1688,10 +1693,10 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       if (userCheck.rows[0].role === 'admin') {
         return res.status(403).json({ error: 'Le società non possono modificare gli amministratori' });
       }
-      if (userCheck.rows[0].role === 'society' && userCheck.rows[0].society !== req.user.society) {
-        return res.status(403).json({ error: 'Le società non possono modificare altre società' });
+      if (userCheck.rows[0].society !== req.user.society) {
+        return res.status(403).json({ error: 'Le società possono modificare solo i propri tiratori o la propria utenza' });
       }
-      if (role && role !== 'user') {
+      if (role && role !== 'user' && role !== 'society') {
         return res.status(403).json({ error: 'Le società possono gestire solo tiratori' });
       }
       if (status && status !== userCheck.rows[0].status) {
@@ -1724,7 +1729,7 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
   }
 });
 
-app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
     const search = req.query.search as string;
     const society = req.query.society as string;
@@ -1736,7 +1741,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     let params: any[] = [];
 
     if (req.user.role === 'society') {
-      whereClauses.push("(u.society = $" + (params.length + 1) + " OR c.location = $" + (params.length + 1) + ")");
+      whereClauses.push("u.society = $" + (params.length + 1));
       params.push(req.user.society);
     }
 
@@ -1831,7 +1836,7 @@ app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, a
     let whereClause = "WHERE c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
     let params: any[] = [];
     if (req.user.role === 'society') {
-      whereClause = "JOIN users u ON c.user_id = u.id WHERE (u.society = $1 OR c.location = $1) AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
+      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
       params.push(req.user.society);
     }
 
@@ -1869,7 +1874,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     let params: any[] = [];
 
     if (req.user.role === 'society') {
-      whereClauses.push("(u.society = $" + (params.length + 1) + " OR c.location = $" + (params.length + 1) + ")");
+      whereClauses.push("u.society = $" + (params.length + 1));
       params.push(req.user.society);
     }
 
@@ -3939,7 +3944,7 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
         SELECT c.*, u.name as "userName", u.surname as "userSurname"
         FROM competitions c
         JOIN users u ON c.user_id = u.id
-        WHERE (u.society = $1 OR c.location = $1) AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'
+        WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'
       `;
       params = [req.user.society];
     } else if (req.user.role === 'admin') {

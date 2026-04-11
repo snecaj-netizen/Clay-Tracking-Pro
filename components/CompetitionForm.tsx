@@ -66,7 +66,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
   useEffect(() => {
     if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
-      fetch('/api/admin/users', {
+      fetch('/api/admin/users?all=true', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       })
       .then(res => res.json())
