@@ -124,8 +124,35 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [internalFilterMonth, setInternalFilterMonth] = useState('');
   const filterMonth = externalFilterMonth !== undefined ? externalFilterMonth : internalFilterMonth;
   const setFilterMonth = onFilterMonthChange || setInternalFilterMonth;
+
+  useEffect(() => {
+    if (filterMonth) {
+      const [year, month] = filterMonth.split('-').map(Number);
+      if (!isNaN(year) && !isNaN(month)) {
+        setCurrentMonth(new Date(year, month - 1, 1));
+      }
+    } else {
+      // If filter is cleared, reset calendar to current month
+      setCurrentMonth(new Date());
+    }
+  }, [filterMonth]);
   
   const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '';
+
+  const monthOptions = React.useMemo(() => {
+    const options = [];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    for (let y = currentYear; y <= currentYear + 1; y++) {
+      for (let m = 0; m < 12; m++) {
+        const date = new Date(y, m, 1);
+        const value = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const label = date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, []);
 
   useEffect(() => {
     if (initialViewMode) {
@@ -208,8 +235,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       if (filterSociety && ev.location?.toLowerCase().trim() !== filterSociety.toLowerCase().trim()) return false;
       if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
       if (filterMonth) {
-        const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
-        if (evMonth !== filterMonth) return false;
+        // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
+        if (ev.start_date.slice(0, 7) !== filterMonth) return false;
       }
       if (filterRegistrationOpen && !ev.is_management_enabled) return false;
       return true;
@@ -287,8 +314,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       if (filterSociety && ev.location?.toLowerCase().trim() !== filterSociety.toLowerCase().trim()) return false;
       if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
       if (filterMonth) {
-        const evMonth = new Date(ev.start_date).toISOString().slice(0, 7);
-        if (evMonth !== filterMonth) return false;
+        // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
+        if (ev.start_date.slice(0, 7) !== filterMonth) return false;
       }
       if (filterRegistrationOpen && !ev.is_management_enabled) return false;
 
@@ -1317,15 +1344,18 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
               <div className="relative group">
-                <input 
-                  type="month" 
+                <select 
                   value={filterMonth} 
                   onChange={e => setFilterMonth(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
-                  style={{ colorScheme: 'dark' }}
-                />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                >
+                  <option value="">Tutti i mesi</option>
+                  {monthOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                  <i className="fas fa-calendar-alt text-xs"></i>
+                  <i className="fas fa-chevron-down text-[10px]"></i>
                 </div>
               </div>
             </div>

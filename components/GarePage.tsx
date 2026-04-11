@@ -97,6 +97,23 @@ const GarePage: React.FC<GarePageProps> = ({
     }
   }, [onCreateEventTrigger, user?.role, activeTab]);
 
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // Generate options for current year and next year
+    for (let y = currentYear; y <= currentYear + 1; y++) {
+      for (let m = 0; m < 12; m++) {
+        const date = new Date(y, m, 1);
+        const value = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const label = date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, []);
+
   const handleTabChange = (newTab: TabType) => {
     const currentIndex = availableTabs.indexOf(activeTab);
     const newIndex = availableTabs.indexOf(newTab);
@@ -136,7 +153,7 @@ const GarePage: React.FC<GarePageProps> = ({
   return (
     <div className="flex flex-col">
       {/* Sticky Header Section */}
-      <div className="sticky top-16 sm:top-[104px] z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 sm:top-[104px] z-[100] bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
@@ -246,19 +263,20 @@ const GarePage: React.FC<GarePageProps> = ({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
+              className="relative z-50"
             >
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 pb-1">
-                <div className="space-y-1">
+                <div className="space-y-1 relative z-30">
                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
                   <SocietySearch 
                     value={filterSociety}
                     onChange={setFilterSociety}
                     societies={societies}
                     placeholder="Tutte le società"
+                    className="!bg-slate-900 !py-1.5 !text-[11px] !px-3"
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 relative z-20">
                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
                   <div className="relative group">
                     <select 
@@ -274,16 +292,22 @@ const GarePage: React.FC<GarePageProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 relative z-10">
                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
                   <div className="relative group">
-                    <input 
-                      type="month" 
+                    <select 
                       value={filterMonth} 
                       onChange={e => setFilterMonth(e.target.value)} 
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all" 
-                      style={{ colorScheme: 'dark' }}
-                    />
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">Tutti i mesi</option>
+                      {monthOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                      <i className="fas fa-chevron-down text-[8px]"></i>
+                    </div>
                   </div>
                 </div>
               </div>
