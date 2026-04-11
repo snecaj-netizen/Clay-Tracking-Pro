@@ -73,32 +73,65 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-0 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page"
           >
             {/* Header Section */}
-            <div className="flex items-center justify-center mb-6 relative pt-2 gap-6">
-              {hostingSociety?.logo && (
-                <img 
-                  src={hostingSociety.logo} 
-                  alt="Society Logo" 
-                  className="w-16 h-16 object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              )}
-              <div className="text-center">
+            <div className="flex items-center justify-between mb-8 px-6 relative">
+              <div className="w-32 flex items-center justify-start">
+                {hostingSociety?.logo ? (
+                  <img 
+                    src={hostingSociety.logo} 
+                    alt="Society Logo" 
+                    className="w-24 h-24 object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-24 h-24 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-300">
+                    <i className="fas fa-image text-2xl"></i>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 text-center">
                 {hostingSociety ? (
                   <div className="flex flex-col items-center">
-                    <h1 className="text-2xl font-black uppercase tracking-[0.05em] leading-tight">
-                      {hostingSociety.name}
-                    </h1>
-                    {hostingSociety.code && (
-                      <div className="mt-1 px-3 py-0.5 bg-slate-100 rounded-full border border-slate-200">
-                        <p className="text-[10px] font-black text-slate-600 tracking-[0.2em]">
-                          COD. {hostingSociety.code}
-                        </p>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-center gap-4 mb-1">
+                      <h1 className="text-3xl font-black uppercase tracking-tighter leading-none text-slate-900">
+                        {hostingSociety.name}
+                      </h1>
+                      {hostingSociety.code && (
+                        <div className="h-8 w-[2px] bg-slate-300 hidden sm:block"></div>
+                      )}
+                      {hostingSociety.code && (
+                        <span className="text-xl font-black text-orange-600 tracking-widest">
+                          {hostingSociety.code}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="h-[1px] w-12 bg-slate-200"></div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
+                        Società Affiliata FITAV
+                      </p>
+                      <div className="h-[1px] w-12 bg-slate-200"></div>
+                    </div>
                   </div>
                 ) : (
-                  <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none">FEDERAZIONE ITALIANA TIRO A VOLO</h1>
+                  <div className="flex flex-col items-center">
+                    <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none text-slate-900">
+                      FEDERAZIONE ITALIANA TIRO A VOLO
+                    </h1>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">
+                      Statino di Gara Ufficiale
+                    </p>
+                  </div>
                 )}
+              </div>
+
+              <div className="w-32 flex items-center justify-end opacity-10 grayscale">
+                <img 
+                  src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
+                  alt="FITAV Logo" 
+                  className="w-20 h-20 object-contain"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             </div>
 
