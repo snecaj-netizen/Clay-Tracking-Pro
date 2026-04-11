@@ -98,18 +98,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       }
 
       // Fetch users (shooters) regardless of readOnly to show names in team rankings
-      const resUsers = await fetch('/api/admin/users?limit=10000&excludeRole=society', {
+      // For society users, we pass all=true to allow them to see all shooters when managing their event results
+      const usersUrl = `/api/admin/users?limit=10000&excludeRole=society${user?.role === 'society' ? '&all=true' : ''}`;
+      const resUsers = await fetch(usersUrl, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (resUsers.ok) {
         const data = await resUsers.json();
         let filteredUsers = (data.users || []).filter((u: any) => u.role === 'user' || u.role === 'admin');
         
-        // For society events, only show shooters from that society
-        if (event.visibility === 'Gara di Società') {
-          const eventLoc = (event.location || '').toLowerCase().trim();
-          filteredUsers = filteredUsers.filter((u: any) => (u.society || '').toLowerCase().trim() === eventLoc);
-        }
+        // Removed the restriction that only showed shooters from the same society for "Gara di Società"
+        // because the society owner must be able to insert results for any participating shooter.
         
         setUsers(filteredUsers);
       }

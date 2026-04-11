@@ -65,16 +65,12 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     if (user.role === 'admin' || user.role === 'society') {
       const fetchShooters = async () => {
         try {
-          const res = await fetch('/api/admin/users?excludeRole=society', {
+          const usersUrl = `/api/admin/users?limit=10000&excludeRole=society${user.role === 'society' ? '&all=true' : ''}`;
+          const res = await fetch(usersUrl, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
           });
           if (res.ok) {
             const data = await res.json();
-            // The backend returns { users, total } if limit/page is used, or just [users] if not.
-            // But here we didn't pass limit, so it might return the array directly or the object.
-            // Looking at server.ts, if limit is not provided, it returns the array directly?
-            // Actually, server.ts line 1550+ (not shown) likely handles the response.
-            // Let's check the rest of the endpoint.
             const shootersData = data.users || data;
             setShooters(shootersData);
           }
