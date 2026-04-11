@@ -521,9 +521,13 @@ const initDB = async () => {
         squad_number INTEGER NOT NULL,
         field_number INTEGER NOT NULL,
         start_time TEXT NOT NULL,
+        is_locked BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Add is_locked column if it doesn't exist
+    await pool.query("ALTER TABLE event_squads ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE").catch(() => {});
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS event_squad_members (
@@ -3547,6 +3551,29 @@ app.get('/api/events/:id/squads', authenticateToken, async (req: any, res) => {
   } catch (error) {
     console.error('Error fetching squads:', error);
     res.status(500).json({ error: 'Failed to fetch squads' });
+  }
+});
+
+app.put('/api/events/:id/squads/:squadId/lock', authenticateToken, async (req: any, res) => {
+  try {
+    const { id, squadId } = req.params;
+    const { is_locked } = req.body;
+
+    // Check if user is admin or society hosting the event
+    const { rows: eventRows } = await pool.query("SELECT * FROM events WHERE id = $1", [id]);
+    if (eventRows.length === 0) return res.status(404).json({ error: 'Gara non trovata' });
+    const event = eventRows[0];
+
+    if (req.user.role !== 'admin') {
+      if (req.user.role !== 'society' || (event.location !== req.user.society && event.created_by !== req.user.id)) {
+        return res.status(403).json({ error: 'Non autorizzato' });
+      }
+    }
+
+    await pool.query("UPDATE event_squads SET is_locked = $1 WHERE id = $2 AND event_id = $3", [is_locked, squadId, id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -11,9 +11,14 @@ interface FitavScoreSheetProps {
   }[];
   event?: SocietyEvent;
   onClose: () => void;
+  hostingSociety?: {
+    name: string;
+    code?: string;
+    logo?: string;
+  };
 }
 
-const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose }) => {
+const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose, hostingSociety }) => {
   const handlePrint = () => {
     window.print();
   };
@@ -68,9 +73,32 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-0 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page"
           >
             {/* Header Section */}
-            <div className="flex items-center justify-center mb-6 relative pt-2">
+            <div className="flex items-center justify-center mb-6 relative pt-2 gap-6">
+              {hostingSociety?.logo && (
+                <img 
+                  src={hostingSociety.logo} 
+                  alt="Society Logo" 
+                  className="w-16 h-16 object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              )}
               <div className="text-center">
-                <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none">FEDERAZIONE ITALIANA TIRO A VOLO</h1>
+                {hostingSociety ? (
+                  <div className="flex flex-col items-center">
+                    <h1 className="text-2xl font-black uppercase tracking-[0.05em] leading-tight">
+                      {hostingSociety.name}
+                    </h1>
+                    {hostingSociety.code && (
+                      <div className="mt-1 px-3 py-0.5 bg-slate-100 rounded-full border border-slate-200">
+                        <p className="text-[10px] font-black text-slate-600 tracking-[0.2em]">
+                          COD. {hostingSociety.code}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none">FEDERAZIONE ITALIANA TIRO A VOLO</h1>
+                )}
               </div>
             </div>
 

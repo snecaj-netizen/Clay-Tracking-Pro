@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { 
   Users, RefreshCw, Save, Clock, Target, ArrowRight, 
   ChevronLeft, Mail, Phone, Shield, User, Calendar,
-  Download, Trash2, Edit3, Search, Plus, AlertCircle, Printer
+  Download, Trash2, Edit3, Search, Plus, AlertCircle, Printer, Lock, Unlock
 } from 'lucide-react';
 import { SocietyEvent, EventSquad, EventRegistration } from '../types';
 import { jsPDF } from 'jspdf';
@@ -280,7 +280,30 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     }
   };
 
+  const toggleSquadLock = async (squadId: number, currentLock: boolean) => {
+    try {
+      const response = await fetch(`/api/events/${event.id}/squads/${squadId}/lock`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ is_locked: !currentLock })
+      });
+      if (!response.ok) throw new Error('Errore nel cambio stato blocco');
+      
+      setSquads(prev => prev.map(s => s.id === squadId ? { ...s, is_locked: !currentLock } : s));
+      triggerToast?.(`Batteria ${currentLock ? 'sbloccata' : 'bloccata'} con successo`, 'success');
+    } catch (err: any) {
+      triggerToast?.(err.message, 'error');
+    }
+  };
+
   const moveMember = (fromSquadIndex: number, fromMemberIndex: number, toSquadIndex: number) => {
+    if (squads[fromSquadIndex].is_locked || squads[toSquadIndex].is_locked) {
+      triggerToast?.('Una delle batterie è bloccata e non può essere modificata.', 'info');
+      return;
+    }
     const newSquads = JSON.parse(JSON.stringify(squads));
     
     if (newSquads[toSquadIndex].members.length < 6 || fromSquadIndex === toSquadIndex) {
@@ -296,6 +319,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   };
 
   const changePosition = (squadIndex: number, fromIndex: number, toIndex: number) => {
+    if (squads[squadIndex].is_locked) {
+      triggerToast?.('Questa batteria è bloccata e non può essere modificata.', 'info');
+      return;
+    }
     const newSquads = JSON.parse(JSON.stringify(squads));
     const squad = newSquads[squadIndex];
     const [member] = squad.members.splice(fromIndex, 1);
@@ -345,6 +372,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   };
 
   const handleAddMemberToSquad = (squadIndex: number, registration: EventRegistration) => {
+    if (squads[squadIndex].is_locked) {
+      triggerToast?.('Questa batteria è bloccata e non può essere modificata.', 'info');
+      return;
+    }
     const newSquads = JSON.parse(JSON.stringify(squads));
     if (newSquads[squadIndex].members.length < 6) {
       newSquads[squadIndex].members.push({
@@ -361,6 +392,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   };
 
   const handleRemoveMemberFromSquad = (squadIndex: number, memberIndex: number) => {
+    if (squads[squadIndex].is_locked) {
+      triggerToast?.('Questa batteria è bloccata e non può essere modificata.', 'info');
+      return;
+    }
     const newSquads = JSON.parse(JSON.stringify(squads));
     newSquads[squadIndex].members.splice(memberIndex, 1);
     newSquads[squadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
@@ -395,7 +430,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                 Gestione Gara
               </span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight leading-none">
+            <h1 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
               {event.name}
             </h1>
             <p className="text-slate-400 mt-2 font-medium flex items-center gap-2">
@@ -404,36 +439,54 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
+          <div className="flex items-center gap-1.5 bg-slate-900/50 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
             <button
               onClick={() => { setActiveTab('registrations'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'registrations' 
-                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-1 ring-orange-500/50' 
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
               Iscritti ({registrations.length})
+              {activeTab === 'registrations' && (
+                <motion.div 
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
+                />
+              )}
             </button>
             <button
               onClick={() => { setActiveTab('squads'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'squads' 
-                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-1 ring-orange-500/50' 
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
               Batterie ({squads.length})
+              {activeTab === 'squads' && (
+                <motion.div 
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
+                />
+              )}
             </button>
             <button
               onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'results' 
-                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-1 ring-orange-500/50' 
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
               Classifiche
+              {activeTab === 'results' && (
+                <motion.div 
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
+                />
+              )}
             </button>
           </div>
         </div>
@@ -719,7 +772,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                         >
                           <option value="" disabled>Aggiungi a...</option>
                           {squads.map((s, idx) => (
-                            s.members.length < 6 && <option key={idx} value={idx}>B{s.squad_number}</option>
+                            s.members.length < 6 && !s.is_locked && <option key={idx} value={idx}>B{s.squad_number}</option>
                           ))}
                         </select>
                       )}
@@ -776,9 +829,23 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {(user?.role === 'admin' || (user?.role === 'society' && (event.location === user?.society || event.created_by === user?.id))) && (
+                        <button 
+                          onClick={() => toggleSquadLock(squad.id, !!squad.is_locked)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                            squad.is_locked 
+                              ? 'bg-orange-600/20 text-orange-500 border border-orange-500/30' 
+                              : 'bg-slate-950 border border-slate-800 text-slate-500 hover:text-white'
+                          }`}
+                          title={squad.is_locked ? "Sblocca batteria" : "Blocca batteria (Definitiva)"}
+                        >
+                          {squad.is_locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                        </button>
+                      )}
                       <button 
                         onClick={() => {
                           const teamData = {
+                            id: String(squad.id),
                             name: `${squad.squad_number}`,
                             members: squad.members.map(m => ({
                               id: String(m.registration_id),
@@ -792,23 +859,31 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                           };
                           setSelectedSquadsForSheet([teamData]);
                         }}
-                        className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                        className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
                         title="Stampa Statino FITAV"
                       >
-                        <Printer className="w-5 h-5" />
+                        <Printer className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => {
+                          if (squad.is_locked) {
+                            triggerToast?.('Per poter eliminare la batteria, bisogna prima sbloccarla.', 'info');
+                            return;
+                          }
                           if (confirm('Sei sicuro di voler eliminare questa batteria? I tiratori torneranno nella lista da assegnare.')) {
                             const newSquads = squads.filter((_, idx) => idx !== sIdx);
                             setSquads(newSquads);
                             setHasUnsavedChanges(true);
                           }
                         }}
-                        className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                        title="Elimina batteria"
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                          squad.is_locked 
+                            ? 'bg-slate-900 text-slate-700 border border-slate-800' 
+                            : 'bg-slate-950 border border-slate-800 text-slate-500 hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/10'
+                        }`}
+                        title={squad.is_locked ? "Batteria bloccata" : "Elimina batteria"}
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -833,12 +908,13 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                        <div className={`flex items-center gap-1 transition-opacity ${squad.is_locked ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover/member:opacity-100'}`}>
                           <select 
                             onChange={(e) => {
                               changePosition(sIdx, mIdx, parseInt(e.target.value));
                             }}
-                            className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none"
+                            disabled={squad.is_locked}
+                            className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none disabled:opacity-50"
                             value={mIdx}
                           >
                             {[0, 1, 2, 3, 4, 5].slice(0, squad.members.length).map(posIdx => (
@@ -853,18 +929,20 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                   e.target.value = "";
                                 }
                               }}
-                              className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none"
+                              disabled={squad.is_locked}
+                              className="bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 rounded px-1 py-0.5 focus:outline-none disabled:opacity-50"
                               defaultValue=""
                             >
                               <option value="" disabled>Sposta in...</option>
                               {squads.map((s, idx) => (
-                                idx !== sIdx && <option key={idx} value={idx}>B{s.squad_number}</option>
+                                idx !== sIdx && !s.is_locked && <option key={idx} value={idx}>B{s.squad_number}</option>
                               ))}
                             </select>
                           )}
                           <button
                             onClick={() => handleRemoveMemberFromSquad(sIdx, mIdx)}
-                            className="p-1 text-slate-500 hover:text-red-500 transition-colors"
+                            disabled={squad.is_locked}
+                            className="p-1 text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50"
                             title="Rimuovi dalla batteria"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -1033,6 +1111,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           teams={selectedSquadsForSheet}
           event={event}
           onClose={() => setSelectedSquadsForSheet(null)}
+          hostingSociety={societies.find(s => s.name === event.location)}
         />
       )}
 

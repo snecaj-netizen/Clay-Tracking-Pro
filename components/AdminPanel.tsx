@@ -4534,6 +4534,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           teams={[selectedTeamForSheet]}
           event={events.find(ev => String(ev.id) === String(selectedTeamForSheet.event_id))}
           onClose={() => setSelectedTeamForSheet(null)}
+          hostingSociety={societies.find(s => s.name === events.find(ev => String(ev.id) === String(selectedTeamForSheet.event_id))?.location)}
         />,
         document.body
       )}

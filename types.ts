@@ -214,6 +214,7 @@ export interface EventSquad {
   field_number: number;
   start_time: string;
   members: EventSquadMember[];
+  is_locked?: boolean;
 }
 
 export interface AppData {
