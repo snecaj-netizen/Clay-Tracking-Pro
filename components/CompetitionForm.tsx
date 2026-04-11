@@ -65,7 +65,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [cartridgeSearch, setCartridgeSearch] = useState('');
 
   useEffect(() => {
-    if (currentUser?.role === 'admin') {
+    if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
       fetch('/api/admin/users', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       })
@@ -486,7 +486,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
           <form id="competition-form" onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {currentUser?.role === 'admin' && (
+        {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
           <div className="md:col-span-2 space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
             <ShooterSearch 

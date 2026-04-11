@@ -693,12 +693,12 @@ initDB().then(() => {
         let userIds: number[] = [];
         
         if (event.visibility === 'Pubblica') {
-          const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+          const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society'");
           userIds = users.map(u => u.id);
         } else {
           const { rows: creators } = await pool.query("SELECT society FROM users WHERE id = $1", [event.created_by]);
           if (creators.length > 0 && creators[0].society) {
-            const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user' AND society = $1", [creators[0].society]);
+            const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society' AND society = $1", [creators[0].society]);
             userIds = users.map(u => u.id);
           }
         }
@@ -1384,7 +1384,7 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
     usersRes.rows.forEach(u => {
       const isOnline = activeUsers.has(u.id) && (now - activeUsers.get(u.id)!) < 5 * 60 * 1000;
       if (isOnline) {
-        if (u.role === 'user') onlineUsersCount++;
+        if (u.role !== 'society') onlineUsersCount++;
         if (u.role === 'society' && u.society) onlineSocieties.add(u.society);
       }
     });
@@ -1393,7 +1393,7 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
       SELECT u.name, u.surname, COUNT(l.id) as login_count
       FROM users u
       JOIN login_logs l ON u.id = l.user_id
-      WHERE u.role = 'user'
+      WHERE u.role != 'society'
       ${timeFilter}
       GROUP BY u.id, u.name, u.surname
       ORDER BY login_count DESC
@@ -1428,7 +1428,7 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
       SELECT u.name, u.surname, COUNT(c.id) as count
       FROM users u
       JOIN competitions c ON u.id = c.user_id
-      WHERE u.role = 'user'
+      WHERE u.role != 'society'
       ${compTimeFilter}
       GROUP BY u.id, u.name, u.surname
       ORDER BY count DESC
@@ -1450,7 +1450,7 @@ app.get('/api/admin/dashboard-stats', authenticateToken, requireAdmin, async (re
       SELECT u.name, u.surname, SUM(c.totaltargets) as total
       FROM users u
       JOIN competitions c ON u.id = c.user_id
-      WHERE u.role = 'user'
+      WHERE u.role != 'society'
       ${compTimeFilter}
       GROUP BY u.id, u.name, u.surname
       ORDER BY total DESC
@@ -1498,8 +1498,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     let whereClauses: string[] = [];
     
     if (req.user.role === 'society') {
-      whereClauses.push("LOWER(TRIM(society)) = LOWER(TRIM($" + (params.length + 1) + "))");
-      params.push(req.user.society);
+      whereClauses.push("role != 'society'");
     }
 
     if (role) {
@@ -1579,10 +1578,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   if (req.user.role === 'society') {
     if (role && role !== 'user') {
-      return res.status(403).json({ error: 'Societies can only create shooters' });
-    }
-    if (society !== req.user.society) {
-      return res.status(403).json({ error: 'Societies can only create shooters for their own society' });
+      return res.status(403).json({ error: 'Le società possono creare solo tiratori' });
     }
   }
 
@@ -1690,19 +1686,16 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
     
     if (req.user.role === 'society') {
       if (userCheck.rows[0].role === 'admin') {
-        return res.status(403).json({ error: 'Societies cannot modify administrators' });
+        return res.status(403).json({ error: 'Le società non possono modificare gli amministratori' });
       }
-      if (userCheck.rows[0].society !== req.user.society) {
-        return res.status(403).json({ error: 'Access denied' });
+      if (userCheck.rows[0].role === 'society' && userCheck.rows[0].society !== req.user.society) {
+        return res.status(403).json({ error: 'Le società non possono modificare altre società' });
       }
       if (role && role !== 'user') {
-        return res.status(403).json({ error: 'Societies can only manage shooters' });
-      }
-      if (society && society !== req.user.society) {
-        return res.status(403).json({ error: 'Societies can only manage shooters for their own society' });
+        return res.status(403).json({ error: 'Le società possono gestire solo tiratori' });
       }
       if (status && status !== userCheck.rows[0].status) {
-        return res.status(403).json({ error: 'Societies cannot change user status' });
+        return res.status(403).json({ error: 'Le società non possono cambiare lo stato degli utenti' });
       }
     }
 
@@ -1743,7 +1736,7 @@ app.get('/api/admin/team-stats', authenticateToken, requireAdminOrSociety, async
     let params: any[] = [];
 
     if (req.user.role === 'society') {
-      whereClauses.push("u.society = $" + (params.length + 1));
+      whereClauses.push("(u.society = $" + (params.length + 1) + " OR c.location = $" + (params.length + 1) + ")");
       params.push(req.user.society);
     }
 
@@ -1838,7 +1831,7 @@ app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, a
     let whereClause = "WHERE c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
     let params: any[] = [];
     if (req.user.role === 'society') {
-      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
+      whereClause = "JOIN users u ON c.user_id = u.id WHERE (u.society = $1 OR c.location = $1) AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
       params.push(req.user.society);
     }
 
@@ -1876,7 +1869,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     let params: any[] = [];
 
     if (req.user.role === 'society') {
-      whereClauses.push("u.society = $" + (params.length + 1));
+      whereClauses.push("(u.society = $" + (params.length + 1) + " OR c.location = $" + (params.length + 1) + ")");
       params.push(req.user.society);
     }
 
@@ -2017,7 +2010,7 @@ app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrS
     let params: any[] = [userId];
 
     if (req.user.role === 'society') {
-      whereClauses.push("u.society = $" + (params.length + 1));
+      whereClauses.push("(u.society = $" + (params.length + 1) + " OR c.location = $" + (params.length + 1) + ")");
       params.push(req.user.society);
     }
 
@@ -2330,7 +2323,7 @@ app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, asyn
     
     if (societyName) {
       const { rows: users } = await pool.query(
-        "SELECT id FROM users WHERE role = 'user' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
+        "SELECT id FROM users WHERE role != 'society' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
         [societyName]
       );
       const userIds = users.map(u => u.id);
@@ -3624,7 +3617,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     // Send push notification
     let userIds: number[] = [];
     if (visibility === 'Pubblica') {
-      const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+      const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society'");
       userIds = users.map(u => u.id);
     } else {
       // For society events, notify users of the society that created the event
@@ -3636,7 +3629,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
 
       if (targetSociety) {
         const { rows: users } = await pool.query(
-          "SELECT id FROM users WHERE role = 'user' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
+          "SELECT id FROM users WHERE role != 'society' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
           [targetSociety]
         );
         userIds = users.map(u => u.id);
@@ -3708,7 +3701,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     // Send push notification for update
     let userIds: number[] = [];
     if (visibility === 'Pubblica') {
-      const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+      const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society'");
       userIds = users.map(u => u.id);
     } else {
       let targetSociety = req.user.society;
@@ -3717,7 +3710,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
       }
       if (targetSociety) {
         const { rows: users } = await pool.query(
-          "SELECT id FROM users WHERE role = 'user' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
+          "SELECT id FROM users WHERE role != 'society' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
           [targetSociety]
         );
         userIds = users.map(u => u.id);
@@ -3766,13 +3759,13 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
     // Send push notification for deletion
     let userIds: number[] = [];
     if (event.visibility === 'Pubblica') {
-      const { rows: users } = await pool.query("SELECT id FROM users WHERE role = 'user'");
+      const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society'");
       userIds = users.map(u => u.id);
     } else {
       let targetSociety = event.location;
       if (targetSociety) {
         const { rows: users } = await pool.query(
-          "SELECT id FROM users WHERE role = 'user' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
+          "SELECT id FROM users WHERE role != 'society' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
           [targetSociety]
         );
         userIds = users.map(u => u.id);
@@ -3946,7 +3939,7 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
         SELECT c.*, u.name as "userName", u.surname as "userSurname"
         FROM competitions c
         JOIN users u ON c.user_id = u.id
-        WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'
+        WHERE (u.society = $1 OR c.location = $1) AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'
       `;
       params = [req.user.society];
     } else if (req.user.role === 'admin') {
@@ -4035,10 +4028,13 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
         return res.status(400).json({ error: 'Devi specificare un tiratore.' });
       }
       const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [c.userId]);
-      if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+      const isTheirShooter = userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society;
+      const isTheirLocation = c.location === req.user.society;
+      
+      if (isTheirShooter || isTheirLocation) {
         targetUserId = c.userId;
       } else {
-        return res.status(403).json({ error: 'Puoi inserire gare solo per i tuoi tiratori.' });
+        return res.status(403).json({ error: 'Puoi inserire gare solo per i tuoi tiratori o per gare svolte presso la tua società.' });
       }
     }
   }
@@ -4200,12 +4196,13 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
         ]
       );
     } else if (req.user.role === 'society') {
-      // Società can update competitions for their own shooters OR for events they own
-      const existingComp = await pool.query('SELECT user_id, event_id FROM competitions WHERE id = $1', [req.params.id]);
+      // Società can update competitions for their own shooters OR for events they own OR results at their location
+      const existingComp = await pool.query('SELECT user_id, event_id, location FROM competitions WHERE id = $1', [req.params.id]);
       if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
       
       const compUserId = existingComp.rows[0].user_id;
       const compEventId = existingComp.rows[0].event_id;
+      const compLocation = existingComp.rows[0].location;
       
       let canManage = false;
       
@@ -4225,13 +4222,16 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       } else {
         // Non-event competition
         const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
-        if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+        const isTheirShooter = userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society;
+        const isTheirLocation = compLocation === req.user.society;
+        
+        if (isTheirShooter || isTheirLocation) {
           canManage = true;
         }
       }
 
       if (!canManage) {
-        return res.status(403).json({ error: 'Puoi modificare gare solo per i tuoi tiratori o per eventi che gestisci.' });
+        return res.status(403).json({ error: 'Puoi modificare gare solo per i tuoi tiratori o per gare svolte presso la tua società.' });
       }
 
       result = await pool.query(
@@ -4313,12 +4313,13 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
     if (req.user.role === 'admin') {
       result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
     } else if (req.user.role === 'society') {
-      // Società can delete competitions for their own shooters OR for events they own
-      const existingComp = await pool.query('SELECT user_id, event_id FROM competitions WHERE id = $1', [req.params.id]);
+      // Società can delete competitions for their own shooters OR for events they own OR results at their location
+      const existingComp = await pool.query('SELECT user_id, event_id, location FROM competitions WHERE id = $1', [req.params.id]);
       if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
       
       const compUserId = existingComp.rows[0].user_id;
       const compEventId = existingComp.rows[0].event_id;
+      const compLocation = existingComp.rows[0].location;
       
       let canManage = false;
       
@@ -4338,13 +4339,16 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
       } else {
         // Non-event competition
         const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
-        if (userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society) {
+        const isTheirShooter = userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society;
+        const isTheirLocation = compLocation === req.user.society;
+        
+        if (isTheirShooter || isTheirLocation) {
           canManage = true;
         }
       }
 
       if (!canManage) {
-        return res.status(403).json({ error: 'Puoi eliminare gare solo per i tuoi tiratori o per eventi che gestisci.' });
+        return res.status(403).json({ error: 'Puoi eliminare gare solo per i tuoi tiratori o per gare svolte presso la tua società.' });
       }
       result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
     } else {
