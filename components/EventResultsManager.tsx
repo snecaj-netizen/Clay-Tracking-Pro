@@ -6,6 +6,7 @@ import TeamManager from './TeamManager';
 import QuickAddShooterModal from './QuickAddShooterModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { handleNetworkError } from './ConnectionStatus';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface EventResultsManagerProps {
@@ -724,8 +725,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       setIsDirty(false);
       fetchData();
     } catch (err: any) {
-      if (triggerToast) triggerToast(err.message, 'error');
-      else alert(err.message);
+      handleNetworkError(err, triggerToast);
     } finally {
       setSaving(false);
     }

@@ -15,6 +15,7 @@ import { EventControlManager } from './EventControlManager';
 import ShareCard from './ShareCard';
 import FAQSection from './FAQSection';
 import ExpandingFAB from './ExpandingFAB';
+import { handleNetworkError } from './ConnectionStatus';
 import { Competition, Cartridge, CartridgeType, AppData, Discipline, getSeriesLayout, User, UserRole } from '../types';
 import { calculateRTE } from '../ratingUtils';
 
@@ -452,21 +453,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const onlineUsers = users.filter(u => u.is_logged_in && u.role !== 'society');
     const onlineSocieties = new Set(users.filter(u => u.is_logged_in && u.role === 'society' && u.society).map(u => u.society));
     
-    const topUser = [...users]
-      .filter(u => u.role !== 'society' && (u.login_count || 0) > 0)
-      .sort((a, b) => (b.login_count || 0) - (a.login_count || 0))[0];
-      
-    const socCounts: {[key: string]: number} = {};
-    users.forEach(u => {
-      if (u.society) {
-        socCounts[u.society] = (socCounts[u.society] || 0) + (u.login_count || 0);
-      }
-    });
-    
-    const topSocEntry = Object.entries(socCounts)
-      .filter(([_, count]) => count > 0)
-      .sort((a, b) => b[1] - a[1])[0];
-
     // Activity-based stats (local calculation if needed)
     const userResultCounts: {[key: number]: number} = {};
     const userTargetCounts: {[key: number]: number} = {};
@@ -476,6 +462,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         userTargetCounts[r.user_id] = (userTargetCounts[r.user_id] || 0) + (r.totalTargets || 0);
       }
     });
+
+    const userTraffic: {[key: number]: number} = {};
+    users.forEach(u => {
+      if (u.role !== 'society') {
+        // Traffic = logins + (results * 3)
+        userTraffic[u.id] = (u.login_count || 0) + (userResultCounts[u.id] || 0) * 3;
+      }
+    });
+
+    const topUserByTrafficId = Object.entries(userTraffic)
+      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    const topUserByTraffic = users.find(u => u.id === Number(topUserByTrafficId));
+
+    const socTraffic: {[key: string]: number} = {};
+    users.forEach(u => {
+      if (u.society) {
+        socTraffic[u.society] = (socTraffic[u.society] || 0) + (u.login_count || 0) + (userResultCounts[u.id] || 0) * 3;
+      }
+    });
+    const topSocByTrafficEntry = Object.entries(socTraffic)
+      .sort((a, b) => b[1] - a[1])[0];
 
     const topUserByResultsId = Object.entries(userResultCounts)
       .sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -497,10 +504,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return {
       onlineUsersCount: onlineUsers.length,
       onlineSocietiesCount: onlineSocieties.size,
-      topUserName: topUser ? `${topUser.name} ${topUser.surname}` : '-',
-      topUserLogins: topUser ? topUser.login_count : 0,
-      topSocName: topSocEntry ? topSocEntry[0] : '-',
-      topSocLogins: topSocEntry ? topSocEntry[1] : 0,
+      topUserName: topUserByTraffic ? `${topUserByTraffic.name} ${topUserByTraffic.surname}` : '-',
+      topUserTraffic: topUserByTrafficId ? userTraffic[Number(topUserByTrafficId)] : 0,
+      topSocName: topSocByTrafficEntry ? topSocByTrafficEntry[0] : '-',
+      topSocTraffic: topSocByTrafficEntry ? topSocByTrafficEntry[1] : 0,
       // New fields
       topUserByResultsName: topUserByResults ? `${topUserByResults.name} ${topUserByResults.surname}` : '-',
       topUserResultsCount: topUserByResultsId ? userResultCounts[Number(topUserByResultsId)] : 0,
@@ -533,6 +540,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setError('');
     } catch (err: any) {
       if (err.name === 'AbortError') return;
+      handleNetworkError(err, triggerToast);
       if (isBackground && (err.message === 'Failed to fetch' || !navigator.onLine)) {
         console.warn('Background fetch failed:', err.message);
         return;
@@ -3859,13 +3867,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
                       <i className="fas fa-star text-orange-500 text-xs"></i>
                     </div>
-                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Tiratore (Accessi)</span>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Tiratore (Traffico)</span>
                   </div>
                   <div className="text-sm font-bold text-white truncate">
                     {(fetchedDashboardStats || dashboardStats).topUserName}
                   </div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                    {(fetchedDashboardStats || dashboardStats).topUserLogins} Accessi
+                    {(fetchedDashboardStats || dashboardStats).topUserTraffic} Punti Attività
                   </div>
                 </div>
                 <div className="bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-2xl">
@@ -3873,13 +3881,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
                       <i className="fas fa-trophy text-purple-500 text-xs"></i>
                     </div>
-                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Società (Accessi)</span>
+                    <span className="hidden sm:inline text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Società (Traffico)</span>
                   </div>
                   <div className="text-sm font-bold text-white truncate">
                     {(fetchedDashboardStats || dashboardStats).topSocName}
                   </div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                    {(fetchedDashboardStats || dashboardStats).topSocLogins} Accessi
+                    {(fetchedDashboardStats || dashboardStats).topSocTraffic} Punti Attività
                   </div>
                 </div>
               </div>

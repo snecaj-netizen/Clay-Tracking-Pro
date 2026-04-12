@@ -23,6 +23,7 @@ import OnboardingTour from './components/OnboardingTour';
 import BottomNavigation from './components/BottomNavigation';
 import UpdateNotification from './components/UpdateNotification';
 import ExpandingFAB from './components/ExpandingFAB';
+import { ConnectionStatus, handleNetworkError } from './components/ConnectionStatus';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -256,7 +257,7 @@ const App: React.FC = () => {
       setEvents(evts);
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.error('Error fetching data:', err);
+      handleNetworkError(err, triggerToast);
       setError('Errore di connessione. Controlla la tua rete.');
     } finally {
       setLoading(false);
@@ -708,6 +709,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-50 flex flex-col ${view === 'ai-coach' ? 'pb-0' : 'pb-24 sm:pb-8'}`}>
+      <ConnectionStatus />
       <Header 
         currentView={view} 
         onNavigate={handleNavigate} 

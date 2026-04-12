@@ -5,6 +5,7 @@ import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, Us
 import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
+import { handleNetworkError } from './ConnectionStatus';
 
 interface CompetitionFormProps {
   initialData?: Competition;
@@ -75,7 +76,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           setUsers(data.filter(u => u.role !== 'society'));
         }
       })
-      .catch(err => console.error('Error fetching users:', err));
+      .catch(err => handleNetworkError(err));
     }
   }, [currentUser]);
   const [seriesImages, setSeriesImages] = useState<string[]>(data?.seriesImages || []);

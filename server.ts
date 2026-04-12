@@ -1741,7 +1741,7 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
+    let whereClauses: string[] = ["c.totalscore > 0"];
     let params: any[] = [];
 
     if (req.user.role === 'society') {
@@ -1837,10 +1837,10 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
 
 app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
-    let whereClause = "WHERE c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
+    let whereClause = "WHERE c.totalscore > 0";
     let params: any[] = [];
     if (req.user.role === 'society') {
-      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento' AND c.totalscore > 0";
+      whereClause = "JOIN users u ON c.user_id = u.id WHERE u.society = $1 AND c.totalscore > 0";
       params.push(req.user.society);
     }
 
@@ -1874,7 +1874,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let whereClauses: string[] = ["c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
+    let whereClauses: string[] = ["c.totalscore > 0"];
     let params: any[] = [];
 
     if (req.user.role === 'society') {
@@ -2015,7 +2015,7 @@ app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrS
     const location = req.query.location as string;
     const year = req.query.year as string;
 
-    let whereClauses: string[] = ["c.user_id = $1", "c.level != 'Allenamento / Pratica'", "c.discipline != 'Allenamento'", "c.totalscore > 0"];
+    let whereClauses: string[] = ["c.user_id = $1", "c.totalscore > 0"];
     let params: any[] = [userId];
 
     if (req.user.role === 'society') {
@@ -3971,7 +3971,7 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
         SELECT c.*, u.name as "userName", u.surname as "userSurname"
         FROM competitions c
         JOIN users u ON c.user_id = u.id
-        WHERE u.society = $1 AND c.level != 'Allenamento / Pratica' AND c.discipline != 'Allenamento'
+        WHERE u.society = $1 AND c.totalscore > 0
       `;
       params = [req.user.society];
     } else if (req.user.role === 'admin') {
