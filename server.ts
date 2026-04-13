@@ -17,9 +17,15 @@ import cron from 'node-cron';
 // import { createServer as createViteServer } from 'vite'; // Removed top-level import
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// 1. IMMEDIATE HEALTH CHECK (Must be first)
+// 1. Logging Middleware (Must be early)
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// 2. IMMEDIATE HEALTH CHECK (Must be first)
 app.get('/ping', (req, res) => res.send('pong'));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
@@ -698,7 +704,7 @@ const initDB = async () => {
   }
 };
 
-initDB().then(() => {
+function setupCronJobs() {
   // Setup cron job for upcoming events (2 days before)
   cron.schedule('0 10 * * *', async () => {
     try {
@@ -805,7 +811,7 @@ initDB().then(() => {
       console.error("Error in cron job for competition reminders:", err);
     }
   });
-});
+}
 
 const activeUsers = new Map<number, number>();
 
@@ -4781,13 +4787,35 @@ function serveStatic(app: any) {
 }
 
 async function startApp() {
+  console.log('Starting application...');
+  
+  // Initialize Database first
+  try {
+    await initDB();
+    console.log('Database initialized successfully');
+    setupCronJobs();
+    console.log('Cron jobs scheduled');
+  } catch (err) {
+    console.error('Database initialization failed:', err);
+    // We continue anyway, as some parts might work or it might be a transient error
+  }
+
   // API routes are already defined above
   
   // Setup Vite or Static serving
   await setupVite(app);
 
+  // Global Error Handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error('Unhandled error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error', details: err.message });
+    }
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
