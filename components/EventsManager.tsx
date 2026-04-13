@@ -77,10 +77,10 @@ const EventCard = React.memo(({
   return (
     <div 
       onClick={() => setSelectedEvent(ev)}
-      className={`group relative bg-slate-950/50 border rounded-3xl p-5 transition-all hover:shadow-2xl hover:shadow-orange-600/10 cursor-pointer flex flex-col h-full ${isSelected ? 'border-orange-500 bg-orange-600/5' : 'border-slate-800 hover:border-slate-700'}`}
+      className={`group relative bg-slate-950/50 border rounded-2xl p-4 transition-all hover:shadow-2xl hover:shadow-orange-600/10 cursor-pointer flex flex-col h-full ${isSelected ? 'border-orange-500 bg-orange-600/5' : 'border-slate-800 hover:border-slate-700'}`}
     >
       {viewMode === 'managed' && (
-        <div className="absolute top-4 right-4 z-10" onClick={e => e.stopPropagation()}>
+        <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
           <label className="relative flex items-center cursor-pointer">
             <input 
               type="checkbox" 
@@ -94,40 +94,40 @@ const EventCard = React.memo(({
                 }
               }}
             />
-            <div className="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
-              <i className="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+            <div className="w-5 h-5 rounded-lg border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
+              <i className="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
             </div>
           </label>
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-3 pr-8">
+      <div className="flex items-start justify-between gap-3 pr-6">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             {ongoing && (
-              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
                 IN CORSO
               </span>
             )}
             {isNext && !ongoing && (
-              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
                 PROSSIMA GARA
               </span>
             )}
             {past && (
-              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-800 text-slate-400 border border-slate-700">
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-slate-800 text-slate-400 border border-slate-700">
                 PASSATA
               </span>
             )}
-            <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
+            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
               {ev.discipline.split(' ')[0]}
             </span>
-            <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
               {ev.visibility}
             </span>
           </div>
           <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
-          <p className="text-[10px] text-slate-400 mt-1 truncate">
+          <p className="text-[9px] text-slate-400 mt-0.5 truncate">
             <i className="fas fa-map-marker-alt mr-1"></i>
             <button 
               onClick={(e) => {
@@ -146,15 +146,15 @@ const EventCard = React.memo(({
         </div>
       </div>
       
-      <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-2.5 border-t border-slate-800/50 mt-2">
+        <div className="flex items-center gap-1.5">
           <i className="fas fa-calendar-alt text-slate-600"></i>
           <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right shrink-0 flex items-center gap-1.5">
-            <div className="text-sm font-black text-white leading-none">{ev.targets}</div>
-            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">Piattelli</div>
+        <div className="flex items-center gap-1.5">
+          <div className="text-right shrink-0 flex items-center gap-1">
+            <div className="text-xs font-black text-white leading-none">{ev.targets}</div>
+            <div className="text-[7px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">Piattelli</div>
           </div>
         </div>
       </div>
@@ -531,34 +531,34 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     const showTabs = isAdmin || (isSociety && hasSocietaAccess);
 
     return (
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg">
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-orange-600/20 text-orange-500 flex items-center justify-center text-base">
               <i className="fas fa-trophy"></i>
             </div>
             Classifiche e Risultati
           </h2>
-          <p className="text-slate-500 text-sm font-medium ml-13">
-            Consulta i risultati ufficiali delle gare concluse e visualizza i dettagli dei punteggi.
+          <p className="text-slate-500 text-xs font-medium ml-10.5">
+            Consulta i risultati ufficiali delle gare concluse.
           </p>
         </div>
 
         {showTabs && (
-          <div className="flex bg-slate-900/50 p-1 rounded-2xl border border-slate-800 w-fit">
+          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit">
             <button 
               onClick={() => setViewMode('results')} 
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-poll"></i> Risultati
             </button>
             <button 
               onClick={() => setViewMode('managed')} 
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'managed' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'managed' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-tasks"></i> Gestione
               {managedEvents.length > 0 && (
-                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${viewMode === 'managed' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'managed' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
                   {managedEvents.length}
                 </span>
               )}
@@ -593,54 +593,54 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             {managedEvents.map(ev => {
               const isPast = isPastEvent(ev);
               return (
-                <div key={ev.id} className={`rounded-[2rem] border p-8 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-indigo-500/50'}`}>
+                <div key={ev.id} className={`rounded-2xl border p-4 sm:p-5 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-indigo-500/50'}`}>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-600/10 transition-colors"></div>
                   
                   <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex items-start justify-between mb-8">
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[9px] font-black uppercase tracking-widest border border-indigo-500/20">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[8px] font-black uppercase tracking-widest border border-indigo-500/20">
                             {ev.discipline}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
+                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
                             {ev.status === 'validated' ? 'Conclusa' : 'In Corso'}
                           </span>
                           {isPast && (
-                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[9px] font-black uppercase tracking-widest border border-slate-700">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-widest border border-slate-700">
                               Passata
                             </span>
                           )}
                         </div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-tight">{ev.name}</h3>
-                        <div className="flex flex-col gap-1 mt-2">
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <i className="fas fa-calendar-alt text-indigo-500/50 w-4"></i>
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-tight mb-0.5">{ev.name}</h3>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i className="fas fa-calendar-alt text-indigo-500/50 w-3"></i>
                             {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
                           </p>
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <i className="fas fa-map-marker-alt text-indigo-500/50 w-4"></i>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i className="fas fa-map-marker-alt text-indigo-500/50 w-3"></i>
                             {ev.location || 'Campo N.D.'}
                           </p>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                      <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscritti</div>
-                        <div className="text-2xl font-black text-white">{ev.registration_count || 0}</div>
+                    <div className="grid grid-cols-2 gap-2.5 mb-3">
+                      <div className="bg-slate-950/50 rounded-xl p-2.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
+                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Iscritti</div>
+                        <div className="text-lg font-black text-white">{ev.registration_count || 0}</div>
                       </div>
-                      <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Piattelli</div>
-                        <div className="text-2xl font-black text-white">{ev.targets}</div>
+                      <div className="bg-slate-950/50 rounded-xl p-2.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
+                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Piattelli</div>
+                        <div className="text-lg font-black text-white">{ev.targets}</div>
                       </div>
                     </div>
 
-                    <div className="mt-auto space-y-3">
+                    <div className="mt-auto space-y-2">
                       {!ev.is_management_enabled && user?.role !== 'admin' && (
-                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 mb-2">
-                          <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-1.5 mb-1">
+                          <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
                             <i className="fas fa-exclamation-triangle"></i>
                             In attesa di attivazione Admin
                           </p>
@@ -657,17 +657,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                        className={`w-full py-4 rounded-2xl text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
+                        className={`w-full py-2.5 rounded-xl text-white text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2.5 ${
                           !ev.is_management_enabled && user?.role !== 'admin'
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
                             : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
                         }`}
                       >
-                        <i className="fas fa-users-cog text-sm"></i>
+                        <i className="fas fa-users-cog text-xs"></i>
                         Gestione Gara
                       </button>
                       
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         <button 
                           onClick={() => {
                             if (!ev.is_management_enabled && user?.role !== 'admin') {
@@ -679,7 +679,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-2 ${
+                          className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
                             !ev.is_management_enabled && user?.role !== 'admin'
                               ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
                               : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
@@ -691,7 +691,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user?.society)) && (
                           <button 
                             onClick={() => handleEdit(ev)}
-                            className="py-3 rounded-2xl bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-2"
+                            className="py-2 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
                           >
                             <i className="fas fa-edit"></i>
                             Modifica
@@ -1777,38 +1777,35 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         </div>
                       </div>
                     )}
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
+                    <div className="p-4 sm:p-5">
+                      <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <h3 className="font-black text-white text-xl group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight mb-1">{ev.name}</h3>
+                          <h3 className="font-black text-white text-lg group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight mb-0.5">{ev.name}</h3>
                           <div className="flex flex-col gap-1">
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                               <i className="fas fa-map-marker-alt text-orange-500/50 w-3"></i> {ev.location || 'Campo N.D.'}
                             </p>
                           </div>
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-lg">
-                          <i className="fas fa-chevron-right"></i>
-                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="bg-slate-950/50 rounded-2xl p-3 border border-slate-800/50">
-                          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Data Gara</p>
-                          <p className="text-sm font-bold text-white flex items-center gap-2">
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Data Gara</p>
+                          <p className="text-xs font-bold text-white flex items-center gap-2">
                             <i className="far fa-calendar text-orange-500"></i>
                             {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
                           </p>
                         </div>
-                        <div className="bg-slate-950/50 rounded-2xl p-3 border border-slate-800/50">
-                          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Stato</p>
+                        <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Stato</p>
                           <div className="flex items-center gap-2">
                             {ev.status === 'validated' ? (
-                              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1">
+                              <span className="text-[9px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1">
                                 <i className="fas fa-check-circle"></i> Convalidata
                               </span>
                             ) : (
-                              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
+                              <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
                                 <i className="fas fa-clock"></i> In Corso
                               </span>
                             )}
@@ -1816,8 +1813,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
-                        <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-800/50">
+                        <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-[9px] font-black uppercase tracking-widest">
                           {ev.discipline}
                         </span>
                         
@@ -1834,9 +1831,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                               <i className="fas fa-unlock text-xs"></i>
                             </button>
                           )}
-                          <button className="text-orange-500 text-xs font-black uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                          <button className="text-orange-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-transform">
                             {canManage ? 'Gestisci' : 'Vedi Classifica'}
-                            <i className="fas fa-arrow-right"></i>
                           </button>
                         </div>
                       </div>

@@ -153,10 +153,10 @@ const GarePage: React.FC<GarePageProps> = ({
   return (
     <div className="flex flex-col">
       {/* Sticky Header Section */}
-      <div className="sticky top-16 sm:top-[104px] z-[100] bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 sm:top-[104px] z-[100] bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2 space-y-1.5 sm:space-y-2 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <i className={`fas ${activeTab === 'risultati' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-600`}></i>
               {activeTab === 'eventi' ? 'Eventi' : 
                activeTab === 'le-tue-gare' ? 'Le Tue Gare' : 
@@ -165,7 +165,7 @@ const GarePage: React.FC<GarePageProps> = ({
                activeTab === 'gestione' ? 'Gestione Eventi' : 
                activeTab === 'attivazione' ? 'Attivazione' : 'Gare'}
             </h2>
-            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+            <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">
               {activeTab === 'eventi' ? 'Calendario ufficiale competizioni' : 
                activeTab === 'le-tue-gare' ? 'Monitoraggio gare della società' : 
                activeTab === 'iscrizione' ? 'Gare con iscrizioni aperte' : 
@@ -193,7 +193,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 key={tab}
                 data-tab={tab}
                 onClick={() => handleTabChange(tab)} 
-                className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap uppercase ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                className={`flex-1 min-w-[100px] py-1.5 rounded-lg text-[9px] font-bold transition-all whitespace-nowrap uppercase ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
               >
                 {tab.replace(/-/g, ' ')}
               </button>
