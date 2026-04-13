@@ -1383,7 +1383,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
                   <button
                     onClick={() => setViewMode('generale')}
-                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
                     Generale
                   </button>
@@ -1394,7 +1394,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         setSelectedCategory(categories[0] as string);
                       }
                     }}
-                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'categoria' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'categoria' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
                     Categoria
                   </button>
@@ -1405,14 +1405,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         setSelectedQualification(qualifications[0] as string);
                       }
                     }}
-                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'qualifica' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'qualifica' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
                     Qualifica
                   </button>
                   {hasSocietyRanking && (
                     <button
                       onClick={() => setViewMode('societa')}
-                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                     >
                       Società
                     </button>
@@ -1420,7 +1420,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   {hasTeamRanking && (
                     <button
                       onClick={() => setViewMode('squadre')}
-                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                     >
                       Squadre
                     </button>

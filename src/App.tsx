@@ -819,6 +819,7 @@ const App: React.FC = () => {
                 user={user} 
                 token={token || ''} 
                 initialTab="societies" 
+                hideTabs={true}
                 initialSocietyName={initialSocietyName}
                 onCloseSocietyDetail={handleCloseSocietyDetail}
                 competitions={competitions}

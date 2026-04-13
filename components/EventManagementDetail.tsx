@@ -437,54 +437,36 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-900/50 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
+          <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
             <button
               onClick={() => { setActiveTab('registrations'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
+              className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'registrations' 
-                  ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-1 ring-orange-500/50' 
+                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
               Iscritti ({registrations.length})
-              {activeTab === 'registrations' && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
-                />
-              )}
             </button>
             <button
               onClick={() => { setActiveTab('squads'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
+              className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'squads' 
-                  ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-1 ring-orange-500/50' 
+                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
               Batterie ({squads.length})
-              {activeTab === 'squads' && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
-                />
-              )}
             </button>
             <button
               onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
+              className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'results' 
-                  ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-1 ring-orange-500/50' 
+                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
               Classifiche
-              {activeTab === 'results' && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
-                />
-              )}
             </button>
           </div>
         </div>

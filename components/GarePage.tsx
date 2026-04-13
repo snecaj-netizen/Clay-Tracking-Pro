@@ -193,7 +193,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 key={tab}
                 data-tab={tab}
                 onClick={() => handleTabChange(tab)} 
-                className={`flex-1 min-w-[100px] py-1.5 rounded-lg text-[9px] font-bold transition-all whitespace-nowrap uppercase ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 {tab.replace(/-/g, ' ')}
               </button>

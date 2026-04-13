@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+// Force re-evaluation after structural move
 import { createPortal } from 'react-dom';
 import Settings from './Settings';
 import EventsManager from './EventsManager';

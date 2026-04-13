@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+// Force rebuild to resolve dynamic import issue
 import { motion, AnimatePresence } from 'motion/react';
 import HistoryList from './HistoryList';
 import Dashboard from './Dashboard';
@@ -127,7 +128,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
               key={tab}
               data-tab={tab}
               onClick={() => handleTabChange(tab)} 
-              className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+              className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-widest ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
               {tab === 'history' ? 'GARE/ALLENAMENTI' : tab === 'report' ? 'REPORT' : 'COACH AI'}
             </button>
