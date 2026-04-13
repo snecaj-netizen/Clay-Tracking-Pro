@@ -1,33 +1,33 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, AppData } from './types';
-import Dashboard from './components/Dashboard';
-import CompetitionForm from './components/CompetitionForm';
-import HistoryList from './components/HistoryList';
-import Header from './components/Header';
-import Auth from './components/Auth';
-import ConfirmModal from './components/ConfirmModal';
-import Toast from './components/Toast';
-import InstallPrompt from './components/InstallPrompt';
-import OnboardingTour from './components/OnboardingTour';
-import BottomNavigation from './components/BottomNavigation';
-import UpdateNotification from './components/UpdateNotification';
-import ExpandingFAB from './components/ExpandingFAB';
-import { ConnectionStatus, handleNetworkError } from './components/ConnectionStatus';
+import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, AppData } from '@/types';
+import Dashboard from '@/components/Dashboard';
+import CompetitionForm from '@/components/CompetitionForm';
+import HistoryList from '@/components/HistoryList';
+import Header from '@/components/Header';
+import Auth from '@/components/Auth';
+import ConfirmModal from '@/components/ConfirmModal';
+import Toast from '@/components/Toast';
+import InstallPrompt from '@/components/InstallPrompt';
+import OnboardingTour from '@/components/OnboardingTour';
+import BottomNavigation from '@/components/BottomNavigation';
+import UpdateNotification from '@/components/UpdateNotification';
+import ExpandingFAB from '@/components/ExpandingFAB';
+import { ConnectionStatus, handleNetworkError } from '@/components/ConnectionStatus';
 
 // Lazy load heavy components
-const Warehouse = lazy(() => import('./components/Warehouse'));
-const AdminPanel = lazy(() => import('./components/AdminPanel'));
-const EventsManager = lazy(() => import('./components/EventsManager'));
-const AICoachPage = lazy(() => import('./components/AICoachPage'));
-const LeTueGarePage = lazy(() => import('./components/LeTueGarePage'));
-const GarePage = lazy(() => import('./components/GarePage'));
-const LaMiaSocietaPage = lazy(() => import('./components/LaMiaSocietaPage'));
-const AdminPageView = lazy(() => import('./components/AdminPageView'));
-const SocietyDetailModal = lazy(() => import('./components/SocietyDetailModal'));
-const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
-const NotificationsManager = lazy(() => import('./components/NotificationsManager'));
+const Warehouse = lazy(() => import('@/components/Warehouse'));
+const AdminPanel = lazy(() => import('@/components/AdminPanel'));
+const EventsManager = lazy(() => import('@/components/EventsManager'));
+const AICoachPage = lazy(() => import('@/components/AICoachPage'));
+const LeTueGarePage = lazy(() => import('@/components/LeTueGarePage'));
+const GarePage = lazy(() => import('@/components/GarePage'));
+const LaMiaSocietaPage = lazy(() => import('@/components/LaMiaSocietaPage'));
+const AdminPageView = lazy(() => import('@/components/AdminPageView'));
+const SocietyDetailModal = lazy(() => import('@/components/SocietyDetailModal'));
+const NotificationsPage = lazy(() => import('@/components/NotificationsPage'));
+const NotificationsManager = lazy(() => import('@/components/NotificationsManager'));
 
-import { useUI } from './contexts/UIContext';
+import { useUI } from '@/contexts/UIContext';
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">
