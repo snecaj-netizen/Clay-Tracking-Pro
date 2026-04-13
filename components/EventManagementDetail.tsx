@@ -11,6 +11,7 @@ import autoTable from 'jspdf-autotable';
 import FitavScoreSheet from './FitavScoreSheet';
 import ExpandingFAB from './ExpandingFAB';
 import { EventRegistrationModal } from './EventRegistrationModal';
+import { useUI } from '../contexts/UIContext';
 
 interface EventManagementDetailProps {
   event: SocietyEvent;
@@ -18,8 +19,6 @@ interface EventManagementDetailProps {
   initialTab?: 'registrations' | 'squads' | 'results';
   user?: any;
   token?: string;
-  triggerConfirm?: any;
-  triggerToast?: any;
   societies?: any[];
   setManagingResultsEvent?: (ev: SocietyEvent | null) => void;
   setViewingResultsEvent?: (ev: SocietyEvent | null) => void;
@@ -34,8 +33,6 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   initialTab = 'registrations',
   user,
   token,
-  triggerConfirm,
-  triggerToast,
   societies = [],
   setManagingResultsEvent,
   setViewingResultsEvent,
@@ -43,6 +40,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   onEventUpdate,
   refreshVersion = 0
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'registrations' | 'squads' | 'results'>(initialTab);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [squads, setSquads] = useState<EventSquad[]>([]);

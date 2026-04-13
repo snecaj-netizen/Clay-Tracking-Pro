@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './AdminPanel';
 import AICoachPage from './AICoachPage';
 
+import { useUI } from '../contexts/UIContext';
+
 interface LaMiaSocietaPageProps {
   user: any;
   token: string;
@@ -10,8 +12,6 @@ interface LaMiaSocietaPageProps {
   cartridges: any[];
   cartridgeTypes: any[];
   societies: any[];
-  triggerConfirm: any;
-  triggerToast: any;
   onEditCompetition: any;
   onDeleteCompetition: any;
   handleImport: any;
@@ -31,8 +31,6 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   cartridges,
   cartridgeTypes,
   societies,
-  triggerConfirm,
-  triggerToast,
   onEditCompetition,
   onDeleteCompetition,
   handleImport,
@@ -44,6 +42,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   initialTab,
   onToggleFAB
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach'>(initialTab || 'results');
   const [direction, setDirection] = useState(0);
   const [stats, setStats] = useState({ users: 0, teams: 0 });
@@ -176,13 +175,11 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
                 onLoadDrive={() => {}}
                 syncStatus="idle"
                 lastSync={null}
-                triggerConfirm={triggerConfirm}
                 onEditCompetition={onEditCompetition}
                 onDeleteCompetition={onDeleteCompetition}
                 initialTab={activeTab as any}
                 onCloseSocietyDetail={handleCloseSocietyDetail}
                 onUserUpdate={handleUserUpdate}
-                triggerToast={triggerToast}
                 societies={societies}
                 hideTabs={true}
                 onReplayTour={setShowTour}

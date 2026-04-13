@@ -2,12 +2,11 @@
 import React, { useState } from 'react';
 import EventsManager from './EventsManager';
 import MyCompetitions from './MyCompetitions';
+import { useUI } from '../contexts/UIContext';
 
 interface GareMenuProps {
   user: any;
   token?: string;
-  triggerConfirm: any;
-  triggerToast?: any;
   societies: any[];
   competitions: any[];
   cartridges: any[];
@@ -25,10 +24,11 @@ interface GareMenuProps {
 }
 
 const GareMenu: React.FC<GareMenuProps> = ({
-  user, token, triggerConfirm, triggerToast, societies, competitions, cartridges,
+  user, token, societies, competitions, cartridges,
   onParticipate, onCreateTeam, onDeleteCompetition, onEditCompetition, onSaveCompetition,
   onSocietyClick, onNavigate, initialEventId, onInitialEventHandled, appSettings, initialTab = 'list'
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'list' | 'my-competitions' | 'managed' | 'registration'>(initialTab);
 
   const canRegister = user?.role === 'admin' || user?.role === 'user';
@@ -86,8 +86,6 @@ const GareMenu: React.FC<GareMenuProps> = ({
           <EventsManager 
             user={user} 
             token={token || ''} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
             societies={societies} 
             onParticipate={onParticipate}
             onCreateTeam={onCreateTeam}
@@ -106,8 +104,6 @@ const GareMenu: React.FC<GareMenuProps> = ({
             cartridges={cartridges}
             user={user}
             token={token}
-            triggerConfirm={triggerConfirm}
-            triggerToast={triggerToast}
             onDelete={onDeleteCompetition}
             onEdit={onEditCompetition}
             onUpdate={onSaveCompetition}
@@ -122,8 +118,6 @@ const GareMenu: React.FC<GareMenuProps> = ({
           <EventsManager 
             user={user} 
             token={token || ''} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
             societies={societies} 
             onParticipate={onParticipate}
             onCreateTeam={onCreateTeam}
@@ -139,8 +133,6 @@ const GareMenu: React.FC<GareMenuProps> = ({
           <EventsManager 
             user={user} 
             token={token || ''} 
-            triggerConfirm={triggerConfirm} 
-            triggerToast={triggerToast}
             societies={societies} 
             onParticipate={onParticipate}
             onCreateTeam={onCreateTeam}

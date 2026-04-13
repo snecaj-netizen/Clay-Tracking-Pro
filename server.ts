@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -24,6 +25,7 @@ app.get('/ping', (req, res) => res.send('pong'));
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
 
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use((req, res, next) => {
@@ -201,12 +203,28 @@ const initDB = async () => {
       
       // Add indexes for performance
       await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_user_id ON competitions(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_date ON competitions(date)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_discipline ON competitions(discipline)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_location ON competitions(location)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_team_id ON competitions(team_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_competitions_event_id ON competitions(event_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_cartridges_user_id ON cartridges(user_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_cartridge_types_created_by ON cartridge_types(created_by)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_login_logs_user_id ON login_logs(user_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_users_society ON users(society)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_users_name_surname ON users(name, surname)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_teams_society ON teams(society)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_teams_created_by ON teams(created_by)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_challenges_society_id ON challenges(society_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_events_start_date ON events(start_date)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_event_registrations_event_id ON event_registrations(event_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_event_registrations_user_id ON event_registrations(user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_event_squads_event_id ON event_squads(event_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_event_squad_members_registration_id ON event_squad_members(registration_id)");
     } catch (e) {
       console.log("Error adding columns or indexes to tables:", e);
     }
@@ -1503,9 +1521,9 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     
     if (req.user.role === 'society') {
       if (req.query.all === 'true') {
-        whereClauses.push("role != 'society'");
+        whereClauses.push("role IN ('user', 'admin')");
       } else {
-        whereClauses.push("role = 'user' AND society = $" + (params.length + 1));
+        whereClauses.push("role IN ('user', 'admin') AND (society = $" + (params.length + 1) + " OR role = 'admin')");
         params.push(req.user.society);
       }
     }
@@ -2430,8 +2448,7 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
       FROM competitions c
       JOIN users u ON c.user_id = u.id
       WHERE c.discipline = $1 
-      AND c.location = $2
-      AND u.society = $2
+      AND (u.society = $2 OR (u.role = 'admin' AND u.society = $2))
       AND c.date >= $3
       AND c.date <= $4
     `, [challenge.discipline, challenge.society_name, challenge.start_date, challenge.end_date]);
@@ -2487,11 +2504,18 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
       } catch (_) {}
     });
 
-    const ranking = Object.values(shooterStats).map(stats => {
-      let value = 0;
-      let sortAsc = false;
+    const ranking = Object.values(shooterStats)
+      .filter(stats => {
+        if (challenge.mode === 'Numero Serie Perfette (25/25)') {
+          return stats.perfectSeriesCount > 0;
+        }
+        return true;
+      })
+      .map(stats => {
+        let value = 0;
+        let sortAsc = false;
 
-      switch (challenge.mode) {
+        switch (challenge.mode) {
         case 'Miglior Risultato':
           value = stats.bestScore;
           break;
@@ -2585,6 +2609,19 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
                'id', u.id, 
                'name', u.name, 
                'surname', u.surname,
+               'category', u.category,
+               'qualification', u.qualification,
+               'rte_score', (
+                 SELECT AVG(averageperseries)
+                 FROM (
+                   SELECT averageperseries
+                   FROM competitions
+                   WHERE user_id = u.id AND discipline = t.discipline AND totalscore > 0
+                     AND date::TIMESTAMP >= NOW() - INTERVAL '12 months'
+                   ORDER BY averageperseries DESC
+                   LIMIT 5
+                 ) as top_scores
+               ),
                'score', c.totalscore,
                'competition_id', c.id
              )) as members
@@ -2660,7 +2697,9 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
     // Check authorization
     if (req.user.role === 'society') {
       const { rows } = await client.query("SELECT society FROM teams WHERE id = $1", [id]);
-      if (rows.length === 0 || rows[0].society !== req.user.society) {
+      const teamSociety = rows[0]?.society?.toString().trim().toLowerCase();
+      const userSociety = req.user.society?.toString().trim().toLowerCase();
+      if (rows.length === 0 || teamSociety !== userSociety) {
         await client.query('ROLLBACK');
         return res.status(403).json({ error: "Unauthorized" });
       }
@@ -2781,7 +2820,9 @@ app.delete('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (re
 
     // If society, check if team belongs to society
     if (req.user.role === 'society') {
-      if (team.society !== req.user.society) {
+      const teamSociety = (team.society || '').toString().trim().toLowerCase();
+      const userSociety = (req.user.society || '').toString().trim().toLowerCase();
+      if (teamSociety !== userSociety) {
         return res.status(403).json({ error: "Unauthorized" });
       }
     }

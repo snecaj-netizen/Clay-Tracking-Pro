@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import SocietySearch from './SocietySearch';
-
 import { createPortal } from 'react-dom';
+import { useUI } from '../contexts/UIContext';
 
 interface QuickAddShooterModalProps {
   token: string;
@@ -9,10 +9,10 @@ interface QuickAddShooterModalProps {
   societies: any[];
   onClose: () => void;
   onSuccess: (newUser: any) => void;
-  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, currentUser, societies, onClose, onSuccess, triggerToast }) => {
+const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, currentUser, societies, onClose, onSuccess }) => {
+  const { triggerToast } = useUI();
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
   const [email, setEmail] = useState('');

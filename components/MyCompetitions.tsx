@@ -3,6 +3,7 @@ import HistoryList from './HistoryList';
 import Dashboard from './Dashboard';
 import AICoachPage from './AICoachPage';
 import { Competition, Cartridge } from '../types';
+import { useUI } from '../contexts/UIContext';
 
 interface MyCompetitionsProps {
   competitions: Competition[];
@@ -11,8 +12,6 @@ interface MyCompetitionsProps {
   cartridges: Cartridge[];
   user: any;
   token?: string;
-  triggerConfirm: any;
-  triggerToast?: any;
   onDelete: (id: string) => void;
   onEdit: (comp: Competition) => void;
   onUpdate: (comp: Competition) => void;
@@ -24,8 +23,9 @@ interface MyCompetitionsProps {
 
 export const MyCompetitions: React.FC<MyCompetitionsProps> = ({
   competitions, events, societies, cartridges, user, token,
-  triggerConfirm, triggerToast, onDelete, onEdit, onUpdate, onSocietyClick, onNavigate, onAddClick, initialTab
+  onDelete, onEdit, onUpdate, onSocietyClick, onNavigate, onAddClick, initialTab
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'history' | 'report' | 'coach'>(initialTab || 'history');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [showFilters, setShowFilters] = useState(false);
@@ -110,10 +110,8 @@ export const MyCompetitions: React.FC<MyCompetitionsProps> = ({
               onEdit={onEdit}
               onUpdate={onUpdate}
               onSocietyClick={onSocietyClick}
-              triggerConfirm={triggerConfirm}
               user={user}
               token={token}
-              triggerToast={triggerToast}
               viewModeProp={viewMode}
               showFiltersProp={showFilters}
               onViewModeChange={setViewMode}

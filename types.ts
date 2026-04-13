@@ -137,6 +137,21 @@ export interface User {
   is_logged_in?: boolean;
 }
 
+export interface DashboardStats {
+  onlineUsersCount: number;
+  onlineSocietiesCount: number;
+  topUserName: string;
+  topUserTraffic: number;
+  topSocName: string;
+  topSocTraffic: number;
+  topUserByResultsName: string;
+  topUserResultsCount: number;
+  topSocByResultsName: string;
+  topSocResultsCount: number;
+  topUserByTargetsName: string;
+  topUserTargetsTotal: number;
+}
+
 export interface SocietyEvent {
   id: string;
   name: string;
@@ -163,6 +178,8 @@ export interface SocietyEvent {
   registration_count?: number;
   is_registered?: boolean;
   is_management_enabled?: boolean;
+  is_ongoing?: boolean;
+  is_next?: boolean;
 }
 
 export interface PrizeSetting {

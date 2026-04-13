@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import EventsManager from './EventsManager';
+import { useUI } from '../contexts/UIContext';
 
 interface UserEventsProps {
   user: any;
   token?: string;
-  triggerConfirm: any;
-  triggerToast?: any;
   societies: any[];
   onParticipate: (eventId: string, isRegistered: boolean) => void;
   onCreateTeam: (eventId: string) => void;
@@ -15,8 +14,9 @@ interface UserEventsProps {
 }
 
 export const UserEvents: React.FC<UserEventsProps> = ({
-  user, token, triggerConfirm, triggerToast, societies, onParticipate, onCreateTeam, initialEventId, onInitialEventHandled, appSettings
+  user, token, societies, onParticipate, onCreateTeam, initialEventId, onInitialEventHandled, appSettings
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'list' | 'registration' | 'results'>('list');
   const [viewModeProp, setViewModeProp] = useState<'list' | 'registration' | 'results' | 'calendar'>('list');
 
@@ -100,8 +100,6 @@ export const UserEvents: React.FC<UserEventsProps> = ({
         <EventsManager 
           user={user} 
           token={token || ''} 
-          triggerConfirm={triggerConfirm} 
-          triggerToast={triggerToast}
           societies={societies} 
           onParticipate={(event) => onParticipate(event.id, false)}
           onCreateTeam={(event) => onCreateTeam(event.id)}

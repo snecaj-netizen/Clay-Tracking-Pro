@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { SocietyEvent } from '../types';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
+import { useUI } from '../contexts/UIContext';
 
 interface TeamManagerProps {
   event: SocietyEvent;
@@ -10,14 +11,13 @@ interface TeamManagerProps {
   teams: any[];
   token: string;
   onTeamsUpdate: () => void;
-  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
-  triggerConfirm?: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   readOnly?: boolean;
   currentUser?: any;
   allSocieties?: any[];
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, triggerToast, triggerConfirm, readOnly, currentUser, allSocieties = [] }) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, readOnly, currentUser, allSocieties = [] }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [formData, setFormData] = useState({

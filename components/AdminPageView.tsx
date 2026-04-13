@@ -1,5 +1,6 @@
 import React from 'react';
 import AdminPanel from './AdminPanel';
+import { useUI } from '../contexts/UIContext';
 
 interface AdminPageViewProps {
   user: any;
@@ -8,8 +9,6 @@ interface AdminPageViewProps {
   cartridges: any[];
   cartridgeTypes: any[];
   societies: any[];
-  triggerConfirm: any;
-  triggerToast: any;
   onEditCompetition: any;
   onDeleteCompetition: any;
   handleImport: any;
@@ -30,11 +29,12 @@ interface AdminPageViewProps {
 
 const AdminPageView: React.FC<AdminPageViewProps> = ({
   user, token, competitions, cartridges, cartridgeTypes, societies,
-  triggerConfirm, triggerToast, onEditCompetition, onDeleteCompetition,
+  onEditCompetition, onDeleteCompetition,
   handleImport, handleCloseSocietyDetail, handleUserUpdate, setShowTour,
   appSettings, fetchSettings, title, icon, initialTab, kpi1, kpi2, hideHeader,
   initialEventViewMode, onToggleFAB
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   return (
     <div className="space-y-4">
       {/* Sticky Header Section */}
@@ -80,13 +80,11 @@ const AdminPageView: React.FC<AdminPageViewProps> = ({
           onLoadDrive={() => {}}
           syncStatus="idle"
           lastSync={null}
-          triggerConfirm={triggerConfirm}
           onEditCompetition={onEditCompetition}
           onDeleteCompetition={onDeleteCompetition}
           initialTab={initialTab}
           onCloseSocietyDetail={handleCloseSocietyDetail}
           onUserUpdate={handleUserUpdate}
-          triggerToast={triggerToast}
           societies={societies}
           hideTabs={true}
           onReplayTour={setShowTour}

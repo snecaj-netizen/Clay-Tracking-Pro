@@ -8,6 +8,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { handleNetworkError } from './ConnectionStatus';
 import { motion, AnimatePresence } from 'motion/react';
+import { useUI } from '../contexts/UIContext';
 
 interface EventResultsManagerProps {
   event: SocietyEvent;
@@ -15,13 +16,12 @@ interface EventResultsManagerProps {
   user?: User | null;
   onClose: () => void;
   readOnly?: boolean;
-  triggerConfirm?: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
-  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onEventUpdate?: () => void;
   societies?: any[];
 }
 
-const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, triggerConfirm, triggerToast, onEventUpdate, societies = [] }) => {
+const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, onEventUpdate, societies = [] }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [results, setResults] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -41,6 +41,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [hasTeamRanking, setHasTeamRanking] = useState(event.has_team_ranking || false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Form state
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -55,6 +56,18 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const qualifications = useMemo(() => Array.from(new Set(results.map(r => r.qualification_at_time || r.qualification).filter(Boolean))).sort(), [results]);
 
   const canExportPDF = user?.role === 'admin' || user?.role === 'society';
+
+  const shootersWithoutResults = useMemo(() => {
+    const resultUserIds = new Set(results.map(r => r.user_id));
+    
+    // If we are editing, we want to keep the current shooter in the list
+    const currentEditingUserId = editingResultId ? results.find(r => r.id === editingResultId)?.user_id : null;
+
+    return users.filter(u => {
+      if (u.id === currentEditingUserId) return true;
+      return !resultUserIds.has(u.id);
+    });
+  }, [users, results, editingResultId]);
 
   // Removed useEffect that was overwriting series/detailedScores on totalTargets change
   // Now handled in onChange and handleEditResult
@@ -351,6 +364,15 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           2: { cellWidth: 'auto' }, // Tiratore
         },
         margin: { left: 15, right: 15 },
+        didParseCell: (cellData) => {
+          if (cellData.section === 'body' && cellData.cell.text[0] === '25') {
+            // Series columns start at index 4
+            if (cellData.column.index >= 4 && cellData.column.index < 4 + pdfMaxSeriesCount) {
+              cellData.cell.styles.textColor = [220, 38, 38]; // red-600
+              cellData.cell.styles.fontStyle = 'bold';
+            }
+          }
+        },
         didDrawPage: (data: any) => {
           currentY = data.cursor.y + 15;
         }
@@ -568,6 +590,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
   
   const filteredResults = [...results].filter(r => {
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const fullName = `${r.user_name || ''} ${r.user_surname || ''}`.toLowerCase();
+      const surnameName = `${r.user_surname || ''} ${r.user_name || ''}`.toLowerCase();
+      const shooterCode = (r.shooter_code || '').toLowerCase();
+      if (!fullName.includes(search) && !surnameName.includes(search) && !shooterCode.includes(search)) {
+        return false;
+      }
+    }
+
     const rCat = r.category_at_time || r.category;
     const rQual = r.qualification_at_time || r.qualification;
     
@@ -928,6 +961,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {canExportPDF && (
+              <button
+                onClick={handlePreviewPDF}
+                disabled={isGeneratingPDF}
+                className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-orange-500 hover:border-orange-500/50 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isGeneratingPDF ? (
+                  <i className="fas fa-circle-notch fa-spin text-orange-500"></i>
+                ) : (
+                  <i className="fas fa-file-pdf text-red-500"></i>
+                )}
+                <span className="hidden sm:inline">{isGeneratingPDF ? 'Generazione...' : 'Scarica PDF'}</span>
+                <span className="sm:hidden">PDF</span>
+              </button>
+            )}
             {!readOnly && event.status !== 'validated' && results.length > 0 && (
               <button 
                 onClick={handleValidate}
@@ -1054,7 +1102,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         setSelectedUserId(val);
                         setIsDirty(true);
                       }}
-                      shooters={users}
+                      shooters={shootersWithoutResults}
                       useId={true}
                       placeholder="Cerca Tiratore (Nome, Cognome o Codice)..."
                       className="flex-1"
@@ -1311,25 +1359,31 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 {event.status === 'validated' ? 'Classifica Finale' : (readOnly ? 'Classifica Generale' : 'Classifica Provvisoria')}
               </h3>
               
-              <div className="flex flex-wrap items-center gap-4">
-                {canExportPDF && (
-                  <button
-                    onClick={handlePreviewPDF}
-                    disabled={isGeneratingPDF}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-orange-500 hover:border-orange-500/50 transition-all text-sm font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isGeneratingPDF ? (
-                      <i className="fas fa-circle-notch fa-spin text-orange-500"></i>
-                    ) : (
-                      <i className="fas fa-file-pdf text-red-500"></i>
-                    )}
-                    {isGeneratingPDF ? 'Generazione...' : 'Scarica PDF'}
-                  </button>
-                )}
+              <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                {/* Search Shooter Input */}
+                <div className="relative flex-1 min-w-[200px] lg:max-w-[300px]">
+                  <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                  <input 
+                    type="text" 
+                    placeholder="Cerca Tiratore in classifica..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600 font-bold"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-orange-500 hover:bg-orange-500/10 rounded-full transition-all"
+                    >
+                      <i className="fas fa-times-circle text-sm"></i>
+                    </button>
+                  )}
+                </div>
+
                 <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
                   <button
                     onClick={() => setViewMode('generale')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                   >
                     Generale
                   </button>
@@ -1340,7 +1394,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         setSelectedCategory(categories[0] as string);
                       }
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'categoria' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'categoria' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                   >
                     Categoria
                   </button>
@@ -1351,14 +1405,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         setSelectedQualification(qualifications[0] as string);
                       }
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'qualifica' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'qualifica' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                   >
                     Qualifica
                   </button>
                   {hasSocietyRanking && (
                     <button
                       onClick={() => setViewMode('societa')}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                     >
                       Società
                     </button>
@@ -1366,7 +1420,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   {hasTeamRanking && (
                     <button
                       onClick={() => setViewMode('squadre')}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                     >
                       Squadre
                     </button>
@@ -1381,7 +1435,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <button
                     key={cat as string}
                     onClick={() => setSelectedCategory(cat as string)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${selectedCategory === cat ? 'bg-slate-800 border-orange-500 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedCategory === cat ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-500/10' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
                   >
                     {cat as string}
                   </button>
@@ -1395,7 +1449,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <button
                     key={qual as string}
                     onClick={() => setSelectedQualification(qual as string)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${selectedQualification === qual ? 'bg-slate-800 border-orange-500 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedQualification === qual ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-500/10' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
                   >
                     {qual as string}
                   </button>
@@ -1422,8 +1476,6 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 teams={teams} 
                 token={token} 
                 onTeamsUpdate={fetchData}
-                triggerToast={triggerToast}
-                triggerConfirm={triggerConfirm}
                 readOnly={readOnly || event.status === 'validated'}
                 currentUser={user}
                 allSocieties={societies}
@@ -1592,7 +1644,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               </span>
                             </td>
                           {Array.from({ length: maxSeriesCount }).map((_, i) => (
-                            <td key={i} className="p-2 sm:p-3 text-slate-300 font-mono text-[11px] sm:text-sm text-center">
+                            <td key={i} className={`p-2 sm:p-3 font-mono text-[11px] sm:text-sm text-center ${r.scores && r.scores[i] === 25 ? 'text-red-500 font-black' : 'text-slate-300'}`}>
                               {r.scores && r.scores[i] !== undefined ? r.scores[i] : '-'}
                             </td>
                           ))}
@@ -1753,7 +1805,6 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           currentUser={user}
           societies={societies}
           onClose={() => setShowQuickAddShooter(false)}
-          triggerToast={triggerToast}
           onSuccess={(newUser) => {
             setUsers(prev => [...prev, newUser]);
             setSelectedUserId(newUser.id);

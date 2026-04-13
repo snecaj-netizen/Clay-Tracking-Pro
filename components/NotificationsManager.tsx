@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
+import { useUI } from '../contexts/UIContext';
 
 interface NotificationsManagerProps {
   token: string;
   userRole: string;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
 }
 
-export default function NotificationsManager({ token, userRole, triggerConfirm }: NotificationsManagerProps) {
+export default function NotificationsManager({ token, userRole }: NotificationsManagerProps) {
+  const { triggerConfirm } = useUI();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [societies, setSocieties] = useState<any[]>([]);

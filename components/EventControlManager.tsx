@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SocietyEvent } from '../types';
 import { Search, Calendar, MapPin, CheckCircle2, XCircle, Loader2, Settings2 } from 'lucide-react';
+import { useUI } from '../contexts/UIContext';
 
 interface EventControlManagerProps {
   token: string;
-  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
-  triggerConfirm?: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'primary' | 'danger') => void;
 }
 
-export const EventControlManager: React.FC<EventControlManagerProps> = ({ token, triggerToast, triggerConfirm }) => {
+export const EventControlManager: React.FC<EventControlManagerProps> = ({ token }) => {
+  const { triggerToast, triggerConfirm } = useUI();
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

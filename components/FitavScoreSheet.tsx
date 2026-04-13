@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { SocietyEvent } from '../types';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface FitavScoreSheetProps {
   teams: {
@@ -16,11 +18,54 @@ interface FitavScoreSheetProps {
     code?: string;
     logo?: string;
   };
+  autoAction?: 'print' | 'download' | null;
 }
 
-const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose, hostingSociety }) => {
+const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose, hostingSociety, autoAction }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (autoAction) {
+      // Small delay to ensure rendering and images are ready
+      const timer = setTimeout(() => {
+        if (autoAction === 'print') {
+          handlePrint();
+        } else if (autoAction === 'download') {
+          handleDownloadPDF();
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoAction]);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!containerRef.current) return;
+    
+    const element = containerRef.current;
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+    
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`statino_${event?.name || 'gara'}.pdf`);
   };
 
   // Helper to get Pedana number and target range for a specific cell
@@ -48,9 +93,15 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
       onClick={onClose}
       className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto cursor-pointer"
     >
-      <div className="flex flex-col gap-8 w-full max-w-[297mm] print:gap-0 print:max-w-none">
+      <div ref={containerRef} className="flex flex-col gap-8 w-full max-w-[297mm] print:gap-0 print:max-w-none">
         {/* Controls (Hidden on Print) */}
         <div className="fixed top-6 right-6 flex gap-4 z-[2100] print:hidden">
+          <button 
+            onClick={handleDownloadPDF}
+            className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2 shadow-2xl"
+          >
+            <i className="fas fa-download text-sm"></i> Scarica PDF
+          </button>
           <button 
             onClick={handlePrint}
             className="px-6 py-3 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center gap-2 shadow-2xl"
@@ -81,11 +132,19 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
                     alt="Society Logo" 
                     className="w-24 h-24 object-contain"
                     referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                   />
                 ) : (
-                  <div className="w-24 h-24 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-300">
-                    <i className="fas fa-image text-2xl"></i>
-                  </div>
+                  <img 
+                    src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
+                    alt="FITAV Logo" 
+                    className="w-24 h-24 object-contain"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      console.error("Logo FITAV failed to load", e);
+                      (e.target as HTMLImageElement).src = "https://picsum.photos/seed/fitav/200/200";
+                    }}
+                  />
                 )}
               </div>
 
@@ -125,12 +184,16 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
                 )}
               </div>
 
-              <div className="w-32 flex items-center justify-end opacity-10 grayscale">
+              <div className="w-32 flex items-center justify-end">
                 <img 
                   src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
                   alt="FITAV Logo" 
-                  className="w-20 h-20 object-contain"
+                  className="w-24 h-24 object-contain"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    console.error("Logo FITAV failed to load", e);
+                    (e.target as HTMLImageElement).src = "https://picsum.photos/seed/fitav/200/200";
+                  }}
                 />
               </div>
             </div>
@@ -167,8 +230,20 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             </div>
 
             {/* Scoring Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border-[2px] border-black text-[9px]">
+            <div className="overflow-x-auto relative">
+              {/* Watermark */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] grayscale">
+                <img 
+                  src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
+                  alt="" 
+                  className="w-[400px] h-[400px] object-contain"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <table className="w-full border-collapse border-[2px] border-black text-[9px] relative z-10">
                 <thead>
                   <tr className="h-10">
                     <th className="border border-black w-8 uppercase font-black">N°</th>

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
+    "@supabase/supabase-js": "^2.103.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
@@ -20,6 +21,7 @@
     "@types/leaflet": "^1.9.21",
     "@vitejs/plugin-react": "^5.0.0",
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -46,6 +48,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/node": "^22.14.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.11",

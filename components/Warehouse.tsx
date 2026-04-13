@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import ExpandingFAB from './ExpandingFAB';
 import { Cartridge, CartridgeType } from '../types';
+import { useUI } from '../contexts/UIContext';
 
 interface WarehouseProps {
   user: any;
@@ -13,7 +14,6 @@ interface WarehouseProps {
   onUpdateAll: (carts: Cartridge[]) => void;
   onSaveType: (type: CartridgeType) => void;
   onDeleteType: (id: string) => void;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
 }
 
 const Warehouse: React.FC<WarehouseProps> = ({ 
@@ -24,9 +24,9 @@ const Warehouse: React.FC<WarehouseProps> = ({
   onDelete, 
   onUpdateAll, 
   onSaveType,
-  onDeleteType,
-  triggerConfirm 
+  onDeleteType
 }) => {
+  const { triggerConfirm } = useUI();
   const [showForm, setShowForm] = useState(false);
   const [editingCart, setEditingCart] = useState<Cartridge | null>(null);
   const [editingType, setEditingType] = useState<CartridgeType | null>(null);

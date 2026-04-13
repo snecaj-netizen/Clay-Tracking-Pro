@@ -3,14 +3,15 @@ import SocietySearch from './SocietySearch';
 import { createPortal } from 'react-dom';
 import ExpandingFAB from './ExpandingFAB';
 import { Discipline, Challenge, ChallengeMode, ChallengeRankingEntry } from '../types';
+import { useUI } from '../contexts/UIContext';
 
 interface HallOfFameProps {
   user: any;
   token: string;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
 }
 
-const HallOfFame: React.FC<HallOfFameProps> = ({ user, token, triggerConfirm }) => {
+const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
+  const { triggerConfirm } = useUI();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

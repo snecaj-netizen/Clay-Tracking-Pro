@@ -1,13 +1,14 @@
 import React from 'react';
 import NotificationsManager from './NotificationsManager';
+import { useUI } from '../contexts/UIContext';
 
 interface NotificationsPageProps {
   token: string;
   userRole: string;
-  triggerConfirm: any;
 }
 
-const NotificationsPage: React.FC<NotificationsPageProps> = ({ token, userRole, triggerConfirm }) => {
+const NotificationsPage: React.FC<NotificationsPageProps> = ({ token, userRole }) => {
+  const { triggerConfirm } = useUI();
   return (
     <div className="space-y-4">
       {/* Sticky Header Section */}
@@ -24,7 +25,6 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ token, userRole, 
         <NotificationsManager 
           token={token} 
           userRole={userRole} 
-          triggerConfirm={triggerConfirm} 
         />
       </div>
     </div>

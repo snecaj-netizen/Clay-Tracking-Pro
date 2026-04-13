@@ -4,6 +4,8 @@ import HistoryList from './HistoryList';
 import Dashboard from './Dashboard';
 import AICoachPage from './AICoachPage';
 
+import { useUI } from '../contexts/UIContext';
+
 interface LeTueGarePageProps {
   user: any;
   token: string;
@@ -15,8 +17,6 @@ interface LeTueGarePageProps {
   onEditCompetition: (comp: any) => void;
   onUpdateCompetition: (comp: any) => void;
   onSocietyClick: (name: string) => void;
-  triggerConfirm: any;
-  triggerToast: any;
   onNavigate: (view: any, tab?: string) => void;
   onTabChange?: (tab: string) => void;
 }
@@ -24,8 +24,9 @@ interface LeTueGarePageProps {
 const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   user, token, competitions, events, societies, cartridges,
   onDeleteCompetition, onEditCompetition, onUpdateCompetition,
-  onSocietyClick, triggerConfirm, triggerToast, onNavigate, onTabChange
+  onSocietyClick, onNavigate, onTabChange
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'history' | 'report' | 'coach'>('history');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [direction, setDirection] = useState(0);
@@ -152,10 +153,8 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
                 onEdit={onEditCompetition}
                 onUpdate={onUpdateCompetition}
                 onSocietyClick={onSocietyClick}
-                triggerConfirm={triggerConfirm}
                 user={user}
                 token={token}
-                triggerToast={triggerToast}
                 viewModeProp={viewMode}
                 onViewModeChange={setViewMode}
               />

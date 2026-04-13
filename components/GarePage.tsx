@@ -4,12 +4,11 @@ import { EventControlManager } from './EventControlManager';
 import { motion, AnimatePresence } from 'motion/react';
 import SocietySearch from './SocietySearch';
 import { Discipline } from '../types';
+import { useUI } from '../contexts/UIContext';
 
 interface GarePageProps {
   user: any;
   token: string;
-  triggerConfirm: any;
-  triggerToast: any;
   societies: any[];
   events: any[];
   onParticipate: (event: any) => void;
@@ -28,10 +27,11 @@ interface GarePageProps {
 type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione';
 
 const GarePage: React.FC<GarePageProps> = ({
-  user, token, triggerConfirm, triggerToast, societies, events, onParticipate, onCreateTeam,
+  user, token, societies, events, onParticipate, onCreateTeam,
   initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings,
   onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<TabType>('eventi');
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results' | 'managed'>('list');
   const [showFilters, setShowFilters] = useState(false);
@@ -337,8 +337,6 @@ const GarePage: React.FC<GarePageProps> = ({
               <EventsManager 
                 user={user} 
                 token={token} 
-                triggerConfirm={triggerConfirm} 
-                triggerToast={triggerToast}
                 societies={societies} 
                 initialEvents={events}
                 onParticipate={onParticipate}
@@ -372,8 +370,6 @@ const GarePage: React.FC<GarePageProps> = ({
                 <EventsManager 
                   user={user} 
                   token={token} 
-                  triggerConfirm={triggerConfirm} 
-                  triggerToast={triggerToast}
                   societies={societies} 
                   initialEvents={events}
                   onParticipate={onParticipate}
@@ -405,8 +401,6 @@ const GarePage: React.FC<GarePageProps> = ({
               <EventsManager 
                 user={user} 
                 token={token} 
-                triggerConfirm={triggerConfirm} 
-                triggerToast={triggerToast}
                 societies={societies} 
                 initialEvents={events}
                 onParticipate={onParticipate}
@@ -437,8 +431,6 @@ const GarePage: React.FC<GarePageProps> = ({
               <EventsManager 
                 user={user} 
                 token={token} 
-                triggerConfirm={triggerConfirm} 
-                triggerToast={triggerToast}
                 societies={societies} 
                 initialEvents={events}
                 onParticipate={onParticipate}
@@ -466,8 +458,6 @@ const GarePage: React.FC<GarePageProps> = ({
               <EventsManager 
                 user={user} 
                 token={token} 
-                triggerConfirm={triggerConfirm} 
-                triggerToast={triggerToast}
                 societies={societies} 
                 initialEvents={events}
                 onParticipate={onParticipate}
@@ -496,8 +486,6 @@ const GarePage: React.FC<GarePageProps> = ({
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4">
                 <EventControlManager 
                   token={token} 
-                  triggerToast={triggerToast}
-                  triggerConfirm={triggerConfirm}
                 />
               </div>
             )}

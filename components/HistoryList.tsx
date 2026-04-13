@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Competition, CompetitionLevel, Discipline, getSeriesLayout } from '../types';
 import SeriesPopup from './SeriesPopup';
 import ShareCard from './ShareCard';
+import { useUI } from '../contexts/UIContext';
 
 interface HistoryListProps {
   competitions: Competition[];
@@ -12,10 +13,8 @@ interface HistoryListProps {
   onEdit: (comp: Competition) => void;
   onUpdate?: (comp: Competition) => void;
   onSocietyClick?: (name: string) => void;
-  triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
   user?: any;
   token?: string;
-  triggerToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   viewModeProp?: 'list' | 'calendar';
   showFiltersProp?: boolean;
   onViewModeChange?: (mode: 'list' | 'calendar') => void;
@@ -30,15 +29,14 @@ const HistoryList: React.FC<HistoryListProps> = ({
   onEdit, 
   onUpdate, 
   onSocietyClick, 
-  triggerConfirm, 
   user,
   token,
-  triggerToast,
   viewModeProp = 'list',
   showFiltersProp = false,
   onViewModeChange,
   onShowFiltersChange
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar'>('list');
   const viewMode = viewModeProp || internalViewMode;
   const setViewMode = onViewModeChange || setInternalViewMode;

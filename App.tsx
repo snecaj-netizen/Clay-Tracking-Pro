@@ -1,23 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, AppData } from './types';
 import Dashboard from './components/Dashboard';
 import CompetitionForm from './components/CompetitionForm';
 import HistoryList from './components/HistoryList';
 import Header from './components/Header';
-import Warehouse from './components/Warehouse';
 import Auth from './components/Auth';
-import AdminPanel from './components/AdminPanel';
-import EventsManager from './components/EventsManager';
-import AICoachPage from './components/AICoachPage';
-import LeTueGarePage from './components/LeTueGarePage';
-import GarePage from './components/GarePage';
-import LaMiaSocietaPage from './components/LaMiaSocietaPage';
-import AdminPageView from './components/AdminPageView';
-import SocietyDetailModal from './components/SocietyDetailModal';
 import ConfirmModal from './components/ConfirmModal';
 import Toast from './components/Toast';
-import NotificationsPage from './components/NotificationsPage';
-import NotificationsManager from './components/NotificationsManager';
 import InstallPrompt from './components/InstallPrompt';
 import OnboardingTour from './components/OnboardingTour';
 import BottomNavigation from './components/BottomNavigation';
@@ -25,7 +14,34 @@ import UpdateNotification from './components/UpdateNotification';
 import ExpandingFAB from './components/ExpandingFAB';
 import { ConnectionStatus, handleNetworkError } from './components/ConnectionStatus';
 
+// Lazy load heavy components
+const Warehouse = lazy(() => import('./components/Warehouse'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const EventsManager = lazy(() => import('./components/EventsManager'));
+const AICoachPage = lazy(() => import('./components/AICoachPage'));
+const LeTueGarePage = lazy(() => import('./components/LeTueGarePage'));
+const GarePage = lazy(() => import('./components/GarePage'));
+const LaMiaSocietaPage = lazy(() => import('./components/LaMiaSocietaPage'));
+const AdminPageView = lazy(() => import('./components/AdminPageView'));
+const SocietyDetailModal = lazy(() => import('./components/SocietyDetailModal'));
+const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
+const NotificationsManager = lazy(() => import('./components/NotificationsManager'));
+
+import { useUI } from './contexts/UIContext';
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-20">
+    <i className="fas fa-circle-notch fa-spin text-orange-500 text-2xl"></i>
+  </div>
+);
+
 const App: React.FC = () => {
+  const { 
+    triggerConfirm, triggerToast, 
+    confirmConfig, setConfirmConfig, 
+    toastConfig, setToastConfig 
+  } = useUI();
+
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
   const [user, setUser] = useState<any>(() => {
     try {
@@ -185,41 +201,6 @@ const App: React.FC = () => {
     window.addEventListener('popstate', handleNavigation);
     return () => window.removeEventListener('popstate', handleNavigation);
   }, [user]);
-
-  // Confirm Modal state
-  const [confirmConfig, setConfirmConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    confirmText?: string;
-    variant?: 'danger' | 'primary';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-  });
-
-  const triggerConfirm = (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => {
-    console.log('Triggering confirm modal:', { title, message });
-    setConfirmConfig({ isOpen: true, title, message, onConfirm, confirmText, variant });
-  };
-
-  // Toast state
-  const [toastConfig, setToastConfig] = useState<{
-    isOpen: boolean;
-    message: string;
-    type: 'success' | 'error' | 'info';
-  }>({
-    isOpen: false,
-    message: '',
-    type: 'success',
-  });
-
-  const triggerToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToastConfig({ isOpen: true, message, type });
-  };
 
   // Fetch data from API
   const fetchData = useCallback(async (signal?: AbortSignal) => {
@@ -721,294 +702,337 @@ const App: React.FC = () => {
         onGoBack={handleGoBack}
         onGoForward={handleGoForward}
       />
-      
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-[104px] flex-1 w-full pb-24 sm:pb-8`}>
-        {view === 'le-tue-gare' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <LeTueGarePage 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              events={events}
-              societies={societies}
-              cartridges={cartridges}
-              onDeleteCompetition={deleteCompetition}
-              onEditCompetition={(comp) => {
-                setPreviousView('le-tue-gare');
-                setEditingCompetition(comp);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-[104px] flex-1 w-full pb-24 sm:pb-8`}>
+        <Suspense fallback={<LoadingFallback />}>
+          {view === 'le-tue-gare' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <LeTueGarePage 
+                user={user}
+                token={token || ''}
+                competitions={competitions}
+                events={events}
+                societies={societies}
+                cartridges={cartridges}
+                onDeleteCompetition={deleteCompetition}
+                onEditCompetition={(comp) => {
+                  setPreviousView('le-tue-gare');
+                  setEditingCompetition(comp);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onUpdateCompetition={saveCompetition}
+                onSocietyClick={handleSocietyClick}
+                onNavigate={handleNavigate}
+                onTabChange={setLeTueGareTab}
+              />
+            </div>
+          )}
+          
+          {view === 'new' && (
+            <CompetitionForm 
+              currentUser={user}
+              onSubmit={saveCompetition} 
+              onCancel={() => {
+                setView(previousView || 'le-tue-gare');
+                setPreviousView(null);
+                setEditingCompetition(null);
+                setPrefillCompetition(null);
               }}
-              onUpdateCompetition={saveCompetition}
-              onSocietyClick={handleSocietyClick}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onNavigate={handleNavigate}
-              onTabChange={setLeTueGareTab}
-            />
-          </div>
-        )}
-        
-        {view === 'new' && (
-          <CompetitionForm 
-            currentUser={user}
-            onSubmit={saveCompetition} 
-            onCancel={() => {
-              setView(previousView || 'le-tue-gare');
-              setPreviousView(null);
-              setEditingCompetition(null);
-              setPrefillCompetition(null);
-            }}
-            initialData={editingCompetition || undefined}
-            prefillData={prefillCompetition || undefined}
-            availableCartridges={cartridges}
-            cartridgeTypes={cartridgeTypes}
-            onNavigateToWarehouse={() => setView('warehouse')}
-            societies={societies}
-            knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
-          />
-        )}
-        
-        {view === 'warehouse' && user?.role !== 'society' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Warehouse 
-              user={user}
-              cartridges={cartridges}
+              initialData={editingCompetition || undefined}
+              prefillData={prefillCompetition || undefined}
+              availableCartridges={cartridges}
               cartridgeTypes={cartridgeTypes}
-              onSave={saveCartridge}
-              onDelete={deleteCartridge}
-              onUpdateAll={updateAllCartridges}
-              onSaveType={saveCartridgeType}
-              onDeleteType={deleteCartridgeType}
-              triggerConfirm={triggerConfirm}
-            />
-          </div>
-        )}
-
-        {view === 'gare' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <GarePage 
-              user={user}
-              token={token || ''}
+              onNavigateToWarehouse={() => setView('warehouse')}
               societies={societies}
-              events={events}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onParticipate={handleParticipateInEvent}
-              onCreateTeam={handleCreateTeamFromEvent}
-              initialEventId={initialEventId}
-              onInitialEventHandled={() => setInitialEventId(null)}
-              initialViewMode={initialViewMode}
-              onInitialViewModeHandled={() => setInitialViewMode(null)}
-              appSettings={appSettings}
-              onCreateEventTrigger={gareCreateEvent}
-              onToggleFAB={setHideGlobalFAB}
-              onTabChange={setGareActiveTab}
-              onSocietyClick={handleSocietyClick}
+              knownLocations={Array.from(new Set(competitions.map(c => c.location).filter(Boolean)))}
             />
-          </div>
-        )}
+          )}
+          
+          {view === 'warehouse' && user?.role !== 'society' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Warehouse 
+                user={user}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                onSave={saveCartridge}
+                onDelete={deleteCartridge}
+                onUpdateAll={updateAllCartridges}
+                onSaveType={saveCartridgeType}
+                onDeleteType={deleteCartridgeType}
+              />
+            </div>
+          )}
 
-        {view === 'la-mia-societa' && (user?.role === 'admin' || user?.role === 'society') && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <LaMiaSocietaPage 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              cartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              societies={societies}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onEditCompetition={(comp) => {
-                setPreviousView('la-mia-societa');
-                setEditingCompetition(comp || null);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDeleteCompetition={deleteCompetition}
-              handleImport={handleImport}
-              handleCloseSocietyDetail={handleCloseSocietyDetail}
-              handleUserUpdate={handleUserUpdate}
-              setShowTour={() => setShowTour(true)}
-              appSettings={appSettings}
-              fetchSettings={fetchSettings}
-              initialTab={initialAdminTab as any}
-              onToggleFAB={setHideGlobalFAB}
-            />
-          </div>
-        )}
+          {view === 'gare' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <GarePage 
+                user={user}
+                token={token || ''}
+                societies={societies}
+                events={events}
+                onParticipate={handleParticipateInEvent}
+                onCreateTeam={handleCreateTeamFromEvent}
+                initialEventId={initialEventId}
+                onInitialEventHandled={() => setInitialEventId(null)}
+                initialViewMode={initialViewMode}
+                onInitialViewModeHandled={() => setInitialViewMode(null)}
+                appSettings={appSettings}
+                onCreateEventTrigger={gareCreateEvent}
+                onToggleFAB={setHideGlobalFAB}
+                onTabChange={setGareActiveTab}
+                onSocietyClick={handleSocietyClick}
+              />
+            </div>
+          )}
 
-        {view === 'societies' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AdminPageView 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              cartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              societies={societies}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onEditCompetition={(comp) => {
-                setPreviousView('societies');
-                setEditingCompetition(comp || null);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDeleteCompetition={deleteCompetition}
-              handleImport={handleImport}
-              handleCloseSocietyDetail={handleCloseSocietyDetail}
-              handleUserUpdate={handleUserUpdate}
-              setShowTour={() => setShowTour(true)}
-              appSettings={appSettings}
-              fetchSettings={fetchSettings}
-              title="Società TAV"
-              icon="fa-shield-alt"
-              initialTab="societies"
-              kpi1={{ label: 'Società', value: societies.length, color: 'border-l-orange-600' }}
-              hideHeader={true}
-            />
-          </div>
-        )}
+          {view === 'la-mia-societa' && (user?.role === 'admin' || user?.role === 'society') && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <LaMiaSocietaPage 
+                user={user}
+                token={token || ''}
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                onEditCompetition={(comp) => {
+                  setPreviousView('la-mia-societa');
+                  setEditingCompetition(comp || null);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDeleteCompetition={deleteCompetition}
+                handleImport={handleImport}
+                handleCloseSocietyDetail={handleCloseSocietyDetail}
+                handleUserUpdate={handleUserUpdate}
+                setShowTour={() => setShowTour(true)}
+                appSettings={appSettings}
+                fetchSettings={fetchSettings}
+                initialTab={initialAdminTab as any}
+                onToggleFAB={setHideGlobalFAB}
+              />
+            </div>
+          )}
 
-        {view === 'admin-events' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AdminPageView 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              cartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              societies={societies}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onEditCompetition={(comp) => {
-                setPreviousView('admin-events');
-                setEditingCompetition(comp || null);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDeleteCompetition={deleteCompetition}
-              handleImport={handleImport}
-              handleCloseSocietyDetail={handleCloseSocietyDetail}
-              handleUserUpdate={handleUserUpdate}
-              setShowTour={() => setShowTour(true)}
-              appSettings={appSettings}
-              fetchSettings={fetchSettings}
-              title={user?.role === 'society' ? 'Gestione tue Gare' : 'Gare gestite'}
-              icon="fa-calendar-alt"
-              initialTab="event-results"
-              initialEventViewMode="managed"
-              kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
-              onToggleFAB={setHideGlobalFAB}
-            />
-          </div>
-        )}
+          {view === 'societies' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminPanel 
+                user={user} 
+                token={token || ''} 
+                initialTab="societies" 
+                initialSocietyName={initialSocietyName}
+                onCloseSocietyDetail={handleCloseSocietyDetail}
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                clientId=""
+                onClientIdChange={() => {}}
+                onImport={handleImport}
+                syncStatus="idle"
+                lastSync={null}
+                isDriveConnected={false}
+                onConnectDrive={() => {}}
+                onDisconnectDrive={() => {}}
+                onSaveDrive={() => {}}
+                onLoadDrive={() => {}}
+              />
+            </div>
+          )}
 
-        {view === 'admin-control' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AdminPageView 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              cartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              societies={societies}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onEditCompetition={(comp) => {
-                setPreviousView('admin-control');
-                setEditingCompetition(comp || null);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDeleteCompetition={deleteCompetition}
-              handleImport={handleImport}
-              handleCloseSocietyDetail={handleCloseSocietyDetail}
-              handleUserUpdate={handleUserUpdate}
-              setShowTour={() => setShowTour(true)}
-              appSettings={appSettings}
-              fetchSettings={fetchSettings}
-              title="Attivazione gare"
-              icon="fa-tasks"
-              initialTab="event-control"
-              kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
-            />
-          </div>
-        )}
+          {view === 'admin' && user?.role === 'admin' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminPanel 
+                user={user} 
+                token={token || ''} 
+                initialTab={(initialAdminTab as any) || 'users'} 
+                initialSocietyName={initialSocietyName}
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                clientId=""
+                onClientIdChange={() => {}}
+                onImport={handleImport}
+                syncStatus="idle"
+                lastSync={null}
+                isDriveConnected={false}
+                onConnectDrive={() => {}}
+                onDisconnectDrive={() => {}}
+                onSaveDrive={() => {}}
+                onLoadDrive={() => {}}
+              />
+            </div>
+          )}
 
-        {view === 'profile' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AdminPageView 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              cartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              societies={societies}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onEditCompetition={(comp) => {
-                setPreviousView('profile');
-                setEditingCompetition(comp || null);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDeleteCompetition={deleteCompetition}
-              handleImport={handleImport}
-              handleCloseSocietyDetail={handleCloseSocietyDetail}
-              handleUserUpdate={handleUserUpdate}
-              setShowTour={() => setShowTour(true)}
-              appSettings={appSettings}
-              fetchSettings={fetchSettings}
-              title="Il Tuo Profilo"
-              icon="fa-user-circle"
-              initialTab="profile"
-            />
-          </div>
-        )}
+          {view === 'admin-events' && (user?.role === 'admin' || user?.role === 'society') && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminPageView 
+                user={user} 
+                token={token || ''} 
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                onEditCompetition={(comp) => {
+                  setPreviousView('admin-events');
+                  setEditingCompetition(comp || null);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDeleteCompetition={deleteCompetition}
+                handleImport={handleImport}
+                handleCloseSocietyDetail={handleCloseSocietyDetail}
+                handleUserUpdate={handleUserUpdate}
+                setShowTour={() => setShowTour(true)}
+                appSettings={appSettings}
+                fetchSettings={fetchSettings}
+                title={user?.role === 'society' ? 'Gestione tue Gare' : 'Gare gestite'}
+                icon="fa-calendar-alt"
+                initialTab="event-results"
+                initialEventViewMode="managed"
+                kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
+                onToggleFAB={setHideGlobalFAB}
+              />
+            </div>
+          )}
 
-        {view === 'settings' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AdminPageView 
-              user={user}
-              token={token || ''}
-              competitions={competitions}
-              cartridges={cartridges}
-              cartridgeTypes={cartridgeTypes}
-              societies={societies}
-              triggerConfirm={triggerConfirm}
-              triggerToast={triggerToast}
-              onEditCompetition={(comp) => {
-                setPreviousView('settings');
-                setEditingCompetition(comp || null);
-                setView('new');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDeleteCompetition={deleteCompetition}
-              handleImport={handleImport}
-              handleCloseSocietyDetail={handleCloseSocietyDetail}
-              handleUserUpdate={handleUserUpdate}
-              setShowTour={() => setShowTour(true)}
-              appSettings={appSettings}
-              fetchSettings={fetchSettings}
-              title="Impostazioni"
-              icon="fa-cog"
-              initialTab="settings"
-            />
-          </div>
-        )}
+          {view === 'admin-control' && user?.role === 'admin' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminPageView 
+                user={user} 
+                token={token || ''} 
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                onEditCompetition={(comp) => {
+                  setPreviousView('admin-control');
+                  setEditingCompetition(comp || null);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDeleteCompetition={deleteCompetition}
+                handleImport={handleImport}
+                handleCloseSocietyDetail={handleCloseSocietyDetail}
+                handleUserUpdate={handleUserUpdate}
+                setShowTour={() => setShowTour(true)}
+                appSettings={appSettings}
+                fetchSettings={fetchSettings}
+                title="Attivazione gare"
+                icon="fa-tasks"
+                initialTab="event-control"
+                kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
+              />
+            </div>
+          )}
 
-        {view === 'notifications' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <NotificationsPage 
-              token={token || ''} 
-              userRole={user?.role} 
-              triggerConfirm={triggerConfirm} 
-            />
-          </div>
-        )}
+          {view === 'ai-coach' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+              <AICoachPage 
+                user={user} 
+                competitions={competitions} 
+                cartridges={cartridges}
+              />
+            </div>
+          )}
+
+          {view === 'dashboard' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Dashboard 
+                competitions={competitions} 
+                societies={societies}
+                events={events}
+                onAddClick={() => setView('new')}
+                onCoachClick={() => setView('ai-coach')}
+                onNavigate={handleNavigate}
+                user={user}
+              />
+            </div>
+          )}
+
+          {view === 'history' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <HistoryList 
+                competitions={competitions} 
+                societies={societies}
+                onDelete={deleteCompetition}
+                onEdit={(comp) => {
+                  setPreviousView('history');
+                  setEditingCompetition(comp);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            </div>
+          )}
+
+          {view === 'profile' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminPageView 
+                user={user}
+                token={token || ''}
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                onEditCompetition={(comp) => {
+                  setPreviousView('profile');
+                  setEditingCompetition(comp || null);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDeleteCompetition={deleteCompetition}
+                handleImport={handleImport}
+                handleCloseSocietyDetail={handleCloseSocietyDetail}
+                handleUserUpdate={handleUserUpdate}
+                setShowTour={() => setShowTour(true)}
+                appSettings={appSettings}
+                fetchSettings={fetchSettings}
+                title="Il Tuo Profilo"
+                icon="fa-user-circle"
+                initialTab="profile"
+              />
+            </div>
+          )}
+
+          {view === 'settings' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminPageView 
+                user={user}
+                token={token || ''}
+                competitions={competitions}
+                cartridges={cartridges}
+                cartridgeTypes={cartridgeTypes}
+                societies={societies}
+                onEditCompetition={(comp) => {
+                  setPreviousView('settings');
+                  setEditingCompetition(comp || null);
+                  setView('new');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onDeleteCompetition={deleteCompetition}
+                handleImport={handleImport}
+                handleCloseSocietyDetail={handleCloseSocietyDetail}
+                handleUserUpdate={handleUserUpdate}
+                setShowTour={() => setShowTour(true)}
+                appSettings={appSettings}
+                fetchSettings={fetchSettings}
+                title="Impostazioni"
+                icon="fa-cog"
+                initialTab="settings"
+              />
+            </div>
+          )}
+
+          {view === 'notifications' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <NotificationsPage 
+                token={token || ''} 
+                userRole={user?.role} 
+              />
+            </div>
+          )}
+        </Suspense>
       </main>
 
       {/* Floating Add Button - Only on Dashboard/History/New Page and not for society role */}
