@@ -1521,9 +1521,13 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     
     if (req.user.role === 'society') {
       if (req.query.all === 'true') {
+        // When searching for all shooters (e.g. for event registration or results),
+        // include all users and admins regardless of society
         whereClauses.push("role IN ('user', 'admin')");
       } else {
-        whereClauses.push("role IN ('user', 'admin') AND (society = $" + (params.length + 1) + " OR role = 'admin')");
+        // In standard lists (like "Gestione Tiratori"), only show users and admins 
+        // that belong to the requester's society
+        whereClauses.push("role IN ('user', 'admin') AND society = $" + (params.length + 1));
         params.push(req.user.society);
       }
     }
