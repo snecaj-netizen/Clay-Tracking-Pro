@@ -9,7 +9,10 @@ const UpdateNotification: React.FC = () => {
     try {
       // Fetch the main index.html with a cache-busting query param
       const response = await fetch(`/?t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) return; // Ignore non-ok responses
+      
       const text = await response.text();
+      if (!text) return;
       
       // Simple hash-like check: content length + first 1000 chars
       const currentHash = `${text.length}-${text.substring(0, 1000)}`;
@@ -20,7 +23,10 @@ const UpdateNotification: React.FC = () => {
         setLastHash(currentHash);
       }
     } catch (error) {
-      console.error('Errore durante il controllo degli aggiornamenti:', error);
+      // Only log if it's not a common network error to avoid cluttering the console
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
+        console.error('Errore durante il controllo degli aggiornamenti:', error);
+      }
     }
   };
 

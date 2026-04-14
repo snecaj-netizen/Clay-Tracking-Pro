@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X } from 'lucide-react';
 
@@ -20,13 +21,17 @@ const ExpandingFAB: React.FC<ExpandingFABProps> = ({
   isClose = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
 
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
@@ -35,21 +40,21 @@ const ExpandingFAB: React.FC<ExpandingFABProps> = ({
 
   const shouldExpand = isHovered;
 
-  return (
+  const fab = (
     <motion.button
-      layout
+      layout={!isMobile}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={isMobile ? false : { scale: 0, opacity: 0 }}
-      animate={isMobile ? { scale: 1, opacity: 1 } : { 
+      initial={isMobile ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+      animate={{ 
         scale: 1, 
         opacity: 1,
       }}
-      exit={{ scale: 0, opacity: 0 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ 
+      exit={isMobile ? { opacity: 0 } : { scale: 0, opacity: 0 }}
+      whileHover={isMobile ? {} : { scale: 1.02 }}
+      whileTap={isMobile ? {} : { scale: 0.95 }}
+      transition={isMobile ? { duration: 0 } : { 
         type: 'spring', 
         stiffness: 500, 
         damping: 35,
@@ -83,6 +88,8 @@ const ExpandingFAB: React.FC<ExpandingFABProps> = ({
       </div>
     </motion.button>
   );
+
+  return createPortal(fab, document.body);
 };
 
 export default ExpandingFAB;
