@@ -835,6 +835,7 @@ const App: React.FC = () => {
                 onDisconnectDrive={() => {}}
                 onSaveDrive={() => {}}
                 onLoadDrive={() => {}}
+                hideTabs={true}
               />
             </div>
           )}
