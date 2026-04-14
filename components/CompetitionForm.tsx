@@ -1,0 +1,1114 @@
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout, SocietyEvent } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
+import SocietySearch from './SocietySearch';
+import ShooterSearch from './ShooterSearch';
+import { handleNetworkError } from './ConnectionStatus';
+
+interface CompetitionFormProps {
+  initialData?: Competition;
+  prefillData?: Partial<Competition>;
+  knownLocations?: string[];
+  availableCartridges: Cartridge[];
+  cartridgeTypes: CartridgeType[];
+  societies: any[];
+  currentUser: any;
+  onSubmit: (comp: Competition) => void;
+  onCancel: () => void;
+  onNavigateToWarehouse?: () => void;
+}
+
+const WEATHER_OPTIONS = [
+  { label: 'Soleggiato', icon: 'fa-sun', color: 'text-yellow-400' },
+  { label: 'Nuvoloso', icon: 'fa-cloud', color: 'text-slate-400' },
+  { label: 'Pioggia', icon: 'fa-cloud-showers-heavy', color: 'text-blue-400' },
+  { label: 'Vento', icon: 'fa-wind', color: 'text-teal-400' },
+  { label: 'Neve', icon: 'fa-snowflake', color: 'text-blue-200' },
+  { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
+];
+
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, availableCartridges = [], cartridgeTypes = [], societies = [], currentUser, onSubmit, onCancel, onNavigateToWarehouse }) => {
+  const data = initialData || prefillData;
+  const [name, setName] = useState(data?.name || '');
+  const [location, setLocation] = useState(data?.location || '');
+  const [discipline, setDiscipline] = useState<Discipline>(data?.discipline === Discipline.TRAINING ? Discipline.CK : (data?.discipline || Discipline.CK));
+  const [totalTargets, setTotalTargets] = useState<number>(data?.totalTargets || 50);
+  const [level, setLevel] = useState<CompetitionLevel>(data?.level || CompetitionLevel.REGIONAL);
+  const [eventType, setEventType] = useState<'Gara' | 'Allenamento'>(
+    (data?.level === CompetitionLevel.TRAINING || data?.discipline === Discipline.TRAINING) ? 'Allenamento' : 'Gara'
+  );
+  const [scores, setScores] = useState<number[]>(() => {
+    if (initialData?.scores) return initialData.scores;
+    if (prefillData?.scores) return prefillData.scores;
+    
+    // New competition or training
+    const d = initialData || prefillData;
+    const disc = d?.discipline || Discipline.CK;
+    const targets = d?.totalTargets || 50;
+    const seriesLayoutObj = getSeriesLayout(disc);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+    const numSeries = Math.ceil(targets / targetsPerSeries);
+    return Array(numSeries).fill(0);
+  });
+  const [detailedScores, setDetailedScores] = useState<boolean[][]>(() => {
+    if (data?.detailedScores) return data.detailedScores;
+    
+    const seriesLayoutObj = getSeriesLayout(discipline);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+    const numSeries = Math.ceil(totalTargets / targetsPerSeries);
+    return Array.from({ length: numSeries }, () => []);
+  });
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
+  const [cartridgeSource, setCartridgeSource] = useState<'warehouse' | 'types'>('warehouse');
+  const [cartridgeSearch, setCartridgeSearch] = useState('');
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
+      fetch('/api/admin/users?all=true', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setUsers(data.filter(u => u.role !== 'society'));
+        }
+      })
+      .catch(err => handleNetworkError(err));
+    }
+  }, [currentUser]);
+  const [seriesImages, setSeriesImages] = useState<string[]>(data?.seriesImages || []);
+  const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
+  const [position, setPosition] = useState<number | undefined>(data?.position);
+  const [cost, setCost] = useState<number>(data?.cost || 0);
+  const [costPerSeries, setCostPerSeries] = useState<number>(() => {
+    if (data?.cost && data?.scores?.length && (data?.level === CompetitionLevel.TRAINING || data?.discipline === Discipline.TRAINING)) {
+      return Number((data.cost / data.scores.length).toFixed(2));
+    }
+    return 0;
+  });
+  const [win, setWin] = useState<number>(data?.win || 0);
+  const [notes, setNotes] = useState(data?.notes || '');
+  const [date, setDate] = useState(data?.date || new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(data?.endDate || '');
+  const [chokes, setChokes] = useState(data?.chokes || { firstBarrel: '1*', secondBarrel: '1*' });
+  const [usedCartridges, setUsedCartridges] = useState<UsedCartridge[]>(data?.usedCartridges || []);
+  
+  // Event selection states
+  const [events, setEvents] = useState<SocietyEvent[]>([]);
+  const [showEventSelector, setShowEventSelector] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
+  const [rankingPreference, setRankingPreference] = useState<'categoria' | 'qualifica'>(data?.ranking_preference || 'categoria');
+  const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(data?.ranking_preference_override || null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch('/api/events', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data);
+        }
+      } catch (err) {
+        console.error('Error fetching events:', err);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  const handleSelectEvent = (event: SocietyEvent) => {
+    setName(event.name);
+    setLocation(event.location);
+    setDiscipline(event.discipline as Discipline);
+    setDate(event.start_date.split('T')[0]);
+    if (event.end_date) {
+      setEndDate(event.end_date.split('T')[0]);
+    }
+    setTotalTargets(Number(event.targets) || 50);
+    
+    if (event.cost) {
+      setCost(parseFloat(event.cost) || 0);
+    }
+    if (event.notes) {
+      setNotes(event.notes);
+    }
+    
+    // Map event type to competition level
+    if (event.type === 'Regionale') setLevel(CompetitionLevel.REGIONAL);
+    else if (event.type === 'Nazionale') setLevel(CompetitionLevel.NATIONAL);
+    else if (event.type === 'Internazionale') setLevel(CompetitionLevel.INTERNATIONAL);
+    
+    setShowEventSelector(false);
+  };
+
+  const filteredEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return events.filter(e => 
+      e.name.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      e.location.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      e.discipline.toLowerCase().includes(eventSearch.toLowerCase())
+    ).sort((a, b) => {
+      const dateA = new Date(a.start_date);
+      const dateB = new Date(b.start_date);
+      
+      const isPastA = dateA < today;
+      const isPastB = dateB < today;
+
+      // If one is past and other is future, future comes first
+      if (isPastA && !isPastB) return 1;
+      if (!isPastA && isPastB) return -1;
+
+      // If both are future, sort by date ASC (closest first)
+      if (!isPastA && !isPastB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+
+      // If both are past, sort by date DESC (most recent first)
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [events, eventSearch]);
+
+  // Weather states
+  const [weatherTemp, setWeatherTemp] = useState<number | undefined>(data?.weather?.temp);
+  const [weatherIcon, setWeatherIcon] = useState<string | undefined>(data?.weather?.icon);
+  const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+
+  const isTraining = eventType === 'Allenamento';
+  const isMultiDayEligible = totalTargets >= 200;
+
+  const groupedCartridges = useMemo(() => {
+    const groups: Record<string, { 
+      id: string, 
+      producer: string, 
+      model: string, 
+      leadNumber: string, 
+      grams?: number,
+      imageUrl?: string,
+      totalQuantity: number 
+    }> = {};
+
+    availableCartridges.forEach(cart => {
+      const key = `${cart.producer.toLowerCase().trim()}-${cart.model.toLowerCase().trim()}-${cart.leadNumber}-${cart.grams || 0}`;
+      if (!groups[key]) {
+        groups[key] = {
+          id: cart.id,
+          producer: cart.producer,
+          model: cart.model,
+          leadNumber: cart.leadNumber,
+          grams: cart.grams,
+          imageUrl: cart.imageUrl,
+          totalQuantity: 0
+        };
+      }
+      groups[key].totalQuantity += cart.quantity;
+      if (!groups[key].imageUrl && cart.imageUrl) groups[key].imageUrl = cart.imageUrl;
+    });
+
+    return Object.values(groups).sort((a, b) => a.producer.localeCompare(b.producer));
+  }, [availableCartridges]);
+
+  useEffect(() => {
+    const seriesLayoutObj = getSeriesLayout(discipline);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+
+    if (isTraining) {
+      setLevel(CompetitionLevel.TRAINING);
+      if (name === '') setName('Sessione di Allenamento');
+      
+      const expectedTotal = scores.length * targetsPerSeries;
+      if (totalTargets !== expectedTotal) {
+        setTotalTargets(expectedTotal);
+      }
+    } else {
+      if (level === CompetitionLevel.TRAINING) setLevel(CompetitionLevel.REGIONAL);
+      
+      // Update scores length based on totalTargets
+      const numSeries = Math.ceil(totalTargets / targetsPerSeries);
+
+      if (scores.length !== numSeries) {
+        setScores(prev => {
+          const newScores = Array(numSeries).fill(0);
+          for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
+            newScores[i] = prev[i];
+          }
+          return newScores;
+        });
+        setDetailedScores(prev => {
+          const newDetailed: boolean[][] = Array.from({ length: numSeries }, () => []);
+          for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
+            newDetailed[i] = prev[i] || [];
+          }
+          return newDetailed;
+        });
+      }
+    }
+  }, [eventType, totalTargets, discipline, scores.length, isTraining]);
+
+  const fetchWeatherWithAI = async () => {
+    let currentLocation = location;
+    if (!currentLocation) {
+      const userLocation = prompt("Inserisci il luogo (es. Roma, Milano, TAV Concaverde) per recuperare il meteo:");
+      if (!userLocation || !userLocation.trim()) {
+        alert("Luogo necessario per recuperare il meteo.");
+        return;
+      }
+      currentLocation = userLocation.trim();
+      setLocation(currentLocation);
+    }
+
+    if (!date) {
+      alert("Inserisci prima la data per recuperare il meteo.");
+      return;
+    }
+
+    setIsFetchingWeather(true);
+    try {
+      let apiKey = '';
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          const res = await fetch('/api/gemini-key', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            apiKey = data.key;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch API key from server", e);
+      }
+
+      if (!apiKey) {
+        const rawKey = process.env.GEMINI_API_KEY;
+        apiKey = typeof rawKey === 'string' ? rawKey.trim() : rawKey;
+      } else {
+        apiKey = apiKey.trim();
+      }
+      
+      if (!apiKey || apiKey === 'undefined') throw new Error("API Key missing");
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: `Qual era (o sarà) il meteo a ${currentLocation} il giorno ${date}? 
+                   Fornisci i dati in formato JSON: temp (numero intero Celsius) e 
+                   condition (una tra: 'sole', 'nuvole', 'pioggia', 'vento', 'neve', 'temporale').`,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              temp: { type: Type.INTEGER, description: "Temperatura in gradi Celsius" },
+              condition: { type: Type.STRING, description: "Condizione meteo semplificata" }
+            },
+            required: ["temp", "condition"]
+          }
+        }
+      });
+
+      const text = response.text;
+      if (!text) throw new Error("No response from AI");
+      
+      const data = JSON.parse(text);
+      setWeatherTemp(data.temp);
+      
+      const mappedIcon = WEATHER_OPTIONS.find(o => 
+        data.condition.toLowerCase().includes(o.label.toLowerCase()) || 
+        o.label.toLowerCase().includes(data.condition.toLowerCase())
+      )?.icon || 'fa-cloud';
+      
+      setWeatherIcon(mappedIcon);
+    } catch (error) {
+      console.error("Error fetching weather:", error);
+      alert("Impossibile recuperare il meteo automaticamente.");
+    } finally {
+      setIsFetchingWeather(false);
+    }
+  };
+
+  const handleScoreChange = (index: number, value: string) => {
+    const num = parseInt(value) || 0;
+    const clamped = Math.min(25, Math.max(0, num));
+    const newScores = [...scores];
+    newScores[index] = clamped;
+    setScores(newScores);
+    
+    // If detailed score exists, we might want to clear it or adjust it, but for now let's just clear it if they manually change the number
+    if (detailedScores[index] && detailedScores[index].length > 0) {
+      setDetailedScores(prev => {
+        const newDetailed = [...prev];
+        newDetailed[index] = [];
+        return newDetailed;
+      });
+    }
+  };
+
+  const toggleDetailedView = (idx: number) => {
+    if (expandedSeries === idx) {
+      setExpandedSeries(null);
+    } else {
+      setExpandedSeries(idx);
+      if (!detailedScores[idx] || detailedScores[idx].length === 0) {
+        const currentScore = scores[idx] || 0;
+        const newSeries = Array(25).fill(false);
+        for (let i = 0; i < currentScore; i++) {
+          newSeries[i] = true;
+        }
+        setDetailedScores(prev => {
+          const newDetailed = [...prev];
+          newDetailed[idx] = newSeries;
+          return newDetailed;
+        });
+      }
+    }
+  };
+
+  const handleDetailedScoreChange = (seriesIndex: number, targetIndex: number) => {
+    setDetailedScores(prev => {
+      const newDetailed = [...prev];
+      const newSeries = [...(newDetailed[seriesIndex] || Array(25).fill(false))];
+      newSeries[targetIndex] = !newSeries[targetIndex];
+      newDetailed[seriesIndex] = newSeries;
+      
+      const newScores = [...scores];
+      newScores[seriesIndex] = newSeries.filter(Boolean).length;
+      setScores(newScores);
+      
+      return newDetailed;
+    });
+  };
+
+  const handleImageUpload = (seriesIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSeriesImages(prev => {
+          const newImages = [...prev];
+          newImages[seriesIndex] = reader.result as string;
+          return newImages;
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = (seriesIndex: number) => {
+    setSeriesImages(prev => {
+      const newImages = [...prev];
+      newImages[seriesIndex] = '';
+      return newImages;
+    });
+  };
+
+  const toggleCartridge = (group: any) => {
+    setUsedCartridges(prev => {
+      const exists = prev.find(uc => 
+        uc.producer === group.producer && 
+        uc.model === group.model && 
+        uc.leadNumber === group.leadNumber &&
+        uc.grams === group.grams
+      );
+      if (exists) {
+        return prev.filter(uc => !(uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber && uc.grams === group.grams));
+      } else {
+        return [...prev, { cartridgeId: group.id, producer: group.producer, model: group.model, leadNumber: group.leadNumber, grams: group.grams, imageUrl: group.imageUrl }];
+      }
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const totalScore = scores.reduce((a, b) => a + b, 0);
+    const completedSeriesCount = scores.filter(s => s > 0).length || 1;
+    const averagePerSeries = totalScore / completedSeriesCount;
+    
+    const newComp: Competition = {
+      id: initialData?.id || '',
+      userId: selectedUserId,
+      name: name.trim() || (isTraining ? 'Allenamento' : 'Gara senza nome'),
+      location: location.trim() || 'Luogo non specificato',
+      date,
+      endDate: isMultiDayEligible && endDate ? endDate : undefined,
+      discipline,
+      totalTargets,
+      level,
+      scores,
+      detailedScores,
+      seriesImages,
+      totalScore,
+      averagePerSeries,
+      position: isTraining ? undefined : position,
+      cost: isTraining ? costPerSeries * scores.length : cost,
+      win,
+      notes,
+      chokes,
+      usedCartridges,
+      ranking_preference: rankingPreference,
+      ranking_preference_override: rankingPreferenceOverride,
+      weather: weatherTemp !== undefined ? { temp: weatherTemp, icon: weatherIcon } : undefined
+    };
+    if (initialData?.id) {
+      newComp.id = initialData.id;
+    }
+    onSubmit(newComp);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1200] flex items-center justify-center p-4 overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+        <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${isTraining ? 'bg-blue-600/20 text-blue-500' : 'bg-orange-600/20 text-orange-500'}`}>
+              <i className={`fas ${isTraining ? 'fa-dumbbell' : 'fa-trophy'}`}></i>
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none">{initialData ? 'Modifica' : 'Nuova'} {isTraining ? 'Sessione' : 'Gara'}</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Compila i dettagli dell'attività</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
+          <form id="competition-form" onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
+            <ShooterSearch 
+              value={selectedUserId}
+              onChange={(_, id) => id && setSelectedUserId(id)}
+              shooters={users}
+              useId
+              required
+            />
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipo Evento</label>
+          <div className="relative">
+            <select value={eventType} onChange={(e) => setEventType(e.target.value as 'Gara' | 'Allenamento')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+              <option value="Gara">Gara</option>
+              <option value="Allenamento">Allenamento</option>
+            </select>
+            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome</label>
+          <div className="flex gap-2">
+            <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+            {!isTraining && (
+              <button 
+                type="button"
+                onClick={() => setShowEventSelector(true)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 rounded-xl text-[10px] font-black uppercase transition-all border border-slate-700 whitespace-nowrap flex items-center gap-2"
+                title="Carica gara da Eventi"
+              >
+                <i className="fas fa-cloud-download-alt"></i>
+                <span className="hidden sm:inline">Carica da Eventi</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showEventSelector && createPortal(
+          <div 
+            className="fixed inset-0 z-[1300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+            onClick={() => setShowEventSelector(false)}
+          >
+            <div 
+              className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 cursor-default"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Seleziona Evento</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Scegli una gara dall'elenco eventi</p>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setShowEventSelector(false)}
+                  className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white transition-all"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              
+              <div className="p-4 border-b border-slate-800">
+                <div className="relative">
+                  <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                  <input 
+                    type="text" 
+                    placeholder="Cerca per nome, luogo o disciplina..." 
+                    value={eventSearch}
+                    onChange={e => setEventSearch(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                {filteredEvents.length === 0 ? (
+                  <div className="text-center py-12">
+                    <i className="fas fa-calendar-times text-slate-800 text-4xl mb-4"></i>
+                    <p className="text-slate-500 font-bold uppercase text-xs">Nessun evento trovato</p>
+                  </div>
+                ) : (
+                  filteredEvents.map(event => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => handleSelectEvent(event)}
+                      className="w-full text-left p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-orange-500/50 hover:bg-slate-900 transition-all group"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[8px] font-black bg-orange-600/20 text-orange-500 px-1.5 py-0.5 rounded uppercase">
+                              {event.type}
+                            </span>
+                            <span className="text-[8px] font-black bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">
+                              {event.discipline}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-bold ml-auto">
+                              {new Date(event.start_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-black text-white group-hover:text-orange-500 transition-colors truncate">{event.name}</h4>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium mt-1">
+                            <i className="fas fa-map-marker-alt text-orange-600"></i>
+                            {event.location}
+                          </div>
+                        </div>
+                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-slate-600 group-hover:text-orange-500 group-hover:bg-orange-500/10 transition-all">
+                          <i className="fas fa-chevron-right text-xs"></i>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {!isTraining && (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia</label>
+            <div className="relative">
+              <select value={level} onChange={(e) => {
+                const newLevel = e.target.value as CompetitionLevel;
+                setLevel(newLevel);
+                if (newLevel === CompetitionLevel.INTERNATIONAL) {
+                  setTotalTargets(200);
+                  if (date) {
+                    const d = new Date(date);
+                    d.setDate(d.getDate() + 3);
+                    setEndDate(d.toISOString().split('T')[0]);
+                  }
+                }
+              }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                <option value={CompetitionLevel.REGIONAL}>Regionale</option>
+                <option value={CompetitionLevel.NATIONAL}>Nazionale</option>
+                <option value={CompetitionLevel.INTERNATIONAL}>Internazionale</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+          <div className="relative">
+            <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+              {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV</label>
+          <SocietySearch 
+            value={location}
+            onChange={setLocation}
+            societies={societies}
+            placeholder="Seleziona Campo / TAV..."
+            required
+          />
+          <p className="text-[10px] text-slate-500 italic">Se il campo non è in elenco, chiedi all'amministratore di aggiungerlo.</p>
+        </div>
+
+        {isTraining ? (
+          <div className="md:col-span-2 space-y-4 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Numero Serie</label>
+              <div className="flex flex-col items-end">
+                <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded">
+                  TOTALE: {totalTargets} PIATTELLI
+                </span>
+                <span className="text-[9px] text-slate-500 font-bold mt-1 uppercase">
+                  COLPITI: {scores.reduce((a, b) => a + b, 0)} / {totalTargets}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={() => {
+                if (scores.length > 1) {
+                  setScores(scores.slice(0, -1));
+                  setDetailedScores(detailedScores.slice(0, -1));
+                }
+              }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">-</button>
+              <div className="flex-[2] text-center text-3xl font-black text-white">{scores.length}</div>
+              <button type="button" onClick={() => {
+                if (scores.length < 12) {
+                  setScores([...scores, 0]);
+                  setDetailedScores([...detailedScores, []]);
+                }
+              }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">+</button>
+            </div>
+          </div>
+        ) : (
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Gara</label>
+            <div className="flex flex-wrap gap-4">
+              {(discipline === Discipline.EL ? [12, 24, 36] : 
+                discipline === Discipline.DT ? [150] :
+                discipline === Discipline.SK_ISSF ? [75, 125] :
+                [25, 50, 75, 100, 200]).map(val => (
+                <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 min-w-[60px] py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>{val}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{isMultiDayEligible ? 'Data Inizio' : 'Data'}</label>
+            <input type="date" value={date} onChange={(e) => {
+              const newDate = e.target.value;
+              setDate(newDate);
+              if (level === CompetitionLevel.INTERNATIONAL && newDate) {
+                const d = new Date(newDate);
+                d.setDate(d.getDate() + 3);
+                setEndDate(d.toISOString().split('T')[0]);
+              }
+            }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+          </div>
+          {isMultiDayEligible && (
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center justify-between">
+            Meteo
+            <button 
+              type="button" 
+              onClick={fetchWeatherWithAI} 
+              disabled={isFetchingWeather}
+              className="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-orange-500 border border-orange-500/20 disabled:opacity-50"
+            >
+              {isFetchingWeather ? <i className="fas fa-spinner fa-spin mr-1"></i> : <i className="fas fa-magic mr-1"></i>} 
+              RECUPERA CON AI
+            </button>
+          </label>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative w-full sm:w-1/3">
+              <input 
+                type="number" 
+                placeholder="Temp °C" 
+                value={weatherTemp ?? ''} 
+                onChange={(e) => setWeatherTemp(e.target.value ? parseInt(e.target.value) : undefined)} 
+                onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+              />
+            </div>
+            <div className="w-full sm:w-2/3 grid grid-cols-3 gap-2">
+              {WEATHER_OPTIONS.map(opt => (
+                <button
+                  key={opt.icon}
+                  type="button"
+                  onClick={() => setWeatherIcon(opt.icon)}
+                  className={`w-full h-12 rounded-xl border-2 flex items-center justify-center transition-all ${weatherIcon === opt.icon ? 'bg-orange-600 border-orange-500 shadow-lg scale-105' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}
+                  title={opt.label}
+                >
+                  <i className={`fas ${opt.icon} ${weatherIcon === opt.icon ? 'text-white' : opt.color}`}></i>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800/50">
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block mb-2">Strozzatura Utilizzata</label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Prima Canna</label>
+            <div className="relative">
+              <select 
+                value={chokes.firstBarrel} 
+                onChange={(e) => setChokes(prev => ({ ...prev, firstBarrel: e.target.value }))}
+                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white focus:border-orange-600 outline-none transition-all appearance-none text-sm"
+              >
+                {['1*', '2*', '3*', '4*', '5*'].map(val => <option key={val} value={val}>{val}</option>)}
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seconda Canna</label>
+            <div className="relative">
+              <select 
+                value={chokes.secondBarrel} 
+                onChange={(e) => setChokes(prev => ({ ...prev, secondBarrel: e.target.value }))}
+                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-2 text-white focus:border-orange-600 outline-none transition-all appearance-none text-sm"
+              >
+                {['1*', '2*', '3*', '4*', '5*'].map(val => <option key={val} value={val}>{val}</option>)}
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-slate-800/50">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Cartucce Utilizzate</label>
+            {usedCartridges.length > 0 && <span className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20 uppercase">{usedCartridges.length} Selezionate</span>}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 min-w-[140px] sm:min-w-[200px]">
+              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-[10px]"></i>
+              <input 
+                type="text" 
+                placeholder="Cerca cartuccia..." 
+                value={cartridgeSearch}
+                onChange={(e) => setCartridgeSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-[11px] text-white placeholder:text-slate-600 focus:border-orange-500/50 outline-none transition-all"
+              />
+            </div>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+              <button 
+                type="button"
+                onClick={() => setCartridgeSource('warehouse')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'warehouse' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Magazzino
+              </button>
+              <button 
+                type="button"
+                onClick={() => setCartridgeSource('types')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${cartridgeSource === 'types' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Tutti i Tipi
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {cartridgeSource === 'warehouse' ? (
+          groupedCartridges.filter(g => 
+            g.producer.toLowerCase().includes(cartridgeSearch.toLowerCase()) || 
+            g.model.toLowerCase().includes(cartridgeSearch.toLowerCase())
+          ).length === 0 ? (
+            <div className="bg-slate-900/50 p-6 rounded-xl border border-dashed border-slate-800 text-center">
+              <i className="fas fa-box-open text-slate-700 text-2xl mb-2"></i>
+              <p className="text-xs text-slate-500 italic">Nessuna cartuccia trovata.</p>
+              {cartridgeSearch === '' && (
+                <button 
+                  type="button" 
+                  onClick={onNavigateToWarehouse}
+                  className="mt-3 text-[10px] font-black text-orange-500 hover:text-orange-400 uppercase tracking-widest"
+                >
+                  Vai al Magazzino per caricare <i className="fas fa-arrow-right ml-1"></i>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              {groupedCartridges
+                .filter(g => 
+                  g.producer.toLowerCase().includes(cartridgeSearch.toLowerCase()) || 
+                  g.model.toLowerCase().includes(cartridgeSearch.toLowerCase())
+                )
+                .map(group => {
+                const selected = usedCartridges.some(uc => uc.producer === group.producer && uc.model === group.model && uc.leadNumber === group.leadNumber && uc.grams === group.grams);
+                return (
+                  <button key={`${group.producer}-${group.model}-${group.leadNumber}-${group.grams}`} type="button" onClick={() => toggleCartridge(group)} className={`px-2 py-2 rounded-xl text-left transition-all border-2 flex items-center gap-2 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
+                      {group.imageUrl ? <img src={group.imageUrl} alt={group.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[9px]">{group.leadNumber}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[10px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{group.producer} {group.model}</p>
+                      <p className={`text-[8px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>{group.leadNumber} • {group.grams}g • {group.totalQuantity} Pz</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              {cartridgeTypes
+                .filter(t => 
+                  t.producer.toLowerCase().includes(cartridgeSearch.toLowerCase()) || 
+                  t.model.toLowerCase().includes(cartridgeSearch.toLowerCase())
+                )
+                .map(type => {
+                const selected = usedCartridges.some(uc => uc.producer === type.producer && uc.model === type.model && uc.leadNumber === type.leadNumber && uc.grams === type.grams);
+                return (
+                  <button key={type.id} type="button" onClick={() => toggleCartridge(type)} className={`px-2 py-2 rounded-xl text-left transition-all border-2 flex items-center gap-2 ${selected ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700">
+                      {type.imageUrl ? <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[9px]">{type.leadNumber}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[10px] font-bold truncate ${selected ? 'text-white' : 'text-slate-200'}`}>{type.producer} {type.model}</p>
+                      <p className={`text-[8px] font-medium ${selected ? 'text-orange-200' : 'text-slate-500'}`}>{type.leadNumber} • {type.grams}g</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="bg-orange-900/30 border border-orange-900/50 p-4 rounded-xl text-center">
+              <p className="text-[10px] text-orange-500 font-medium italic">Non trovi la tua cartuccia?</p>
+              <button 
+                type="button" 
+                onClick={onNavigateToWarehouse}
+                className="mt-1 text-[10px] font-black text-orange-500 hover:text-orange-400 uppercase tracking-widest underline underline-offset-4"
+              >
+                Carica un nuovo tipo di cartuccia <i className="fas fa-external-link-alt ml-1"></i>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {isTraining ? (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo per Serie (€)</label>
+            <input type="number" step="0.01" value={costPerSeries} onChange={(e) => setCostPerSeries(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <p className="text-[10px] text-slate-400 font-medium mt-1">Totale: € {(costPerSeries * scores.length).toFixed(2)}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
+            <input type="number" step="0.01" value={cost} onChange={(e) => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+          </div>
+        )}
+        {!isTraining && (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Vincita (€)</label>
+            <input type="number" step="0.01" value={win} onChange={(e) => setWin(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+          </div>
+        )}
+        {!isTraining && date <= new Date().toISOString().split('T')[0] && (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Posizionamento</label>
+            <input type="number" placeholder="Es: 1" value={position || ''} onChange={(e) => setPosition(e.target.value ? parseInt(e.target.value) : undefined)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Punteggi</label><div className="h-[1px] flex-1 bg-slate-800"></div></div>
+        <div className="flex flex-col gap-4">
+          {scores.map((score, idx) => {
+            const seriesLayout = getSeriesLayout(discipline);
+            const targetsPerSeries = seriesLayout.layout.reduce((a, b) => a + b, 0);
+            const seriesPerDay = Math.max(1, Math.floor(50 / targetsPerSeries));
+            const showDayLabel = level === CompetitionLevel.INTERNATIONAL && totalTargets >= 200 && idx % seriesPerDay === 0;
+            const dayNumber = Math.floor(idx / seriesPerDay) + 1;
+
+            return (
+            <React.Fragment key={idx}>
+              {showDayLabel && (
+                <div className="mt-2 mb-1 flex items-center gap-2">
+                  <div className="h-[1px] flex-1 bg-orange-900/30"></div>
+                  <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Giorno {dayNumber}</span>
+                  <div className="h-[1px] flex-1 bg-orange-900/30"></div>
+                </div>
+              )}
+              <div className="bg-slate-950/30 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
+                  <div className="flex items-center gap-3">
+                  <input type="number" min="0" max="25" value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
+                  <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
+                    <i className="fas fa-list-ul"></i>
+                  </button>
+                </div>
+              </div>
+              
+              {expandedSeries === idx && detailedScores[idx] && (
+                <div className="pt-4 border-t border-slate-800/50 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex flex-col gap-3">
+                    {seriesLayout.layout.map((targetCount, pedanaIdx) => {
+                      const startIndex = seriesLayout.layout.slice(0, pedanaIdx).reduce((a, b) => a + b, 0);
+                      return (
+                      <div key={pedanaIdx} className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-slate-500 w-12 uppercase tracking-widest">{seriesLayout.label} {pedanaIdx + 1}</span>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from({ length: targetCount }).map((_, targetOffset) => {
+                            const targetIdx = startIndex + targetOffset;
+                            const isHit = detailedScores[idx][targetIdx];
+                            
+                            const getDotColors = (hit: boolean) => {
+                              const isElica = discipline === Discipline.EL;
+                              if (hit) {
+                                return isElica 
+                                  ? 'bg-white border-slate-200 shadow-[0_0_10px_rgba(255,255,255,0.3)]' 
+                                  : 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]';
+                              } else {
+                                return 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]';
+                              }
+                            };
+
+                            return (
+                              <button
+                                key={targetIdx}
+                                type="button"
+                                onClick={() => handleDetailedScoreChange(idx, targetIdx)}
+                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all active:scale-90 ${getDotColors(isHit)}`}
+                                title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )})}
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-slate-800/50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Foto Lavagna</span>
+                      {seriesImages[idx] && (
+                        <button type="button" onClick={() => removeImage(idx)} className="text-[10px] font-bold text-red-500 hover:text-red-400 uppercase tracking-widest flex items-center gap-1">
+                          <i className="fas fa-trash-alt"></i> Rimuovi
+                        </button>
+                      )}
+                    </div>
+                    
+                    {seriesImages[idx] ? (
+                      <div className="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-slate-900 aspect-video">
+                        <img src={seriesImages[idx]} alt={`Lavagna Serie ${idx + 1}`} className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-700 rounded-xl cursor-pointer hover:bg-slate-800/50 hover:border-orange-500/50 transition-all group">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <i className="fas fa-camera text-slate-500 group-hover:text-orange-500 text-xl mb-2 transition-colors"></i>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-slate-400">Scatta o Carica Foto</p>
+                        </div>
+                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleImageUpload(idx, e)} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            </React.Fragment>
+          )})}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Preferenza Classifica</label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setRankingPreference('categoria')}
+            className={`py-3 px-4 rounded-xl text-xs font-bold transition-all border ${rankingPreference === 'categoria' ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+          >
+            PER CATEGORIA
+          </button>
+          <button
+            type="button"
+            onClick={() => setRankingPreference('qualifica')}
+            className={`py-3 px-4 rounded-xl text-xs font-bold transition-all border ${rankingPreference === 'qualifica' ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+          >
+            PER QUALIFICA
+          </button>
+        </div>
+      </div>
+
+      {(currentUser?.role === 'admin' || currentUser?.role === 'society') && !isTraining && (
+        <div className="bg-orange-900/10 border border-orange-900/20 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] font-black text-orange-500 uppercase tracking-widest ml-1">Override Società (Classifica Forzata)</label>
+            <i className="fas fa-shield-alt text-orange-500/50 text-xs"></i>
+          </div>
+          <p className="text-[9px] text-slate-500 font-medium italic mb-2">Forza il tiratore in una specifica classifica, ignorando la sua preferenza.</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setRankingPreferenceOverride(null)}
+              className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border ${rankingPreferenceOverride === null ? 'bg-slate-700 border-slate-600 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+            >
+              NESSUNO
+            </button>
+            <button
+              type="button"
+              onClick={() => setRankingPreferenceOverride('categoria')}
+              className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border ${rankingPreferenceOverride === 'categoria' ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+            >
+              CATEGORIA
+            </button>
+            <button
+              type="button"
+              onClick={() => setRankingPreferenceOverride('qualifica')}
+              className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border ${rankingPreferenceOverride === 'qualifica' ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+            >
+              QUALIFICA
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none h-24 resize-none" />
+      </div>
+
+      </form>
+    </div>
+    <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
+      <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
+        Annulla
+      </button>
+      <button type="submit" form="competition-form" className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isTraining ? 'bg-blue-600 hover:bg-blue-500' : 'bg-orange-600 hover:bg-orange-500'} text-white shadow-lg shadow-orange-600/20`}>
+        {initialData ? 'Aggiorna' : 'Salva'}
+      </button>
+    </div>
+    </div>
+    </div>,
+    document.body
+  );
+};
+
+export default CompetitionForm;

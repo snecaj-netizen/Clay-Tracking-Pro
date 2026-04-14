@@ -17,19 +17,9 @@ import cron from 'node-cron';
 // import { createServer as createViteServer } from 'vite'; // Removed top-level import
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
-// 1. Logging Middleware (Must be early)
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
-  });
-  next();
-});
-
-// 2. IMMEDIATE HEALTH CHECK (Must be first)
+// 1. IMMEDIATE HEALTH CHECK (Must be first)
 app.get('/ping', (req, res) => res.send('pong'));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
@@ -38,6 +28,10 @@ app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Initialize PostgreSQL Database (Supabase)
 const pool = new Pool({
@@ -704,7 +698,7 @@ const initDB = async () => {
   }
 };
 
-function setupCronJobs() {
+initDB().then(() => {
   // Setup cron job for upcoming events (2 days before)
   cron.schedule('0 10 * * *', async () => {
     try {
@@ -811,7 +805,7 @@ function setupCronJobs() {
       console.error("Error in cron job for competition reminders:", err);
     }
   });
-}
+});
 
 const activeUsers = new Map<number, number>();
 
@@ -4787,53 +4781,15 @@ function serveStatic(app: any) {
 }
 
 async function startApp() {
-  console.log('Starting application...');
-  console.log('Environment:', process.env.NODE_ENV || 'development');
-  console.log('Port:', PORT);
-  
-  // Process-level error handling
-  process.on('uncaughtException', (err) => {
-    console.error('CRITICAL: Uncaught Exception:', err);
-  });
-
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
-  });
-
-  // Initialize Database first
-  try {
-    if (!process.env.DATABASE_URL) {
-      console.error('CRITICAL: DATABASE_URL is missing!');
-    }
-    await initDB();
-    console.log('Database initialized successfully');
-    setupCronJobs();
-    console.log('Cron jobs scheduled');
-  } catch (err) {
-    console.error('Database initialization failed:', err);
-  }
-
   // API routes are already defined above
   
   // Setup Vite or Static serving
   await setupVite(app);
 
-  // Global Error Handler
-  app.use((err: any, req: any, res: any, next: any) => {
-    console.error('Unhandled error:', err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error', details: err.message });
-    }
-  });
-
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
-startApp().catch(err => {
-  console.error('Failed to start application:', err);
-  process.exit(1);
-});
+startApp();
 
