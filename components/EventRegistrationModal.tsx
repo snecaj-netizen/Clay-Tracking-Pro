@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
 import { User, SocietyEvent, EventRegistration } from '../types';
 import ShooterSearch from './ShooterSearch';
+import { useUI } from '../contexts/UIContext';
 
 interface EventRegistrationModalProps {
   event: SocietyEvent;
@@ -32,6 +33,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   onSuccess,
   initialData
 }) => {
+  const { triggerConfirm, triggerToast } = useUI();
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
     user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
@@ -48,6 +50,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccessDetail, setShowSuccessDetail] = useState(false);
   const [shooters, setShooters] = useState<any[]>([]);
   const [selectedShooter, setSelectedShooter] = useState<any>(
     initialData ? { 
@@ -96,38 +99,111 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
+    
+    if (!formData.user_id) return;
 
-    try {
-      const url = initialData 
-        ? `/api/events/${event.id}/registrations/${initialData.id}`
-        : `/api/events/${event.id}/register`;
-      
-      const method = initialData ? 'PUT' : 'POST';
+    triggerConfirm(
+      initialData ? 'Conferma Modifica' : 'Conferma Iscrizione',
+      `Sei sicuro di voler ${initialData ? 'modificare l\'iscrizione' : 'iscrivere'} ${selectedShooter?.name} ${selectedShooter?.surname} alla gara "${event.name}"?`,
+      async () => {
+        setIsSubmitting(true);
+        setError(null);
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+        try {
+          const url = initialData 
+            ? `/api/events/${event.id}/registrations/${initialData.id}`
+            : `/api/events/${event.id}/register`;
+          
+          const method = initialData ? 'PUT' : 'POST';
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Errore durante l\'operazione');
-      }
+          const response = await fetch(url, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            },
+            body: JSON.stringify(formData)
+          });
 
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Errore durante l\'operazione');
+          }
+
+          if (!initialData) {
+            setShowSuccessDetail(true);
+          } else {
+            triggerToast?.('Iscrizione aggiornata con successo!', 'success');
+            onSuccess();
+            onClose();
+          }
+        } catch (err: any) {
+          setError(err.message);
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+      initialData ? 'Salva' : 'Iscriviti',
+      'primary'
+    );
   };
+
+  if (showSuccessDetail) {
+    return createPortal(
+      <div className="fixed inset-0 z-[1300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-800 p-8 text-center"
+        >
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+            >
+              <Save className="w-10 h-10 text-green-500" />
+            </motion.div>
+          </div>
+          
+          <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Iscrizione Confermata!</h3>
+          <p className="text-slate-400 text-sm mb-8">L'iscrizione alla gara è stata registrata con successo.</p>
+          
+          <div className="bg-slate-950/50 rounded-2xl border border-slate-800 p-6 mb-8 text-left space-y-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Gara</label>
+              <p className="text-white font-bold">{event.name}</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Tiratore</label>
+              <p className="text-white font-bold">{selectedShooter?.name} {selectedShooter?.surname}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Giorno</label>
+                <p className="text-white font-bold">{formData.registration_day}</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Sessione</label>
+                <p className="text-white font-bold">{formData.shooting_session}</p>
+              </div>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => {
+              onSuccess();
+              onClose();
+            }}
+            className="w-full py-4 rounded-2xl bg-orange-600 text-white font-black uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
+          >
+            Chiudi e Continua
+          </button>
+        </motion.div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">

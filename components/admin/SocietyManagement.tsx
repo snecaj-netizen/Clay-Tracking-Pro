@@ -445,14 +445,6 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                   </label>
                 </div>
               )}
-              {currentUser?.role === 'admin' && !showSocietyForm && (
-                <button 
-                  onClick={() => { resetSocietyForm(); setEditingSociety(null); setShowSocietyForm(true); }}
-                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 flex items-center gap-2 shrink-0"
-                >
-                  <i className="fas fa-plus"></i> Nuova
-                </button>
-              )}
             </div>
           </div>
 

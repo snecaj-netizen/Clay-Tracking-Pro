@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { SocietyEvent } from '../types';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -88,10 +89,10 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
     return { isAttesa: false, pedanaNum, startNum };
   };
 
-  return (
+  return createPortal(
     <div 
       onClick={onClose}
-      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto cursor-pointer"
+      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto cursor-pointer fitav-print-overlay"
     >
       <div ref={containerRef} className="flex flex-col gap-8 w-full max-w-[297mm] print:gap-0 print:max-w-none">
         {/* Controls (Hidden on Print) */}
@@ -135,16 +136,9 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
                     crossOrigin="anonymous"
                   />
                 ) : (
-                  <img 
-                    src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
-                    alt="FITAV Logo" 
-                    className="w-24 h-24 object-contain"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      console.error("Logo FITAV failed to load", e);
-                      (e.target as HTMLImageElement).src = "https://picsum.photos/seed/fitav/200/200";
-                    }}
-                  />
+                  <div className="w-24 h-24 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                    <i className="fas fa-building text-3xl text-slate-200"></i>
+                  </div>
                 )}
               </div>
 
@@ -185,16 +179,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
               </div>
 
               <div className="w-32 flex items-center justify-end">
-                <img 
-                  src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
-                  alt="FITAV Logo" 
-                  className="w-24 h-24 object-contain"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    console.error("Logo FITAV failed to load", e);
-                    (e.target as HTMLImageElement).src = "https://picsum.photos/seed/fitav/200/200";
-                  }}
-                />
+                {/* Logo rimosso su richiesta */}
               </div>
             </div>
 
@@ -231,18 +216,6 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
 
             {/* Scoring Table */}
             <div className="overflow-x-auto relative">
-              {/* Watermark */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] grayscale">
-                <img 
-                  src="https://www.fitav.it/wp-content/uploads/2021/03/logo-fitav.png" 
-                  alt="" 
-                  className="w-[400px] h-[400px] object-contain"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
               <table className="w-full border-collapse border-[2px] border-black text-[9px] relative z-10">
                 <thead>
                   <tr className="h-10">
@@ -333,8 +306,15 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
               background: white !important;
               -webkit-print-color-adjust: exact;
             }
-            .fixed {
+            /* Nascondi tutto il resto durante la stampa */
+            body > *:not(.fitav-print-overlay) {
+              display: none !important;
+            }
+            .fitav-print-overlay {
+              display: block !important;
               position: static !important;
+              padding: 0 !important;
+              background: white !important;
             }
             .shadow-2xl {
               box-shadow: none !important;
@@ -349,7 +329,8 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
           }
         `}} />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
