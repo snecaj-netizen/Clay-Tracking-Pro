@@ -20,6 +20,16 @@ const ExpandingFAB: React.FC<ExpandingFABProps> = ({
   isClose = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   if (!show) return null;
 
@@ -31,8 +41,8 @@ const ExpandingFAB: React.FC<ExpandingFABProps> = ({
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ 
+      initial={isMobile ? false : { scale: 0, opacity: 0 }}
+      animate={isMobile ? { scale: 1, opacity: 1 } : { 
         scale: 1, 
         opacity: 1,
       }}
