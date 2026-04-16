@@ -30,6 +30,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [editingCart, setEditingCart] = useState<Cartridge | null>(null);
   const [editingType, setEditingType] = useState<CartridgeType | null>(null);
+  const [expandedProducers, setExpandedProducers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'types' | 'inventory' | 'history'>('types');
   const [direction, setDirection] = useState(0);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -291,6 +292,14 @@ const Warehouse: React.FC<WarehouseProps> = ({
     setEditingType(null);
   };
 
+  const toggleProducer = (producer: string) => {
+    setExpandedProducers(prev => 
+      prev.includes(producer) 
+        ? prev.filter(p => p !== producer) 
+        : [...prev, producer]
+    );
+  };
+
   const startEdit = (c: Cartridge) => {
     const type = c.typeId 
       ? cartridgeTypes.find(t => t.id === c.typeId)
@@ -549,55 +558,81 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <p className="text-sm font-medium">Nessun tipo di cartuccia configurato.</p>
                   </div>
                 ) : (
-                  typesByProducer.map(([producer, types]) => (
-                    <div key={producer} className="space-y-3">
-                      <div className="flex items-center gap-3 px-1">
-                        <div className="h-px flex-1 bg-slate-800/50"></div>
-                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{producer}</h3>
-                        <div className="h-px flex-1 bg-slate-800/50"></div>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3">
-                        {types.map(type => (
-                          <div key={type.id} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between group hover:border-slate-700 transition-all">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
-                                {type.imageUrl ? <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-white text-sm leading-tight uppercase">{type.producer}</h4>
-                                <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber} • {type.grams}g</p>
-                                {user?.role === 'admin' && type.createdByName && (
-                                  <p className="text-[9px] text-slate-500 font-medium mt-0.5 italic">
-                                    Caricata da: {type.createdByName} {type.createdBySurname}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-1">
-                              {(user?.role === 'admin' || type.createdBy === user?.id) && (
-                                <button 
-                                  onClick={() => startEditType(type)} 
-                                  className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
-                                  title="Modifica"
-                                >
-                                  <i className="fas fa-edit text-xs"></i>
-                                </button>
-                              )}
-                              {user?.role === 'admin' && (
-                                <button 
-                                  onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} 
-                                  className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
-                                  title="Elimina"
-                                >
-                                  <i className="fas fa-trash text-xs"></i>
-                                </button>
-                              )}
-                            </div>
+                  typesByProducer.map(([producer, types]) => {
+                    const isExpanded = expandedProducers.includes(producer);
+                    return (
+                      <div key={producer} className="space-y-3">
+                        <button 
+                          onClick={() => toggleProducer(producer)}
+                          className="w-full flex items-center justify-between px-2 group"
+                        >
+                          <h3 className="text-sm font-black text-white group-hover:text-orange-500 uppercase tracking-widest flex items-center gap-2 transition-colors">
+                            <span className={`w-1 h-4 rounded-full transition-colors ${isExpanded ? 'bg-orange-600' : 'bg-slate-700 group-hover:bg-orange-600/50'}`}></span>
+                            {producer}
+                          </h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-slate-500 group-hover:text-orange-500 uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 transition-colors">
+                              {types.length} TIPI
+                            </span>
+                            <i className={`fas fa-chevron-down text-[8px] text-slate-600 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></i>
                           </div>
-                        ))}
+                        </button>
+                        
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div 
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              className="overflow-hidden"
+                            >
+                              <div className="grid grid-cols-1 gap-3 pb-2">
+                                {types.map(type => (
+                                  <div key={type.id} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between group hover:border-slate-700 transition-all">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
+                                        {type.imageUrl ? <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
+                                      </div>
+                                      <div>
+                                        <h4 className="font-bold text-white text-sm leading-tight uppercase">{type.producer}</h4>
+                                        <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber} • {type.grams}g</p>
+                                        {user?.role === 'admin' && type.createdByName && (
+                                          <p className="text-[9px] text-slate-500 font-medium mt-0.5 italic">
+                                            Caricata da: {type.createdByName} {type.createdBySurname}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {(user?.role === 'admin' || type.createdBy === user?.id) && (
+                                        <button 
+                                          onClick={() => startEditType(type)} 
+                                          className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
+                                          title="Modifica"
+                                        >
+                                          <i className="fas fa-edit text-xs"></i>
+                                        </button>
+                                      )}
+                                      {user?.role === 'admin' && (
+                                        <button 
+                                          onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} 
+                                          className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
+                                          title="Elimina"
+                                        >
+                                          <i className="fas fa-trash text-xs"></i>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
@@ -610,100 +645,122 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <p className="text-sm font-medium">Magazzino vuoto.</p>
                   </div>
                 ) : (
-                  inventoryByProducer.map(([producer, items]) => (
-                    <div key={producer} className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
-                        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
-                          <span className="w-1 h-4 bg-orange-600 rounded-full"></span>
-                          {producer}
-                        </h3>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                          {items.reduce((acc, curr) => acc + curr.total, 0)} PZ
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4">
-                        {items.map(type => (
-                          <div key={type.typeId || `${type.producer}-${type.model}-${type.leadNumber}-${type.grams || 0}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
-                            <div className="w-full sm:w-28 h-24 sm:h-full bg-slate-800 relative overflow-hidden flex-shrink-0">
-                              {type.imageUrl ? (
-                                <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <i className="fas fa-box text-slate-700 text-3xl"></i>
-                                </div>
-                              )}
-                              <div className="absolute top-2 left-2 bg-orange-600 text-white w-8 h-8 rounded-lg flex flex-col items-center justify-center font-black text-[10px] shadow-lg">
-                                {type.leadNumber}
-                              </div>
-                            </div>
-                            
-                            <div className="flex-1 p-4 flex flex-col justify-between">
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-white font-black text-base sm:text-lg leading-tight uppercase truncate">{type.producer}</h4>
-                                  <p className="text-orange-500 font-bold text-xs uppercase tracking-wider truncate">{type.model} • {type.grams}g</p>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <div className="text-right relative">
-                                    {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? (
-                                      <div className="flex flex-col items-end">
-                                        <i className="fas fa-circle-notch fa-spin text-orange-500 text-xl mb-1"></i>
-                                        <span className="text-[7px] text-orange-500 font-black uppercase tracking-tighter">Aggiornamento...</span>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <span className="text-xl sm:text-2xl font-black text-white block leading-none">{type.total}</span>
-                                        <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pezzi</span>
-                                      </>
-                                    )}
-                                  </div>
-                                  <button 
-                                    onClick={() => handleSetExact(type)} 
-                                    disabled={updatingGroupId !== null}
-                                    className="bg-slate-800 hover:bg-orange-600 text-slate-400 hover:text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all border border-slate-700 active:scale-95 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Modifica giacenza esatta"
-                                  >
-                                    <i className="fas fa-pencil-alt text-xs"></i>
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-4 gap-1.5 mt-4 sm:mt-2">
-                                <button 
-                                  onClick={() => handleQuickAdjust(type, -250)} 
-                                  disabled={type.total < 250 || updatingGroupId !== null} 
-                                  className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
-                                >
-                                  {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '-250'}
-                                </button>
-                                <button 
-                                  onClick={() => handleQuickAdjust(type, -25)} 
-                                  disabled={type.total < 25 || updatingGroupId !== null} 
-                                  className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
-                                >
-                                  {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '-25'}
-                                </button>
-                                <button 
-                                  onClick={() => handleQuickAdjust(type, 25)} 
-                                  disabled={updatingGroupId !== null} 
-                                  className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
-                                >
-                                  {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '+25'}
-                                </button>
-                                <button 
-                                  onClick={() => handleQuickAdjust(type, 250)} 
-                                  disabled={updatingGroupId !== null} 
-                                  className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
-                                >
-                                  {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '+250'}
-                                </button>
-                              </div>
-                            </div>
+                  inventoryByProducer.map(([producer, items]) => {
+                    const isExpanded = expandedProducers.includes(producer);
+                    return (
+                      <div key={producer} className="space-y-4">
+                        <button 
+                          onClick={() => toggleProducer(producer)}
+                          className="w-full flex items-center justify-between px-2 group"
+                        >
+                          <h3 className="text-sm font-black text-white group-hover:text-orange-500 uppercase tracking-widest flex items-center gap-2 transition-colors">
+                            <span className={`w-1 h-4 rounded-full transition-colors ${isExpanded ? 'bg-orange-600' : 'bg-slate-700 group-hover:bg-orange-600/50'}`}></span>
+                            {producer}
+                          </h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-slate-500 group-hover:text-orange-500 uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 transition-colors">
+                              {items.reduce((acc, curr) => acc + curr.total, 0)} PZ
+                            </span>
+                            <i className={`fas fa-chevron-down text-[8px] text-slate-600 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></i>
                           </div>
-                        ))}
+                        </button>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              className="overflow-hidden"
+                            >
+                              <div className="grid grid-cols-1 gap-4 pb-2">
+                                {items.map(type => (
+                                  <div key={type.typeId || `${type.producer}-${type.model}-${type.leadNumber}-${type.grams || 0}`} className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col sm:flex-row sm:h-40">
+                                    <div className="w-full sm:w-28 h-24 sm:h-full bg-slate-800 relative overflow-hidden flex-shrink-0">
+                                      {type.imageUrl ? (
+                                        <img src={type.imageUrl} alt={type.model} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                          <i className="fas fa-box text-slate-700 text-3xl"></i>
+                                        </div>
+                                      )}
+                                      <div className="absolute top-2 left-2 bg-orange-600 text-white w-8 h-8 rounded-lg flex flex-col items-center justify-center font-black text-[10px] shadow-lg">
+                                        {type.leadNumber}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex-1 p-4 flex flex-col justify-between">
+                                      <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0 flex-1">
+                                          <h4 className="text-white font-black text-base sm:text-lg leading-tight uppercase truncate">{type.producer}</h4>
+                                          <p className="text-orange-500 font-bold text-xs uppercase tracking-wider truncate">{type.model} • {type.grams}g</p>
+                                        </div>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                          <div className="text-right relative">
+                                            {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? (
+                                              <div className="flex flex-col items-end">
+                                                <i className="fas fa-circle-notch fa-spin text-orange-500 text-xl mb-1"></i>
+                                                <span className="text-[7px] text-orange-500 font-black uppercase tracking-tighter">Aggiornamento...</span>
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <span className="text-xl sm:text-2xl font-black text-white block leading-none">{type.total}</span>
+                                                <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pezzi</span>
+                                              </>
+                                            )}
+                                          </div>
+                                          <button 
+                                            onClick={() => handleSetExact(type)} 
+                                            disabled={updatingGroupId !== null}
+                                            className="bg-slate-800 hover:bg-orange-600 text-slate-400 hover:text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all border border-slate-700 active:scale-95 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Modifica giacenza esatta"
+                                          >
+                                            <i className="fas fa-pencil-alt text-xs"></i>
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 gap-1.5 mt-4 sm:mt-2">
+                                        <button 
+                                          onClick={() => handleQuickAdjust(type, -250)} 
+                                          disabled={type.total < 250 || updatingGroupId !== null} 
+                                          className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                                        >
+                                          {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '-250'}
+                                        </button>
+                                        <button 
+                                          onClick={() => handleQuickAdjust(type, -25)} 
+                                          disabled={type.total < 25 || updatingGroupId !== null} 
+                                          className="bg-slate-950 hover:bg-red-900/20 text-red-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                                        >
+                                          {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '-25'}
+                                        </button>
+                                        <button 
+                                          onClick={() => handleQuickAdjust(type, 25)} 
+                                          disabled={updatingGroupId !== null} 
+                                          className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                                        >
+                                          {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '+25'}
+                                        </button>
+                                        <button 
+                                          onClick={() => handleQuickAdjust(type, 250)} 
+                                          disabled={updatingGroupId !== null} 
+                                          className="bg-slate-950 hover:bg-green-900/20 text-green-500 py-2 rounded-lg text-[9px] font-black border border-slate-800 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center"
+                                        >
+                                          {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? <i className="fas fa-circle-notch fa-spin"></i> : '+250'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
