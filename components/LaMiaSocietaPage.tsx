@@ -102,7 +102,9 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
           setStats({ users: data.users, teams: data.teams });
         }
       } catch (err) {
-        console.error('Error fetching society stats:', err);
+        if (err instanceof Error && err.message !== 'Failed to fetch') {
+          console.error('Error fetching society stats:', err);
+        }
       }
     };
 

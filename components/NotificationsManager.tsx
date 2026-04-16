@@ -71,7 +71,9 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
         setAdminCompactMode(data.admin_compact_mode);
       }
     } catch (err) {
-      console.error('Error fetching notification settings:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching notification settings:', err);
+      }
     }
   };
 
@@ -115,7 +117,9 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
         setUsers(data.filter((u: any) => u.role !== 'society'));
       }
     } catch (err) {
-      console.error('Error fetching users:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching users:', err);
+      }
     }
   };
 
@@ -129,7 +133,9 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
         setSocieties(data);
       }
     } catch (err) {
-      console.error('Error fetching societies:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching societies:', err);
+      }
     }
   };
 
@@ -183,7 +189,9 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
         setNotifications(data);
       }
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching notifications:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -200,7 +208,9 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
       }
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error marking notification as read:', err);
+      }
     }
   };
 

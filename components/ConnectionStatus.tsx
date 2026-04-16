@@ -66,7 +66,10 @@ export const ConnectionStatus: React.FC = () => {
 };
 
 export const handleNetworkError = (error: any, triggerToast?: (msg: string, type: any) => void) => {
-  console.error('Network Error:', error);
+  // Only log to console if it's not a common transient network error
+  if (error?.message !== 'Failed to fetch' && error?.name !== 'AbortError') {
+    console.error('Network Error:', error);
+  }
   
   let message = 'Si è verificato un errore di rete.';
   

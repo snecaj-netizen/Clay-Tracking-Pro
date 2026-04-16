@@ -88,7 +88,9 @@ const App: React.FC = () => {
         setAppSettings(data);
       }
     } catch (err) {
-      console.error('Error fetching settings:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching settings:', err);
+      }
     }
   }, []);
 

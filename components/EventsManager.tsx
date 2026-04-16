@@ -797,7 +797,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.error('Error fetching events:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching events:', err);
+      }
     } finally {
       setLoading(false);
     }

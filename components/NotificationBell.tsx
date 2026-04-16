@@ -73,7 +73,9 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
         setNotifications(data);
       }
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching notifications:', err);
+      }
     }
   };
 
@@ -139,7 +141,9 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
       }
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error marking notification as read:', err);
+      }
     }
   };
 
