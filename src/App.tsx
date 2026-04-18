@@ -251,10 +251,19 @@ const App: React.FC = () => {
     const controller = new AbortController();
     if (token) {
       fetchData(controller.signal);
+      
+      // Auto-refresh main data every 2 minutes for general sync
+      const intervalId = setInterval(() => {
+        fetchData();
+      }, 120000);
+
+      return () => {
+        controller.abort();
+        clearInterval(intervalId);
+      };
     } else {
       setLoading(false);
     }
-    return () => controller.abort();
   }, [token, fetchData]);
 
   useEffect(() => {

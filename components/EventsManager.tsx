@@ -808,7 +808,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   useEffect(() => {
     const controller = new AbortController();
     fetchEvents(controller.signal);
-    return () => controller.abort();
+
+    // Auto-refresh events list every 60 seconds to keep data updated
+    const intervalId = setInterval(() => {
+      fetchEvents();
+    }, 60000);
+
+    return () => {
+      controller.abort();
+      clearInterval(intervalId);
+    };
   }, [token]);
 
   useEffect(() => {

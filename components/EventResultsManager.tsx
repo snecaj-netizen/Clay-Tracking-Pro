@@ -83,33 +83,50 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     } else {
       setPrizeSettings([]);
     }
+
+    // Auto-update results every 20 seconds to keep the ranking fresh
+    const intervalId = setInterval(() => {
+      fetchResultsAndTeams(true);
+    }, 20000);
+
+    return () => clearInterval(intervalId);
   }, [event.id, event.prize_settings]);
 
-  useEffect(() => {
-    setHasSocietyRanking(event.has_society_ranking || false);
-    setHasTeamRanking(event.has_team_ranking || false);
-  }, [event.has_society_ranking, event.has_team_ranking]);
-
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchResultsAndTeams = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      // Fetch results
-      const resResults = await fetch(`/api/events/${event.id}/results`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const [resResults, resTeams] = await Promise.all([
+        fetch(`/api/events/${event.id}/results`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`/api/events/${event.id}/teams`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
       if (resResults.ok) {
         const data = await resResults.json();
         setResults(data);
       }
 
-      // Fetch teams
-      const resTeams = await fetch(`/api/events/${event.id}/teams`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
       if (resTeams.ok) {
         const data = await resTeams.json();
         setTeams(data);
       }
+    } catch (err) {
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error refreshing results/teams:', err);
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch results and teams first
+      await fetchResultsAndTeams(true);
 
       // Fetch users (shooters) regardless of readOnly to show names in team rankings
       // For society users, we pass all=true to allow them to see all shooters when managing their event results
@@ -120,14 +137,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       if (resUsers.ok) {
         const data = await resUsers.json();
         let filteredUsers = (data.users || []).filter((u: any) => u.role === 'user' || u.role === 'admin');
-        
-        // Removed the restriction that only showed shooters from the same society for "Gara di Società"
-        // because the society owner must be able to insert results for any participating shooter.
-        
         setUsers(filteredUsers);
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching data:', err);
+      }
     } finally {
       setLoading(false);
     }
