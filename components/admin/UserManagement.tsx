@@ -6,6 +6,7 @@ import KPIDashboard from './KPIDashboard';
 import { User, UserRole, DashboardStats } from '../../types';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface UserManagementProps {
   currentUser: any;
@@ -15,6 +16,7 @@ interface UserManagementProps {
 
 // User Search Input Component
 const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder: string }) => {
+  const { t } = useLanguage();
   return (
     <div className="relative flex-1">
       <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
@@ -31,7 +33,7 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
             onChange('');
           }}
           className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-orange-500 hover:bg-orange-500/10 rounded-full transition-all"
-          title="Resetta ricerca"
+          title={t('reset_search')}
         >
           <i className="fas fa-times-circle text-sm"></i>
         </button>
@@ -58,6 +60,8 @@ const UserRow = React.memo(({
   onEdit: (u: any) => void, 
   onDelete: (id: number) => void 
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
       <td className="py-3 px-4 text-sm text-white font-bold">
@@ -71,7 +75,7 @@ const UserRow = React.memo(({
                 ? 'border-2 border-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
                 : 'border border-slate-700'
             }`}
-            title={u.is_logged_in ? "Online" : undefined}
+            title={u.is_logged_in ? t('online') : undefined}
           >
             {u.avatar ? (
               <img src={u.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -96,11 +100,19 @@ const UserRow = React.memo(({
         ) : '-'}
       </td>
       <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.category || '-'} / {u.qualification || '-'}</td>
-      <td className="py-3 px-4 text-sm text-slate-400">{u.email}</td>
+      <td className="py-3 px-4 text-sm text-slate-400">
+        <div className="flex items-center gap-2">
+          <div 
+            className={`w-2 h-2 rounded-full shrink-0 ${u.email_verified ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} 
+            title={u.email_verified ? t('email_verified_label') : t('email_not_verified_label')}
+          />
+          <span className="truncate">{u.email}</span>
+        </div>
+      </td>
       {currentUser?.role !== 'society' && (
         <td className="py-3 px-4">
           <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${u.role === 'admin' ? 'bg-orange-500/20 text-orange-500' : u.role === 'society' ? 'bg-blue-500/20 text-blue-500' : 'bg-slate-800 text-slate-400'}`}>
-            {u.role === 'user' ? 'Tiratore' : u.role === 'society' ? 'Società' : 'Admin'}
+            {u.role === 'user' ? t('shooter') : u.role === 'society' ? t('club_label') : t('admin')}
           </span>
         </td>
       )}
@@ -114,7 +126,7 @@ const UserRow = React.memo(({
                 ? 'bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white' 
                 : 'bg-red-500/5 text-red-500/60 hover:bg-red-600 hover:text-white'
             }`}
-            title={u.status === 'suspended' ? "Riattiva" : "Sospendi"}
+            title={u.status === 'suspended' ? t('reactivate') : t('suspend')}
           >
             <i className={`fas ${u.status === 'suspended' ? 'fa-user-check' : 'fa-user-slash'} text-sm sm:text-xs`}></i>
           </button>
@@ -123,7 +135,7 @@ const UserRow = React.memo(({
           onClick={() => onEdit(u)} 
           disabled={currentUser?.role === 'society' && u.role === 'admin'}
           className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 disabled:opacity-30"
-          title={currentUser?.role === 'society' && u.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
+          title={currentUser?.role === 'society' && u.role === 'admin' ? t('cannot_edit_admin') : t('edit')}
         >
           <i className="fas fa-edit text-sm sm:text-xs"></i>
         </button>
@@ -131,7 +143,7 @@ const UserRow = React.memo(({
           onClick={() => onDelete(u.id)} 
           disabled={u.email === 'snecaj@gmail.com' || currentUser?.role === 'society'} 
           className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg shadow-red-600/20 disabled:opacity-30"
-          title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (u.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
+          title={currentUser?.role === 'society' ? t('only_admin_can_delete') : (u.email === 'snecaj@gmail.com' ? t('cannot_delete_main_account') : t('delete'))}
         >
           <i className="fas fa-trash-alt text-sm sm:text-xs"></i>
         </button>
@@ -144,6 +156,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   currentUser, token, onUserUpdate
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t, language } = useLanguage();
   const {
     users, totalUsers, loading, backgroundLoading, error, setError, fetchUsers, fetchSocieties, societies,
     userSearchTerm, setUserSearchTerm, usersPage, setUsersPage, usersPerPage, setUsersPerPage, filterRole, setFilterRole,
@@ -153,12 +166,16 @@ const UserManagement: React.FC<UserManagementProps> = ({
     role, setRole, category, setCategory, qualification, setQualification,
     society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar,
     birthDate, setBirthDate, phone, setPhone,
+    nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
     hideInternalFAB
   } = useAdmin();
 
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = filterRole !== '' || userSearchTerm !== '';
 
   useEffect(() => {
     if (currentUser?.role === 'society' && showUserForm && !editingUser) {
@@ -170,7 +187,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        setError('L\'immagine non può superare i 2MB');
+        setError(t('image_too_large_error'));
         return;
       }
       const reader = new FileReader();
@@ -188,14 +205,19 @@ const UserManagement: React.FC<UserManagementProps> = ({
     if (role === 'user') {
       const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
       if (shooterCode && !shooterCodeRegex.test(shooterCode)) {
-        setError('La Codice Tiratore deve avere il formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)');
+        setError(t('shooter_code_format_desc'));
         return;
       }
     }
 
     const endpoint = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
     const method = editingUser ? 'PUT' : 'POST';
-    const body = { name, surname, email, role, category, qualification, society, shooter_code: shooterCode, password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, phone: phone || undefined };
+    const body = { 
+      name, surname, email, role, category, qualification, society, shooter_code: shooterCode, 
+      password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, 
+      phone: phone || undefined,
+      nationality, international_id: internationalId, original_club: originalClub, is_international: isInternational, email_verified: isEmailVerified
+    };
 
     try {
       const res = await fetch(endpoint, {
@@ -207,11 +229,12 @@ const UserManagement: React.FC<UserManagementProps> = ({
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error('Errore durante il salvataggio');
+      if (!res.ok) throw new Error(t('save_error_msg'));
       
       setEditingUser(null);
       setShowUserForm(false);
       setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone('');
+      setNationality(''); setInternationalId(''); setOriginalClub(''); setIsInternational(false); setIsEmailVerified(false);
       fetchUsers();
       if (onUserUpdate && editingUser && editingUser.id === currentUser.id) {
         onUserUpdate({
@@ -226,11 +249,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   const handleToggleStatus = (id: number, currentStatus: string) => {
     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-    const actionText = newStatus === 'suspended' ? 'Sospendi' : 'Riattiva';
-    const confirmTitle = newStatus === 'suspended' ? 'Sospendi Utente' : 'Riattiva Utente';
+    const actionText = newStatus === 'suspended' ? t('suspend') : t('reactivate');
+    const confirmTitle = newStatus === 'suspended' ? t('suspend_user') : t('reactivate_user');
     const confirmMessage = newStatus === 'suspended' 
-      ? 'Sei sicuro di voler sospendere l\'accesso a questo utente? Riceverà una notifica al prossimo login.' 
-      : 'Sei sicuro di voler riattivare l\'accesso a questo utente?';
+      ? t('suspend_user_confirm') 
+      : t('reactivate_user_confirm');
 
     triggerConfirm(
       confirmTitle,
@@ -245,7 +268,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             },
             body: JSON.stringify({ status: newStatus })
           });
-          if (!res.ok) throw new Error('Errore durante il cambio di stato');
+          if (!res.ok) throw new Error(t('error_occurred'));
           fetchUsers();
         } catch (err: any) {
           setError(err.message);
@@ -258,8 +281,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   const handleDelete = (id: number) => {
     triggerConfirm(
-      'Elimina Utente',
-      'Sei sicuro di voler eliminare questo utente e tutti i suoi dati? L\'azione è irreversibile.',
+      t('delete_user_title'),
+      t('delete_user_confirm'),
       async () => {
         try {
           const userToDelete = users.find(u => u.id === id);
@@ -267,7 +290,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+          if (!res.ok) throw new Error(t('error_occurred'));
           fetchUsers();
           if (userToDelete?.role === 'society') {
             fetchSocieties();
@@ -276,7 +299,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
           setError(err.message);
         }
       },
-      'Elimina',
+      t('delete'),
       'danger'
     );
   };
@@ -294,6 +317,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
     setUserAvatar(user.avatar || '');
     setBirthDate(user.birth_date || '');
     setPhone(user.phone || '');
+    setNationality(user.nationality || '');
+    setInternationalId(user.international_id || '');
+    setOriginalClub(user.original_club || '');
+    setIsInternational(!!user.is_international);
+    setIsEmailVerified(!!user.email_verified);
     setPassword('');
     setShowUserForm(true);
   };
@@ -350,7 +378,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     ];
     const ws = XLSX.utils.aoa_to_sheet(template);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.utils.book_append_sheet(wb, ws, t('template_label'));
     XLSX.writeFile(wb, 'template_utenti.xlsx');
   };
 
@@ -370,7 +398,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Utenti');
+    XLSX.utils.book_append_sheet(wb, ws, t('users'));
     XLSX.writeFile(wb, 'utenti_clay_tracker.xlsx');
   };
 
@@ -401,8 +429,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
         }));
 
         triggerConfirm(
-          'Importa Utenti',
-          `Sei sicuro di voler importare ${importedUsers.length} utenti?`,
+          t('import'),
+          t('import_users_confirm').replace('{{count}}', String(importedUsers.length)),
           async () => {
             try {
               const res = await fetch('/api/admin/users/import', {
@@ -414,24 +442,30 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 body: JSON.stringify({ users: importedUsers })
               });
               
-              if (!res.ok) throw new Error('Errore durante l\'importazione');
+              if (!res.ok) throw new Error(t('import_error_msg'));
               
               const results = await res.json();
               fetchUsers();
               if (triggerToast) {
-                triggerToast(`Importazione completata! Creati: ${results.created}, Aggiornati: ${results.updated}, Errori: ${results.errors}`, results.errors > 0 ? 'error' : 'success');
+                triggerToast(
+                  t('import_completed')
+                    .replace('{{created}}', String(results.created))
+                    .replace('{{updated}}', String(results.updated))
+                    .replace('{{errors}}', String(results.errors)), 
+                  results.errors > 0 ? 'error' : 'success'
+                );
               }
             } catch (err) {
               console.error('Error importing users:', err);
-              setError('Errore durante l\'importazione.');
+              setError(t('import_error_msg'));
             }
           },
-          'Importa',
+          t('import'),
           'primary'
         );
       } catch (err) {
         console.error('Error reading Excel file:', err);
-        setError('Errore nella lettura del file Excel.');
+        setError(t('excel_read_error'));
       }
     };
     reader.readAsBinaryString(file);
@@ -445,11 +479,12 @@ const UserManagement: React.FC<UserManagementProps> = ({
     const currentYear = new Date().getFullYear();
     const age = currentYear - birthYear;
 
-    if (age <= 20) setter('Junior');
-    else if (age >= 56 && age <= 65) setter('Senior');
-    else if (age >= 66 && age <= 72) setter('Veterani');
-    else if (age > 72) setter('Master');
-    else if (['Junior', 'Senior', 'Veterani', 'Master'].includes(currentQual)) setter('');
+    if (age <= 20) setter('JUN');
+    else if (age >= 21 && age <= 55) setter('MAN');
+    else if (age >= 56 && age <= 65) setter('SEN');
+    else if (age >= 66 && age <= 72) setter('VET');
+    else if (age > 72) setter('MAS');
+    else if (['JUN', 'SEN', 'VET', 'MAS', 'MAN'].includes(currentQual)) setter('');
   };
 
   return (
@@ -457,11 +492,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div className="flex items-center justify-between sm:justify-start gap-4">
           <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-            <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? 'Gestione Tiratori' : (currentUser?.role === 'admin' ? 'Gestione Utente' : 'Gestione Utenti')}
+            <i className="fas fa-users-cog text-orange-500"></i> {currentUser?.role === 'society' ? t('shooter_management') : (currentUser?.role === 'admin' ? t('user_management_label') : t('users'))}
             {(loading || backgroundLoading) && <i className="fas fa-circle-notch fa-spin text-orange-500 text-xs ml-2"></i>}
           </h2>
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
-            {totalUsers} {totalUsers === 1 ? 'Utente' : 'Utenti'}
+            {totalUsers} {totalUsers === 1 ? t('user') : t('users')}
           </span>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:justify-end">
@@ -476,62 +511,63 @@ const UserManagement: React.FC<UserManagementProps> = ({
                         ? 'bg-orange-600/10 text-orange-500 border-orange-500/30' 
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border-slate-700'
                     }`}
-                    title={showDashboard ? "Nascondi Dashboard" : "Mostra Dashboard"}
+                    title={showDashboard ? t('close_label') : t('show_dashboard')}
                   >
                     <i className={`fas ${showDashboard ? 'fa-chart-line' : 'fa-chart-bar'} text-lg sm:text-xs`}></i>
-                    <span className="hidden sm:inline">Dashboard</span>
+                    <span className="hidden sm:inline">{t('dashboard_label')}</span>
                   </button>
                   <button 
                     onClick={handleDownloadTemplate}
                     className="w-11 h-11 sm:w-auto sm:px-3 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
-                    title="Scarica Modello"
+                    title={t('download_template')}
                   >
                     <i className="fas fa-file-download text-lg sm:text-xs"></i>
-                    <span className="hidden sm:inline">Modello</span>
+                    <span className="hidden sm:inline">{t('template_label')}</span>
                   </button>
                   <button 
                     onClick={handleExportUsersExcel}
                     className="w-11 h-11 sm:w-auto sm:px-3 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
-                    title="Esporta"
+                    title={t('export_excel')}
                   >
                     <i className="fas fa-file-excel text-lg sm:text-xs"></i>
-                    <span className="hidden sm:inline">Esporta</span>
+                    <span className="hidden sm:inline">{t('export')}</span>
                   </button>
                   <label className="w-11 h-11 sm:w-auto sm:px-3 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
                     <i className="fas fa-file-import text-lg sm:text-xs"></i>
-                    <span className="hidden sm:inline">Importa</span>
+                    <span className="hidden sm:inline">{t('import')}</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleImportUsersExcel} className="hidden" />
                   </label>
                 </>
               )}
             </div>
           )}
-          <div className="relative flex-1 flex items-center gap-3">
-            <UserSearchInput 
-              placeholder={currentUser?.role === 'society' ? "Cerca per nome, codice..." : "Cerca per nome, società, codice..."} 
-              value={userSearchTerm}
-              onChange={(val) => {
-                setUserSearchTerm(val);
-                setUsersPage(1);
-              }}
-            />
-            {currentUser?.role === 'admin' && (
-              <button
-                onClick={() => {
-                  setFilterRole(prev => prev === 'society' ? '' : 'society');
+          <div className="relative flex-1 flex items-center gap-2">
+            <div className="flex-1">
+              <UserSearchInput 
+                placeholder={t('search_user_placeholder')} 
+                value={userSearchTerm}
+                onChange={(val) => {
+                  setUserSearchTerm(val);
                   setUsersPage(1);
                 }}
-                className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border shrink-0 ${
-                  filterRole === 'society' 
-                    ? 'bg-orange-600 text-white border-orange-500' 
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                }`}
-                title="Filtra per Ruolo Società"
-              >
-                <i className="fas fa-building"></i>
-                <span className="hidden sm:inline">Società</span>
-              </button>
-            )}
+              />
+            </div>
+            
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`w-11 h-11 sm:w-auto sm:px-3 sm:py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center sm:gap-2 border shrink-0 ${
+                showFilters || hasActiveFilters 
+                  ? 'bg-orange-600/10 text-orange-500 border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.1)]' 
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              <i className={`fas fa-sliders-h ${showFilters ? 'rotate-180 text-orange-500' : ''} transition-transform`}></i>
+              <span className="hidden sm:inline">{t('filters_label')}</span>
+              {hasActiveFilters && !showFilters && (
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 ml-1"></span>
+              )}
+            </button>
+
             <div className="flex items-center gap-2 shrink-0">
               <select
                 value={usersPerPage}
@@ -541,14 +577,73 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 }}
                 className="bg-slate-900 border border-slate-800 rounded-lg py-1 px-2 text-[10px] font-black text-slate-400 uppercase focus:outline-none focus:border-orange-500/50"
               >
-                <option value={25}>25 / pag</option>
-                <option value={50}>50 / pag</option>
-                <option value={100}>100 / pag</option>
+                <option value={25}>{t('entries_per_page').replace('{{count}}', '25')}</option>
+                <option value={50}>{t('entries_per_page').replace('{{count}}', '50')}</option>
+                <option value={100}>{t('entries_per_page').replace('{{count}}', '100')}</option>
               </select>
             </div>
           </div>
         </div>
       </div>
+
+      {showFilters && !showUserForm && (
+        <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-user-tag text-orange-500"></i>
+                {t('filter_role')}
+              </label>
+              <select
+                value={filterRole}
+                onChange={(e) => {
+                  setFilterRole(e.target.value);
+                  setUsersPage(1);
+                }}
+                className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-xl px-4 py-3 focus:border-orange-500 transition-colors appearance-none cursor-pointer font-bold"
+              >
+                <option value="">{t('all_roles')}</option>
+                <option value="user">{t('shooter_role')}</option>
+                <option value="society">{t('society_role')}</option>
+                <option value="admin">{t('admin_role')}</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-search text-orange-500"></i>
+                {t('search_user_placeholder')}
+              </label>
+              <div className="relative">
+                <input 
+                  type="text"
+                  placeholder={t('search_user_placeholder')}
+                  value={userSearchTerm}
+                  onChange={(e) => {
+                    setUserSearchTerm(e.target.value);
+                    setUsersPage(1);
+                  }}
+                  className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-xl px-4 py-3 focus:border-orange-500 transition-colors font-bold outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-end justify-end pt-2">
+              <button 
+                onClick={() => {
+                  setUserSearchTerm('');
+                  setFilterRole('');
+                  setUsersPage(1);
+                }}
+                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
+              >
+                <i className="fas fa-undo-alt"></i>
+                {t('reset_filters')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-950/50 text-red-500 p-3 rounded-xl text-sm mb-4 border border-red-900/50 flex items-center justify-between gap-4">
@@ -576,7 +671,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
               <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                 <i className={`fas ${editingUser ? 'fa-user-edit' : 'fa-user-plus'} text-orange-500`}></i> 
-                {editingUser ? (currentUser?.role === 'society' ? 'Modifica Tiratore' : 'Modifica Utente') : (currentUser?.role === 'society' ? 'Nuovo Tiratore' : 'Nuovo Utente')}
+                {editingUser 
+                  ? (currentUser?.role === 'society' ? t('edit_shooter_title') : t('edit_user_title')) 
+                  : (currentUser?.role === 'society' ? t('new_shooter_title') : t('new_user_title'))}
               </h3>
               <button onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-lg border border-slate-700">
                 <i className="fas fa-times"></i>
@@ -600,7 +697,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 <input type="file" accept="image/*" className="hidden" onChange={handleUserAvatarChange} />
               </label>
             </div>
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Foto Profilo (Max 2MB)</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('profile_photo')} (Max 2MB)</span>
           </div>
 
           <div className="space-y-4 mb-6">
@@ -608,32 +705,32 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <div className={`grid grid-cols-1 ${currentUser?.role !== 'society' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
               {currentUser?.role !== 'society' && (
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ruolo</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('role')}</label>
                   <select 
                     value={role} 
                     onChange={e => setRole(e.target.value)} 
                     disabled={currentUser?.role === 'society'}
                     className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <option value="user">Tiratore</option>
-                    <option value="society">Società</option>
-                    <option value="admin">Amministratore</option>
+                    <option value="user">{t('shooter')}</option>
+                    <option value="society">{t('club_label')}</option>
+                    <option value="admin">{t('admin')}</option>
                   </select>
                 </div>
               )}
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('club')}</label>
                 <SocietySearch 
                   value={society}
                   onChange={setSociety}
                   societies={societies}
-                  placeholder="Seleziona..."
+                  placeholder={t('select_dot')}
                   disabled={currentUser?.role === 'society'}
                 />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                  {role === 'society' ? 'Codice Società (Obbligatorio)' : 'Codice Tiratore'}
+                  {role === 'society' ? t('club_code_required') : t('shooter_code')}
                 </label>
                 <input 
                   type="text" 
@@ -642,8 +739,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   onChange={e => setShooterCode(role === 'user' ? e.target.value.toUpperCase() : e.target.value)} 
                   disabled={currentUser?.role === 'society' && !!editingUser}
                   pattern={role === 'user' ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
-                  title={role === 'user' ? "Formato richiesto: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es. ABC12DE34)" : undefined}
-                  placeholder={role === 'user' ? "es. ABC12DE34" : ""}
+                  title={role === 'user' ? t('shooter_code_format_title') : undefined}
+                  placeholder={role === 'user' ? t('shooter_code_placeholder') : ""}
                   className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''} ${role === 'user' ? 'uppercase' : ''}`} 
                 />
               </div>
@@ -652,7 +749,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             {/* Row 2: Nome, Cognome */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('name')}</label>
                 <input 
                   type="text" 
                   required 
@@ -663,7 +760,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cognome</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('surname')}</label>
                 <input 
                   type="text" 
                   required 
@@ -678,7 +775,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             {/* Row 3: Data di Nascita, Telefono */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data di Nascita</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('birth_date')}</label>
                 <input 
                   type="date" 
                   value={birthDate} 
@@ -691,7 +788,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('phone')}</label>
                 <input 
                   type="tel" 
                   value={phone} 
@@ -706,9 +803,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
             {role !== 'society' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category')}</label>
                   <select required={!qualification} value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                    <option value="">Seleziona...</option>
+                    <option value="">{t('select_dot')}</option>
                     <option value="Eccellenza">Eccellenza</option>
                     <option value="1*">1*</option>
                     <option value="2*">2*</option>
@@ -716,15 +813,84 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('qualification')}</label>
                   <select required={!category} value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                    <option value="">Seleziona...</option>
-                    <option value="Veterani">Veterani</option>
-                    <option value="Master">Master</option>
-                    <option value="Senior">Senior</option>
-                    <option value="Lady">Lady</option>
-                    <option value="Junior">Junior</option>
+                    <option value="">{t('select_dot')}</option>
+                    <option value="MAN">MAN (Man)</option>
+                    <option value="LAD">LAD (Lady)</option>
+                    <option value="JUN">JUN (Junior)</option>
+                    <option value="SEN">SEN (Senior)</option>
+                    <option value="VET">VET (Veteran)</option>
+                    <option value="MAS">MAS (Master)</option>
                   </select>
+                </div>
+              </div>
+            )}
+
+            {/* Row 4.5: International Toggle & Status (Admin Only) */}
+            {currentUser?.role === 'admin' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('international_shooter_label')}</span>
+                    <span className="text-[9px] text-slate-500 font-medium leading-none">{t('international_shooter_desc')}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsInternational(!isInternational)}
+                    className={`w-10 h-5 rounded-full transition-all relative ${isInternational ? 'bg-orange-600' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isInternational ? 'right-1' : 'left-1'}`}></div>
+                  </button>
+                </div>
+                <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('verified_email_label_desc')}</span>
+                    <span className="text-[9px] text-slate-500 font-medium leading-none">{t('verified_email_status_desc')}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEmailVerified(!isEmailVerified)}
+                    className={`w-10 h-5 rounded-full transition-all relative ${isEmailVerified ? 'bg-emerald-600' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isEmailVerified ? 'right-1' : 'left-1'}`}></div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Row 4.6: International Fields (Conditional) */}
+            {isInternational && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('nationality')}</label>
+                  <input 
+                    type="text" 
+                    value={nationality} 
+                    onChange={e => setNationality(e.target.value)} 
+                    placeholder={t('nationality_placeholder')}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('international_id_label')}</label>
+                  <input 
+                    type="text" 
+                    value={internationalId} 
+                    onChange={e => setInternationalId(e.target.value)} 
+                    placeholder={t('international_id_placeholder')}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('original_club_label')}</label>
+                  <input 
+                    type="text" 
+                    value={originalClub} 
+                    onChange={e => setOriginalClub(e.target.value)} 
+                    placeholder={t('original_club_placeholder')}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                  />
                 </div>
               </div>
             )}
@@ -732,11 +898,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
             {/* Row 5: Email, Password */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('email')}</label>
                 <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password {editingUser && '(lascia vuoto per non cambiare)'}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('password_label')} {editingUser && t('password_change_notice')}</label>
                 <div className="relative">
                   <input type={showPassword ? "text" : "password"} required={!editingUser} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 pr-10 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                   <button 
@@ -755,10 +921,10 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
           <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
             <button type="button" onClick={() => { setShowUserForm(false); setEditingUser(null); setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone(''); }} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
-              Annulla
+              {t('cancel')}
             </button>
             <button type="submit" form="admin-user-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-              {editingUser ? 'Salva' : (currentUser?.role === 'society' ? 'Crea' : 'Crea')}
+              {editingUser ? t('save') : t('create')}
             </button>
           </div>
         </div>
@@ -771,26 +937,26 @@ const UserManagement: React.FC<UserManagementProps> = ({
           <thead>
             <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('name')}>
-                Nome {userSortConfig?.key === 'name' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                {t('name')} {userSortConfig?.key === 'name' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
               </th>
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('shooter_code')}>
-                Codice Tiratore {userSortConfig?.key === 'shooter_code' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                {t('shooter_code')} {userSortConfig?.key === 'shooter_code' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
               </th>
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('society')}>
-                Società {userSortConfig?.key === 'society' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                {t('society_label')} {userSortConfig?.key === 'society' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
               </th>
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('category')}>
-                Cat./Qual. {userSortConfig?.key === 'category' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                {t('cat_qual_short')} {userSortConfig?.key === 'category' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
               </th>
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('email')}>
-                Email {userSortConfig?.key === 'email' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                {t('email')} {userSortConfig?.key === 'email' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
               </th>
               {currentUser?.role !== 'society' && (
                 <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('role')}>
-                  Ruolo {userSortConfig?.key === 'role' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
+                  {t('role')} {userSortConfig?.key === 'role' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
                 </th>
               )}
-              <th className="py-3 px-4 text-right">Azioni</th>
+              <th className="py-3 px-4 text-right">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -809,7 +975,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             {sortedUsers.length === 0 && (
               <tr>
                 <td colSpan={currentUser?.role === 'society' ? 6 : 7} className="py-8 text-center text-slate-500 text-sm italic">
-                  Nessun utente trovato.
+                  {t('no_users_found')}
                 </td>
               </tr>
             )}
@@ -821,7 +987,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
       {totalUsers > usersPerPage && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50">
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            Pagina {usersPage} di {Math.ceil(totalUsers / usersPerPage)}
+            {t('page_indicator').replace('{{page}}', String(usersPage)).replace('{{total}}', String(Math.ceil(totalUsers / usersPerPage)))}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -924,27 +1090,27 @@ const UserManagement: React.FC<UserManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 {selectedUser.email && (
                   <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Email</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('email')}</p>
                     <p className="text-sm font-bold text-white break-all">{selectedUser.email}</p>
                   </div>
                 )}
                 {selectedUser.phone && (
                   <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Telefono</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('phone')}</p>
                     <p className="text-sm font-bold text-white">{selectedUser.phone}</p>
                   </div>
                 )}
                 {selectedUser.birth_date && (
                   <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Data di Nascita</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('birth_date')}</p>
                     <p className="text-sm font-bold text-white">
-                      {new Date(selectedUser.birth_date).toLocaleDateString('it-IT')}
+                      {new Date(selectedUser.birth_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
                     </p>
                   </div>
                 )}
                 {selectedUser.society && (
                   <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Società</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('club')}</p>
                     <p className="text-sm font-bold text-white flex items-center gap-2">
                       <i className="fas fa-building text-orange-500"></i>
                       {selectedUser.society}
@@ -957,20 +1123,20 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 {selectedUser.shooter_code && (
                   <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                      {selectedUser.role === 'society' ? 'Codice Società' : 'Codice Tiratore'}
+                      {selectedUser.role === 'society' ? t('club_code') : t('shooter_code')}
                     </p>
                     <p className="text-sm font-bold text-white uppercase">{selectedUser.shooter_code}</p>
                   </div>
                 )}
                 {selectedUser.category && (
                   <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Categoria</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('category')}</p>
                     <p className="text-sm font-bold text-white">{selectedUser.category}</p>
                   </div>
                 )}
                 {selectedUser.qualification && (
                   <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Qualifica</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('qualification')}</p>
                     <p className="text-sm font-bold text-white">{selectedUser.qualification}</p>
                   </div>
                 )}
@@ -987,9 +1153,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   }} 
                   disabled={currentUser?.role === 'society' && selectedUser.role === 'admin'}
                   className="flex-1 py-4 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={currentUser?.role === 'society' && selectedUser.role === 'admin' ? "Non puoi modificare un Admin" : "Modifica"}
+                  title={currentUser?.role === 'society' && selectedUser.role === 'admin' ? t('cannot_edit_admin') : t('edit')}
                 >
-                  <i className="fas fa-edit"></i> Modifica
+                  <i className="fas fa-edit"></i> {t('edit')}
                 </button>
               )}
               {currentUser?.role === 'admin' && (
@@ -1000,9 +1166,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   }} 
                   disabled={selectedUser.email === 'snecaj@gmail.com' || currentUser?.role === 'society'}
                   className="flex-1 py-4 rounded-2xl bg-red-900/30 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-900/50 transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={currentUser?.role === 'society' ? "Solo l'amministratore può eliminare gli utenti" : (selectedUser.email === 'snecaj@gmail.com' ? "Non puoi eliminare l'account principale" : "Elimina")}
+                  title={currentUser?.role === 'society' ? t('only_admin_can_delete') : (selectedUser.email === 'snecaj@gmail.com' ? t('cannot_delete_main_account') : t('delete'))}
                 >
-                  <i className="fas fa-trash-alt"></i> Elimina
+                  <i className="fas fa-trash-alt"></i> {t('delete')}
                 </button>
               )}
             </div>

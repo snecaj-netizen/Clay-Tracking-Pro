@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Competition, getSeriesLayout } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SeriesPopupProps {
   competition: Competition;
@@ -10,6 +11,7 @@ interface SeriesPopupProps {
 }
 
 const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onClose, onSave }) => {
+  const { t } = useLanguage();
   const seriesLayoutObj = getSeriesLayout(competition.discipline);
   const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
 
@@ -102,7 +104,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
       <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg md:max-w-xl shadow-2xl animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6 sm:mb-5">
           <div>
-            <h3 className="text-xl sm:text-lg font-black text-white uppercase tracking-tight">Serie {seriesIndex + 1}</h3>
+            <h3 className="text-xl sm:text-lg font-black text-white uppercase tracking-tight">{t('series_label')} {seriesIndex + 1}</h3>
             <p className="text-xs sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest">{competition.name}</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 sm:w-8 sm:h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
@@ -112,7 +114,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
 
         <div className="space-y-6 sm:space-y-5">
           <div className="flex items-center justify-between bg-slate-950/50 p-4 sm:p-3 rounded-2xl sm:rounded-xl border border-slate-800/50">
-            <span className="text-xs sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">Totale Serie</span>
+            <span className="text-xs sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('series_total_label')}</span>
             <input 
               type="number" 
               min="0" 
@@ -126,7 +128,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
 
           <div className="space-y-4 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <label className="text-[10px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Dettaglio Piattelli</label>
+              <label className="text-[10px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('targets_detail_label')}</label>
               <div className="h-[1px] flex-1 bg-slate-800"></div>
             </div>
             
@@ -147,7 +149,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
                               type="button"
                               onClick={() => handleDetailedScoreChange(targetIdx)}
                               className={`w-8 h-8 sm:w-7 sm:h-7 rounded-full border-2 transition-all active:scale-90 ${isHit ? 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
-                              title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
+                              title={`${t('target_with_index').replace('{{index}}', (targetIdx + 1).toString())}: ${isHit ? t('hit_label') : t('missed_label')}`}
                             />
                           </div>
                         );
@@ -164,7 +166,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
               onClick={onClose}
               className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 sm:py-2.5 rounded-xl sm:rounded-lg transition-all active:scale-95 text-xs sm:text-[10px] uppercase tracking-widest"
             >
-              Annulla
+              {t('cancel_label')}
             </button>
             <button 
               onClick={handleSave}
@@ -172,7 +174,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
               className="flex-[2] bg-orange-600 hover:bg-orange-500 text-white font-black py-4 sm:py-2.5 rounded-xl sm:rounded-lg shadow-lg shadow-orange-600/20 transition-all active:scale-95 text-xs sm:text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSaving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
-              Salva Serie
+              {t('save_series_label')}
             </button>
           </div>
         </div>

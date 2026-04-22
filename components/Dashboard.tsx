@@ -4,6 +4,7 @@ import { Competition, Discipline } from '../types';
 import StatsCharts from './StatsCharts';
 import ShareCard from './ShareCard';
 import { calculateRTE } from '../ratingUtils';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
   competitions: Competition[];
@@ -24,6 +25,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNavigate, 
   user 
 }) => {
+  const { t, language } = useLanguage();
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
   // Filtriamo solo le gare REALI (punteggio > 0) per le statistiche
@@ -95,16 +97,16 @@ const Dashboard: React.FC<DashboardProps> = ({
           <i className="fas fa-bullseye text-3xl text-slate-600"></i>
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">
-          {user?.role === 'society' ? `Benvenuta, ${user.name}` : 'Benvenuto, Tiratore'}
+          {user?.role === 'society' ? `${t('welcome_society')}, ${user.name}` : t('welcome_shooter')}
         </h2>
         <p className="text-slate-400 mb-8 max-w-sm mx-auto">
           {user?.role === 'society' 
-            ? 'I tuoi tiratori non hanno ancora registrato risultati.' 
-            : 'Inizia a registrare i tuoi risultati per sbloccare le statistiche avanzate.'}
+            ? t('your_shooters_no_results') 
+            : t('start_recording_results')}
         </p>
         {user?.role !== 'society' && (
           <button onClick={onAddClick} className="bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg">
-            Aggiungi Risultato
+            {t('add_result')}
           </button>
         )}
       </div>
@@ -117,30 +119,30 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center gap-2 ml-2">
           <i className="fas fa-trophy text-orange-500"></i>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Prestazioni in Gara</h2>
+          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('race_performance')}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Gare Concluse</p>
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('finished_races')}</p>
             <h3 className="text-3xl font-black text-white">{compStats?.count || 0}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl border-l-4 border-l-orange-600">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Gara /25</p>
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('race_average')} /25</p>
             <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl relative group">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Migliore Posizionamento</p>
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('best_placement')}</p>
             {compStats?.bestPlacementComp ? (
               <div>
                 <div className="flex items-baseline justify-between">
                   <div className="flex items-baseline gap-1">
                     <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
-                    <span className="text-xs font-bold text-slate-400 uppercase">Posto</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase">{t('position_label')}</span>
                   </div>
                   <button 
                     onClick={() => setShareData({ comp: compStats.bestPlacementComp! })}
                     className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 active:scale-90"
-                    title="Condividi"
+                    title={t('share')}
                   >
                     <i className="fas fa-share-alt text-xs"></i>
                   </button>
@@ -150,7 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     {compStats.bestPlacementComp.name}
                   </p>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Media: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
+                    {t('average')}: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
                   </p>
                 </div>
               </div>
@@ -167,13 +169,13 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between ml-2">
             <div className="flex items-center gap-2">
               <i className="fas fa-star text-amber-500"></i>
-              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Rating Tecnico (RTE)</h2>
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('technical_rating_title')}</h2>
             </div>
             <div className="group relative">
               <i className="fas fa-info-circle text-slate-600 cursor-help"></i>
               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                 <p className="text-[10px] text-slate-400 leading-relaxed">
-                  Il <span className="text-white font-bold">Rating Tecnico di Eccellenza (RTE)</span> è la media dei tuoi <span className="text-white font-bold">migliori 5 risultati</span> degli ultimi 12 mesi per ogni disciplina. È necessario aver disputato almeno <span className="text-white font-bold">3 gare</span> per validare il rating.
+                  {t('technical_rating_desc')}
                 </p>
               </div>
             </div>
@@ -187,7 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex justify-between items-start relative z-10">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate max-w-[150px]" title={r.discipline}>
-                      {r.discipline}
+                      {t(r.discipline)}
                     </p>
                     <div className="flex items-baseline gap-1">
                       <h3 className={`text-3xl font-black ${r.isProvvisorio ? 'text-slate-400' : 'text-amber-500'}`}>
@@ -199,15 +201,15 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="text-right">
                     {r.isProvvisorio ? (
                       <span className="text-[8px] font-black bg-slate-800 text-slate-500 px-2 py-1 rounded-full uppercase tracking-tighter border border-slate-700">
-                        Provvisorio
+                        {t('provvisional')}
                       </span>
                     ) : (
                       <span className="text-[8px] font-black bg-amber-500/20 text-amber-500 px-2 py-1 rounded-full uppercase tracking-tighter border border-amber-500/30">
-                        Qualificato
+                        {t('qualified')}
                       </span>
                     )}
                     <p className="text-[9px] font-bold text-slate-500 mt-2 uppercase">
-                      {r.count} {r.count === 1 ? 'Gara' : 'Gare'}
+                      {r.count} {r.count === 1 ? t('race_singular') : t('races_plural')}
                     </p>
                   </div>
                 </div>
@@ -216,7 +218,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {r.isProvvisorio && (
                   <div className="mt-4 space-y-1.5">
                     <div className="flex justify-between text-[8px] font-black uppercase tracking-widest">
-                      <span className="text-slate-600">Qualificazione</span>
+                      <span className="text-slate-600">{t('qualification_progress')}</span>
                       <span className="text-orange-500">{r.count}/3</span>
                     </div>
                     <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
@@ -237,19 +239,19 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center gap-2 ml-2">
           <i className="fas fa-dumbbell text-blue-500"></i>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Statistiche Allenamento</h2>
+          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('training_stats')}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl border-l-4 border-l-blue-600">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Media Pratica /25</p>
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('practice_average')} /25</p>
             <h3 className="text-3xl font-black text-blue-500">{trainingStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Serie Concluse</p>
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('finished_series')}</p>
             <h3 className="text-3xl font-black text-white">{trainingStats?.totalSeries || 0}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">Sessioni Finite</p>
+            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('finished_sessions')}</p>
             <h3 className="text-3xl font-black text-white">{trainingStats?.count || 0}</h3>
           </div>
         </div>
@@ -262,19 +264,19 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="bg-slate-900 p-6 rounded-3xl border border-white/10 shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 mb-6">
           <i className="fas fa-wallet text-slate-500"></i>
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Bilancio Generale</h3>
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('general_balance')}</h3>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-6">
           <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-600 min-w-0 flex flex-col justify-center">
-            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Costi Totali</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">{t('total_costs')}</p>
             <p className="text-xs sm:text-xl font-black text-red-500 break-words">€{financial.totalCost.toFixed(2)}</p>
           </div>
           <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-600 min-w-0 flex flex-col justify-center">
-            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Vincite Gare</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">{t('race_winnings')}</p>
             <p className="text-xs sm:text-xl font-black text-green-500 break-words">€{financial.totalWin.toFixed(2)}</p>
           </div>
           <div className="bg-slate-950/50 p-2 sm:p-3 rounded-xl border border-slate-600 min-w-0 flex flex-col justify-center">
-            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">Saldo Netto</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase mb-1 leading-tight">{t('net_balance')}</p>
             <p className={`text-xs sm:text-xl font-black break-words ${financial.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
               {financial.balance >= 0 ? '+' : ''}€{financial.balance.toFixed(2)}
             </p>
@@ -288,10 +290,10 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between ml-2">
             <div className="flex items-center gap-2">
               <i className="fas fa-calendar-check text-emerald-500 animate-pulse"></i>
-              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">I Tuoi Prossimi Appuntamenti</h2>
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('your_upcoming_appointments')}</h2>
             </div>
             <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              {upcomingCompetitions.length} {upcomingCompetitions.length === 1 ? 'EVENTO' : 'EVENTI'}
+              {upcomingCompetitions.length} {upcomingCompetitions.length === 1 ? t('event') : t('events_caps')}
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -304,14 +306,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${comp.discipline === Discipline.TRAINING ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>
-                          {comp.discipline === Discipline.TRAINING ? 'Allenamento' : 'Gara'}
+                          {comp.discipline === Discipline.TRAINING ? t('training_training_short') : t('race_training_short')}
                         </span>
-                        {isToday && <span className="text-[9px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded uppercase">Oggi</span>}
+                        {isToday && <span className="text-[9px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded uppercase">{t('today')}</span>}
                       </div>
                       <h4 className="text-lg font-black text-white leading-tight group-hover:text-emerald-400 transition-colors">{comp.name}</h4>
                       {user?.role === 'society' && comp.userName && (
                         <p className="text-[10px] font-black text-orange-500 uppercase tracking-tighter">
-                          Tiratore: {comp.userSurname} {comp.userName}
+                          {t('shooter')}: {comp.userSurname} {comp.userName}
                         </p>
                       )}
                       <p className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -324,7 +326,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-black text-white">{d.getDate()}</p>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase">{d.toLocaleString('it-IT', { month: 'short' })}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">{d.toLocaleString(language === 'it' ? 'it-IT' : 'en-US', { month: 'short' })}</p>
                     </div>
                   </div>
                   {comp.notes && (
@@ -348,15 +350,15 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
-              {user?.role === 'society' ? 'Hai bisogno di un\'analisi di squadra?' : 'Vuoi migliorare la tua tecnica?'}
+              {user?.role === 'society' ? t('need_team_analysis') : t('want_to_improve_technique')}
             </h3>
             <p className="text-slate-400 text-sm font-medium mb-4">
               {user?.role === 'society' 
-                ? 'Il tuo Consulente AI ha analizzato i nuovi dati agonistici. Scopri i trend e ricevi consigli strategici.' 
-                : 'Il tuo Coach AI ha analizzato le tue ultime prestazioni. Chiedigli consigli personalizzati o un piano di allenamento.'}
+                ? t('ai_consultant_analyzed') 
+                : t('ai_coach_analyzed')}
             </p>
             <button className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95">
-              Parla con il Coach <i className="fas fa-arrow-right ml-2"></i>
+              {t('talk_to_coach')} <i className="fas fa-arrow-right ml-2"></i>
             </button>
           </div>
         </div>

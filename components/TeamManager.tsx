@@ -3,6 +3,7 @@ import { SocietyEvent } from '../types';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TeamManagerProps {
   event: SocietyEvent;
@@ -17,6 +18,7 @@ interface TeamManagerProps {
 }
 
 const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams, token, onTeamsUpdate, readOnly, currentUser, allSocieties = [] }) => {
+  const { t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
@@ -45,17 +47,17 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   const teamTypes = useMemo(() => {
     if (event.discipline === 'Club Cup (PC)') {
       return [
-        { id: 'PC_A', name: 'Squadra Sezione (A)', size: 3 },
-        { id: 'PC_B', name: 'Squadra Sezione (B)', size: 3 }
+        { id: 'PC_A', name: t('team_section_a_name'), size: 3 },
+        { id: 'PC_B', name: t('team_section_b_name'), size: 3 }
       ];
     } else if (event.discipline === 'Sporting (SP)' || event.discipline === 'Compak Sporting (CK)') {
       return [
-        { id: 'SP_A', name: 'Squadra Categorie (A)', size: 6 },
-        { id: 'SP_B', name: 'Squadra Qualifiche (B)', size: 3 }
+        { id: 'SP_A', name: t('team_cat_a_name'), size: 6 },
+        { id: 'SP_B', name: t('team_qual_b_name'), size: 3 }
       ];
     }
     return [];
-  }, [event.discipline]);
+  }, [event.discipline, t]);
 
   const availableShooters = useMemo(() => {
     if (!formData.society) return [];
@@ -82,13 +84,13 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   }, [users, results, formData.society, editingTeamId]);
 
   const validateTeam = () => {
-    if (!formData.name || !formData.society || !formData.type) return "Compila tutti i campi obbligatori.";
+    if (!formData.name || !formData.society || !formData.type) return t('fill_required_fields');
     
     const typeDef = teamTypes.find(t => t.id === formData.type);
-    if (!typeDef) return "Tipo squadra non valido.";
+    if (!typeDef) return t('invalid_team_type');
     
     if (formData.memberIds.length !== typeDef.size) {
-      return `La squadra deve avere esattamente ${typeDef.size} tiratori.`;
+      return t('team_members_size_error').replace('{{size}}', String(typeDef.size));
     }
 
     // Check maximum 3 teams per type per society
@@ -98,7 +100,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       t.id !== editingTeamId
     );
     if (existingTeamsOfType.length >= 3) {
-      return `La società ha già raggiunto il limite massimo di 3 squadre per il tipo ${typeDef.name}.`;
+      return t('max_teams_reached').replace('{{type}}', typeDef.name);
     }
 
     const members = formData.memberIds.map(id => users.find(u => u.id === id)).filter(Boolean);
@@ -117,21 +119,21 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
 
     if (formData.type === 'PC_A') {
       const ecc = countCat(['eccellenza']);
-      if (ecc > 1) return "Massimo 1 tiratore di Eccellenza consentito.";
+      if (ecc > 1) return t('max_ecc_reached');
     } else if (formData.type === 'PC_B') {
       const ecc = countCat(['eccellenza']);
       const prima = countCat(['1', '1°', '1a', '1^', '1*']);
       const seconda = countCat(['2', '2°', '2a', '2^', '2*']);
-      if (ecc > 0 || prima > 0) return "Non sono ammessi tiratori di Eccellenza o 1a categoria nella Sezione B.";
-      if (seconda > 2) return "Massimo 2 tiratori di 2a categoria consentiti.";
+      if (ecc > 0 || prima > 0) return t('no_ecc_prima_allowed');
+      if (seconda > 2) return t('max_seconda_reached');
     } else if (formData.type === 'SP_A') {
       const ecc = countCat(['eccellenza']);
       const prima = countCat(['1', '1°', '1a', '1^', '1*']);
-      if (ecc > 1) return "Massimo 1 tiratore di Eccellenza consentito.";
-      if (ecc + prima > 3) return "Massimo 1 Eccellenza e 2 di 1a categoria (totale 3) consentiti.";
+      if (ecc > 1) return t('max_ecc_reached');
+      if (ecc + prima > 3) return t('max_ecc_prima_three_reached');
     } else if (formData.type === 'SP_B') {
       const senJun = countQual(['senior', 'junior']);
-      if (senJun > 2) return "Massimo 2 tiratori tra Senior e Junior consentiti.";
+      if (senJun > 2) return t('max_sen_jun_reached');
     }
 
     return null;
@@ -298,12 +300,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                 <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg flex gap-3 text-sm text-blue-200">
                   <i className="fas fa-info-circle mt-0.5 text-blue-400"></i>
                   <p>
-                    <strong>Nota:</strong> Per la composizione della squadra (A) potranno partecipare anche le qualifiche rispettando la propria categoria di appartenenza.
+                    <strong>{t('composition_note_title')}</strong> {t('composition_note_body')}
                   </p>
                 </div>
               )}
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Seleziona Tiratori ({formData.memberIds.length} / {teamTypes.find(t => t.id === formData.type)?.size})
+                {t('select_shooters_label').replace('{{count}}', String(formData.memberIds.length)).replace('{{total}}', String(teamTypes.find(t => t.id === formData.type)?.size || 0))}
               </label>
               <ShooterSearch 
                 value={formData.memberIds}
@@ -311,7 +313,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                   if (Array.isArray(val)) {
                     const typeDef = teamTypes.find(t => t.id === formData.type);
                     if (typeDef && val.length > typeDef.size) {
-                      if (triggerToast) triggerToast(`Massimo ${typeDef.size} tiratori per questa squadra`, 'info');
+                      if (triggerToast) triggerToast(t('team_members_size_error').replace('{{size}}', String(typeDef.size)), 'info');
                       return;
                     }
                     setFormData({ ...formData, memberIds: val });
@@ -325,7 +327,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                 }))}
                 useId={true}
                 multiple={true}
-                placeholder="Cerca e seleziona tiratori..."
+                placeholder={t('search_select_shooters_placeholder')}
                 className="w-full"
               />
             </div>
@@ -346,7 +348,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               onClick={handleSave}
               className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm transition-all shadow-lg shadow-orange-600/20"
             >
-              Salva Squadra
+              {t('save_team_label')}
             </button>
           </div>
         </div>
@@ -361,7 +363,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
             return {
               id: id,
               user_id: id,
-              user_name: result?.user_name || user?.name || 'Sconosciuto',
+              user_name: result?.user_name || user?.name || t('unknown_label'),
               user_surname: result?.user_surname || user?.surname || '',
               category: result?.category_at_time || user?.category || '',
               qualification: result?.qualification_at_time || user?.qualification || '',
@@ -443,7 +445,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                     </div>
                   ))}
                   {teamMembers.length === 0 && (
-                    <div className="text-sm text-slate-500 italic">Nessun tiratore assegnato o nessun risultato inserito</div>
+                    <div className="text-sm text-slate-500 italic">{t('no_shooters_assigned')}</div>
                   )}
                 </div>
               </div>
@@ -453,7 +455,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
         {teams.length === 0 && !isCreating && (
           <div className="col-span-full text-center py-12 text-slate-500">
             <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
-            <p>Nessuna squadra registrata per questo evento.</p>
+            <p>{t('no_teams_registered')}</p>
           </div>
         )}
       </div>

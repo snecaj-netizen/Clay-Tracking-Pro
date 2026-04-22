@@ -14,20 +14,21 @@ import UpdateNotification from '@/components/UpdateNotification';
 import ExpandingFAB from '@/components/ExpandingFAB';
 import { ConnectionStatus, handleNetworkError } from '@/components/ConnectionStatus';
 
-// Lazy load heavy components
-const Warehouse = lazy(() => import('@/components/Warehouse'));
-const AdminPanel = lazy(() => import('@/components/AdminPanel'));
-const EventsManager = lazy(() => import('@/components/EventsManager'));
-const AICoachPage = lazy(() => import('@/components/AICoachPage'));
-const LeTueGarePage = lazy(() => import('@/components/LeTueGarePage'));
-const GarePage = lazy(() => import('@/components/GarePage'));
-const LaMiaSocietaPage = lazy(() => import('@/components/LaMiaSocietaPage'));
-const AdminPageView = lazy(() => import('@/components/AdminPageView'));
-const SocietyDetailModal = lazy(() => import('@/components/SocietyDetailModal'));
-const NotificationsPage = lazy(() => import('@/components/NotificationsPage'));
-const NotificationsManager = lazy(() => import('@/components/NotificationsManager'));
+import Warehouse from '@/components/Warehouse';
+import AdminPanel from '@/components/AdminPanel';
+import EventsManager from '@/components/EventsManager';
+import AICoachPage from '@/components/AICoachPage';
+import LeTueGarePage from '@/components/LeTueGarePage';
+import GarePage from '@/components/GarePage';
+import LaMiaSocietaPage from '@/components/LaMiaSocietaPage';
+import AdminPageView from '@/components/AdminPageView';
+import SocietyDetailModal from '@/components/SocietyDetailModal';
+import NotificationsPage from '@/components/NotificationsPage';
+import NotificationsManager from '@/components/NotificationsManager';
+import PublicPortal from '@/components/PublicPortal';
 
 import { useUI } from '@/contexts/UIContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">
@@ -41,7 +42,8 @@ const App: React.FC = () => {
     confirmConfig, setConfirmConfig, 
     toastConfig, setToastConfig 
   } = useUI();
-
+  const { t, language, setLanguage } = useLanguage();
+  
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
   const [user, setUser] = useState<any>(() => {
     try {
@@ -51,18 +53,38 @@ const App: React.FC = () => {
       return null;
     }
   });
+
+  useEffect(() => {
+    // Automatically set language to English for international users on mount/refresh
+    // if they don't have a preferred language set yet or if it was defaulted to Italian
+    if (user?.is_international && language === 'it') {
+       // Only force English if it looks like they haven't explicitly chosen Italian
+       // or if we want to strictly follow the requirement of English for internationals
+       setLanguage('en');
+    }
+  }, [user?.is_international, language, setLanguage]);
   
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [cartridgeTypes, setCartridgeTypes] = useState<CartridgeType[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
-  const [view, setView] = useState<'le-tue-gare' | 'warehouse' | 'gare' | 'la-mia-societa' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control'>(
-    user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare'
+  
+  const getInitialView = () => {
+    const path = window.location.pathname;
+    const hash = window.location.hash;
+    if (path === '/portal' || path === '/risultati' || hash === '#portal' || hash === '#risultati') {
+      return 'public-portal';
+    }
+    return user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare';
+  };
+
+  const [view, setView] = useState<'le-tue-gare' | 'warehouse' | 'gare' | 'la-mia-societa' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal'>(
+    getInitialView()
   );
   const [historyStack, setHistoryStack] = useState<{view: string, tab?: string}[]>([{ view: user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare' }]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [previousView, setPreviousView] = useState<'le-tue-gare' | 'gare' | 'la-mia-societa' | 'warehouse' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | null>(null);
+  const [previousView, setPreviousView] = useState<'le-tue-gare' | 'gare' | 'la-mia-societa' | 'warehouse' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
@@ -73,8 +95,10 @@ const App: React.FC = () => {
   const [globalSelectedSociety, setGlobalSelectedSociety] = useState<any | null>(null);
   const [initialEventViewMode, setInitialEventViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | null>(null);
   const [appSettings, setAppSettings] = useState<any>({});
+  const [isSavingComp, setIsSavingComp] = useState(false);
   const [hideGlobalFAB, setHideGlobalFAB] = useState(false);
   const [gareActiveTab, setGareActiveTab] = useState<string>('eventi');
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,6 +220,8 @@ const App: React.FC = () => {
         setView('settings');
       } else if (path === '/notifications') {
         setView('notifications');
+      } else if (path === '/portal' || path === '/risultati') {
+        setView('public-portal');
       }
     };
 
@@ -241,7 +267,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       handleNetworkError(err, triggerToast);
-      setError('Errore di connessione. Controlla la tua rete.');
+      setError(t('connection_error'));
     } finally {
       setLoading(false);
     }
@@ -278,19 +304,27 @@ const App: React.FC = () => {
     localStorage.setItem('auth_user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
+    
+    // Automatically set language to English for international users
+    if (newUser.is_international) {
+      setLanguage('en');
+    }
+
     if (newUser.role === 'society') {
       setView('la-mia-societa');
       setInitialAdminTab('results');
+      window.history.pushState({ view: 'la-mia-societa' }, '', '/la-mia-societa');
     } else {
       setView('le-tue-gare');
       setInitialAdminTab(null);
+      window.history.pushState({ view: 'le-tue-gare' }, '', '/le-tue-gare');
     }
   };
 
   const handleLogout = () => {
     triggerConfirm(
-      'Logout',
-      'Sei sicuro di voler uscire dall\'applicazione?',
+      t('logout'),
+      t('confirm_logout'),
       () => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
@@ -299,7 +333,7 @@ const App: React.FC = () => {
         setCompetitions([]);
         setCartridges([]);
       },
-      'Esci',
+      t('logout'),
       'primary'
     );
   };
@@ -356,6 +390,9 @@ const App: React.FC = () => {
   };
 
   const saveCompetition = async (comp: Competition) => {
+    if (isSavingComp) return;
+    setIsSavingComp(true);
+    
     // If we have an ID, it's an update, regardless of editingCompetition state
     const isEdit = (!!editingCompetition && !!editingCompetition.id) || (!!comp.id && comp.id !== '');
     const method = isEdit ? 'PUT' : 'POST';
@@ -380,7 +417,7 @@ const App: React.FC = () => {
         }
         
         // Show success toast
-        triggerToast(isEdit ? 'Gara aggiornata con successo!' : 'Gara registrata con successo!', 'success');
+        triggerToast(isEdit ? t('comp_updated') : t('comp_saved'), 'success');
         
         // Only close the form and redirect if we were actually in the 'new' view or editing
         if (view === 'new' || editingCompetition) {
@@ -393,10 +430,10 @@ const App: React.FC = () => {
         const errorData = await res.json();
         console.error('Save error:', errorData);
         // Using a more robust way to show error if alert is blocked
-        const errorMsg = `Errore nel salvataggio della gara: ${errorData.error || res.statusText}`;
+        const errorMsg = `${t('save_error')}: ${errorData.error || res.statusText}`;
         setConfirmConfig({
           isOpen: true,
-          title: 'Errore',
+          title: t('error'),
           message: errorMsg,
           onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
         });
@@ -405,10 +442,12 @@ const App: React.FC = () => {
       console.error('Error saving competition:', err);
       setConfirmConfig({
         isOpen: true,
-        title: 'Errore di rete',
-        message: 'Impossibile salvare la gara. Controlla la tua connessione.',
+        title: t('network_error'),
+        message: t('save_error_desc'),
         onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
       });
+    } finally {
+      setIsSavingComp(false);
     }
   };
 
@@ -425,12 +464,12 @@ const App: React.FC = () => {
         return true;
       } else {
         const errorData = await res.json();
-        alert(`Errore nell'eliminazione: ${errorData.error || res.statusText}`);
+        alert(`${t('delete_error')}: ${errorData.error || res.statusText}`);
         return false;
       }
     } catch (err) {
       console.error('Error deleting competition:', err);
-      alert('Errore di rete nell\'eliminazione.');
+      alert(t('delete_network_error'));
       return false;
     }
   };
@@ -450,11 +489,11 @@ const App: React.FC = () => {
         setCartridges(prev => isNew ? [cart, ...prev] : prev.map(c => c.id === cart.id ? cart : c));
       } else {
         const errorData = await res.json();
-        alert(`Errore nel salvataggio delle cartucce: ${errorData.error || res.statusText}`);
+        alert(`${t('cartridge_save_error')}: ${errorData.error || res.statusText}`);
       }
     } catch (err) {
       console.error('Error saving cartridge:', err);
-      alert('Errore di rete nel salvataggio delle cartucce.');
+      alert(t('cartridge_save_network_error'));
     }
   };
 
@@ -470,11 +509,11 @@ const App: React.FC = () => {
         setCartridges(prev => prev.filter(c => c.id !== id));
       } else {
         const errorData = await res.json();
-        alert(`Errore nell'eliminazione: ${errorData.error || res.statusText}`);
+        alert(`${t('delete_error')}: ${errorData.error || res.statusText}`);
       }
     } catch (err) {
       console.error('Error deleting cartridge:', err);
-      alert('Errore di rete nell\'eliminazione.');
+      alert(t('delete_network_error'));
     }
   };
 
@@ -501,14 +540,14 @@ const App: React.FC = () => {
       });
       if (res.ok) {
         fetchData();
-        triggerToast('Tipo cartuccia eliminato con successo!');
+        triggerToast(t('type_deleted'));
       } else {
         const data = await res.json();
-        triggerToast(data.error || 'Errore nell\'eliminazione del tipo cartuccia.', 'error');
+        triggerToast(data.error || t('delete_error'), 'error');
       }
     } catch (err) {
       console.error('Error deleting cartridge type:', err);
-      triggerToast('Errore di rete nell\'eliminazione.', 'error');
+      triggerToast(t('delete_network_error'), 'error');
     }
   };
 
@@ -525,19 +564,19 @@ const App: React.FC = () => {
       if (!res.ok) {
         setCartridges(previousCarts); // Rollback on error
         const errorData = await res.json();
-        alert(`Errore nell'aggiornamento massivo: ${errorData.error || res.statusText}`);
+        alert(`${t('bulk_update_error')}: ${errorData.error || res.statusText}`);
       }
     } catch (err) {
       setCartridges(previousCarts); // Rollback on network error
       console.error('Error bulk updating cartridges:', err);
-      alert('Errore di rete nell\'aggiornamento massivo.');
+      alert(t('bulk_update_network_error'));
     }
   };
 
   const handleImport = async (data: any) => {
     triggerConfirm(
-      'Importa',
-      'Questa operazione importerà i dati e potrebbe sovrascrivere quelli esistenti con lo stesso ID. Continuare?',
+      t('import'),
+      t('confirm_import'),
       async () => {
         // Normalizzazione dati se il formato è diverso
         const normalizedData: AppData = {
@@ -553,18 +592,18 @@ const App: React.FC = () => {
             body: JSON.stringify(normalizedData)
           });
           if (res.ok) {
-            alert('Dati importati con successo!');
+            alert(t('import_success'));
             fetchData(); // Ricarica tutto dal server
           } else {
             const errorData = await res.json();
-            alert(`Errore durante l'importazione: ${errorData.error || res.statusText}`);
+            alert(`${t('import_error')}: ${errorData.error || res.statusText}`);
           }
         } catch (err) {
           console.error('Error importing data:', err);
-          alert('Errore di rete durante l\'importazione.');
+          alert(t('bulk_update_network_error'));
         }
       },
-      'Importa',
+      t('import'),
       'danger'
     );
   };
@@ -675,11 +714,12 @@ const App: React.FC = () => {
     setInitialSocietyName(null);
   };
 
-  if (!token) {
-    return <Auth onLogin={handleLogin} />;
+  // Allow seeing the public portal without a token
+  if (!token && view !== 'public-portal') {
+    return <Auth onLogin={handleLogin} onGoToPortal={() => setView('public-portal')} />;
   }
 
-  if (loading) {
+  if (loading && view !== 'public-portal') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
         {error ? (
@@ -689,7 +729,7 @@ const App: React.FC = () => {
               onClick={() => { setLoading(true); fetchData(); }}
               className="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-black uppercase shadow-lg shadow-orange-600/20"
             >
-              Riprova
+              {t('retry')}
             </button>
           </>
         ) : (
@@ -712,7 +752,23 @@ const App: React.FC = () => {
         canGoForward={historyIndex < historyStack.length - 1}
         onGoBack={handleGoBack}
         onGoForward={handleGoForward}
+        onLoginClick={() => setShowLoginModal(true)}
       />
+
+      {showLoginModal && (
+        <Auth 
+          isModal 
+          onClose={() => setShowLoginModal(false)} 
+          onLogin={(token, user) => {
+            handleLogin(token, user);
+            setShowLoginModal(false);
+          }} 
+          onGoToPortal={() => {
+            setView('public-portal');
+            setShowLoginModal(false);
+          }}
+        />
+      )}
            <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-[104px] flex-1 w-full pb-24 sm:pb-8`}>
         <Suspense fallback={<LoadingFallback />}>
           {view === 'le-tue-gare' && (
@@ -743,6 +799,7 @@ const App: React.FC = () => {
             <CompetitionForm 
               currentUser={user}
               onSubmit={saveCompetition} 
+              isSaving={isSavingComp}
               onCancel={() => {
                 setView(previousView || 'le-tue-gare');
                 setPreviousView(null);
@@ -898,11 +955,11 @@ const App: React.FC = () => {
                 setShowTour={() => setShowTour(true)}
                 appSettings={appSettings}
                 fetchSettings={fetchSettings}
-                title={user?.role === 'society' ? 'Gestione tue Gare' : 'Gare gestite'}
+                title={user?.role === 'society' ? t('managed_view_title') : t('managed_view')}
                 icon="fa-calendar-alt"
                 initialTab="event-results"
                 initialEventViewMode="managed"
-                kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
+                kpi1={{ label: t('competitions_label'), value: competitions.length, color: 'border-l-orange-600' }}
                 onToggleFAB={setHideGlobalFAB}
               />
             </div>
@@ -930,10 +987,10 @@ const App: React.FC = () => {
                 setShowTour={() => setShowTour(true)}
                 appSettings={appSettings}
                 fetchSettings={fetchSettings}
-                title="Attivazione gare"
+                title={t('race_activation')}
                 icon="fa-tasks"
                 initialTab="event-control"
-                kpi1={{ label: 'Gare', value: competitions.length, color: 'border-l-orange-600' }}
+                kpi1={{ label: t('competitions_label'), value: competitions.length, color: 'border-l-orange-600' }}
               />
             </div>
           )}
@@ -945,6 +1002,12 @@ const App: React.FC = () => {
                 competitions={competitions} 
                 cartridges={cartridges}
               />
+            </div>
+          )}
+
+          {view === 'public-portal' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+              <PublicPortal token={token || undefined} />
             </div>
           )}
 
@@ -1000,7 +1063,7 @@ const App: React.FC = () => {
                 setShowTour={() => setShowTour(true)}
                 appSettings={appSettings}
                 fetchSettings={fetchSettings}
-                title="Il Tuo Profilo"
+                title={t('your_profile')}
                 icon="fa-user-circle"
                 initialTab="profile"
               />
@@ -1029,7 +1092,7 @@ const App: React.FC = () => {
                 setShowTour={() => setShowTour(true)}
                 appSettings={appSettings}
                 fetchSettings={fetchSettings}
-                title="Impostazioni"
+                title={t('settings')}
                 icon="fa-cog"
                 initialTab="settings"
               />
@@ -1056,7 +1119,7 @@ const App: React.FC = () => {
           (view === 'gare' && gareActiveTab === 'eventi' && user?.role === 'admin') ||
           (view === 'gare' && gareActiveTab === 'le-tue-gare' && user?.role === 'society')
         )}
-        label={view === 'new' ? 'Chiudi' : (view === 'gare' && (gareActiveTab === 'gestione' || gareActiveTab === 'eventi' || gareActiveTab === 'le-tue-gare') ? 'Nuovo Evento' : 'Nuova Gara')}
+        label={view === 'new' ? t('close_label') : (view === 'gare' && (gareActiveTab === 'gestione' || gareActiveTab === 'eventi' || gareActiveTab === 'le-tue-gare') ? t('new_event') : t('new_competition'))}
         isClose={view === 'new'}
         onClick={() => { 
           if (view === 'new') {
@@ -1086,8 +1149,8 @@ const App: React.FC = () => {
       {view !== 'ai-coach' && (
         <footer className="w-full py-6 mt-auto border-t border-slate-800/50 bg-slate-950/30">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              &copy; {new Date().getFullYear()} Stefano Necaj. Tutti i diritti riservati.
+            <p className="text-[10px] font-black text-slate-500 tracking-widest">
+              {t('copyright_notice').replace('{year}', new Date().getFullYear().toString())}
             </p>
           </div>
         </footer>

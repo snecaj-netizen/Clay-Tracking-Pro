@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface NotificationsManagerProps {
   token: string;
@@ -10,6 +11,7 @@ interface NotificationsManagerProps {
 
 export default function NotificationsManager({ token, userRole }: NotificationsManagerProps) {
   const { triggerConfirm } = useUI();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [societies, setSocieties] = useState<any[]>([]);
@@ -96,14 +98,14 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
       });
 
       if (res.ok) {
-        alert('Impostazioni salvate con successo!');
+        alert(t('settings_saved_success'));
       } else {
         const data = await res.json();
-        alert(data.error || 'Errore durante il salvataggio delle impostazioni');
+        alert(data.error || t('settings_save_error'));
       }
     } catch (err) {
       console.error('Error saving notification settings:', err);
-      alert('Errore di rete durante il salvataggio');
+      alert(t('error_save_generic'));
     }
   };
 
@@ -168,11 +170,11 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
         fetchNotifications();
       } else {
         const data = await res.json();
-        alert(data.error || 'Errore durante l\'invio della notifica');
+        alert(data.error || t('send_error_msg'));
       }
     } catch (err) {
       console.error('Error sending notification:', err);
-      alert('Errore di rete durante l\'invio');
+      alert(t('error_send_generic'));
     } finally {
       setSending(false);
     }
@@ -216,8 +218,8 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
 
   const deleteNotification = async (id: number) => {
     triggerConfirm(
-      'Elimina Notifica',
-      'Sei sicuro di voler eliminare questa notifica?',
+      t('delete_notification_title'),
+      t('confirm_delete_notification'),
       async () => {
         try {
           const endpoint = isAdmin ? `/api/admin/notifications/${id}` : `/api/notifications/${id}`;
@@ -241,8 +243,8 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
   const handleBulkDelete = () => {
     if (selectedNotifications.length === 0) return;
     triggerConfirm(
-      'Elimina Notifiche',
-      `Sei sicuro di voler eliminare ${selectedNotifications.length} notifiche selezionate?`,
+      t('delete_notifications_title'),
+      t('confirm_delete_notifications_count').replace('{{count}}', selectedNotifications.length.toString()),
       async () => {
         setLoading(true);
         try {
@@ -259,12 +261,12 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
           setSelectedNotifications([]);
         } catch (err) {
           console.error('Error deleting notifications:', err);
-          alert('Errore durante l\'eliminazione delle notifiche.');
+          alert(t('delete_error_msg'));
         } finally {
           setLoading(false);
         }
       },
-      'Elimina',
+      t('delete_btn'),
       'danger'
     );
   };
@@ -272,8 +274,8 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
   const handleAddMute = () => {
     if (!muteId) return;
     const name = muteType === 'society' 
-      ? societies.find(s => s.id === muteId)?.name || `Società #${muteId}`
-      : `Tiratore #${muteId}`;
+      ? societies.find(s => s.id === muteId)?.name || `${t('society')} #${muteId}`
+      : `${t('shooter')} #${muteId}`;
     
     setMutedEntities([...mutedEntities, { id: muteId, name, type: muteType }]);
     setMuteId('');
@@ -300,10 +302,10 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
             <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/20">
               <i className="fas fa-bell text-white"></i>
             </div>
-            Gestione Notifiche
+            {t('notifications_management')}
           </h2>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 ml-1">
-            {isAdmin ? 'Configura e monitora il sistema di avvisi' : 'I tuoi aggiornamenti e avvisi in tempo reale'}
+            {isAdmin ? t('notifications_desc_admin') : t('notifications_desc_user')}
           </p>
         </div>
         
@@ -313,13 +315,13 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
               onClick={() => setActiveTab('list')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <i className="fas fa-list mr-2"></i> Lista
+              <i className="fas fa-list mr-2"></i> {t('list_label')}
             </button>
             <button 
               onClick={() => setActiveTab('control')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'control' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <i className="fas fa-cog mr-2"></i> Pannello Controllo
+              <i className="fas fa-cog mr-2"></i> {t('control_panel_label')}
             </button>
           </div>
         )}
@@ -335,11 +337,11 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                   className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-orange-600/20"
                 >
                   <i className={`fas ${showSendForm ? 'fa-times' : 'fa-paper-plane'}`}></i>
-                  {showSendForm ? 'Annulla' : 'Invia Notifica'}
+                  {showSendForm ? t('cancel_label') : t('send_notification_btn')}
                 </button>
               )}
               <span className="text-xs font-bold text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-                {notifications.length} Totali
+                {t('total_notifications').replace('{{count}}', notifications.length.toString())}
               </span>
             </div>
           </div>
@@ -349,50 +351,50 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
               <form onSubmit={handleSendNotification} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('title_label')}</label>
                     <input 
                       type="text" 
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Inserisci il titolo..."
+                      placeholder={t('notification_title_placeholder')}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Destinatari</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('recipients_label')}</label>
                     <select 
                       value={targetType}
                       onChange={(e) => setTargetType(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                     >
-                      <option value="all_shooters">Tutti i tiratori</option>
-                      <option value="all_societies">Tutte le società</option>
-                      <option value="specific_society">Una società specifica</option>
-                      <option value="shooters_of_society">Tiratori di una società specifica</option>
+                      <option value="all_shooters">{t('all_shooters')}</option>
+                      <option value="all_societies">{t('all_societies')}</option>
+                      <option value="specific_society">{t('specific_society')}</option>
+                      <option value="shooters_of_society">{t('shooters_of_society')}</option>
                     </select>
                   </div>
                 </div>
 
                 {(targetType === 'specific_society' || targetType === 'shooters_of_society') && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seleziona Società</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('society_label')}</label>
                     <SocietySearch 
                       value={targetId}
                       onChange={setTargetId}
                       societies={societies}
-                      placeholder="Scegli una società..."
+                      placeholder={t('select_society_placeholder')}
                       required
                     />
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Messaggio</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('message_label')}</label>
                   <textarea 
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
-                    placeholder="Scrivi qui il contenuto della notifica..."
+                    placeholder={t('notification_body_placeholder')}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-h-[100px] resize-none"
                     required
                   />
@@ -400,14 +402,14 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Programmazione (Opzionale)</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('scheduling_optional')}</label>
                     <input 
                       type="datetime-local" 
                       value={scheduledAt}
                       onChange={(e) => setScheduledAt(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
                     />
-                    <p className="text-[9px] text-slate-500 italic ml-1">Lascia vuoto per inviare subito.</p>
+                    <p className="text-[9px] text-slate-500 italic ml-1">{t('leave_empty_now')}</p>
                   </div>
                   <div className="flex items-end">
                     <button 
@@ -420,7 +422,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                       ) : (
                         <i className="fas fa-paper-plane"></i>
                       )}
-                      {scheduledAt ? 'Programma Notifica' : 'Invia Ora'}
+                      {scheduledAt ? t('schedule_notification_btn') : t('send_now_btn')}
                     </button>
                   </div>
                 </div>
@@ -450,7 +452,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                     </div>
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">
-                    Seleziona Tutte
+                    {t('select_all_label')}
                   </span>
                 </label>
 
@@ -460,7 +462,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                     className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
                   >
                     <i className="fas fa-trash-alt"></i>
-                    Elimina Selezionate ({selectedNotifications.length})
+                    {t('delete_selected_label').replace('{{count}}', selectedNotifications.length.toString())}
                   </button>
                 )}
               </div>
@@ -469,7 +471,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
             {notifications.length === 0 ? (
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center">
                 <i className="fas fa-bell-slash text-slate-700 text-4xl mb-4"></i>
-                <p className="text-slate-500 font-medium">Nessuna notifica presente nel sistema.</p>
+                <p className="text-slate-500 font-medium">{t('no_notifications_found')}</p>
               </div>
             ) : (
               notifications.map(notif => {
@@ -510,7 +512,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                           {isAdmin && (
                             <div className={`flex items-center gap-1.5 text-slate-500 font-bold uppercase tracking-widest ${adminCompactMode ? 'text-[8px]' : 'text-[10px]'}`}>
                               <i className="fas fa-user text-orange-500/50"></i>
-                              Destinatario: <span className="text-slate-300">{notif.user_name} {notif.user_surname}</span>
+                              {t('recipient_label')}: <span className="text-slate-300">{notif.user_name} {notif.user_surname}</span>
                             </div>
                           )}
                           <div className={`flex items-center gap-1.5 text-slate-500 font-bold uppercase tracking-widest ${adminCompactMode ? 'text-[8px]' : 'text-[10px]'}`}>
@@ -525,7 +527,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                         <button 
                           onClick={() => markAsRead(notif.id)}
                           className={`rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all ${adminCompactMode && isAdmin ? 'w-6 h-6' : 'w-8 h-8'}`}
-                          title="Segna come letta"
+                          title={t('mark_as_read_tooltip')}
                         >
                           <i className={`fas fa-check ${adminCompactMode && isAdmin ? 'text-[8px]' : 'text-[10px]'}`}></i>
                         </button>
@@ -533,7 +535,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                       <button 
                         onClick={() => deleteNotification(notif.id)}
                         className={`rounded-lg bg-red-950/30 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all ${adminCompactMode && isAdmin ? 'w-6 h-6' : 'w-8 h-8'}`}
-                        title="Elimina"
+                        title={t('delete_tooltip')}
                       >
                         <i className={`fas fa-trash ${adminCompactMode && isAdmin ? 'text-[8px]' : 'text-[10px]'}`}></i>
                       </button>
@@ -551,8 +553,8 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className="text-lg font-black text-white uppercase tracking-tight">Stato Globale</h3>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Attiva o disattiva l'intero sistema di notifiche</p>
+                <h3 className="text-lg font-black text-white uppercase tracking-tight">{t('global_status_label')}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('global_status_desc')}</p>
               </div>
               <button 
                 onClick={() => setGlobalEnabled(!globalEnabled)}
@@ -564,7 +566,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Limite Giornaliero per Utente</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('daily_limit_label')}</label>
                 <div className="flex items-center gap-4">
                   <input 
                     type="range" 
@@ -578,19 +580,19 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                     {rateLimit}
                   </span>
                 </div>
-                <p className="text-[9px] text-slate-500 italic">Evita lo spam limitando le notifiche automatiche giornaliere.</p>
+                <p className="text-[9px] text-slate-500 italic">{t('daily_limit_desc')}</p>
               </div>
             </div>
           </div>
 
           {/* Admin Specific Settings */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6">
-            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">Impostazioni Personali Admin</h3>
+            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">{t('admin_personal_settings')}</h3>
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold text-white">Blocca Notifiche Altri Utenti</p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Se attivo, visualizzerai e riceverai solo le notifiche che ti riguardano direttamente</p>
+                  <p className="text-sm font-bold text-white">{t('block_others_notifications')}</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('block_others_desc')}</p>
                 </div>
                 <button 
                   onClick={() => setBlockOtherUsersNotifications(!blockOtherUsersNotifications)}
@@ -602,8 +604,8 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold text-white">Modalità Compatta</p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Visualizzazione densa della lista notifiche (solo admin)</p>
+                  <p className="text-sm font-bold text-white">{t('compact_mode_label')}</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('compact_mode_desc')}</p>
                 </div>
                 <button 
                   onClick={() => setAdminCompactMode(!adminCompactMode)}
@@ -617,7 +619,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
 
           {/* Template Management */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">Template Notifiche</h3>
+            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">{t('template_management_label')}</h3>
             <div className="space-y-4">
               {Object.entries(templates).map(([key, value]) => (
                 <div key={key} className="space-y-2">
@@ -632,7 +634,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                 </div>
               ))}
               <div className="p-3 bg-orange-600/5 border border-orange-600/20 rounded-xl">
-                <p className="text-[9px] text-orange-500/80 font-bold uppercase tracking-widest mb-1">Segnaposto Disponibili:</p>
+                <p className="text-[9px] text-orange-500/80 font-bold uppercase tracking-widest mb-1">{t('placeholders_available')}</p>
                 <p className="text-[9px] text-slate-500 italic">
                   {'{competition_name}'}, {'{society_name}'}, {'{shooter_name}'}, {'{winner_name}'}, {'{loser_name}'}
                 </p>
@@ -644,14 +646,14 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
-                <h3 className="text-lg font-black text-white uppercase tracking-tight">Sospensioni (Mute)</h3>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Società o Tiratori che non riceveranno/invieranno notifiche</p>
+                <h3 className="text-lg font-black text-white uppercase tracking-tight">{t('suspensions_mute_label')}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('suspensions_mute_desc')}</p>
               </div>
               <button 
                 onClick={() => setShowMuteForm(!showMuteForm)}
                 className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition-all self-start sm:self-auto"
               >
-                {showMuteForm ? 'Chiudi' : 'Aggiungi'}
+                {showMuteForm ? t('close_label') : t('add_label')}
               </button>
             </div>
 
@@ -659,25 +661,25 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
               <div className="mb-6 p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipo</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('type_label')}</label>
                     <select 
                       value={muteType}
                       onChange={(e) => setMuteType(e.target.value as any)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none appearance-none"
                     >
-                      <option value="society">Società</option>
-                      <option value="shooter">Tiratore</option>
+                      <option value="society">{t('society')}</option>
+                      <option value="shooter">{t('shooter')}</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">ID Entità</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('entity_id_label')}</label>
                     <div className="flex gap-2">
                       {muteType === 'society' ? (
                         <SocietySearch 
                           value={muteId}
                           onChange={setMuteId}
                           societies={societies}
-                          placeholder="Cerca società..."
+                          placeholder={t('search_society_placeholder')}
                           className="flex-1"
                         />
                       ) : (
@@ -685,7 +687,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                           value={muteId}
                           onChange={setMuteId}
                           shooters={users}
-                          placeholder="Cerca tiratore..."
+                          placeholder={t('search_shooter_placeholder')}
                           className="flex-1"
                           useId
                         />
@@ -704,7 +706,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
 
             <div className="space-y-2">
               {mutedEntities.length === 0 ? (
-                <p className="text-xs text-slate-600 italic text-center py-4">Nessuna sospensione attiva.</p>
+                <p className="text-xs text-slate-600 italic text-center py-4">{t('no_suspensions_active')}</p>
               ) : (
                 mutedEntities.map((entity) => (
                   <div key={entity.id} className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl">
@@ -714,7 +716,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white">{entity.name}</p>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{entity.type} ID: {entity.id}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{entity.type === 'society' ? t('society') : t('shooter')} ID: {entity.id}</p>
                       </div>
                     </div>
                     <button 
@@ -734,7 +736,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
               onClick={handleSaveSettings}
               className="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase px-8 py-4 rounded-2xl transition-all shadow-lg shadow-orange-600/20 active:scale-95"
             >
-              Salva Configurazione
+              {t('save_configuration_btn')}
             </button>
           </div>
         </div>

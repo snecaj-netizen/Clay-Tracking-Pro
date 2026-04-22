@@ -5,6 +5,7 @@ import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
 import { User, SocietyEvent, EventRegistration } from '../types';
 import ShooterSearch from './ShooterSearch';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventRegistrationModalProps {
   event: SocietyEvent;
@@ -24,8 +25,6 @@ const CARTRIDGE_BRANDS = [
   'Nobel Sport', 'RC', 'Trust', 'Winchester', 'Altro'
 ];
 
-const SESSIONS = ['Mattina', 'Pomeriggio', 'Nessuna scelta'];
-
 export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   event,
   user,
@@ -34,11 +33,13 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   initialData
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { language, t } = useLanguage();
+  const SESSIONS = [t('morning'), t('afternoon'), t('no_choice')];
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
     user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
-    registration_day: initialData?.registration_day || 'Nessuna scelta',
-    registration_type: initialData?.registration_type || 'Iscrizione per Categoria',
+    registration_day: initialData?.registration_day || t('no_choice'),
+    registration_type: initialData?.registration_type || t('cat_reg'),
     shotgun_brand: initialData?.shotgun_brand || 'Beretta',
     shotgun_model: initialData?.shotgun_model || '',
     cartridge_brand: initialData?.cartridge_brand || 'Fiocchi',
@@ -103,8 +104,10 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     if (!formData.user_id) return;
 
     triggerConfirm(
-      initialData ? 'Conferma Modifica' : 'Conferma Iscrizione',
-      `Sei sicuro di voler ${initialData ? 'modificare l\'iscrizione' : 'iscrivere'} ${selectedShooter?.name} ${selectedShooter?.surname} alla gara "${event.name}"?`,
+      initialData ? (language === 'it' ? 'Conferma Modifica' : 'Confirm Edit') : t('confirm_reg'),
+      language === 'it' 
+        ? `Sei sicuro di voler ${initialData ? 'modificare l\'iscrizione' : 'iscrivere'} ${selectedShooter?.name} ${selectedShooter?.surname} alla gara "${event.name}"?`
+        : `Are you sure you want to ${initialData ? 'edit the registration' : 'register'} ${selectedShooter?.name} ${selectedShooter?.surname} to the event "${event.name}"?`,
       async () => {
         setIsSubmitting(true);
         setError(null);
@@ -133,7 +136,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
           if (!initialData) {
             setShowSuccessDetail(true);
           } else {
-            triggerToast?.('Iscrizione aggiornata con successo!', 'success');
+            triggerToast?.(language === 'it' ? 'Iscrizione aggiornata con successo!' : 'Registration updated successfully!', 'success');
             onSuccess();
             onClose();
           }
@@ -166,25 +169,25 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             </motion.div>
           </div>
           
-          <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Iscrizione Confermata!</h3>
-          <p className="text-slate-400 text-sm mb-8">L'iscrizione alla gara è stata registrata con successo.</p>
+          <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">{t('reg_confirmed')}</h3>
+          <p className="text-slate-400 text-sm mb-8">{t('reg_success_msg')}</p>
           
           <div className="bg-slate-950/50 rounded-2xl border border-slate-800 p-6 mb-8 text-left space-y-4">
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Gara</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">{t('event_label') || t('gara')}</label>
               <p className="text-white font-bold">{event.name}</p>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Tiratore</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">{t('shooter')}</label>
               <p className="text-white font-bold">{selectedShooter?.name} {selectedShooter?.surname}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Giorno</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">{t('day_label') || 'Giorno'}</label>
                 <p className="text-white font-bold">{formData.registration_day}</p>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Sessione</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">{t('session_label') || 'Sessione'}</label>
                 <p className="text-white font-bold">{formData.shooting_session}</p>
               </div>
             </div>
@@ -197,7 +200,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             }}
             className="w-full py-4 rounded-2xl bg-orange-600 text-white font-black uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
           >
-            Chiudi e Continua
+            {t('close_and_continue')}
           </button>
         </motion.div>
       </div>,
@@ -210,7 +213,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
       <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
         <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
           <div>
-            <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">{initialData ? 'Modifica Iscrizione' : 'Iscrizione Gara'}</h3>
+            <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">{initialData ? t('edit_registration') : t('reg_title')}</h3>
             <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest mt-1">{event.name}</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700">
@@ -224,7 +227,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
               {(user.role === 'admin' || user.role === 'society') ? (
                 <div className="md:col-span-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Seleziona Tiratore</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('select_shooter_label')}</label>
                   <ShooterSearch 
                     value={selectedShooter?.id || ''}
                     onChange={handleShooterSelect}
@@ -235,21 +238,21 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 </div>
               ) : (
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tiratore</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('shooter')}</label>
                   <p className="font-bold text-white">{selectedShooter?.name} {selectedShooter?.surname}</p>
                 </div>
               )}
               
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Codice Tiratore</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('shooter_code_label')}</label>
                 <p className="font-bold text-white">{selectedShooter?.shooter_code || '-'}</p>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Società</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('societies')}</label>
                 <p className="font-bold text-white">{selectedShooter?.society || '-'}</p>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Categoria / Qualifica</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('cat_qua')}</label>
                 <p className="font-bold text-white">{selectedShooter?.category || '-'} / {selectedShooter?.qualification || '-'}</p>
               </div>
             </div>
@@ -259,14 +262,14 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Phone className="w-3 h-3 text-orange-500" />
-                  Numero di Telefono
+                  {t('phone')}
                 </label>
                 <input
                   type="tel"
                   required
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Inserisci il tuo numero"
+                  placeholder={t('enter_phone_placeholder')}
                   className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
                 />
               </div>
@@ -276,16 +279,16 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Calendar className="w-3 h-3 text-orange-500" />
-                    Seleziona il giorno
+                    {t('select_day')}
                   </label>
                   <select
                     value={formData.registration_day}
                     onChange={e => setFormData({ ...formData, registration_day: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
-                    <option value="Nessuna scelta">Nessuna scelta</option>
-                    <option value="Giorno1">Giorno 1</option>
-                    <option value="Giorno2">Giorno 2</option>
+                    <option value={t('no_choice')}>{t('no_choice')}</option>
+                    <option value={t('day_1')}>{t('day_1')}</option>
+                    <option value={t('day_2')}>{t('day_2')}</option>
                   </select>
                 </div>
 
@@ -293,15 +296,14 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Target className="w-3 h-3 text-orange-500" />
-                    Tipologia Iscrizione
+                    {t('registration_type_label')}
                   </label>
                   <select
                     value={formData.registration_type}
                     onChange={e => setFormData({ ...formData, registration_type: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
-                    <option value="Iscrizione per Categoria">Iscrizione per Categoria</option>
-                    <option value="Iscrizione per Qualifica">Iscrizione per Qualifica</option>
+                    <option value={t('cat_reg')}>{t('cat_reg')}</option>
                   </select>
                 </div>
               </div>
@@ -311,7 +313,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Shield className="w-3 h-3 text-orange-500" />
-                    Fucile
+                    {language === 'it' ? 'Fucile' : 'Shotgun'}
                   </label>
                   <select
                     value={formData.shotgun_brand}
@@ -319,14 +321,14 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
                     {SHOTGUN_BRANDS.map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
+                      <option key={brand} value={brand}>{brand === 'Altro' ? (language === 'it' ? 'Altro' : 'Other') : brand}</option>
                     ))}
                   </select>
                   {formData.shotgun_brand === 'Altro' && (
                     <input
                       type="text"
                       required
-                      placeholder="Specifica marca fucile"
+                      placeholder={language === 'it' ? 'Specifica marca fucile' : 'Specify shotgun brand'}
                       value={formData.shotgun_model}
                       onChange={e => setFormData({ ...formData, shotgun_model: e.target.value })}
                       className="mt-2 w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
@@ -338,7 +340,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Info className="w-3 h-3 text-orange-500" />
-                    Cartuccia
+                    {language === 'it' ? 'Cartuccia' : 'Cartridge'}
                   </label>
                   <select
                     value={formData.cartridge_brand}
@@ -346,14 +348,14 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
                     {CARTRIDGE_BRANDS.map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
+                      <option key={brand} value={brand}>{brand === 'Altro' ? (language === 'it' ? 'Altro' : 'Other') : brand}</option>
                     ))}
                   </select>
                   {formData.cartridge_brand === 'Altro' && (
                     <input
                       type="text"
                       required
-                      placeholder="Specifica marca cartuccia"
+                      placeholder={language === 'it' ? 'Specifica marca cartuccia' : 'Specify cartridge brand'}
                       value={formData.cartridge_model}
                       onChange={e => setFormData({ ...formData, cartridge_model: e.target.value })}
                       className="mt-2 w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
@@ -385,11 +387,11 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
               {/* Notes */}
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{language === 'it' ? 'Note' : 'Notes'}</label>
                 <textarea
                   value={formData.notes}
                   onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Eventuali note o richieste particolari..."
+                  placeholder={language === 'it' ? "Eventuali note o richieste particolari..." : "Any extra notes or requests..."}
                   className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none min-h-[100px] resize-none"
                 />
               </div>
@@ -407,7 +409,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 onClick={onClose}
                 className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700"
               >
-                Annulla
+                {t('close')}
               </button>
               <button
                 type="submit"
@@ -420,7 +422,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    {initialData ? 'Salva Modifiche' : 'Conferma Iscrizione'}
+                    {initialData ? (language === 'it' ? 'Salva Modifiche' : 'Save Changes') : t('confirm_reg')}
                   </>
                 )}
               </button>

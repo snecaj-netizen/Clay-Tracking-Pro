@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Discipline } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BottomNavigationProps {
   currentView: string;
@@ -10,6 +11,7 @@ interface BottomNavigationProps {
 }
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate, user, appSettings }) => {
+  const { t } = useLanguage();
   const resultsAccess = appSettings?.event_results_access || {};
 
   const checkAccess = (access: any, userSociety: string | undefined) => {
@@ -30,17 +32,17 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
   const navItems = [];
 
   if (user?.role !== 'society') {
-    navItems.push({ id: 'le-tue-gare', label: 'Le Tue Gare', icon: 'fa-list-ul' });
-    navItems.push({ id: 'warehouse', label: 'Magazzino', icon: 'fa-box-open' });
+    navItems.push({ id: 'le-tue-gare', label: t('your_results'), icon: 'fa-list-ul' });
+    navItems.push({ id: 'warehouse', label: t('warehouse'), icon: 'fa-box-open' });
   }
 
-  navItems.push({ id: 'gare', label: 'Gare', icon: 'fa-calendar-alt' });
+  navItems.push({ id: 'gare', label: t('events'), icon: 'fa-calendar-alt' });
 
   if (user?.role === 'admin' || user?.role === 'society') {
-    navItems.push({ id: 'la-mia-societa', label: 'La mia Società', icon: 'fa-building' });
+    navItems.push({ id: 'la-mia-societa', label: t('managed_races'), icon: 'fa-building' });
   }
 
-  navItems.push({ id: 'societies', label: 'Società', icon: 'fa-shield-alt' });
+  navItems.push({ id: 'societies', label: t('societies'), icon: 'fa-shield-alt' });
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t-2 border-orange-600 z-[1000] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">

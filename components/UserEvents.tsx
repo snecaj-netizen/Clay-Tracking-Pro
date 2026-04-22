@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import EventsManager from './EventsManager';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface UserEventsProps {
   user: any;
@@ -16,6 +17,7 @@ interface UserEventsProps {
 export const UserEvents: React.FC<UserEventsProps> = ({
   user, token, societies, onParticipate, onCreateTeam, initialEventId, onInitialEventHandled, appSettings
 }) => {
+  const { t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'list' | 'registration' | 'results'>('list');
   const [viewModeProp, setViewModeProp] = useState<'list' | 'registration' | 'results' | 'calendar'>('list');
@@ -45,7 +47,7 @@ export const UserEvents: React.FC<UserEventsProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-calendar-alt text-orange-600"></i>
-            Gare
+            {t('events')}
           </h2>
           <div className="flex items-center gap-2">
             {/* Placeholder for KPI if needed, or just the view switcher */}
@@ -54,18 +56,18 @@ export const UserEvents: React.FC<UserEventsProps> = ({
                 <button 
                   onClick={() => setViewModeProp('list')} 
                   className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg transition-all ${viewModeProp === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                  title="Elenco"
+                  title={t('list_label')}
                 >
                   <i className="fas fa-list text-sm"></i>
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">Elenco</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">{t('list_label')}</span>
                 </button>
                 <button 
                   onClick={() => setViewModeProp('calendar')} 
                   className={`flex items-center justify-center w-9 sm:w-auto sm:px-3 h-8 sm:h-9 rounded-lg transition-all ${viewModeProp === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                  title="Calendario"
+                  title={t('calendar_label')}
                 >
                   <i className="fas fa-calendar-alt text-sm"></i>
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">Calendario</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline ml-2">{t('calendar_label')}</span>
                 </button>
               </div>
             )}
@@ -77,20 +79,20 @@ export const UserEvents: React.FC<UserEventsProps> = ({
             onClick={() => handleTabChange('list')} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
-            EVENTI
+            {t('events_tab_upper')}
           </button>
           <button 
             onClick={() => handleTabChange('registration')} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'registration' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
-            ISCRIVITI ALLE GARE
+            {t('register_to_events_upper')}
           </button>
           {hasTiratoriAccess && (
             <button 
               onClick={() => handleTabChange('results')} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'results' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
-              RISULTATI GARE
+              {t('events_results_upper')}
             </button>
           )}
         </div>

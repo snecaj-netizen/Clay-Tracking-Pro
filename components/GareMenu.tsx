@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import EventsManager from './EventsManager';
 import MyCompetitions from './MyCompetitions';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface GareMenuProps {
   user: any;
@@ -29,6 +30,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
   onSocietyClick, onNavigate, initialEventId, onInitialEventHandled, appSettings, initialTab = 'list'
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'list' | 'my-competitions' | 'managed' | 'registration'>(initialTab);
 
   const canRegister = user?.role === 'admin' || user?.role === 'user';
@@ -40,7 +42,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-calendar-alt text-orange-600"></i>
-            Gare
+            {t('races_plural')}
           </h2>
         </div>
 
@@ -49,7 +51,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
             onClick={() => { setActiveTab('list'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
           >
-            EVENTI
+            {t('events_tab_upper')}
           </button>
           
           {(user?.role === 'admin' || user?.role === 'user') && (
@@ -57,7 +59,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
               onClick={() => { setActiveTab('my-competitions'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'my-competitions' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
-              LE MIE GARE
+              {t('my_races_upper')}
             </button>
           )}
 
@@ -66,7 +68,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
               onClick={() => { setActiveTab('managed'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'managed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
-              GESTIONE GARE
+              {t('manage_races_upper')}
             </button>
           )}
 
@@ -75,7 +77,7 @@ const GareMenu: React.FC<GareMenuProps> = ({
               onClick={() => { setActiveTab('registration'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${activeTab === 'registration' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
             >
-              ISCRIVITI ALLE GARE
+              {t('register_to_events_upper')}
             </button>
           )}
         </div>

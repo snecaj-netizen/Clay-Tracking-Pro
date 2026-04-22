@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Users, RefreshCw, Save, Clock, Target, ArrowRight } from 'lucide-react';
 import { SocietyEvent, EventSquad } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventSquadManagerProps {
   event: SocietyEvent;
@@ -13,6 +14,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
   event,
   onClose
 }) => {
+  const { t } = useLanguage();
   const [squads, setSquads] = useState<EventSquad[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,7 +28,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
       const response = await fetch(`/api/events/${event.id}/squads`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
-      if (!response.ok) throw new Error('Errore nel caricamento delle batterie');
+      if (!response.ok) throw new Error(t('error_loading_squads'));
       const data = await response.json();
       setSquads(data);
     } catch (err: any) {
@@ -52,7 +54,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
         },
         body: JSON.stringify({ fieldsCount, startTime })
       });
-      if (!response.ok) throw new Error('Errore nella generazione delle batterie');
+      if (!response.ok) throw new Error(t('error_generating_squads'));
       await fetchSquads();
     } catch (err: any) {
       setError(err.message);
@@ -72,7 +74,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
         },
         body: JSON.stringify({ squads })
       });
-      if (!response.ok) throw new Error('Errore nel salvataggio delle batterie');
+      if (!response.ok) throw new Error(t('error_saving_squads'));
       await fetchSquads();
     } catch (err: any) {
       setError(err.message);
@@ -92,7 +94,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
       newSquads[toSquadIndex].members.forEach((m: any, idx: number) => m.position = idx + 1);
       setSquads(newSquads);
     } else {
-      alert('La batteria di destinazione è piena (max 6 tiratori)');
+      alert(t('squad_full_error'));
     }
   };
 
@@ -103,7 +105,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
           <div>
             <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
               <Users className="w-6 h-6 text-orange-500" />
-              Gestione Batterie
+              {t('squad_management_title')}
             </h2>
             <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest mt-1">{event.name}</p>
           </div>
@@ -118,10 +120,10 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
             <div className="space-y-4">
               <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-orange-500" />
-                Generazione Automatica
+                {t('auto_generation')}
               </h3>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Numero Campi</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('fields_count')}</label>
                 <input
                   type="number"
                   min="1"
@@ -132,7 +134,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Orario Inizio</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('start_time')}</label>
                 <input
                   type="time"
                   value={startTime}
@@ -146,7 +148,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                 disabled={isGenerating}
                 className="w-full py-4 bg-orange-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20 disabled:opacity-50"
               >
-                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Genera Casualmente'}
+                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : t('generate_randomly')}
               </button>
             </div>
 
@@ -157,7 +159,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                 className="w-full py-4 bg-slate-800 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-lg border border-slate-700"
               >
                 <Save className="w-5 h-5" />
-                Salva Modifiche
+                {t('save_changes')}
               </button>
             </div>
 
@@ -173,13 +175,13 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
             {isLoading && squads.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-500">
                 <RefreshCw className="w-12 h-12 animate-spin mb-4" />
-                <p className="text-xs font-black uppercase tracking-widest">Caricamento batterie...</p>
+                <p className="text-xs font-black uppercase tracking-widest">{t('loading_squads')}</p>
               </div>
             ) : squads.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-500 text-center">
                 <Users className="w-16 h-16 mb-4 opacity-20" />
-                <p className="text-lg font-black uppercase tracking-tight text-white">Nessuna batteria generata</p>
-                <p className="text-xs uppercase tracking-widest mt-2">Usa i controlli a sinistra per iniziare</p>
+                <p className="text-lg font-black uppercase tracking-tight text-white">{t('no_squads_generated')}</p>
+                <p className="text-xs uppercase tracking-widest mt-2">{t('use_controls_to_start')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -187,10 +189,10 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                   <div key={squad.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-orange-500/30 transition-all group/squad">
                     <div className="p-4 bg-slate-950/50 border-b border-slate-800 flex justify-between items-center">
                       <div>
-                        <h4 className="font-black text-white uppercase tracking-tight text-sm">Batteria {squad.squad_number}</h4>
+                        <h4 className="font-black text-white uppercase tracking-tight text-sm">{t('squad_label')} {squad.squad_number}</h4>
                         <div className="flex items-center gap-3 mt-1 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                           <span className="flex items-center gap-1">
-                            <Target className="w-3 h-3 text-orange-500" /> Campo {squad.field_number}
+                            <Target className="w-3 h-3 text-orange-500" /> {t('field_label_short')} {squad.field_number}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3 text-orange-500" /> {squad.start_time}
@@ -220,7 +222,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                               <button
                                 onClick={() => moveMember(sIdx, mIdx, sIdx - 1)}
                                 className="w-7 h-7 flex items-center justify-center bg-slate-900 hover:bg-orange-600 text-orange-500 hover:text-white rounded-lg transition-all border border-slate-800"
-                                title="Sposta in batteria precedente"
+                                title={t('prev_squad_title')}
                               >
                                 <ArrowRight className="w-3 h-3 rotate-180" />
                               </button>
@@ -229,7 +231,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                               <button
                                 onClick={() => moveMember(sIdx, mIdx, sIdx + 1)}
                                 className="w-7 h-7 flex items-center justify-center bg-slate-900 hover:bg-orange-600 text-orange-500 hover:text-white rounded-lg transition-all border border-slate-800"
-                                title="Sposta in batteria successiva"
+                                title={t('next_squad_title')}
                               >
                                 <ArrowRight className="w-3 h-3" />
                               </button>
@@ -239,7 +241,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                       ))}
                       {squad.members.length === 0 && (
                         <div className="flex items-center justify-center h-full text-slate-600 text-[10px] font-black uppercase tracking-widest italic py-10">
-                          Batteria vuota
+                          {t('empty_squad')}
                         </div>
                       )}
                     </div>

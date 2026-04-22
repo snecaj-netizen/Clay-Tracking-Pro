@@ -3,6 +3,7 @@ import ShooterSearch from '../ShooterSearch';
 import SocietySearch from '../SocietySearch';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TeamManagementProps {
   currentUser: any;
@@ -28,6 +29,7 @@ const TeamCard = React.memo(({
   onEditTeam: (team: any) => void, 
   onDeleteTeam: (id: number) => void 
 }) => {
+  const { t } = useLanguage();
   return (
     <div className="bg-slate-950/50 border border-slate-800 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col">
       <div className="p-4 border-b border-slate-800/50 bg-slate-900/30 flex items-center justify-between">
@@ -56,14 +58,14 @@ const TeamCard = React.memo(({
           <button 
             onClick={() => onSetSelectedTeamForSheet(team, 'print')}
             className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg"
-            title="Stampa Statino"
+            title={t('print_score_sheet')}
           >
             <i className="fas fa-print text-[10px]"></i>
           </button>
           <button 
             onClick={() => onSetSelectedTeamForSheet(team, 'download')}
             className="w-8 h-8 rounded-lg bg-green-600/10 text-green-500 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-lg"
-            title="Scarico Statino (PDF)"
+            title={t('download_score_sheet')}
           >
             <i className="fas fa-file-download text-[10px]"></i>
           </button>
@@ -94,7 +96,7 @@ const TeamCard = React.memo(({
                   <div className="flex items-center gap-2">
                     <p className="text-[11px] font-bold text-white truncate">{member.surname} {member.name}</p>
                     {member.rte_score && (
-                      <span className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20" title="Rating RTE (Proiezione su 100)">
+                      <span className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20" title={t('rte_rating_projection')}>
                         {(parseFloat(member.rte_score) * 4).toFixed(1)}
                       </span>
                     )}
@@ -135,7 +137,7 @@ const TeamCard = React.memo(({
       </div>
       
       <div className="p-3 bg-slate-900/50 border-t border-slate-800/50 flex items-center justify-between">
-        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Totale Squadra</span>
+        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('team_total')}</span>
         <div className="flex items-baseline gap-1">
           <span className="text-xl font-black text-white">
             {team.members.reduce((acc: number, m: any) => acc + (m.score || 0), 0)}
@@ -151,6 +153,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
   currentUser, token, fetchAllResults
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t } = useLanguage();
   const {
     societies, teamStats, setTeamStats, teams, setTeams, events, loading, backgroundLoading,
     showTeamForm, setShowTeamForm, newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId,
@@ -213,7 +216,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedShooterIds.length !== newTeamSize) {
-      triggerToast?.(`Seleziona esattamente ${newTeamSize} tiratori`, 'error');
+      triggerToast?.(t('select_exactly_shooters').replace('{{count}}', String(newTeamSize)), 'error');
       return;
     }
 
@@ -241,7 +244,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
         }),
       });
 
-      if (!res.ok) throw new Error('Errore durante il salvataggio della squadra');
+      if (!res.ok) throw new Error(t('save_error_msg'));
       
       setShowTeamForm(false);
       setEditingTeam(null);
@@ -250,7 +253,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
       fetchTeams();
       fetchTeamStats();
       fetchAllResults();
-      triggerToast?.('Squadra salvata con successo!', 'success');
+      triggerToast?.(t('team_saved_success'), 'success');
     } catch (err: any) {
       triggerToast?.(err.message, 'error');
     }
@@ -258,23 +261,23 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
 
   const handleDeleteTeam = (id: number) => {
     triggerConfirm(
-      'Elimina Squadra',
-      'Sei sicuro di voler eliminare questa squadra? L\'azione è irreversibile.',
+      t('delete_team_title'),
+      t('confirm_delete_team'),
       async () => {
         try {
           const res = await fetch(`/api/teams/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+          if (!res.ok) throw new Error(t('delete_error'));
           fetchTeams();
           fetchTeamStats();
-          triggerToast?.('Squadra eliminata', 'success');
+          triggerToast?.(t('team_deleted_success'), 'success');
         } catch (err: any) {
           triggerToast?.(err.message, 'error');
         }
       },
-      'Elimina',
+      t('delete'),
       'danger'
     );
   };
@@ -290,7 +293,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
         body: JSON.stringify({ score }),
       });
 
-      if (!res.ok) throw new Error('Errore durante l\'aggiornamento del punteggio');
+      if (!res.ok) throw new Error(t('update_error_msg'));
       
       setEditingScore(null);
       fetchTeams(undefined, true);
@@ -305,7 +308,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-            <i className="fas fa-users-cog text-orange-500"></i> Squadre
+            <i className="fas fa-users-cog text-orange-500"></i> {t('squads')}
             {(loading || backgroundLoading) && <i className="fas fa-circle-notch fa-spin text-orange-500 text-xs ml-2"></i>}
           </h2>
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -313,13 +316,13 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
               onClick={() => setTeamSubTab('list')}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${teamSubTab === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              Lista
+              {t('list_view_label')}
             </button>
             <button 
               onClick={() => setTeamSubTab('stats')}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${teamSubTab === 'stats' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              Statistiche
+              {t('stats_label')}
             </button>
           </div>
         </div>
@@ -327,26 +330,41 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
 
       {teamSubTab === 'stats' ? (
         <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest">Ranking Squadre</h3>
-              <div className="group relative">
-                <i className="fas fa-info-circle text-xs text-slate-600 cursor-help hover:text-orange-500 transition-colors p-1"></i>
-                <div className="absolute top-full left-0 mt-1 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed">
-                  <p className="mb-1 text-white font-bold">Rating Tecnico di Eccellenza (RTE)</p>
-                  Media dei <span className="text-white">migliori 5 risultati</span> (ultimi 12 mesi). 
-                  Il valore è proiettato su <span className="text-orange-500 font-bold">100 piattelli</span> per facilitare la composizione della squadra.
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-600/20 border border-orange-500/20 flex items-center justify-center text-orange-500">
+                <i className="fas fa-trophy"></i>
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('team_ranking_title')}</h3>
+                <div className="flex items-center gap-2 group relative">
+                  <span className="text-[10px] text-slate-500 font-bold">{t('technical_rating_excellence')}</span>
+                  <i className="fas fa-info-circle text-[10px] text-slate-700 cursor-help hover:text-orange-500 transition-colors"></i>
+                  <div className="absolute top-full left-0 mt-2 w-72 p-4 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl scale-0 group-hover:scale-100 transition-all origin-top-left z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed backdrop-blur-xl">
+                    {t('rte_desc')}
+                  </div>
                 </div>
               </div>
             </div>
-            <select 
-              value={statsFilterDiscipline}
-              onChange={(e) => setStatsFilterDiscipline(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase outline-none focus:border-orange-500 transition-all"
-            >
-              <option value="">Tutte le Discipline</option>
-              {statsDisciplines.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div className="space-y-1.5 min-w-[200px]">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-crosshairs text-orange-500"></i>
+                {t('discipline_label')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={statsFilterDiscipline}
+                  onChange={(e) => setStatsFilterDiscipline(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-[11px] font-black text-white uppercase outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all_disciplines')}</option>
+                  {statsDisciplines.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 group-focus-within:text-orange-500 transition-colors">
+                  <i className="fas fa-chevron-down text-[8px]"></i>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 gap-2">
@@ -375,12 +393,12 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                     </span>
                     <span className="text-[9px] font-bold text-slate-600">RTE</span>
                   </div>
-                  <p className="text-[8px] font-bold text-slate-600 uppercase">{stat.total_competitions} Gare</p>
+                  <p className="text-[8px] font-bold text-slate-600 uppercase">{stat.total_competitions} {t('races_plural')}</p>
                 </div>
               </div>
             ))}
             {filteredTeamStats.length === 0 && (
-              <div className="py-12 text-center text-slate-600 italic text-sm">Nessuna statistica disponibile.</div>
+              <div className="py-12 text-center text-slate-600 italic text-sm">{t('no_stats_available')}</div>
             )}
           </div>
         </div>
@@ -390,7 +408,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
             <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 mb-8 animate-in zoom-in-95 duration-300">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-black text-white uppercase tracking-tight">
-                  {editingTeam ? 'Modifica Squadra' : 'Nuova Squadra'}
+                  {editingTeam ? t('edit_team_title') : t('new_team_title')}
                 </h3>
                 <button onClick={() => { setShowTeamForm(false); setEditingTeam(null); }} className="text-slate-500 hover:text-white transition-colors">
                   <i className="fas fa-times"></i>
@@ -400,18 +418,18 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
               <form onSubmit={handleCreateTeam} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Squadra</label>
-                    <input type="text" required value={newTeamName} onChange={e => setNewTeamName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" placeholder="es. Roma Team A" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('team_name_label')}</label>
+                    <input type="text" required value={newTeamName} onChange={e => setNewTeamName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" placeholder={t('team_name_placeholder')} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Dimensione</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('team_size_label')}</label>
                     <select value={newTeamSize} onChange={e => setNewTeamSize(Number(e.target.value) as 3 | 6)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                      <option value={3}>3 Tiratori</option>
-                      <option value={6}>6 Tiratori</option>
+                      <option value={3}>{t('shooters_count_option').replace('{{count}}', '3')}</option>
+                      <option value={6}>{t('shooters_count_option').replace('{{count}}', '6')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Gara (Opzionale)</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('specific_competition_optional')}</label>
                     <select 
                       value={newTeamEventId || ''} 
                       onChange={e => {
@@ -429,36 +447,36 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                       }} 
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                     >
-                      <option value="">Nessuna gara specifica</option>
+                      <option value="">{t('no_specific_competition')}</option>
                       {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name} ({ev.discipline})</option>)}
                     </select>
                   </div>
                   {!newTeamEventId && (
                     <>
                       <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Competizione</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('competition_name_label')}</label>
                         <input type="text" required value={newTeamCompetitionName} onChange={e => setNewTeamCompetitionName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('discipline')}</label>
                         <input type="text" required value={newTeamDiscipline} onChange={e => setNewTeamDiscipline(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('society_tav_label')}</label>
                         <SocietySearch 
                           value={newTeamSociety}
                           onChange={setNewTeamSociety}
                           societies={societies}
-                          placeholder="Seleziona..."
+                          placeholder={t('select_dot')}
                           disabled={currentUser?.role === 'society'}
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('date')}</label>
                         <input type="date" required value={newTeamDate} onChange={e => setNewTeamDate(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Totali</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('targets_total_label')}</label>
                         <input type="number" required value={newTeamTargets} onChange={e => setNewTeamTargets(Number(e.target.value))} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                     </>
@@ -467,12 +485,12 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seleziona Tiratori ({selectedShooterIds.length}/{newTeamSize})</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('select_shooters_label').replace('{{current}}', String(selectedShooterIds.length)).replace('{{total}}', String(newTeamSize))}</label>
                     <div className="relative">
                       <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-[10px]"></i>
                       <input 
                         type="text" 
-                        placeholder="Cerca tiratore..." 
+                        placeholder={t('search_shooter_placeholder')} 
                         value={shooterSearch}
                         onChange={e => setShooterSearch(e.target.value)}
                         className="bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-[10px] text-white focus:border-orange-600 outline-none transition-all w-40"
@@ -505,9 +523,9 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                 </div>
 
                 <div className="flex justify-end gap-3">
-                  <button type="button" onClick={() => { setShowTeamForm(false); setEditingTeam(null); }} className="px-6 py-2 rounded-xl text-xs font-black uppercase bg-slate-800 text-white hover:bg-slate-700 transition-all">Annulla</button>
+                  <button type="button" onClick={() => { setShowTeamForm(false); setEditingTeam(null); }} className="px-6 py-2 rounded-xl text-xs font-black uppercase bg-slate-800 text-white hover:bg-slate-700 transition-all">{t('cancel_label')}</button>
                   <button type="submit" className="px-6 py-2 rounded-xl text-xs font-black uppercase bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 transition-all">
-                    {editingTeam ? 'Salva Modifiche' : 'Crea Squadra'}
+                    {editingTeam ? t('save_changes') : t('create_team')}
                   </button>
                 </div>
               </form>
@@ -529,8 +547,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
               {teams.length === 0 && (
                 <div className="col-span-full py-20 text-center bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
                   <i className="fas fa-users text-4xl text-slate-800 mb-4"></i>
-                  <p className="text-slate-500 font-bold">Nessuna squadra creata.</p>
-                  <button onClick={() => setShowTeamForm(true)} className="mt-4 text-orange-500 font-black uppercase text-xs hover:underline">Crea la prima squadra</button>
+                  <p className="text-slate-500 font-bold">{t('no_teams_created')}</p>
+                  <button onClick={() => setShowTeamForm(true)} className="mt-4 text-orange-500 font-black uppercase text-xs hover:underline">{t('create_first_team')}</button>
                 </div>
               )}
             </div>

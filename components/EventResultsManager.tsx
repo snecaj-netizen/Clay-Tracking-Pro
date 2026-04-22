@@ -9,6 +9,7 @@ import autoTable from 'jspdf-autotable';
 import { handleNetworkError } from './ConnectionStatus';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventResultsManagerProps {
   event: SocietyEvent;
@@ -22,6 +23,7 @@ interface EventResultsManagerProps {
 
 const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, onEventUpdate, societies = [] }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { language, t } = useLanguage();
   const [results, setResults] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -95,13 +97,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const fetchResultsAndTeams = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      const resultsUrl = token ? `/api/events/${event.id}/results` : `/api/public/events/${event.id}/results`;
+      const teamsUrl = token ? `/api/events/${event.id}/teams` : `/api/public/events/${event.id}/teams`;
+      const headers: any = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const [resResults, resTeams] = await Promise.all([
-        fetch(`/api/events/${event.id}/results`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`/api/events/${event.id}/teams`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetch(resultsUrl, { headers }),
+        fetch(teamsUrl, { headers })
       ]);
 
       if (resResults.ok) {
@@ -128,16 +131,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       // Fetch results and teams first
       await fetchResultsAndTeams(true);
 
-      // Fetch users (shooters) regardless of readOnly to show names in team rankings
-      // For society users, we pass all=true to allow them to see all shooters when managing their event results
-      const usersUrl = `/api/admin/users?limit=10000&excludeRole=society${user?.role === 'society' ? '&all=true' : ''}`;
-      const resUsers = await fetch(usersUrl, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (resUsers.ok) {
-        const data = await resUsers.json();
-        let filteredUsers = (data.users || []).filter((u: any) => u.role === 'user' || u.role === 'admin');
-        setUsers(filteredUsers);
+      // Fetch users (shooters) only if authenticated
+      if (token) {
+        const usersUrl = `/api/admin/users?limit=10000&excludeRole=society${user?.role === 'society' ? '&all=true' : ''}`;
+        const resUsers = await fetch(usersUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resUsers.ok) {
+          const data = await resUsers.json();
+          let filteredUsers = (data.users || []).filter((u: any) => u.role === 'user' || u.role === 'admin');
+          setUsers(filteredUsers);
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.message !== 'Failed to fetch') {
@@ -152,8 +156,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     if (!triggerConfirm) return;
     
     triggerConfirm(
-      'Convalida Gara',
-      'Sei sicuro di voler convalidare questa gara? Una volta convalidata, non potrai più modificare i risultati. Solo l\'amministratore potrà riaprirla.',
+      t('validate_event_title'),
+      t('validate_event_confirm'),
       async () => {
         try {
           const res = await fetch(`/api/events/${event.id}/validate`, {
@@ -163,20 +167,20 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           if (res.ok) {
             if (onEventUpdate) onEventUpdate();
             if (triggerToast) {
-              triggerToast('Convalida eseguita correttamente!', 'success');
+              triggerToast(t('validate_success'), 'success');
             } else {
-              alert('Convalida eseguita correttamente!');
+              alert(t('validate_success'));
             }
             onClose();
           } else {
-            let errorMessage = 'Errore durante la convalida';
+            let errorMessage = t('validate_error');
             try {
               const data = await res.json();
               errorMessage = data.error || errorMessage;
             } catch (e) {
               console.error('Failed to parse error response:', e);
-              if (res.status === 403) errorMessage = 'Non hai i permessi per questa operazione.';
-              else if (res.status === 404) errorMessage = 'Gara non trovata.';
+              if (res.status === 403) errorMessage = t('validate_permission_error');
+              else if (res.status === 404) errorMessage = t('validate_not_found_error');
             }
             if (triggerToast) {
               triggerToast(errorMessage, 'error');
@@ -187,9 +191,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         } catch (error) {
           console.error('Error validating event:', error);
           if (triggerToast) {
-            triggerToast('Errore di connessione durante la convalida', 'error');
+            triggerToast(t('validate_network_error'), 'error');
           } else {
-            alert('Errore di connessione durante la convalida');
+            alert(t('validate_network_error'));
           }
         }
       }
@@ -300,7 +304,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(event.status === 'validated' ? 'Classifica Finale' : 'Classifica Provvisoria', pageWidth / 2, 22, { align: 'center' });
+    doc.text(event.status === 'validated' ? t('pdf_final_ranking') : t('pdf_provisional_ranking'), pageWidth / 2, 22, { align: 'center' });
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
@@ -312,26 +316,26 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     doc.setTextColor(51, 65, 85); // slate-700
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('SOCIETÀ:', 20, currentY);
+    doc.text(t('pdf_club'), 20, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text(event.location || 'N/D', 45, currentY);
     
     doc.setFont('helvetica', 'bold');
-    doc.text('DATE:', 120, currentY);
+    doc.text(t('pdf_date'), 120, currentY);
     doc.setFont('helvetica', 'normal');
-    const startDate = event.start_date ? new Date(event.start_date).toLocaleDateString('it-IT') : 'N/D';
-    const endDate = event.end_date ? new Date(event.end_date).toLocaleDateString('it-IT') : null;
+    const startDate = event.start_date ? new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US') : 'N/D';
+    const endDate = event.end_date ? new Date(event.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US') : null;
     const dateText = endDate && endDate !== startDate ? `${startDate} - ${endDate}` : startDate;
     doc.text(dateText, 135, currentY);
     
     currentY += 7;
     doc.setFont('helvetica', 'bold');
-    doc.text('DISCIPLINA:', 20, currentY);
+    doc.text(t('pdf_discipline'), 20, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text(event.discipline || 'N/D', 45, currentY);
     
     doc.setFont('helvetica', 'bold');
-    doc.text('PIATTELLI:', 120, currentY);
+    doc.text(t('pdf_targets'), 120, currentY);
     doc.setFont('helvetica', 'normal');
     doc.text((event.targets || 100).toString(), 145, currentY);
     
@@ -349,7 +353,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       currentY += 5;
 
       const seriesHeaders = Array.from({ length: pdfMaxSeriesCount }).map((_, i) => `S${i + 1}`);
-      const headers = [['Pos', 'P', 'Tiratore', 'Cat/Qual', ...seriesHeaders, 'Tot', 'S.O.']];
+      const headers = [[t('pdf_pos'), t('pdf_prize'), t('pdf_shooter'), t('pdf_cat_qual'), ...seriesHeaders, t('pdf_total'), t('pdf_shoot_off')]];
 
       autoTable(doc, {
         startY: currentY,
@@ -362,7 +366,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           
           return [
             index + 1,
-            isPrize ? 'P' : '',
+            isPrize ? t('pdf_prize') : '',
             `${r.user_surname || ''} ${r.user_name || ''}${r.shooter_code ? `\n(${r.shooter_code})` : ''}`,
             `${r.category_at_time || r.category || '-'}/${r.qualification_at_time || r.qualification || '-'}`,
             ...seriesData,
@@ -398,7 +402,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
     // 1. Classifica Generale
     const sortedGeneral = [...results].sort(sortResults);
-    renderTable('Classifica Generale', sortedGeneral);
+    renderTable(t('pdf_general_ranking'), sortedGeneral);
 
     // 2. Classifiche per Categoria
     categories.forEach(cat => {
@@ -409,7 +413,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         return (r.category_at_time || r.category) === cat;
       }).sort(sortResults);
       if (catResults.length > 0) {
-        renderTable(`Classifica Categoria: ${cat}`, catResults);
+        renderTable(`${t('pdf_category_ranking')}: ${cat}`, catResults);
       }
     });
 
@@ -422,7 +426,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         return (r.qualification_at_time || r.qualification) === qual;
       }).sort(sortResults);
       if (qualResults.length > 0) {
-        renderTable(`Classifica Qualifica: ${qual}`, qualResults);
+        renderTable(`${t('pdf_qualification_ranking')}: ${qual}`, qualResults);
       }
     });
 
@@ -433,10 +437,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(234, 88, 12); // orange-600
-      doc.text('CLASSIFICA SOCIETÀ', 20, currentY);
+      doc.text(t('pdf_society_ranking'), 20, currentY);
       currentY += 5;
 
-      const headers = [['Pos', 'Società', 'Tiratori', 'Totale']];
+      const headers = [[t('pdf_pos'), t('society_label'), t('shooters_label'), t('pdf_total')]];
       
       const bodyData = societyRanking.map((soc, index) => {
         const shootersStr = soc.shooters.map(s => 
@@ -480,7 +484,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(234, 88, 12); // orange-600
-      doc.text('CLASSIFICA SQUADRE', 20, currentY);
+      doc.text(t('pdf_team_ranking'), 20, currentY);
       currentY += 5;
 
       const teamRankings = teams.map(team => {
@@ -490,7 +494,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           return {
             id: id,
             user_id: id,
-            user_name: result?.user_name || user?.name || 'Sconosciuto',
+            user_name: result?.user_name || user?.name || t('unknown'),
             user_surname: result?.user_surname || user?.surname || '',
             totalscore: result?.totalscore || 0
           };
@@ -503,7 +507,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         };
       }).sort((a, b) => b.totalScore - a.totalScore);
 
-      const headers = [['Pos', 'Squadra', 'Tiratori', 'Totale']];
+      const headers = [[t('pdf_pos'), t('team_label'), t('shooters_label'), t('pdf_total')]];
       
       const bodyData = teamRankings.map((team, index) => {
         const typeStr = team.type ? ` (${team.type})` : '';
@@ -549,7 +553,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Pagina ${i} di ${pageCount} - Generato da Clay Performance`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      doc.text(`${t('pdf_page')} ${i} ${t('pdf_of')} ${pageCount} - ${t('pdf_generated_by')} Clay Performance`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     }
 
     if (shouldDownload) {
@@ -1015,7 +1019,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             <div className="w-full md:w-1/3 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-slate-800 md:overflow-y-auto bg-slate-900/50 shrink-0 md:shrink">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-white uppercase tracking-widest">
-                  {editingResultId ? 'Modifica Risultato' : 'Inserisci Risultato'}
+                  {editingResultId ? t('update_label') : t('insert_result_label')}
                 </h3>
                 <button 
                   type="button"
@@ -1030,21 +1034,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
               {showPrizeConfig && (
                 <div className="mb-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Configurazione Premi</h4>
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest">{t('prize_config_title')}</h4>
                     <button 
                       onClick={handleSavePrizeSettings}
                       className="px-3 py-1 rounded-lg bg-green-600 text-white text-[10px] font-bold hover:bg-green-500 transition-all shadow-lg"
                     >
-                      Salva
+                      {t('save')}
                     </button>
                   </div>
                   <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                     {/* Categories */}
                     <div>
-                      <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-slate-700 pb-1">Categorie</h5>
+                      <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-slate-700 pb-1">{t('categories_label')}</h5>
                       <div className="space-y-2">
                         {categories.length === 0 ? (
-                          <p className="text-[9px] text-slate-600 italic">Nessuna categoria trovata</p>
+                          <p className="text-[9px] text-slate-600 italic">{t('no_categories_found')}</p>
                         ) : categories.map(cat => {
                           const setting = prizeSettings.find(s => s.type === 'categoria' && s.name === cat);
                           return (
@@ -1073,10 +1077,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     </div>
                     {/* Qualifications */}
                     <div>
-                      <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-slate-700 pb-1">Qualifiche</h5>
+                      <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-slate-700 pb-1">{t('qualifications_label')}</h5>
                       <div className="space-y-2">
                         {qualifications.length === 0 ? (
-                          <p className="text-[9px] text-slate-600 italic">Nessuna qualifica trovata</p>
+                          <p className="text-[9px] text-slate-600 italic">{t('no_qualifications_found')}</p>
                         ) : qualifications.map(qual => {
                           const setting = prizeSettings.find(s => s.type === 'qualifica' && s.name === qual);
                           return (
@@ -1109,7 +1113,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
               <form id="result-form" onSubmit={handleSave} className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shooter')}</label>
                   <div className="flex gap-2">
                     <ShooterSearch 
                       value={selectedUserId} 
@@ -1119,7 +1123,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       }}
                       shooters={shootersWithoutResults}
                       useId={true}
-                      placeholder="Cerca Tiratore (Nome, Cognome o Codice)..."
+                      placeholder={t('search_shooter_ranking_placeholder')}
                       className="flex-1"
                       required
                     />
@@ -1127,7 +1131,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       type="button"
                       onClick={() => setShowQuickAddShooter(true)}
                       className="px-3 py-2 rounded-xl bg-slate-800 text-orange-500 hover:bg-orange-600 hover:text-white border border-slate-700 hover:border-orange-500 transition-all active:scale-95 flex items-center justify-center shadow-lg"
-                      title="Aggiungi nuovo tiratore"
+                      title={t('add_new_shooter_title')}
                     >
                       <i className="fas fa-user-plus"></i>
                     </button>
@@ -1136,8 +1140,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie</label>
-                    <span className="text-[9px] text-orange-500 font-medium italic">Clicca sul numero per inserire il dettaglio piattelli</span>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('series_label')}</label>
+                    <span className="text-[9px] text-orange-500 font-medium italic">{t('series_detail_hint')}</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1.5">
                     {series.map((s, i) => (
@@ -1193,7 +1197,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore iscritto per:</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shooter_signed_up_for')}</label>
                   <select 
                     value={rankingPreference} 
                     onChange={(e) => {
@@ -1202,8 +1206,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-orange-600 outline-none"
                   >
-                    <option value="categoria">Categoria</option>
-                    <option value="qualifica">Qualifica</option>
+                    <option value="categoria">{t('category')}</option>
+                    <option value="qualifica">{t('qualification')}</option>
                   </select>
                 </div>
 
@@ -1211,7 +1215,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 <div className="p-3 bg-orange-600/10 rounded-xl border border-orange-500/20 space-y-2">
                   <div className="flex items-center gap-2 text-orange-500">
                     <i className="fas fa-exclamation-triangle text-[10px]"></i>
-                    <h4 className="text-[9px] font-black uppercase tracking-widest">Override Classifica (Società)</h4>
+                    <h4 className="text-[9px] font-black uppercase tracking-widest">{t('ranking_priority_override')}</h4>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <button
@@ -1223,7 +1227,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
                       }`}
                     >
-                      Nessuno
+                      {t('none')}
                     </button>
                     <button
                       type="button"
@@ -1234,7 +1238,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
                       }`}
                     >
-                      Forza Categoria
+                      {t('force_category')}
                     </button>
                     <button
                       type="button"
@@ -1245,13 +1249,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
                       }`}
                     >
-                      Forza Qualifica
+                      {t('force_qualification')}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Classifica Società (Gara)</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('enable_society_ranking')}</label>
                   <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-2">
                       <input
@@ -1277,14 +1281,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         className="w-4 h-4 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
                       />
                       <label htmlFor="hasSocietyRankingResult" className="text-xs font-bold text-slate-300 cursor-pointer">
-                        Abilita Classifica Società
+                        {t('enable_action_label')}
                       </label>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Classifica Squadre (Gara)</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('enable_team_ranking')}</label>
                   <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-2">
                       <input
@@ -1310,14 +1314,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         className="w-4 h-4 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
                       />
                       <label htmlFor="hasTeamRankingResult" className="text-xs font-bold text-slate-300 cursor-pointer">
-                        Abilita Classifica Squadre
+                        {t('enable_action_label')}
                       </label>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Spareggio (Opzionale)</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shoot_off_competition_label')} ({t('optional')})</label>
                   <input 
                     type="number" 
                     min="0"
@@ -1333,7 +1337,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
                 <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
                   <div className="text-slate-400">
-                    Totale: <span className="text-xl font-black text-white">{calculateTotal()}</span>
+                    {t('total')}: <span className="text-xl font-black text-white">{calculateTotal()}</span>
                   </div>
                   <div className="flex gap-2">
                     {editingResultId && (
@@ -1351,15 +1355,16 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         }}
                         className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm font-bold hover:bg-slate-700 transition-all"
                       >
-                        Annulla
+                        {t('cancel')}
                       </button>
                     )}
                     <button 
                       type="submit" 
                       disabled={saving}
-                      className="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-bold hover:bg-orange-500 transition-all disabled:opacity-50"
+                      className="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-bold hover:bg-orange-500 transition-all disabled:opacity-50 flex items-center gap-2"
                     >
-                      {saving ? 'Salvataggio...' : (editingResultId ? 'Aggiorna' : 'Salva')}
+                      {saving && <i className="fas fa-circle-notch fa-spin"></i>}
+                      {saving ? `${t('saving_short')}...` : (editingResultId ? t('update_label') : t('save'))}
                     </button>
                   </div>
                 </div>
@@ -1371,7 +1376,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           <div className={`w-full ${(readOnly || event.status === 'validated') ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 shrink-0 md:shrink`}>
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
               <h3 className="text-lg font-bold text-white uppercase tracking-widest">
-                {event.status === 'validated' ? 'Classifica Finale' : (readOnly ? 'Classifica Generale' : 'Classifica Provvisoria')}
+                {event.status === 'validated' ? t('pdf_final_ranking') : (readOnly ? t('pdf_general_ranking') : t('pdf_provisional_ranking'))}
               </h3>
               
               <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
@@ -1380,7 +1385,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                   <input 
                     type="text" 
-                    placeholder="Cerca Tiratore in classifica..." 
+                    placeholder={t('search_shooter_ranking_placeholder')} 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600 font-bold"
@@ -1400,7 +1405,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     onClick={() => setViewMode('generale')}
                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
-                    Generale
+                    {t('general')}
                   </button>
                   <button
                     onClick={() => {
@@ -1411,7 +1416,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     }}
                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'categoria' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
-                    Categoria
+                    {t('category')}
                   </button>
                   <button
                     onClick={() => {
@@ -1422,14 +1427,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     }}
                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'qualifica' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
-                    Qualifica
+                    {t('qualification')}
                   </button>
                   {hasSocietyRanking && (
                     <button
                       onClick={() => setViewMode('societa')}
                       className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'societa' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                     >
-                      Società
+                      {t('society_label')}
                     </button>
                   )}
                   {hasTeamRanking && (
@@ -1437,7 +1442,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       onClick={() => setViewMode('squadre')}
                       className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'squadre' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                     >
-                      Squadre
+                      {t('teams_label')}
                     </button>
                   )}
                 </div>
@@ -1499,7 +1504,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
               societyRanking.length === 0 ? (
                 <div className="text-center py-12 text-slate-500">
                   <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
-                  <p>Nessuna società trovata nei risultati.</p>
+                  <p>{t('no_societies_found_in_results')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1517,7 +1522,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         </div>
                       </div>
                       <div className="p-4 bg-slate-950/50">
-                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">I 3 Migliori Risultati</h5>
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">{t('top_3_results_label')}</h5>
                         <div className="space-y-2">
                           {soc.shooters.map((shooter, sIdx) => (
                             <div key={shooter.id} className="flex justify-between items-center p-2 rounded-lg bg-slate-900 border border-slate-800/50">
@@ -1542,23 +1547,23 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             ) : filteredResults.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
                 <i className="fas fa-clipboard-list text-4xl mb-3 opacity-50"></i>
-                <p>Nessun risultato trovato.</p>
+                <p>{t('no_results')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800 text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-500">
-                      <th className="p-2 sm:p-3 font-black">Pos</th>
-                      <th className="p-2 sm:p-3 font-black text-center">Premio</th>
-                      <th className="p-2 sm:p-3 font-black">Tiratore</th>
-                      <th className="p-2 sm:p-3 font-black">Cat/Qua</th>
+                      <th className="p-2 sm:p-3 font-black">{t('pos_short')}</th>
+                      <th className="p-2 sm:p-3 font-black text-center">{t('prize_label')}</th>
+                      <th className="p-2 sm:p-3 font-black">{t('shooter')}</th>
+                      <th className="p-2 sm:p-3 font-black">{t('cat_qua')}</th>
                       {Array.from({ length: maxSeriesCount }).map((_, i) => (
                         <th key={i} className="p-2 sm:p-3 font-black text-center">S{i + 1}</th>
                       ))}
-                      <th className="p-2 sm:p-3 font-black text-right">Totale</th>
-                      <th className="p-2 sm:p-3 font-black text-right">Spar.</th>
-                      {!readOnly && event.status !== 'validated' && <th className="p-2 sm:p-3 font-black text-center">Azioni</th>}
+                      <th className="p-2 sm:p-3 font-black text-right">{t('total')}</th>
+                      <th className="p-2 sm:p-3 font-black text-right">{t('shootoff')}</th>
+                      {!readOnly && event.status !== 'validated' && <th className="p-2 sm:p-3 font-black text-center">{t('actions')}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1576,7 +1581,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             <td className="p-2 sm:p-3 text-slate-500 font-bold text-xs sm:text-sm">-</td>
                             <td className="p-2 sm:p-3 text-center">
                               <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[8px] uppercase font-bold">
-                                Iscritto
+                                {t('registered_label')}
                               </span>
                             </td>
                             <td className="p-2 sm:p-3 text-slate-300 font-medium text-xs sm:text-sm">
@@ -1615,7 +1620,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                       }
                                     }}
                                     className="p-2 text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
-                                    title="Inserisci Risultato"
+                                    title={t('insert_result_label')}
                                   >
                                   <i className="fas fa-plus-circle"></i>
                                 </button>
@@ -1631,7 +1636,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             <td className="p-2 sm:p-3 text-white font-bold text-xs sm:text-sm">{idx + 1}</td>
                             <td className="p-2 sm:p-3 text-center">
                               {getPrizeStatus(r) && (
-                                <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 flex items-center justify-center font-black text-[10px] sm:text-xs mx-auto shadow-[0_0_10px_rgba(234,179,8,0.2)]" title="Va a Premio">
+                                <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 flex items-center justify-center font-black text-[10px] sm:text-xs mx-auto shadow-[0_0_10px_rgba(234,179,8,0.2)]" title={t('goes_to_prize')}>
                                   P
                                 </span>
                               )}
@@ -1670,7 +1675,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 <button 
                                   onClick={() => setExpandedResultId(expandedResultId === r.id ? null : r.id)}
                                   className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white flex items-center justify-center transition-colors ml-1 sm:ml-2"
-                                  title="Dettaglio pallini"
+                                  title={t('hits_detail')}
                                 >
                                   <i className={`fas fa-chevron-${expandedResultId === r.id ? 'up' : 'down'} text-[8px] sm:text-[10px]`}></i>
                                 </button>

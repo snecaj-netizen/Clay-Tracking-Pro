@@ -8,6 +8,7 @@ import { EventRegistrationModal } from './EventRegistrationModal';
 import { EventSquadManager } from './EventSquadManager';
 import { EventManagementDetail } from './EventManagementDetail';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventsManagerProps {
   user: any;
@@ -69,6 +70,7 @@ const EventCard = React.memo(({
   setRegisteringEvent: (ev: SocietyEvent) => void, 
   filterRegistrationOpen: boolean 
 }) => {
+  const { t, language } = useLanguage();
   const ongoing = ev.is_ongoing;
   const isNext = ev.is_next;
   const past = new Date(ev.end_date) < new Date();
@@ -105,25 +107,25 @@ const EventCard = React.memo(({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             {ongoing && (
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                IN CORSO
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-600/20">
+                {t('in_progress')}
               </span>
             )}
             {isNext && !ongoing && (
               <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
-                PROSSIMA GARA
+                {t('next_competition')}
               </span>
             )}
             {past && (
               <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter bg-slate-800 text-slate-400 border border-slate-700">
-                PASSATA
+                {t('past')}
               </span>
             )}
             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
               {ev.discipline.split(' ')[0]}
             </span>
             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-              {ev.visibility}
+              {ev.visibility === 'Pubblica' ? t('public') : t('private')}
             </span>
           </div>
           <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
@@ -149,12 +151,12 @@ const EventCard = React.memo(({
       <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-2.5 border-t border-slate-800/50 mt-2">
         <div className="flex items-center gap-1.5">
           <i className="fas fa-calendar-alt text-slate-600"></i>
-          <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+          <span>{new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="text-right shrink-0 flex items-center gap-1">
             <div className="text-xs font-black text-white leading-none">{ev.targets}</div>
-            <div className="text-[7px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">Piattelli</div>
+            <div className="text-[7px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">{t('targets')}</div>
           </div>
         </div>
       </div>
@@ -165,7 +167,7 @@ const EventCard = React.memo(({
         <div className="mt-2 pt-3 border-t border-slate-800/50">
           {ev.is_registered ? (
             <div className="w-full py-2.5 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[10px] font-black uppercase tracking-widest cursor-default">
-              <i className="fas fa-check-circle"></i> Già Iscritto
+              <i className="fas fa-check-circle"></i> {t('already_registered')}
             </div>
           ) : (
             <button 
@@ -176,7 +178,7 @@ const EventCard = React.memo(({
               }}
               className="w-full py-2.5 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[10px] font-black uppercase tracking-widest"
             >
-              <i className="fas fa-user-plus"></i> Iscriviti ora
+              <i className="fas fa-user-plus"></i> {t('register_now')}
             </button>
           )}
         </div>
@@ -200,6 +202,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   onSocietyClick
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t, language } = useLanguage();
   const [events, setEvents] = useState<SocietyEvent[]>(initialEvents || []);
   const [loading, setLoading] = useState(!initialEvents || initialEvents.length === 0);
   const [showForm, setShowForm] = useState(false);
@@ -223,6 +226,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const lastHandledExportTrigger = React.useRef(exportTrigger || 0);
   const lastHandledImportTrigger = React.useRef(importTrigger || 0);
   const lastHandledNewEventTrigger = React.useRef(newEventTrigger || 0);
+  const [isSaving, setIsSaving] = useState(false);
   
   const resultsAccess = appSettings?.event_results_access || {};
 
@@ -537,26 +541,26 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             <div className="w-8 h-8 rounded-lg bg-orange-600/20 text-orange-500 flex items-center justify-center text-base">
               <i className="fas fa-trophy"></i>
             </div>
-            Classifiche e Risultati
+            {t('rankings_results_title')}
           </h2>
           <p className="text-slate-500 text-xs font-medium ml-10.5">
-            Consulta i risultati ufficiali delle gare concluse.
+            {t('rankings_results_desc')}
           </p>
         </div>
 
         {showTabs && (
-          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit">
+        <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit">
             <button 
               onClick={() => setViewMode('results')} 
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <i className="fas fa-poll"></i> Risultati
+              <i className="fas fa-poll"></i> {t('results_tab')}
             </button>
             <button 
               onClick={() => setViewMode('managed')} 
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'managed' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <i className="fas fa-tasks"></i> Gestione
+              <i className="fas fa-tasks"></i> {t('management_tab')}
               {managedEvents.length > 0 && (
                 <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'managed' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
                   {managedEvents.length}
@@ -581,9 +585,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 <i className="fas fa-calendar-times"></i>
               </div>
               <div className="max-w-md mx-auto px-6">
-                <h4 className="text-xl font-black text-slate-400 uppercase tracking-widest mb-2">Nessuna gara da gestire</h4>
+                <h4 className="text-xl font-black text-slate-400 uppercase tracking-widest mb-2">{t('no_managed_events')}</h4>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  Qui appariranno le gare organizzate dalla tua società o quelle di cui sei amministratore.
+                  {t('no_managed_events_desc')}
                 </p>
               </div>
             </div>
@@ -604,11 +608,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                             {ev.discipline}
                           </span>
                           <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
-                            {ev.status === 'validated' ? 'Conclusa' : 'In Corso'}
+                            {ev.status === 'validated' ? t('finished_label') : t('live_label')}
                           </span>
                           {isPast && (
                             <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-widest border border-slate-700">
-                              Passata
+                              {t('past')}
                             </span>
                           )}
                         </div>
@@ -620,7 +624,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           </p>
                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <i className="fas fa-map-marker-alt text-indigo-500/50 w-3"></i>
-                            {ev.location || 'Campo N.D.'}
+                            {ev.location || t('field_nd')}
                           </p>
                         </div>
                       </div>
@@ -628,11 +632,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     
                     <div className="grid grid-cols-2 gap-2.5 mb-3">
                       <div className="bg-slate-950/50 rounded-xl p-2.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Iscritti</div>
+                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('registered')}</div>
                         <div className="text-lg font-black text-white">{ev.registration_count || 0}</div>
                       </div>
                       <div className="bg-slate-950/50 rounded-xl p-2.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Piattelli</div>
+                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('targets')}</div>
                         <div className="text-lg font-black text-white">{ev.targets}</div>
                       </div>
                     </div>
@@ -642,14 +646,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-1.5 mb-1">
                           <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
                             <i className="fas fa-exclamation-triangle"></i>
-                            In attesa di attivazione Admin
+                            {t('management_pending_activation')}
                           </p>
                         </div>
                       )}
                       <button 
                         onClick={() => {
                           if (!ev.is_management_enabled && user?.role !== 'admin') {
-                            triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                            triggerToast?.(t('competition_not_activated_desc'), 'info');
                             return;
                           }
                           setInitialManagementTab('registrations');
@@ -664,14 +668,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         }`}
                       >
                         <i className="fas fa-users-cog text-xs"></i>
-                        Gestione Gara
+                        {t('manage_competition')}
                       </button>
                       
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                         <button 
                           onClick={() => {
                             if (!ev.is_management_enabled && user?.role !== 'admin') {
-                              triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                              triggerToast?.(t('competition_not_activated_desc'), 'info');
                               return;
                             }
                             setInitialManagementTab('results');
@@ -686,18 +690,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           }`}
                         >
                           <i className="fas fa-trophy"></i>
-                          Classifica
+                          {t('rankings')}
                         </button>
-                        {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user?.society)) && (
-                          <button 
-                            onClick={() => handleEdit(ev)}
-                            className="py-2 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
-                          >
-                            <i className="fas fa-edit"></i>
-                            Modifica
-                          </button>
-                        )}
+                        <button 
+                          onClick={() => handleTogglePublic(ev)}
+                          className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                            ev.is_public 
+                              ? 'bg-rose-900/30 text-rose-500 border-rose-900/50 hover:bg-rose-900/50' 
+                              : 'bg-emerald-900/30 text-emerald-500 border-emerald-900/50 hover:bg-emerald-900/50'
+                          }`}
+                        >
+                          <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'}`}></i>
+                          {ev.is_public ? t('remove_from_portal') : t('publish_to_portal')}
+                        </button>
                       </div>
+
+                      {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user?.society)) && (
+                        <button 
+                          onClick={() => handleEdit(ev)}
+                          className="w-full mt-2 py-2 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
+                        >
+                          <i className="fas fa-edit"></i>
+                          {t('edit_competition')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -768,6 +784,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
   const [hasSocietyRanking, setHasSocietyRanking] = useState(false);
   const [hasTeamRanking, setHasTeamRanking] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
     if (initialEvents && initialEvents.length > 0 && events.length === 0) {
@@ -848,14 +865,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     setRankingPreferenceOverride(ev.ranking_preference_override || null);
     setHasSocietyRanking(ev.has_society_ranking || false);
     setHasTeamRanking(ev.has_team_ranking || false);
+    setIsPublic(ev.is_public || false);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleReopen = async (eventId: string) => {
     triggerConfirm(
-      'Riapri Gara',
-      'Sei sicuro di voler riaprire questa gara? La società potrà nuovamente modificare i risultati.',
+      t('reopen_competition_title'),
+      t('confirm_reopen_competition'),
       async () => {
         try {
           const res = await fetch(`/api/events/${eventId}/reopen`, {
@@ -867,17 +885,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           } else {
             const err = await res.json();
             if (triggerToast) {
-              triggerToast(err.error || 'Errore durante la riapertura della gara', 'error');
+              triggerToast(err.error || t('error_reopening_competition'), 'error');
             }
           }
         } catch (err) {
           console.error('Error reopening event:', err);
           if (triggerToast) {
-            triggerToast('Errore durante la riapertura della gara', 'error');
+            triggerToast(t('error_reopening_competition'), 'error');
           }
         }
       },
-      'Riapri',
+      t('reopen'),
       'primary'
     );
   };
@@ -899,11 +917,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     setRankingPreferenceOverride(null);
     setHasSocietyRanking(false);
     setHasTeamRanking(false);
+    setIsPublic(false);
     setShowForm(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     
     const eventData = {
       id: editingEvent ? editingEvent.id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)),
@@ -921,7 +942,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       registration_link: registrationLink,
       ranking_preference_override: rankingPreferenceOverride,
       has_society_ranking: hasSocietyRanking,
-      has_team_ranking: hasTeamRanking
+      has_team_ranking: hasTeamRanking,
+      is_public: isPublic
     };
 
     try {
@@ -940,7 +962,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       } else {
         const errorData = await res.json();
         if (triggerToast) {
-          triggerToast(`Errore: ${errorData.error || res.statusText}`, 'error');
+          triggerToast(`${t('error_label')}: ${errorData.error || res.statusText}`, 'error');
         } else {
           console.error(`Errore: ${errorData.error || res.statusText}`);
         }
@@ -948,15 +970,44 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     } catch (err) {
       console.error('Error saving event:', err);
       if (triggerToast) {
-        triggerToast('Errore di rete nel salvataggio.', 'error');
+        triggerToast(t('network_error_save'), 'error');
       }
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleTogglePublic = async (ev: SocietyEvent) => {
+    triggerConfirm(
+      t('rankings_results_title'),
+      ev.is_public 
+        ? t('remove_from_portal_confirm').replace('{{name}}', ev.name)
+        : t('publish_to_portal_confirm').replace('{{name}}', ev.name),
+      async () => {
+        try {
+          const res = await fetch(`/api/events/${ev.id}/toggle-public`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, is_public: data.is_public, region: data.region } : e));
+            triggerToast?.(data.is_public ? t('competition_published_success') : t('competition_removed_success'), 'success');
+          } else {
+            const err = await res.json();
+            triggerToast?.(err.error || t('error_during_publication'), 'error');
+          }
+        } catch (err) {
+          triggerToast?.(t('network_error_publication'), 'error');
+        }
+      }
+    );
   };
 
   const handleDelete = (id: string) => {
     triggerConfirm(
-      'Elimina Evento',
-      'Sei sicuro di voler eliminare questo evento?',
+      t('delete_event_title'),
+      t('confirm_delete_event'),
       async () => {
         try {
           const res = await fetch(`/api/events/${id}`, {
@@ -968,14 +1019,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           } else {
             const errorData = await res.json();
             if (triggerToast) {
-              triggerToast(`Errore: ${errorData.error || res.statusText}`, 'error');
+              triggerToast(`${t('error_label')}: ${errorData.error || res.statusText}`, 'error');
             }
           }
         } catch (err) {
           console.error('Error deleting event:', err);
         }
       },
-      'Elimina',
+      t('delete'),
       'danger'
     );
   };
@@ -985,7 +1036,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
         if (triggerToast) {
-          triggerToast('Il file è troppo grande. Dimensione massima: 5MB', 'error');
+          triggerToast(t('file_too_large_error'), 'error');
         }
         return;
       }
@@ -1000,29 +1051,29 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const handleExportExcel = () => {
     if (filteredEvents.length === 0) {
       if (triggerToast) {
-        triggerToast('Nessun evento da esportare.', 'info');
+        triggerToast(t('no_events_to_export'), 'info');
       }
       return;
     }
 
     const exportData = filteredEvents.map(ev => ({
-      'Nome Gara': ev.name,
-      'Tipologia': ev.type,
-      'Visibilità': ev.visibility,
-      'Disciplina': ev.discipline,
-      'Società': ev.location,
-      'Piattelli': ev.targets,
-      'Data Inizio': ev.start_date,
-      'Data Fine': ev.end_date,
-      'Costo': ev.cost || '',
-      'Note': ev.notes || '',
-      'Link Iscrizione': ev.registration_link || ''
+      [t('competition_name_label')]: ev.name,
+      [t('competition_type')]: ev.type,
+      [t('visibility')]: ev.visibility,
+      [t('discipline_label')]: ev.discipline,
+      [t('society_label')]: ev.location,
+      [t('targets')]: ev.targets,
+      [t('begin_date')]: ev.start_date,
+      [t('end_date')]: ev.end_date,
+      [t('cost')]: ev.cost || '',
+      [t('notes')]: ev.notes || '',
+      [t('registration_link_label')]: ev.registration_link || ''
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Eventi');
-    XLSX.writeFile(wb, 'esportazione_eventi.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, t('events_tab_name'));
+    XLSX.writeFile(wb, t('event_export_filename'));
   };
 
   const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1040,7 +1091,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
         if (data.length === 0) {
           if (triggerToast) {
-            triggerToast('Il file Excel è vuoto.', 'error');
+            triggerToast(t('excel_file_empty'), 'error');
           }
           return;
         }
@@ -1067,22 +1118,22 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
         const importedEvents = data.map(row => ({
           id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)),
-          name: row['Nome Gara'] || 'Gara senza nome',
-          type: row['Tipologia'] || 'Regionale',
-          visibility: row['Visibilità'] || 'Pubblica',
-          discipline: row['Disciplina'] || Discipline.CK,
-          location: row['Società'] || '',
-          targets: parseInt(row['Piattelli']) || 50,
-          start_date: parseExcelDate(row['Data Inizio']),
-          end_date: parseExcelDate(row['Data Fine'] || row['Data Inizio']),
-          cost: row['Costo']?.toString() || '',
-          notes: row['Note'] || '',
-          registration_link: row['Link Iscrizione'] || ''
+          name: row[t('competition_name_label')] || t('unnamed_competition'),
+          type: row[t('competition_type')] || t('regional'),
+          visibility: row[t('visibility')] || t('public_visibility'),
+          discipline: row[t('discipline_label')] || Discipline.CK,
+          location: row[t('society_label')] || '',
+          targets: parseInt(row[t('targets')]) || 50,
+          start_date: parseExcelDate(row[t('begin_date')]),
+          end_date: parseExcelDate(row[t('end_date')] || row[t('begin_date')]),
+          cost: row[t('cost')]?.toString() || '',
+          notes: row[t('notes')] || '',
+          registration_link: row[t('registration_link_label')] || ''
         }));
 
         triggerConfirm(
-          'Importa',
-          `Sei sicuro di voler importare ${importedEvents.length} gare dal file Excel?`,
+          t('import'),
+          t('confirm_import_events_count').replace('{{count}}', importedEvents.length.toString()),
           async () => {
             setLoading(true);
             try {
@@ -1098,24 +1149,24 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               }
               fetchEvents();
               if (triggerToast) {
-                triggerToast('Importazione completata con successo!', 'success');
+                triggerToast(t('import_completed_success'), 'success');
               }
             } catch (err) {
               console.error('Error importing events:', err);
               if (triggerToast) {
-                triggerToast('Errore durante l\'importazione di alcune gare.', 'error');
+                triggerToast(t('error_importing_events'), 'error');
               }
             } finally {
               setLoading(false);
             }
           },
-          'Importa',
+          t('import'),
           'primary'
         );
       } catch (err) {
         console.error('Error reading Excel file:', err);
         if (triggerToast) {
-          triggerToast('Errore nella lettura del file Excel. Assicurati che il formato sia corretto.', 'error');
+          triggerToast(t('excel_read_error'), 'error');
         }
       }
     };
@@ -1126,8 +1177,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const handleBulkDelete = () => {
     if (selectedEvents.length === 0) return;
     triggerConfirm(
-      'Elimina Gare',
-      `Sei sicuro di voler eliminare ${selectedEvents.length} gare selezionate?`,
+      t('delete_events_title'),
+      t('confirm_delete_events_count').replace('{{count}}', selectedEvents.length.toString()),
       async () => {
         setLoading(true);
         try {
@@ -1142,13 +1193,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         } catch (err) {
           console.error('Error deleting events:', err);
           if (triggerToast) {
-            triggerToast('Errore durante l\'eliminazione delle gare.', 'error');
+            triggerToast(t('error_bulk_delete'), 'error');
           }
         } finally {
           setLoading(false);
         }
       },
-      'Elimina',
+      t('delete'),
       'danger'
     );
   };
@@ -1157,8 +1208,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
   const renderCalendarView = () => {
     const today = new Date().toISOString().split('T')[0];
-    const monthName = currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-    const weekDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+    const monthName = currentMonth.toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { month: 'long', year: 'numeric' });
+    const weekDays = [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')];
 
     return (
       <div className="flex flex-col lg:flex-row gap-6 mt-6">
@@ -1247,10 +1298,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/50">
                 <div>
                   <h4 className="text-sm font-black text-white uppercase tracking-widest">
-                    Eventi del Giorno
+                    {t('day_events_title')}
                   </h4>
                   <p className="text-[10px] text-slate-500 font-bold mt-1">
-                    {new Date(selectedDay).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                    {new Date(selectedDay).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
                 <button onClick={() => setSelectedDay(null)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"><i className="fas fa-times text-xs"></i></button>
@@ -1259,7 +1310,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               {!eventsByDate[selectedDay] || eventsByDate[selectedDay].length === 0 ? (
                 <div className="bg-slate-950/30 p-8 rounded-2xl border border-dashed border-slate-800 text-center flex flex-col items-center justify-center h-48">
                   <i className="fas fa-calendar-times text-slate-700 text-3xl mb-3"></i>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nessun evento registrato</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('no_events_registered')}</p>
                 </div>
               ) : (
                 <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
@@ -1279,12 +1330,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             {ongoing && (
                               <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                                IN CORSO
+                                {t('live_label')}
                               </span>
                             )}
                             {isNext && !ongoing && (
                               <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
-                                PROSSIMA GARA
+                                {t('next_competition')}
                               </span>
                             )}
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
@@ -1292,11 +1343,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                             </span>
                             {ev.start_date !== ev.end_date && (
                               <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-purple-900/30 text-purple-400 border border-purple-900/50">
-                                Multigiorno
+                                {t('multiday_label')}
                               </span>
                             )}
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                              {ev.visibility}
+                              {ev.visibility === 'Pubblica' ? t('public_visibility') : t('private_visibility')}
                             </span>
                           </div>
                           <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
@@ -1310,14 +1361,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-lg font-black text-white leading-none">{ev.targets}</div>
-                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Piattelli</div>
+                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{t('targets_count_label')}</div>
                         </div>
                       </div>
                       
                       <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
                         <div className="flex items-center gap-2">
                           <i className="fas fa-calendar-alt text-slate-600"></i>
-                          <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+                          <span>{new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <i className="fas fa-tag text-slate-600"></i>
@@ -1337,8 +1388,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
                 <i className="fas fa-hand-pointer text-slate-600 text-2xl"></i>
               </div>
-              <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Seleziona una data</h4>
-              <p className="text-xs text-slate-500 max-w-[200px]">Clicca su un giorno del calendario per visualizzare i dettagli degli eventi.</p>
+              <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">{t('select_date_instruction')}</h4>
+              <p className="text-xs text-slate-500 max-w-[200px]">{t('select_date_desc')}</p>
             </div>
           )}
         </div>
@@ -1371,13 +1422,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 <div>
                   <h2 className="text-base sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
                     <i className={`fas ${viewMode === 'results' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-500`}></i> 
-                    {viewMode === 'results' ? 'Risultati Gare' : (restrictToSociety ? 'Gestione delle tue Gare' : 'Gestione Eventi')}
+                    {viewMode === 'results' ? t('results_page_title') : (restrictToSociety ? t('your_events_management') : t('events_management_title'))}
                   </h2>
                   {!showForm && viewMode !== 'results' && (
                     <p className="text-slate-400 text-[9px] sm:text-xs mt-0.5 leading-tight max-w-2xl">
                       {restrictToSociety 
-                        ? "In questa sezione puoi gestire le iscrizioni dei tuoi tiratori, formare le squadre per le competizioni e monitorare le gare a cui partecipa la tua società."
-                        : "Calendario ufficiale delle competizioni. Esplora le gare pubbliche organizzate dalle società, consulta i programmi e segui i risultati in tempo reale."}
+                        ? t('society_events_desc')
+                        : t('general_events_desc')}
                     </p>
                   )}
                 </div>
@@ -1389,12 +1440,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         <button 
                           onClick={handleExportExcel}
                           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px] font-black uppercase transition-all active:scale-95"
-                          title="Esporta Excel"
+                          title={t('export_excel')}
                         >
-                          <i className="fas fa-file-excel"></i> Esporta
+                          <i className="fas fa-file-excel"></i> {t('export_excel')}
                         </button>
-                        <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px] font-black uppercase transition-all active:scale-95 cursor-pointer" title="Importa Excel">
-                          <i className="fas fa-file-import"></i> Importa
+                        <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px] font-black uppercase transition-all active:scale-95 cursor-pointer" title={t('import_excel')}>
+                          <i className="fas fa-file-import"></i> {t('import_excel')}
                           <input type="file" ref={fileInputRef} accept=".xlsx, .xls" onChange={handleExcelImport} className="hidden" />
                         </label>
                       </div>
@@ -1408,15 +1459,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         }}
                         className="hidden items-center gap-2 px-3 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 text-[10px] sm:text-xs font-black uppercase transition-all shadow-lg shadow-orange-600/20 active:scale-95"
                       >
-                        <i className="fas fa-plus"></i> <span className="hidden sm:inline">Nuovo Evento</span>
+                        <i className="fas fa-plus"></i> <span className="hidden sm:inline">{t('new_event_button')}</span>
                       </button>
                     )}
                     
                     <button 
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[9px] sm:text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
                     >
-                      <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
+                      <i className={`fas fa-sliders-h ${showFilters ? 'rotate-180 text-orange-500' : ''} transition-transform`}></i> 
+                      <span>{t('filters_label')}</span>
                       {hasActiveFilters && (
                         <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
                       )}
@@ -1427,27 +1479,27 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         <button 
                           onClick={() => setViewMode('list')} 
                           className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                          title="Elenco"
+                          title={t('list_view')}
                         >
                           <i className="fas fa-list"></i>
-                          <span className="hidden sm:inline ml-2">Elenco</span>
+                          <span className="hidden sm:inline ml-2">{t('list_view')}</span>
                         </button>
                         <button 
                           onClick={() => setViewMode('calendar')} 
                           className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                          title="Calendario"
+                          title={t('calendar_label')}
                         >
                           <i className="fas fa-calendar-alt"></i>
-                          <span className="hidden sm:inline ml-2">Calendario</span>
+                          <span className="hidden sm:inline ml-2">{t('calendar_label')}</span>
                         </button>
                         {(user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) && (
                           <button 
                             onClick={() => setViewMode('results')} 
                             className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'results' || viewMode === 'managed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
-                            title="Risultati"
+                            title={t('results')}
                           >
                             <i className="fas fa-trophy"></i>
-                            <span className="hidden sm:inline ml-2">Risultati</span>
+                            <span className="hidden sm:inline ml-2">{t('results')}</span>
                           </button>
                         )}
                       </div>
@@ -1461,60 +1513,72 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
       <div className={hideHeader ? "pt-0" : "pt-4"}>
         {!hideHeader && !showForm && showFilters && (
-          <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300`}>
-            {!(restrictToSociety && user?.role === 'society') && (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
-                <SocietySearch 
-                  value={filterSociety}
-                  onChange={setFilterSociety}
-                  societies={societies}
-                  placeholder="Tutte le società"
-                />
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
-              <div className="relative group">
-                <select 
-                  value={filterDiscipline} 
-                  onChange={e => setFilterDiscipline(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                >
-                  <option value="">Tutte le discipline</option>
-                  {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                  <i className="fas fa-chevron-down text-[10px]"></i>
+          <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-8">
+            <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-6`}>
+              {!(restrictToSociety && user?.role === 'society') && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <i className="fas fa-building text-orange-500"></i>
+                    {t('society_label')}
+                  </label>
+                  <SocietySearch 
+                    value={filterSociety}
+                    onChange={setFilterSociety}
+                    societies={societies}
+                    placeholder={t('all_societies')}
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <i className="fas fa-crosshairs text-orange-500"></i>
+                  {t('discipline')}
+                </label>
+                <div className="relative group">
+                  <select 
+                    value={filterDiscipline} 
+                    onChange={e => setFilterDiscipline(e.target.value)} 
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">{t('all_disciplines')}</option>
+                    {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
-              <div className="relative group">
-                <select 
-                  value={filterMonth} 
-                  onChange={e => setFilterMonth(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-                >
-                  <option value="">Tutti i mesi</option>
-                  {monthOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                  <i className="fas fa-chevron-down text-[10px]"></i>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <i className="fas fa-calendar-alt text-orange-500"></i>
+                  {t('month_label')}
+                </label>
+                <div className="relative group">
+                  <select 
+                    value={filterMonth} 
+                    onChange={e => setFilterMonth(e.target.value)} 
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">{t('all_months')}</option>
+                    {monthOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end`}>
-              <button 
-                onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
-                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
-              >
-                Resetta Filtri
-              </button>
+              <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end pt-2`}>
+                <button 
+                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
+                  className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
+                >
+                  <i className="fas fa-undo-alt"></i>
+                  {t('reset_filters')}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1525,7 +1589,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                 <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                   <i className="fas fa-calendar-plus text-orange-500"></i>
-                  {editingEvent ? 'Modifica Evento' : 'Nuovo Evento'}
+                  {editingEvent ? t('edit_competition') : t('new_event_button')}
                 </h3>
                 <button 
                   onClick={resetForm}
@@ -1539,30 +1603,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 <form id="event-form" onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Titolo / Nome Gara *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('competition_title_label')}</label>
                       <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipologia *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('type_label')}</label>
                       <select value={type} onChange={(e) => setType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                        <option value="Regionale">Regionale</option>
-                        <option value="Nazionale">Nazionale</option>
-                        <option value="Internazionale">Internazionale</option>
-                        <option value="Allenamento">Allenamento</option>
+                        <option value="Regionale">{t('regional')}</option>
+                        <option value="Nazionale">{t('national')}</option>
+                        <option value="Internazionale">{t('international')}</option>
+                        <option value="Allenamento">{t('training_type')}</option>
                       </select>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Visibilità *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('visibility')} *</label>
                       <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                        <option value="Gara di Società">Gara di Società (Solo propri tiratori)</option>
-                        <option value="Pubblica">Pubblica (Tutti)</option>
+                        <option value="Gara di Società">{t('club_competition')} ({t('only_own_shooters')})</option>
+                        <option value="Pubblica">{t('public_visibility')} ({t('all')})</option>
                       </select>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('discipline_label')} *</label>
                       <select value={discipline} onChange={(e) => setDiscipline(e.target.value as Discipline)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
                         {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => (
                           <option key={d} value={d}>{d}</option>
@@ -1571,13 +1635,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV *</label>
+                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('field_label')} *</label>
                       {user?.role === 'admin' ? (
                         <SocietySearch 
                           value={location}
                           onChange={setLocation}
                           societies={societies}
-                          placeholder="Seleziona Società"
+                          placeholder={t('select_club_placeholder')}
                           required
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all"
                         />
@@ -1587,35 +1651,35 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piattelli Gara *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('targets_count_label')} *</label>
                       <input type="number" required min="25" step="25" value={targets} onChange={(e) => setTargets(parseInt(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Inizio *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('begin_date')} *</label>
                       <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('end_date')} *</label>
                       <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cost')} (€)</label>
                       <input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Iscrizione</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('registration_link_label')}</label>
                       <input type="url" placeholder="https://..." value={registrationLink} onChange={(e) => setRegistrationLink(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Locandina / Programma</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('poster_image')}</label>
                       <div className="flex items-center gap-4">
                         <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl px-4 py-3 text-center transition-all">
-                          <span className="text-sm font-bold text-white"><i className="fas fa-upload mr-2"></i> Carica File (Max 5MB)</span>
+                          <span className="text-sm font-bold text-white"><i className="fas fa-upload mr-2"></i> {t('upload_file_max_5mb')}</span>
                           <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="hidden" />
                         </label>
                         {posterUrl && (
@@ -1623,7 +1687,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                             {posterUrl.startsWith('data:application/pdf') ? (
                               <i className="fas fa-file-pdf text-2xl text-red-500"></i>
                             ) : (
-                              <img src={posterUrl} alt="Locandina" className="w-full h-full object-cover" />
+                              <img src={posterUrl} alt={t('poster_image')} className="w-full h-full object-cover" />
                             )}
                           </div>
                         )}
@@ -1631,7 +1695,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
 
                     <div className="col-span-full space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Note</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('notes')}</label>
                       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all resize-none"></textarea>
                     </div>
 
@@ -1640,11 +1704,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <div className="col-span-full p-4 bg-orange-600/10 rounded-2xl border border-orange-500/20 space-y-4">
                         <div className="flex items-center gap-3 text-orange-500">
                           <i className="fas fa-exclamation-triangle"></i>
-                          <h4 className="text-xs font-black uppercase tracking-widest">Precedenza Classifica (Override Evento)</h4>
+                          <h4 className="text-xs font-black uppercase tracking-widest">{t('ranking_priority_override')}</h4>
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                          Seleziona un'opzione per forzare la classifica di questa gara a prescindere dalla scelta del tiratore. 
-                          Se impostato su "NESSUNO", verrà rispettata la scelta individuale di ogni tiratore.
+                          {t('ranking_priority_override_desc')}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           <button
@@ -1656,7 +1719,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
                             }`}
                           >
-                            Nessuno
+                            {t('none')}
                           </button>
                           <button
                             type="button"
@@ -1667,7 +1730,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
                             }`}
                           >
-                            Forza Categoria
+                            {t('force_category')}
                           </button>
                           <button
                             type="button"
@@ -1678,7 +1741,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-orange-500/50'
                             }`}
                           >
-                            Forza Qualifica
+                            {t('force_qualification')}
                           </button>
                         </div>
                       </div>
@@ -1694,9 +1757,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
                       />
                       <label htmlFor="hasSocietyRanking" className="text-sm font-bold text-slate-300">
-                        Abilita Classifica per Società
+                        {t('enable_society_ranking')}
                         <p className="text-xs font-normal text-slate-500 mt-1">
-                          Calcola una classifica aggiuntiva sommando i 3 migliori risultati per ogni società.
+                          {t('society_ranking_desc')}
                         </p>
                       </label>
                     </div>
@@ -1711,9 +1774,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         className="w-5 h-5 rounded border-slate-700 text-orange-600 focus:ring-orange-500 bg-slate-950"
                       />
                       <label htmlFor="hasTeamRanking" className="text-sm font-bold text-slate-300">
-                        Abilita Classifica Squadre
+                        {t('enable_team_ranking')}
                         <p className="text-xs font-normal text-slate-500 mt-1">
-                          Permette di creare squadre di 3 o 6 tiratori durante l'inserimento dei risultati.
+                          {t('team_ranking_desc')}
                         </p>
                       </label>
                     </div>
@@ -1724,10 +1787,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
               <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
                 <button type="button" onClick={resetForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
-                  Annulla
+                  {t('cancel')}
                 </button>
-                <button type="submit" form="event-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-                  {editingEvent ? 'Aggiorna' : 'Salva'}
+                <button type="submit" form="event-form" disabled={isSaving} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}>
+                  {isSaving && <i className="fas fa-circle-notch fa-spin"></i>}
+                  {editingEvent ? t('update') : t('save')}
                 </button>
               </div>
             </div>
@@ -1750,8 +1814,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   <i className="fas fa-clipboard-list"></i>
                 </div>
                 <div>
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Nessun risultato disponibile</p>
-                  <p className="text-slate-600 text-xs mt-1">Le classifiche verranno pubblicate al termine delle gare.</p>
+                  <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">{t('no_results_available')}</p>
+                  <p className="text-slate-600 text-xs mt-1">{t('rankings_published_end_desc')}</p>
                 </div>
               </div>
             ) : (
@@ -1784,7 +1848,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <div className="absolute top-4 right-4 z-10">
                         <div className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-orange-500/20 flex items-center gap-1 animate-pulse">
                           <i className="fas fa-check-circle"></i>
-                          RISULTATI CARICATI
+                          {t('results_uploaded')}
                         </div>
                       </div>
                     )}
@@ -1794,7 +1858,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           <h3 className="font-black text-white text-lg group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight mb-0.5">{ev.name}</h3>
                           <div className="flex flex-col gap-1">
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                              <i className="fas fa-map-marker-alt text-orange-500/50 w-3"></i> {ev.location || 'Campo N.D.'}
+                              <i className="fas fa-map-marker-alt text-orange-500/50 w-3"></i> {ev.location || t('field_nd')}
                             </p>
                           </div>
                         </div>
@@ -1802,22 +1866,22 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
-                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Data Gara</p>
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{t('competition_date_label')}</p>
                           <p className="text-xs font-bold text-white flex items-center gap-2">
                             <i className="far fa-calendar text-orange-500"></i>
-                            {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                            {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB')}
                           </p>
                         </div>
                         <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
-                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Stato</p>
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{t('status_label')}</p>
                           <div className="flex items-center gap-2">
                             {ev.status === 'validated' ? (
                               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1">
-                                <i className="fas fa-check-circle"></i> Convalidata
+                                <i className="fas fa-check-circle"></i> {t('validated_label')}
                               </span>
                             ) : (
                               <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
-                                <i className="fas fa-clock"></i> In Corso
+                                <i className="fas fa-clock"></i> {t('live_label')}
                               </span>
                             )}
                           </div>
@@ -1837,13 +1901,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                                 handleReopen(ev.id);
                               }}
                               className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/5"
-                              title="Riapri per modifica"
+                              title={t('reopen_for_edit')}
                             >
                               <i className="fas fa-unlock text-xs"></i>
                             </button>
                           )}
                           <button className="text-orange-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-transform">
-                            {canManage ? 'Gestisci' : 'Vedi Classifica'}
+                            {canManage ? t('manage_label') : t('view_ranking')}
                           </button>
                         </div>
                       </div>
@@ -1880,7 +1944,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   </div>
                 </div>
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">
-                  Seleziona Tutti
+                  {t('select_all')}
                 </span>
               </label>
 
@@ -1890,7 +1954,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
                 >
                   <i className="fas fa-trash-alt"></i>
-                  Elimina Selezionati ({selectedEvents.length})
+                  {t('delete_selected')} ({selectedEvents.length})
                 </button>
               )}
             </div>
@@ -1899,7 +1963,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredEvents.length === 0 ? (
               <div className="col-span-full py-12 text-center text-slate-600 italic text-sm bg-slate-950/30 rounded-2xl border border-dashed border-slate-800">
-                Nessun evento trovato.
+                {t('no_events_found')}
               </div>
             ) : (
               filteredEvents.map(ev => {
@@ -1944,24 +2008,24 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         {ongoing && (
                           <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                            IN CORSO
+                            {t('live_label')}
                           </span>
                         )}
                         {isNext && !ongoing && (
                           <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
-                            PROSSIMA GARA
+                            {t('next_competition')}
                           </span>
                         )}
                         {past && (
                           <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-800 text-slate-400 border border-slate-700">
-                            PASSATA
+                            {t('past')}
                           </span>
                         )}
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
                           {ev.discipline.split(' ')[0]}
                         </span>
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                          {ev.visibility}
+                          {ev.visibility === 'Pubblica' ? t('public_visibility') : t('private_visibility')}
                         </span>
                       </div>
                       <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
@@ -1987,12 +2051,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
                     <div className="flex items-center gap-2">
                       <i className="fas fa-calendar-alt text-slate-600"></i>
-                      <span>{new Date(ev.start_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+                      <span>{new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right shrink-0 flex items-center gap-1.5">
                         <div className="text-sm font-black text-white leading-none">{ev.targets}</div>
-                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">Piattelli</div>
+                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">{t('targets_count_label')}</div>
                       </div>
                     </div>
                   </div>
@@ -2004,7 +2068,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     <div className="mt-2 pt-3 border-t border-slate-800/50">
                       {ev.is_registered ? (
                         <div className="w-full py-2.5 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[10px] font-black uppercase tracking-widest cursor-default">
-                          <i className="fas fa-check-circle"></i> Già Iscritto
+                          <i className="fas fa-check-circle"></i> {t('already_registered')}
                         </div>
                       ) : (
                         <button 
@@ -2015,7 +2079,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           }}
                           className="w-full py-2.5 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[10px] font-black uppercase tracking-widest"
                         >
-                          <i className="fas fa-user-plus"></i> Iscriviti ora
+                          <i className="fas fa-user-plus"></i> {t('register_now')}
                         </button>
                       )}
                     </div>
@@ -2085,30 +2149,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Data Inizio</p>
-                  <p className="text-sm font-bold text-white">{new Date(selectedEvent.start_date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('begin_date')}</p>
+                  <p className="text-sm font-bold text-white">{new Date(selectedEvent.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Data Fine</p>
-                  <p className="text-sm font-bold text-white">{new Date(selectedEvent.end_date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('end_date')}</p>
+                  <p className="text-sm font-bold text-white">{new Date(selectedEvent.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tipologia</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('competition_type')}</p>
                   <p className="text-sm font-bold text-white">{selectedEvent.type}</p>
                 </div>
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Piattelli</p>
-                  <p className="text-sm font-bold text-white">{selectedEvent.targets} Bersagli</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('targets_count_label')}</p>
+                  <p className="text-sm font-bold text-white">{selectedEvent.targets} {t('bersagli_label')}</p>
                 </div>
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Costo Iscrizione</p>
-                  <p className="text-sm font-bold text-white">{selectedEvent.cost ? `€ ${parseFloat(selectedEvent.cost).toFixed(2)}` : 'Non specificato'}</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('cost')}</p>
+                  <p className="text-sm font-bold text-white">{selectedEvent.cost ? `€ ${parseFloat(selectedEvent.cost).toFixed(2)}` : t('unspecified')}</p>
                 </div>
               </div>
 
               {selectedEvent.notes && (
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Note e Informazioni</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{t('notes_and_info')}</p>
                   <p className="text-sm text-slate-300 leading-relaxed italic">{selectedEvent.notes}</p>
                 </div>
               )}
@@ -2116,9 +2180,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               {(selectedEvent.registration_link || (selectedEvent.is_management_enabled || user?.role === 'admin')) && !isPastEvent(selectedEvent) && (
                 <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Iscrizione Online</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('online_registration')}</p>
                     <p className="text-sm text-slate-300">
-                      {selectedEvent.is_registered ? 'Sei già iscritto a questa gara.' : 'Clicca sul pulsante per iscriverti alla gara.'}
+                      {selectedEvent.is_registered ? t('online_registration_registered_desc') : t('online_registration_desc')}
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -2129,13 +2193,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         rel="noopener noreferrer"
                         className="h-10 px-4 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 border border-slate-700"
                       >
-                        <i className="fas fa-external-link-alt"></i> Sito Esterno
+                        <i className="fas fa-external-link-alt"></i> {t('external_site')}
                       </a>
                     )}
                     {(user?.role === 'user' || user?.role === 'admin') && (selectedEvent.is_management_enabled || user?.role === 'admin') && (
                       selectedEvent.is_registered ? (
                         <div className="h-10 px-4 rounded-xl bg-green-900/30 text-green-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-green-900/50 cursor-default">
-                          <i className="fas fa-check-circle"></i> Già Iscritto
+                          <i className="fas fa-check-circle"></i> {t('already_registered')}
                         </div>
                       ) : (
                         <button 
@@ -2145,7 +2209,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           }}
                           className="h-10 px-4 rounded-xl bg-green-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-green-500 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 whitespace-nowrap active:scale-95"
                         >
-                          <i className="fas fa-user-plus"></i> Iscriviti Ora
+                          <i className="fas fa-user-plus"></i> {t('register_now')}
                         </button>
                       )
                     )}
@@ -2155,12 +2219,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
               {selectedEvent.poster_url && (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Locandina / Programma</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('poster_image')}</p>
                   <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 aspect-video relative group">
                     {selectedEvent.poster_url.startsWith('data:application/pdf') ? (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-3">
                         <i className="fas fa-file-pdf text-5xl text-red-500"></i>
-                        <span className="text-xs font-bold text-slate-400">Documento PDF</span>
+                        <span className="text-xs font-bold text-slate-400">{t('pdf_document')}</span>
                       </div>
                     ) : (
                       <img src={selectedEvent.poster_url} alt="Locandina" className="w-full h-full object-cover" />
@@ -2170,7 +2234,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       download={`Locandina_${selectedEvent.name.replace(/\s+/g, '_')}`}
                       className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 text-white font-black uppercase text-xs tracking-widest"
                     >
-                      <i className="fas fa-download text-xl"></i> Scarica File
+                      <i className="fas fa-download text-xl"></i> {t('download_file')}
                     </a>
                   </div>
                 </div>
@@ -2184,9 +2248,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       setSelectedEvent(null);
                     }}
                     className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 active:scale-95 text-[9px] font-black uppercase tracking-widest"
-                    title={user?.role === 'admin' ? 'Aggiungi a un tiratore' : 'Aggiungi alle mie gare'}
+                    title={user?.role === 'admin' ? t('add_shooter') : t('add_to_my_events')}
                   >
-                    <i className="fas fa-calendar-plus"></i> Aggiungi
+                    <i className="fas fa-calendar-plus"></i> {t('add_label')}
                   </button>
                 )}
 
@@ -2197,9 +2261,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       setSelectedEvent(null);
                     }}
                     className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 active:scale-95 text-[9px] font-black uppercase tracking-widest"
-                    title="Crea Squadra"
+                    title={t('create_team')}
                   >
-                    <i className="fas fa-users"></i> Squadra
+                    <i className="fas fa-users"></i> {t('team_label')}
                   </button>
                 )}
                 
@@ -2214,9 +2278,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }} 
                     className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95 text-[9px] font-black uppercase tracking-widest"
-                    title="Classifica"
+                    title={t('ranking_label')}
                   >
-                    <i className="fas fa-trophy"></i> Classifica
+                    <i className="fas fa-trophy"></i> {t('ranking_label')}
                   </button>
                 )}
 
@@ -2225,7 +2289,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   <button 
                     onClick={() => {
                       if (!selectedEvent.is_management_enabled && user?.role !== 'admin') {
-                        triggerToast?.('Questa gara non è stata ancora attivata dall\'amministratore.', 'info');
+                        triggerToast?.(t('competition_not_activated_desc'), 'info');
                         return;
                       }
                       setManagingEventDetail(selectedEvent);
@@ -2238,9 +2302,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
                         : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
                     }`}
-                    title="Gestione Iscritti e Batterie"
+                    title={t('manage_registrations_title')}
                   >
-                    <i className="fas fa-tasks"></i> Gestisci
+                    <i className="fas fa-tasks"></i> {t('manage_label')}
                   </button>
                 )}
 
@@ -2260,9 +2324,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }} 
                     className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest"
-                    title={user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id)) ? "Gestisci Risultati" : "Vedi Risultati"}
+                    title={user?.role === 'admin' || (user?.role === 'society' && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id)) ? t('manage_results') : t('view_results')}
                   >
-                    <i className="fas fa-list-ol"></i> Risultati
+                    <i className="fas fa-list-ol"></i> {t('results')}
                   </button>
                 )}
 
@@ -2274,9 +2338,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         setSelectedEvent(null);
                       }} 
                       className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-orange-600 text-white flex items-center justify-center gap-2 hover:bg-orange-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-orange-600/20"
-                      title="Modifica"
+                      title={t('edit_label')}
                     >
-                      <i className="fas fa-edit"></i> Modifica
+                      <i className="fas fa-edit"></i> {t('edit_label')}
                     </button>
                     <button 
                       onClick={() => {
@@ -2284,9 +2348,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         setSelectedEvent(null);
                       }} 
                       className="flex-1 min-w-[120px] h-9 px-3 rounded-xl bg-red-600 text-white flex items-center justify-center gap-2 hover:bg-red-500 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20"
-                      title="Elimina"
+                      title={t('delete_label')}
                     >
-                      <i className="fas fa-trash-alt"></i> Elimina
+                      <i className="fas fa-trash-alt"></i> {t('delete_label')}
                     </button>
                   </>
                 )}
@@ -2330,7 +2394,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           user={user}
           onClose={() => setRegisteringEvent(null)}
           onSuccess={() => {
-            if (triggerToast) triggerToast('Iscrizione completata con successo!', 'success');
+            if (triggerToast) triggerToast(t('registration_success'), 'success');
             fetchEvents();
             setRefreshDetailVersion(v => v + 1);
           }}

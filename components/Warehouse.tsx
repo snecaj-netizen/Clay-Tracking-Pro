@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import ExpandingFAB from './ExpandingFAB';
 import { Cartridge, CartridgeType } from '../types';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface WarehouseProps {
   user: any;
@@ -26,6 +27,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
   onSaveType,
   onDeleteType
 }) => {
+  const { t, language } = useLanguage();
   const { triggerConfirm } = useUI();
   const [showForm, setShowForm] = useState(false);
   const [editingCart, setEditingCart] = useState<Cartridge | null>(null);
@@ -258,7 +260,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
   };
 
   const handleSetExact = (typeGroup: any) => {
-    const newVal = window.prompt(`Imposta la giacenza totale per ${typeGroup.producer} ${typeGroup.model} (Piombo ${typeGroup.leadNumber}${typeGroup.grams ? ` • ${typeGroup.grams}g` : ''}).\nNuova giacenza totale:`, typeGroup.total.toString());
+    const newVal = window.prompt(`${t('set_exact_stock_desc_part1')} ${typeGroup.producer} ${typeGroup.model} (${t('lead_label')} ${typeGroup.leadNumber}${typeGroup.grams ? ` • ${typeGroup.grams}g` : ''}).\n${t('new_total_stock')}:`, typeGroup.total.toString());
     
     if (newVal !== null && newVal.trim() !== '') {
       const parsed = parseInt(newVal);
@@ -340,16 +342,16 @@ const Warehouse: React.FC<WarehouseProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-warehouse text-orange-600"></i>
-            Magazzino
+            {t('warehouse')}
           </h2>
           <div className="flex gap-2">
             <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Stock</p>
-              <p className="text-xs font-black text-white">{stats.totalQuantity} <span className="text-[8px] text-slate-500 uppercase">Pz</span></p>
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('stock_label')}</p>
+              <p className="text-xs font-black text-white">{stats.totalQuantity} <span className="text-[8px] text-slate-500 uppercase">{t('pieces_short')}</span></p>
             </div>
             <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Scatole</p>
-              <p className="text-xs font-black text-white">{(stats.totalQuantity / 25).toFixed(0)} <span className="text-[8px] text-slate-500 uppercase">Pec</span></p>
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('boxes_label')}</p>
+              <p className="text-xs font-black text-white">{(stats.totalQuantity / 25).toFixed(0)} <span className="text-[8px] text-slate-500 uppercase">{t('boxes_short')}</span></p>
             </div>
           </div>
         </div>
@@ -363,7 +365,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                 onClick={() => handleTabChange(tab)} 
                 className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-widest ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                {tab === 'types' ? 'TIPI CARTUCCE' : tab === 'inventory' ? 'GIACENZA ATTUALE' : 'STORICO CARICHI'}
+                {tab === 'types' ? t('cartridge_types_tab') : tab === 'inventory' ? t('current_stock_tab') : t('purchase_history_tab')}
               </button>
             ))}
           </div>
@@ -385,7 +387,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                   <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                     <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                       <i className="fas fa-tags text-orange-500"></i>
-                      {editingType ? 'Modifica Tipo Cartuccia' : 'Nuovo Tipo Cartuccia'}
+                      {editingType ? t('edit_cartridge_type') : t('new_cartridge_type')}
                     </h3>
                     <button 
                       onClick={resetTypeForm}
@@ -399,7 +401,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <form id="type-form" onSubmit={handleTypeSubmit} className="space-y-6">
                       <div className="flex flex-col sm:flex-row gap-8">
                         <div className="w-full sm:w-1/3 space-y-3 text-center">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block text-left ml-1">Immagine Scatola</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block text-left ml-1">{t('box_image')}</label>
                           <div 
                               onClick={() => typeFileInputRef.current?.click()}
                               className="aspect-square bg-slate-950 rounded-2xl border-2 border-dashed border-slate-800 hover:border-orange-500 transition-all cursor-pointer flex flex-col items-center justify-center overflow-hidden relative group shadow-inner"
@@ -414,7 +416,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                               ) : (
                                 <div className="p-4">
                                   <i className="fas fa-box-open text-slate-700 text-4xl mb-3"></i>
-                                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Carica Foto</p>
+                                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{t('upload_photo')}</p>
                                 </div>
                               )}
                           </div>
@@ -424,26 +426,26 @@ const Warehouse: React.FC<WarehouseProps> = ({
                               onClick={() => searchOnGoogle(typeProducer, typeModel)}
                               className="text-[10px] font-black text-blue-500 uppercase hover:text-blue-400 tracking-widest mt-2"
                           >
-                              <i className="fab fa-google mr-1"></i> Cerca Immagine
+                              <i className="fab fa-google mr-1"></i> {t('search_image')}
                           </button>
                         </div>
 
                         <div className="flex-1 grid grid-cols-1 gap-6">
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Produttore</label>
-                            <input type="text" required value={typeProducer} onChange={e => setTypeProducer(e.target.value)} placeholder="Es: Baschieri" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('producer')}</label>
+                            <input type="text" required value={typeProducer} onChange={e => setTypeProducer(e.target.value)} placeholder={t('producer_placeholder')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Modello</label>
-                            <input type="text" required value={typeModel} onChange={e => setTypeModel(e.target.value)} placeholder="Es: F2 Mach" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('model')}</label>
+                            <input type="text" required value={typeModel} onChange={e => setTypeModel(e.target.value)} placeholder={t('model_placeholder')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Piombo</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('lead_label')}</label>
                               <input type="text" required value={typeLeadNumber} onChange={e => setTypeLeadNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Grammi</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('grams_label')}</label>
                               <input type="number" required value={typeGrams} onChange={e => setTypeGrams(parseInt(e.target.value) || 0)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                             </div>
                           </div>
@@ -453,9 +455,9 @@ const Warehouse: React.FC<WarehouseProps> = ({
                   </div>
 
                   <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
-                    <button type="button" onClick={resetTypeForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">Annulla</button>
+                    <button type="button" onClick={resetTypeForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">{t('cancel')}</button>
                     <button type="submit" form="type-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-                      {editingType ? 'Salva' : 'Crea'}
+                      {editingType ? t('save') : t('create')}
                     </button>
                   </div>
                 </div>
@@ -469,7 +471,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                   <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                     <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                       <i className="fas fa-truck-loading text-orange-500"></i>
-                      {editingCart ? 'Modifica Carico' : 'Registra Nuovo Acquisto'}
+                      {editingCart ? t('edit_stock') : t('register_new_purchase')}
                     </h3>
                     <button 
                       onClick={resetForm}
@@ -483,23 +485,23 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <form id="stock-form" onSubmit={handleStockSubmit} className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="sm:col-span-2 space-y-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seleziona Tipo Cartuccia</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('select_cartridge_type')}</label>
                           <select 
                             required 
                             value={selectedTypeId} 
                             onChange={e => setSelectedTypeId(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                           >
-                            <option value="">Scegli un tipo...</option>
-                            {cartridgeTypes.map(t => (
-                              <option key={t.id} value={t.id}>{t.producer} {t.model} (P. {t.leadNumber})</option>
+                            <option value="">{t('choose_type_placeholder')}</option>
+                            {cartridgeTypes.map(ct => (
+                              <option key={ct.id} value={ct.id}>{ct.producer} {ct.model} ({t('lead_label_short')} {ct.leadNumber})</option>
                             ))}
                           </select>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Pezzi Acquistati</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('purchased_pieces')}</label>
                             <input type="number" required value={initialQuantity} onChange={e => {
                               const val = parseInt(e.target.value) || 0;
                               setInitialQuantity(val);
@@ -507,32 +509,32 @@ const Warehouse: React.FC<WarehouseProps> = ({
                             }} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cost_label')} (€)</label>
                             <input type="number" step="0.01" required value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                           </div>
                         </div>
 
                         {editingCart && (
                           <div className="sm:col-span-2 space-y-2 bg-orange-600/5 p-4 rounded-2xl border border-orange-600/20">
-                            <label className="text-[10px] font-black text-orange-500 uppercase tracking-widest ml-1">Giacenza Attuale (Modifica solo se necessario)</label>
+                            <label className="text-[10px] font-black text-orange-500 uppercase tracking-widest ml-1">{t('current_stock_edit_label')}</label>
                             <div className="flex items-center gap-4">
                               <input type="number" required value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="flex-1 bg-slate-950 border-2 border-orange-600/30 rounded-xl px-4 py-3 text-white text-sm font-black focus:border-orange-600 outline-none transition-all" />
                               <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-tight">
-                                Originariamente: {editingCart.initialQuantity} <br/>
-                                Rimanenti: {quantity}
+                                {t('originally')}: {editingCart.initialQuantity} <br/>
+                                {t('remaining')}: {quantity}
                               </div>
                             </div>
                           </div>
                         )}
 
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Armeria</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('armory_label')}</label>
                           <input type="text" value={armory} onChange={e => setArmory(e.target.value)} list="armory-list" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                           <datalist id="armory-list">{knownArmories.map(a => <option key={a} value={a} />)}</datalist>
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Acquisto</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('purchase_date_label')}</label>
                           <input type="date" required value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                         </div>
                       </div>
@@ -540,9 +542,9 @@ const Warehouse: React.FC<WarehouseProps> = ({
                   </div>
 
                   <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
-                    <button type="button" onClick={resetForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">Annulla</button>
+                    <button type="button" onClick={resetForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">{t('cancel')}</button>
                     <button type="submit" form="stock-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-                      {editingCart ? 'Aggiorna' : 'Conferma'}
+                      {editingCart ? t('update') : t('confirm')}
                     </button>
                   </div>
                 </div>
@@ -555,7 +557,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                 {cartridgeTypes.length === 0 ? (
                   <div className="text-center py-20 text-slate-600 border-2 border-dashed border-slate-700 rounded-3xl">
                     <i className="fas fa-tags text-4xl mb-3 opacity-20"></i>
-                    <p className="text-sm font-medium">Nessun tipo di cartuccia configurato.</p>
+                    <p className="text-sm font-medium">{t('no_cartridge_types')}</p>
                   </div>
                 ) : (
                   typesByProducer.map(([producer, types]) => {
@@ -572,7 +574,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                           </h3>
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] font-bold text-slate-500 group-hover:text-orange-500 uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 transition-colors">
-                              {types.length} TIPI
+                              {types.length} {t('types_label')}
                             </span>
                             <i className={`fas fa-chevron-down text-[8px] text-slate-600 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></i>
                           </div>
@@ -596,10 +598,10 @@ const Warehouse: React.FC<WarehouseProps> = ({
                                       </div>
                                       <div>
                                         <h4 className="font-bold text-white text-sm leading-tight uppercase">{type.producer}</h4>
-                                        <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • Piombo {type.leadNumber} • {type.grams}g</p>
+                                        <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">{type.model} • {t('lead_label')} {type.leadNumber} • {type.grams}g</p>
                                         {user?.role === 'admin' && type.createdByName && (
                                           <p className="text-[9px] text-slate-500 font-medium mt-0.5 italic">
-                                            Caricata da: {type.createdByName} {type.createdBySurname}
+                                            {t('uploaded_by')}: {type.createdByName} {type.createdBySurname}
                                           </p>
                                         )}
                                       </div>
@@ -609,16 +611,16 @@ const Warehouse: React.FC<WarehouseProps> = ({
                                         <button 
                                           onClick={() => startEditType(type)} 
                                           className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
-                                          title="Modifica"
+                                          title={t('edit')}
                                         >
                                           <i className="fas fa-edit text-xs"></i>
                                         </button>
                                       )}
                                       {user?.role === 'admin' && (
                                         <button 
-                                          onClick={() => triggerConfirm('Elimina Tipo', 'Sei sicuro di voler eliminare questo tipo di cartuccia?', () => onDeleteType(type.id), 'Elimina', 'danger')} 
+                                          onClick={() => triggerConfirm(t('delete_type_title'), t('confirm_delete_type_desc'), () => onDeleteType(type.id), t('delete'), 'danger')} 
                                           className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
-                                          title="Elimina"
+                                          title={t('delete')}
                                         >
                                           <i className="fas fa-trash text-xs"></i>
                                         </button>
@@ -642,7 +644,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                 {groupedStock.length === 0 ? (
                   <div className="text-center py-20 text-slate-600 border-2 border-dashed border-slate-700 rounded-3xl">
                     <i className="fas fa-box-open text-4xl mb-3 opacity-20"></i>
-                    <p className="text-sm font-medium">Magazzino vuoto.</p>
+                    <p className="text-sm font-medium">{t('warehouse_empty')}</p>
                   </div>
                 ) : (
                   inventoryByProducer.map(([producer, items]) => {
@@ -659,7 +661,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                           </h3>
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] font-bold text-slate-500 group-hover:text-orange-500 uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 transition-colors">
-                              {items.reduce((acc, curr) => acc + curr.total, 0)} PZ
+                              {items.reduce((acc, curr) => acc + curr.total, 0)} {t('pieces_short')}
                             </span>
                             <i className={`fas fa-chevron-down text-[8px] text-slate-600 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></i>
                           </div>
@@ -701,12 +703,12 @@ const Warehouse: React.FC<WarehouseProps> = ({
                                             {updatingGroupId === (type.typeId || `${type.producer.toLowerCase().trim()}-${type.model.toLowerCase().trim()}-${type.leadNumber}-${type.grams || 0}`) ? (
                                               <div className="flex flex-col items-end">
                                                 <i className="fas fa-circle-notch fa-spin text-orange-500 text-xl mb-1"></i>
-                                                <span className="text-[7px] text-orange-500 font-black uppercase tracking-tighter">Aggiornamento...</span>
+                                                <span className="text-[7px] text-orange-500 font-black uppercase tracking-tighter">{t('updating_short')}...</span>
                                               </div>
                                             ) : (
                                               <>
                                                 <span className="text-xl sm:text-2xl font-black text-white block leading-none">{type.total}</span>
-                                                <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pezzi</span>
+                                                <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">{t('pieces_short')}</span>
                                               </>
                                             )}
                                           </div>
@@ -714,7 +716,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                                             onClick={() => handleSetExact(type)} 
                                             disabled={updatingGroupId !== null}
                                             className="bg-slate-800 hover:bg-orange-600 text-slate-400 hover:text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all border border-slate-700 active:scale-95 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            title="Modifica giacenza esatta"
+                                            title={t('edit_exact_stock_title')}
                                           >
                                             <i className="fas fa-pencil-alt text-xs"></i>
                                           </button>
@@ -766,30 +768,40 @@ const Warehouse: React.FC<WarehouseProps> = ({
             )}
 
             {activeTab === 'history' && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                  <div className="flex-1 min-w-[120px]">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Filtra per Anno</label>
-                    <select 
-                      value={filterYear} 
-                      onChange={(e) => setFilterYear(e.target.value)} 
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-orange-600 transition-all appearance-none"
-                    >
-                      <option value="ALL">TUTTI GLI ANNI</option>
-                      {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
-                    </select>
+              <div className="space-y-4">
+                <div className="bg-slate-950/50 p-5 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                        <i className="fas fa-calendar-alt text-orange-500"></i>
+                        {t('year_label')}
+                      </label>
+                      <div className="relative group">
+                        <select 
+                          value={filterYear} 
+                          onChange={(e) => setFilterYear(e.target.value)} 
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="ALL">{t('all_years')}</option>
+                          {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                          <i className="fas fa-chevron-down text-[10px]"></i>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="bg-emerald-950/20 border border-emerald-500/20 p-3 sm:p-4 rounded-2xl mb-4 flex items-center justify-between">
                   <div className="flex gap-2 sm:gap-8 flex-1 min-w-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-[8px] sm:text-[10px] text-emerald-500 font-black uppercase tracking-widest leading-tight mb-1">Investimento {filterYear === 'ALL' ? 'Totale' : filterYear}</p>
+                      <p className="text-[8px] sm:text-[10px] text-emerald-500 font-black uppercase tracking-widest leading-tight mb-1">{t('total_investment')} {filterYear === 'ALL' ? t('total') : filterYear}</p>
                       <p className="text-sm sm:text-2xl font-black text-white break-words">€{stats.totalCost.toFixed(2)}</p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[8px] sm:text-[10px] text-blue-500 font-black uppercase tracking-widest leading-tight mb-1">Cartucce {filterYear === 'ALL' ? 'Acquistate' : filterYear}</p>
-                      <p className="text-sm sm:text-2xl font-black text-white break-words">{stats.totalPurchased} <span className="text-[10px] sm:text-xs text-slate-500">Pz</span></p>
+                      <p className="text-[8px] sm:text-[10px] text-blue-500 font-black uppercase tracking-widest leading-tight mb-1">{t('cartridges_purchased')} {filterYear === 'ALL' ? t('total') : filterYear}</p>
+                      <p className="text-sm sm:text-2xl font-black text-white break-words">{stats.totalPurchased} <span className="text-[10px] sm:text-xs text-slate-500">{t('pieces_short')}</span></p>
                     </div>
                   </div>
                   <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0 ml-2">
@@ -814,26 +826,26 @@ const Warehouse: React.FC<WarehouseProps> = ({
                           </div>
                           <div>
                             <h4 className="font-bold text-white text-xs leading-tight">{displayProducer} <span className="text-orange-500">{displayModel}</span> {displayGrams && <span className="text-slate-500">• {displayGrams}g</span>}</h4>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString()} {c.armory && `• ${c.armory}`}</p>
+                            <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')} {c.armory && `• ${c.armory}`}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="text-right">
-                            <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">Pz</span></p>
+                            <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">{t('pieces_short')}</span></p>
                             <p className="text-[9px] text-blue-500 font-bold">€{c.cost.toFixed(2)}</p>
                           </div>
                             <div className="flex gap-1">
                               <button 
                                 onClick={() => startEdit(c)} 
                                 className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
-                                title="Modifica"
+                                title={t('edit')}
                               >
                                 <i className="fas fa-edit text-xs"></i>
                               </button>
                               <button 
-                                onClick={() => triggerConfirm('Elimina Cartucce', 'Sei sicuro di voler eliminare questo lotto di cartucce?', () => onDelete(c.id), 'Elimina', 'danger')} 
+                                onClick={() => triggerConfirm(t('delete_stock_title'), t('confirm_delete_stock_desc'), () => onDelete(c.id), t('delete'), 'danger')} 
                                 className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
-                                title="Elimina"
+                                title={t('delete')}
                               >
                                 <i className="fas fa-trash text-xs"></i>
                               </button>
@@ -851,7 +863,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
       {/* Floating Add Button for Warehouse - Only on Types and History tabs */}
       <ExpandingFAB 
         show={activeTab === 'types' || activeTab === 'history'}
-        label={showForm ? 'Chiudi' : activeTab === 'types' ? 'Nuovo Tipo' : 'Nuovo Carico'}
+        label={showForm ? t('close_label') : activeTab === 'types' ? t('new_type') : t('new_purchase')}
         isClose={showForm}
         onClick={() => {
           if (!showForm) window.scrollTo({ top: 0, behavior: 'smooth' });

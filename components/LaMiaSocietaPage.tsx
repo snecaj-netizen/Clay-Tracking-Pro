@@ -4,6 +4,7 @@ import AdminPanel from './AdminPanel';
 import AICoachPage from './AICoachPage';
 
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface LaMiaSocietaPageProps {
   user: any;
@@ -42,6 +43,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   initialTab,
   onToggleFAB
 }) => {
+  const { t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach'>(initialTab || 'results');
   const [direction, setDirection] = useState(0);
@@ -118,16 +120,43 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-building text-orange-600"></i>
-            La mia Società
+            {t('my_society')}
           </h2>
-          <div className="flex gap-2">
-            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Tiratori</p>
-              <p className="text-xs font-black text-white">{stats.users}</p>
+          
+          <div className="flex items-center gap-2">
+            {/* Portal Buttons */}
+            <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+               <button 
+                  onClick={() => { window.open('/public-portal', '_blank'); }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all bg-indigo-600/20 text-indigo-500 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white"
+                  title={t('results_portal')}
+                >
+                  <i className="fas fa-external-link-alt"></i> 
+                  <span className="hidden sm:inline">{t('results_portal_preview')}</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    const portalUrl = `${window.location.origin}/public-portal`;
+                    navigator.clipboard.writeText(portalUrl).then(() => {
+                      triggerToast(t('portal_link_copied'), 'success');
+                    });
+                  }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all border border-transparent hover:border-slate-700"
+                  title={t('copy_portal_link')}
+                >
+                  <i className="fas fa-copy text-xs"></i>
+                </button>
             </div>
-            <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Squadre</p>
-              <p className="text-xs font-black text-white">{stats.teams}</p>
+
+            <div className="hidden md:flex gap-2">
+              <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
+                <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('shooters_stats')}</p>
+                <p className="text-xs font-black text-white">{stats.users}</p>
+              </div>
+              <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
+                <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('teams_stats')}</p>
+                <p className="text-xs font-black text-white">{stats.teams}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -141,7 +170,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
                 onClick={() => handleTabChange(tab)}
                 className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-widest ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                {tab === 'results' ? 'RISULTATI GARE' : tab === 'users' ? 'TIRATORI' : tab === 'team' ? 'SQUADRE' : tab === 'halloffame' ? 'HALL OF FAME' : 'COACH AI'}
+                {tab === 'results' ? t('results_races_tab') : tab === 'users' ? t('shooters_tab') : tab === 'team' ? t('teams_tab') : tab === 'halloffame' ? t('hall_of_fame_tab_label') : t('coach_ai_tab_label')}
               </button>
             ))}
           </div>

@@ -11,6 +11,8 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 import webpush from 'web-push';
 import cron from 'node-cron';
 
@@ -23,6 +25,53 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 app.get('/ping', (req, res) => res.send('pong'));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
+
+// Email configuration
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_PORT === '465',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+const sendVerificationEmail = async (email: string, name: string, token: string, host?: string) => {
+  if (!process.env.SMTP_HOST) {
+    console.warn('⚠️ SMTP configuration missing. Verification email not sent.');
+    return;
+  }
+
+  const appUrl = process.env.APP_URL || (host ? `https://${host}` : 'https://clay-tracking-pro-production-3fe8.up.railway.app');
+  const verificationUrl = `${appUrl}/verify-email?token=${token}`;
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    to: email,
+    subject: 'Verifica il tuo account - Clay Performance',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
+        <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
+        <p>Ciao ${name},</p>
+        <p>Benvenuto in Clay Performance! Per attivare il tuo account e iniziare a tracciare i tuoi risultati, conferma la tua email cliccando sul tasto qui sotto.</p>
+        <div style="text-align: center;">
+          <a href="${verificationUrl}" style="display: inline-block; background-color: #ea580c; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; margin: 20px 0;">VERIFICA EMAIL</a>
+        </div>
+        <p style="font-size: 12px; color: #64748b;">Se il tasto non funziona, copia e incolla questo link nel tuo browser:<br>${verificationUrl}</p>
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;">
+        <p style="font-size: 12px; color: #64748b;">Se non hai richiesto tu questa iscrizione, puoi ignorare questa email.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to: ${email}`);
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+  }
+};
 
 app.use(cors());
 app.use(compression());
@@ -49,14 +98,11 @@ const getAutoQualification = (birthDate: string | null, currentQual: string | nu
   const currentYear = new Date().getFullYear();
   const age = currentYear - birthYear;
   
-  if (age <= 20) return 'Junior';
-  if (age >= 56 && age <= 65) return 'Senior';
-  if (age >= 66 && age <= 72) return 'Veterani';
-  if (age > 72) return 'Master';
-  
-  if (['Junior', 'Senior', 'Veterani', 'Master'].includes(currentQual || '')) {
-    return null;
-  }
+  if (age <= 20) return 'JUN';
+  if (age >= 21 && age <= 55) return 'MAN';
+  if (age >= 56 && age <= 65) return 'SEN';
+  if (age >= 66 && age <= 72) return 'VET';
+  if (age > 72) return 'MAS';
   
   return currentQual;
 };
@@ -101,6 +147,12 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS nationality TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS international_id TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS original_club TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_international BOOLEAN DEFAULT false");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT");
     } catch (_) {
       console.log("Columns already exist or error adding them");
     }
@@ -349,6 +401,13 @@ const initDB = async () => {
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS lat NUMERIC");
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS lng NUMERIC");
       await pool.query("ALTER TABLE societies ADD COLUMN IF NOT EXISTS google_maps_link TEXT");
+      
+      // Create virtual society for international shooters
+      await pool.query(`
+        INSERT INTO societies (name, code, city, region) 
+        VALUES ('International Shooters', 'INT00', 'Virtual', 'International')
+        ON CONFLICT (name) DO NOTHING
+      `);
     } catch (e) {
       console.log("Column contact_name, logo, opening_hours or disciplines might already exist or error adding it:", e);
     }
@@ -389,6 +448,8 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_society_ranking BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS has_team_ranking BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_management_enabled BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS region TEXT`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -698,7 +759,6 @@ const initDB = async () => {
   }
 };
 
-initDB().then(() => {
   // Setup cron job for upcoming events (2 days before)
   cron.schedule('0 10 * * *', async () => {
     try {
@@ -805,9 +865,8 @@ initDB().then(() => {
       console.error("Error in cron job for competition reminders:", err);
     }
   });
-});
 
-const activeUsers = new Map<number, number>();
+  const activeUsers = new Map<number, number>();
 
 // Authentication Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -1056,6 +1115,96 @@ const getTargetUserIds = async (targetType: string, targetId: string | null) => 
 };
 
 // Auth Routes
+app.post('/api/auth/register', async (req, res) => {
+  const { 
+    name, surname, email, password, 
+    birth_date, phone, 
+    is_international, nationality, international_id, original_club,
+    society, shooter_code, qualification, category
+  } = req.body;
+
+  try {
+    const { rows: existingUsers } = await pool.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1)", [email]);
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ error: 'Un account con questa email esiste già.' });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(password, salt);
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    
+    let finalQualification = qualification;
+    if (!qualification && birth_date) {
+        finalQualification = getAutoQualification(birth_date, null);
+    }
+
+    const finalSociety = !!is_international ? 'International Shooters' : society;
+
+    await pool.query(
+      `INSERT INTO users (
+        name, surname, email, password, role, 
+        birth_date, phone, status, 
+        is_international, nationality, international_id, original_club,
+        society, shooter_code, qualification, category,
+        verification_token, email_verified
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+      [
+        name, surname, email, hash, 'user', 
+        birth_date || null, phone || null, 'active',
+        !!is_international, nationality || null, international_id || null, original_club || null,
+        finalSociety || null, shooter_code || null, finalQualification || null, category || null,
+        verificationToken, false
+      ]
+    );
+
+    await sendVerificationEmail(email, name || 'Tiratore', verificationToken, req.get('host'));
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Errore durante la registrazione.' });
+  }
+});
+
+app.get('/verify-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send('Token mancante.');
+
+  try {
+    const { rows } = await pool.query("SELECT id FROM users WHERE verification_token = $1", [token]);
+    if (rows.length === 0) return res.status(400).send('Token non valido o scaduto.');
+
+    await pool.query("UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1", [rows[0].id]);
+    
+    res.send(`
+      <div style="font-family: sans-serif; text-align: center; padding: 50px; background-color: #0f172a; color: white; min-height: 100vh;">
+        <h1 style="color: #ea580c; font-size: 48px; margin-bottom: 20px;">✓</h1>
+        <h1 style="color: white; text-transform: uppercase;">Email Verificata!</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">Il tuo account è ora attivo. Puoi tornare all'app e procedere con il login.</p>
+        <a href="/" style="display: inline-block; background-color: #ea580c; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; letter-spacing: 1px;">ACCEDI ORA</a>
+      </div>
+    `);
+  } catch (err) {
+    res.status(500).send('Errore durante la verifica.');
+  }
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  try {
+    const { rows } = await pool.query("SELECT id, name, email_verified FROM users WHERE LOWER(email) = LOWER($1)", [email]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Utente non trovato' });
+    if (rows[0].email_verified) return res.status(400).json({ error: 'Email già verificata' });
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    await pool.query("UPDATE users SET verification_token = $1 WHERE id = $2", [verificationToken, rows[0].id]);
+    await sendVerificationEmail(email, rows[0].name, verificationToken, req.get('host'));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore durante l\'invio.' });
+  }
+});
+
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   console.log(`Login attempt for: ${email} on database: ${process.env.DATABASE_URL?.substring(0, 30)}...`);
@@ -1081,13 +1230,40 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid password' });
     }
 
+    /* Temporarily paused email verification
+    if (!user.email_verified && email !== 'snecaj@gmail.com') {
+      console.log(`Login failed: Email not verified (${email})`);
+      return res.status(403).json({ 
+        error: 'Email non verificata', 
+        message: 'Devi verificare la tua email prima di poter accedere. Controlla la tua casella di posta o richiedi un nuovo invio.' 
+      });
+    }
+    */
+
     console.log(`Login successful: ${email}`);
     // Update login count and last login
     await pool.query("UPDATE users SET login_count = login_count + 1, last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
     await pool.query("INSERT INTO login_logs (user_id) VALUES ($1)", [user.id]);
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, society: user.society }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, surname: user.surname, email: user.email, role: user.role, category: user.category, qualification: user.qualification, society: user.society, shooter_code: user.shooter_code, avatar: user.avatar, birth_date: user.birth_date, phone: user.phone } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        surname: user.surname, 
+        email: user.email, 
+        role: user.role, 
+        category: user.category, 
+        qualification: user.qualification, 
+        society: user.society, 
+        shooter_code: user.shooter_code, 
+        avatar: user.avatar, 
+        birth_date: user.birth_date, 
+        phone: user.phone,
+        is_international: user.is_international
+      } 
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1095,26 +1271,43 @@ app.post('/api/auth/login', async (req, res) => {
 
 // User Profile Routes
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
-  const { name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone } = req.body;
+  const { 
+    name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone,
+    nationality, international_id, original_club
+  } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
-
-  if (req.user.role === 'society' && !shooter_code) {
-    return res.status(400).json({ error: 'Il Codice Società è obbligatorio' });
-  }
 
   try {
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11 WHERE id = $12",
-        [name, surname, email, hash, category, finalQualification, society, shooter_code, avatar, birth_date || null, phone || null, req.user.id]
+        `UPDATE users SET 
+          name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, 
+          society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11,
+          nationality = $13, international_id = $14, original_club = $15
+        WHERE id = $12`,
+        [
+          name, surname, email, hash, category, finalQualification, 
+          society, shooter_code, avatar, birth_date || null, phone || null, 
+          req.user.id,
+          nationality || null, international_id || null, original_club || null
+        ]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, category = $4, qualification = $5, society = $6, shooter_code = $7, avatar = $8, birth_date = $9, phone = $10 WHERE id = $11",
-        [name, surname, email, category, finalQualification, society, shooter_code, avatar, birth_date || null, phone || null, req.user.id]
+        `UPDATE users SET 
+          name = $1, surname = $2, email = $3, category = $4, qualification = $5, 
+          society = $6, shooter_code = $7, avatar = $8, birth_date = $9, phone = $10,
+          nationality = $12, international_id = $13, original_club = $14
+        WHERE id = $11`,
+        [
+          name, surname, email, category, finalQualification, 
+          society, shooter_code, avatar, birth_date || null, phone || null, 
+          req.user.id,
+          nationality || null, international_id || null, original_club || null
+        ]
       );
     }
     res.json({ success: true });
@@ -1519,6 +1712,10 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     let params: any[] = [];
     let whereClauses: string[] = [];
     
+    if (req.user.role !== 'admin') {
+      whereClauses.push("LOWER(society) != LOWER('International Shooters')");
+    }
+
     if (req.user.role === 'society') {
       if (req.query.all === 'true') {
         // When searching for all shooters (e.g. for event registration or results),
@@ -1599,7 +1796,10 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 });
 
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone } = req.body;
+  const { 
+    name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone,
+    is_international, nationality, international_id, original_club, email_verified 
+  } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
@@ -1618,8 +1818,11 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
-      [name, surname, email, hash, role || 'user', category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active']
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id",
+      [
+        name, surname, email, hash, role || 'user', category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active',
+        !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified
+      ]
     );
     
     // Notify Admin about new user
@@ -1671,8 +1874,12 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           // Update profile
           const finalQual = getAutoQualification(u.birth_date, u.qualification);
           await client.query(
-            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8 WHERE id = $9",
-            [u.name, u.surname, u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null, existing[0].id]
+            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8, is_international = $9, nationality = $10, international_id = $11, original_club = $12, email_verified = $13 WHERE id = $14",
+            [
+              u.name, u.surname, u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null,
+              !!u.is_international, u.nationality || null, u.international_id || null, u.original_club || null, !!u.email_verified,
+              existing[0].id
+            ]
           );
           results.updated++;
         } else {
@@ -1681,8 +1888,11 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           const salt = bcrypt.genSaltSync(10);
           const hash = bcrypt.hashSync(u.password || u.shooter_code || 'Password123!', salt);
           await client.query(
-            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, birth_date, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')",
-            [u.name, u.surname, u.email, hash, u.role || 'user', u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null]
+            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13, $14, $15, $16)",
+            [
+              u.name, u.surname, u.email, hash, u.role || 'user', u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null,
+              !!u.is_international, u.nationality || null, u.international_id || null, u.original_club || null, !!u.email_verified
+            ]
           );
           results.created++;
         }
@@ -1703,7 +1913,10 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 });
 
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status } = req.body;
+  const { 
+    name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status,
+    is_international, nationality, international_id, original_club, email_verified
+  } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
@@ -1734,13 +1947,21 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13 WHERE id = $14",
-        [name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18 WHERE id = $19",
+        [
+          name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
+          !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
+          req.params.id
+        ]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12 WHERE id = $13",
-        [name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active', req.params.id]
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17 WHERE id = $18",
+        [
+          name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
+          !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
+          req.params.id
+        ]
       );
     }
     
@@ -2223,14 +2444,22 @@ app.get('/api/admin/export-all', authenticateToken, requireAdmin, async (req, re
 });
 
 // Societies Routes
-app.get('/api/societies', authenticateToken, async (req, res) => {
+app.get('/api/societies', authenticateToken, async (req: any, res) => {
   try {
-    const { rows } = await pool.query(`
+    const isAdmin = req.user.role === 'admin';
+    let query = `
       SELECT s.*, 
              EXISTS(SELECT 1 FROM users u WHERE u.role = 'society' AND u.society = s.name) as has_account
       FROM societies s 
-      ORDER BY s.name ASC
-    `);
+    `;
+    
+    if (!isAdmin) {
+      query += ` WHERE s.name != 'International Shooters' `;
+    }
+    
+    query += ` ORDER BY s.name ASC `;
+    
+    const { rows } = await pool.query(query);
     res.json(rows);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -3673,12 +3902,32 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking } = req.body;
+  const { 
+    id, name, type, visibility, discipline, location, targets, start_date, end_date, 
+    cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
+    ranking_preference_override, has_society_ranking, has_team_ranking,
+    is_public, region
+  } = req.body;
+  
+  let processedRegion = region;
+  if (!processedRegion && location) {
+    try {
+      const { rows: societies } = await pool.query("SELECT region FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", [location]);
+      if (societies.length > 0) processedRegion = societies[0].region;
+    } catch (e) {
+      console.error("Error fetching region for society:", e);
+    }
+  }
   
   try {
     await pool.query(
-      `INSERT INTO events (id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, created_by, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      `INSERT INTO events (
+        id, name, type, visibility, discipline, location, targets, start_date, end_date, 
+        cost, notes, poster_url, registration_link, created_by, prize_settings, 
+        ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
+        is_public, region
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -3687,8 +3936,15 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
        prize_settings = EXCLUDED.prize_settings, ranking_logic = EXCLUDED.ranking_logic,
        ranking_preference_override = EXCLUDED.ranking_preference_override,
        has_society_ranking = EXCLUDED.has_society_ranking,
-       has_team_ranking = EXCLUDED.has_team_ranking`,
-      [id, name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, req.user.id, prize_settings, ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, has_team_ranking || false]
+       has_team_ranking = EXCLUDED.has_team_ranking,
+       is_public = EXCLUDED.is_public,
+       region = EXCLUDED.region`,
+      [
+        id, name, type, visibility, discipline, location, targets, start_date, end_date, 
+        cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
+        ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
+        has_team_ranking || false, is_public || false, processedRegion
+      ]
     );
 
     // Send push notification
@@ -3728,12 +3984,62 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.patch('/api/events/:id/toggle-public', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'society') {
+    return res.status(403).json({ error: 'Non autorizzato' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const { rows: events } = await pool.query("SELECT is_public, location, region FROM events WHERE id = $1", [id]);
+    if (events.length === 0) return res.status(404).json({ error: 'Gara non trovata' });
+
+    const currentPublic = events[0].is_public;
+    const location = events[0].location;
+    let currentRegion = events[0].region;
+
+    // Sync region from society when publishing to ensure it's correct
+    if (!currentPublic) {
+      const { rows: societies } = await pool.query("SELECT region FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", [location]);
+      if (societies.length > 0 && societies[0].region) {
+        currentRegion = societies[0].region;
+      }
+    }
+
+    await pool.query(
+      `UPDATE events SET is_public = $1, region = $2 WHERE id = $3`,
+      [!currentPublic, currentRegion, id]
+    );
+
+    res.json({ success: true, is_public: !currentPublic, region: currentRegion });
+  } catch (err) {
+    console.error('Error toggling public status:', err);
+    res.status(500).json({ error: 'Errore interno' });
+  }
+});
+
 app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'society') {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
-  const { name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking } = req.body;
+  const { 
+    name, type, visibility, discipline, location, targets, start_date, end_date, 
+    cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
+    ranking_preference_override, has_society_ranking, has_team_ranking,
+    is_public, region
+  } = req.body;
+  
+  let processedRegion = region;
+  if (!processedRegion && location) {
+    try {
+      const { rows: societies } = await pool.query("SELECT region FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", [location]);
+      if (societies.length > 0) processedRegion = societies[0].region;
+    } catch (e) {
+      console.error("Error fetching region for society:", e);
+    }
+  }
   
   try {
     // Check if event is validated
@@ -3770,9 +4076,16 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         ranking_logic = COALESCE($14, ranking_logic),
         ranking_preference_override = COALESCE($15, ranking_preference_override),
         has_society_ranking = COALESCE($16, has_society_ranking),
-        has_team_ranking = COALESCE($17, has_team_ranking)
-       WHERE id = $18`,
-      [name, type, visibility, discipline, location, targets, start_date, end_date, cost, notes, poster_url, registration_link, prize_settings, ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking, req.params.id]
+        has_team_ranking = COALESCE($17, has_team_ranking),
+        is_public = COALESCE($18, is_public),
+        region = COALESCE($19, region)
+      WHERE id = $20`,
+      [
+        name, type, visibility, discipline, location, targets, start_date, end_date, 
+        cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
+        ranking_preference_override, has_society_ranking, has_team_ranking, is_public, processedRegion, 
+        req.params.id
+      ]
     );
 
     // Send push notification for update
@@ -4005,6 +4318,83 @@ const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: 
     console.error("Error in sendAdminCompactNotification:", err);
   }
 };
+// Public endpoints for results portal
+app.get('/api/public/events', async (req, res) => {
+  try {
+    const { rows: events } = await pool.query(
+      `SELECT e.*, 
+        (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.id) as registration_count,
+        (SELECT COUNT(*) FROM competitions WHERE event_id = e.id) as result_count
+       FROM events e 
+       WHERE COALESCE(is_public, FALSE) = TRUE
+       ORDER BY start_date DESC`
+    );
+    res.json(events);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/public/events/:id/results', async (req, res) => {
+  try {
+    const { rows: results } = await pool.query(
+      `SELECT c.*, u.id as user_id, u.name as user_name, u.surname as user_surname, u.society, u.avatar
+       FROM competitions c
+       JOIN users u ON c.user_id = u.id
+       JOIN events e ON c.event_id = e.id
+       WHERE c.event_id = $1 AND e.is_public = TRUE
+       ORDER BY c.totalscore DESC`,
+      [req.params.id]
+    );
+
+    const parsedResults = results.map(r => ({
+      ...r,
+      scores: r.scores ? (typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores) : [],
+      detailedScores: r.detailedscores ? (typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores) : null
+    }));
+
+    res.json(parsedResults);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/public/events/:id/teams', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    // Get event name
+    const eventRes = await pool.query('SELECT name, is_public FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0 || !eventRes.rows[0].is_public) {
+      return res.status(404).json({ error: 'Event not found or not public' });
+    }
+    const eventName = eventRes.rows[0].name;
+
+    const { rows: teams } = await pool.query(
+      `SELECT t.*, 
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id', u.id,
+                    'name', u.name,
+                    'surname', u.surname
+                  )
+                ) FILTER (WHERE u.id IS NOT NULL), 
+                '[]'
+              ) as members
+       FROM teams t
+       JOIN events e ON e.name = t.competition_name
+       LEFT JOIN team_members tm ON t.id = tm.team_id
+       LEFT JOIN users u ON tm.user_id = u.id
+       WHERE e.id = $1 AND e.is_public = TRUE
+       GROUP BY t.id`,
+      [eventId]
+    );
+    res.json(teams);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/competitions', authenticateToken, async (req: any, res) => {
   try {
     let query = "SELECT * FROM competitions WHERE user_id = $1 AND hidden_from_user = FALSE";
@@ -4785,6 +5175,9 @@ function serveStatic(app: any) {
 }
 
 async function startApp() {
+  // Initialize Database
+  await initDB();
+
   // API routes are already defined above
   
   // Setup Vite or Static serving

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TourStep {
   title: string;
@@ -15,8 +16,9 @@ interface OnboardingTourProps {
 
 const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const { language, t } = useLanguage();
 
-  const shooterSteps: TourStep[] = [
+  const shooterSteps: TourStep[] = language === 'it' ? [
     {
       title: "Benvenuto su Clay Performance!",
       description: "L'app definitiva per monitorare le tue prestazioni nel tiro a volo. Sei pronto a migliorare il tuo punteggio e scalare le classifiche? Qui potrai gestire ogni aspetto della tua attività sportiva.",
@@ -47,9 +49,40 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
       description: "Clicca sul tuo nome in alto a destra per accedere al profilo, cambiare password o consultare le notifiche. ⚠️ IMPORTANTE: Verifica che la tua email sia corretta per ricevere aggiornamenti importanti.",
       icon: "fa-user-circle"
     }
+  ] : [
+    {
+      title: "Welcome to Clay Performance!",
+      description: "The ultimate app to track your clay shooting performance. Ready to improve your score and climb the rankings? Here you can manage every aspect of your sports activity.",
+      icon: "fa-bullseye"
+    },
+    {
+      title: "Your Competitions",
+      description: "Here you'll find a summary of your activities. The 'Upcoming' tab shows your future commitments and active registrations, while 'History' keeps all your past results with detailed statistics.",
+      icon: "fa-list-ul"
+    },
+    {
+      title: "Cartridge Warehouse",
+      description: "Manage your supplies smartly. Upload new purchases to the Warehouse and the app will automatically deduct used cartridges after each entered series. Never run out!",
+      icon: "fa-box-open"
+    },
+    {
+      title: "Competitions and Events",
+      description: "Explore available competitions across Italy. In the 'Registrations' tab you can sign up for events with one touch, while in 'Results' you check official rankings and scores for each competition.",
+      icon: "fa-calendar-alt"
+    },
+    {
+      title: "Shooting Clubs",
+      description: "Search for shooting ranges in the national network. View info, contacts, and map locations to plan your next trips and discover new shooting realities.",
+      icon: "fa-shield-alt"
+    },
+    {
+      title: "Menu and Profile",
+      description: "Click your name at the top right to access your profile, change password, or check notifications. ⚠️ IMPORTANT: Verify your email is correct to receive important updates.",
+      icon: "fa-user-circle"
+    }
   ];
 
-  const societySteps: TourStep[] = [
+  const societySteps: TourStep[] = language === 'it' ? [
     {
       title: "Benvenuto, Società!",
       description: "Gestisci il tuo club in modo digitale e professionale. Semplifica le iscrizioni, organizza eventi e comunica in tempo reale con i tuoi tiratori attraverso strumenti dedicati.",
@@ -67,7 +100,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
     },
     {
       title: "Gestione Operativa",
-      description: "Dal menu in alto a destra, accedi a 'Gare gestite' per il controllo totale: gestisci le liste iscritti, componi le batterie (squadre) e convalida i punteggi ufficiali delle tue competizioni.",
+      description: "Dal menu in alto a destra, accedi a 'Gestione gare' per il controllo totale: gestisci le liste iscritti, componi le batterie (squadre) e convalida i punteggi ufficiali delle tue competizioni.",
       icon: "fa-users-cog"
     },
     {
@@ -78,6 +111,37 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
     {
       title: "Sicurezza e Account",
       description: "Proteggi i dati della tua società. Verifica l'email e imposta una password sicura dal menu profilo. La sicurezza delle informazioni dei tuoi iscritti è la nostra priorità.",
+      icon: "fa-user-shield"
+    }
+  ] : [
+    {
+      title: "Welcome, Club Manager!",
+      description: "Manage your club digitally and professionally. Simplify registrations, organize events, and communicate in real-time with your shooters through dedicated tools.",
+      icon: "fa-building"
+    },
+    {
+      title: "My Club",
+      description: "Your command center. Use the tabs to consult the Dashboard (statistics), manage your Team of shooters, view internal Results, and customize your page Settings.",
+      icon: "fa-poll"
+    },
+    {
+      title: "Competition Organization",
+      description: "Create and promote your events in the Competitions section. Upload posters, define details, and activate online registrations to receive immediate sign-ups from shooters all over Italy.",
+      icon: "fa-calendar-plus"
+    },
+    {
+      title: "Operational Management",
+      description: "From the top right menu, access 'Manage Competitions' for total control: manage registrant lists, compose squads, and validate official scores of your competitions.",
+      icon: "fa-users-cog"
+    },
+    {
+      title: "Club Network",
+      description: "Consult the full list of Shooting Clubs. Stay updated on the national network, view other realities on the map, and maintain contacts with the shooting world.",
+      icon: "fa-shield-alt"
+    },
+    {
+      title: "Security and Account",
+      description: "Protect your club's data. Verify your email and set a secure password from the profile menu. The security of your members' information is our priority.",
       icon: "fa-user-shield"
     }
   ];
@@ -111,7 +175,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
             onClick={onClose}
             className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest z-20"
           >
-            Salta <i className="fas fa-times ml-1"></i>
+            {t('skip')} <i className="fas fa-times ml-1"></i>
           </button>
 
           <div className="relative z-10 text-center">
@@ -141,7 +205,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
                 onClick={handleNext}
                 className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-8 rounded-2xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-600/20"
               >
-                {currentStep === steps.length - 1 ? 'Inizia Ora' : 'Avanti'}
+                {currentStep === steps.length - 1 ? t('start_now') : t('stepper_next')}
               </button>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import SocietySearch from './SocietySearch';
 import { Discipline } from '../types';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface GarePageProps {
   user: any;
@@ -32,6 +33,7 @@ const GarePage: React.FC<GarePageProps> = ({
   onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('eventi');
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results' | 'managed'>('list');
   const [showFilters, setShowFilters] = useState(false);
@@ -158,29 +160,29 @@ const GarePage: React.FC<GarePageProps> = ({
           <div className="flex flex-col">
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <i className={`fas ${activeTab === 'risultati' ? 'fa-trophy' : 'fa-calendar-alt'} text-orange-600`}></i>
-              {activeTab === 'eventi' ? 'Eventi' : 
-               activeTab === 'le-tue-gare' ? 'Le Tue Gare' : 
-               activeTab === 'iscrizione' ? 'Iscrizione' : 
-               activeTab === 'risultati' ? 'Risultati' : 
-               activeTab === 'gestione' ? 'Gestione Eventi' : 
-               activeTab === 'attivazione' ? 'Attivazione' : 'Gare'}
+              {activeTab === 'eventi' ? t('tab_events') : 
+               activeTab === 'le-tue-gare' ? t('your_competitions_title') : 
+               activeTab === 'iscrizione' ? t('tab_registration') : 
+               activeTab === 'risultati' ? t('tab_results') : 
+               activeTab === 'gestione' ? t('tab_management') : 
+               activeTab === 'attivazione' ? t('tab_activation') : t('races_plural')}
             </h2>
             <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">
-              {activeTab === 'eventi' ? 'Calendario ufficiale competizioni' : 
-               activeTab === 'le-tue-gare' ? 'Monitoraggio gare della società' : 
-               activeTab === 'iscrizione' ? 'Gare con iscrizioni aperte' : 
-               activeTab === 'risultati' ? 'Classifiche e punteggi' : 
-               activeTab === 'gestione' ? 'Pannello di controllo gare' : 
-               activeTab === 'attivazione' ? 'Gestione stati operativi' : ''}
+              {activeTab === 'eventi' ? t('events_desc') : 
+               activeTab === 'le-tue-gare' ? (user?.role === 'society' ? t('society_monitoring_desc') : t('managed_races_society_desc')) : 
+               activeTab === 'iscrizione' ? t('open_registrations_desc') : 
+               activeTab === 'risultati' ? t('results_desc') : 
+               activeTab === 'gestione' ? t('management_panel_desc') : 
+               activeTab === 'attivazione' ? t('activation_desc') : ''}
             </p>
           </div>
           <div className="flex gap-2">
             <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Eventi</p>
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('tab_events')}</p>
               <p className="text-xs font-black text-white">{stats.totalEvents}</p>
             </div>
             <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-blue-600">
-              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Iscrizioni Open</p>
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('open_registrations_label')}</p>
               <p className="text-xs font-black text-white">{stats.openRegistrations}</p>
             </div>
           </div>
@@ -195,7 +197,12 @@ const GarePage: React.FC<GarePageProps> = ({
                 onClick={() => handleTabChange(tab)} 
                 className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                {tab.replace(/-/g, ' ')}
+                {tab === 'eventi' ? t('tab_events') : 
+                 tab === 'iscrizione' ? t('tab_registration') : 
+                 tab === 'risultati' ? t('tab_results') : 
+                 tab === 'gestione' ? t('tab_management') : 
+                 tab === 'attivazione' ? t('tab_activation') : 
+                 tab === 'le-tue-gare' ? t('your_competitions_title') : tab}
               </button>
             ))}
           </div>
@@ -207,10 +214,10 @@ const GarePage: React.FC<GarePageProps> = ({
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${showFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500'}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${showFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.1)]' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500'}`}
               >
-                <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i>
-                Filtri
+                <i className={`fas fa-sliders-h ${showFilters ? 'rotate-180 text-orange-500' : ''} transition-transform`}></i>
+                {t('filters_label')}
               </button>
 
               {user?.role === 'admin' && activeTab === 'eventi' && (
@@ -218,18 +225,18 @@ const GarePage: React.FC<GarePageProps> = ({
                   <button 
                     onClick={() => setExportTrigger(prev => prev + 1)}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-slate-500 hover:text-white border border-slate-800 text-[10px] font-black uppercase transition-all"
-                    title="Esporta Excel"
+                    title={t('export_label')}
                   >
                     <i className="fas fa-file-excel"></i>
-                    <span className="hidden sm:inline">Esporta</span>
+                    <span className="hidden sm:inline">{t('export_label')}</span>
                   </button>
                   <button 
                     onClick={() => setImportTrigger(prev => prev + 1)}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-slate-500 hover:text-white border border-slate-800 text-[10px] font-black uppercase transition-all"
-                    title="Importa Excel"
+                    title={t('import_label')}
                   >
                     <i className="fas fa-file-import"></i>
-                    <span className="hidden sm:inline">Importa</span>
+                    <span className="hidden sm:inline">{t('import_label')}</span>
                   </button>
                 </div>
               )}
@@ -242,14 +249,14 @@ const GarePage: React.FC<GarePageProps> = ({
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                 >
                   <i className="fas fa-list"></i>
-                  <span className="hidden sm:inline">Elenco</span>
+                  <span className="hidden sm:inline">{t('list_label_short')}</span>
                 </button>
                 <button 
                   onClick={() => setViewMode('calendar')} 
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                 >
                   <i className="fas fa-calendar-alt"></i>
-                  <span className="hidden sm:inline">Calendario</span>
+                  <span className="hidden sm:inline">{t('calendar_label_short')}</span>
                 </button>
               </div>
             )}
@@ -267,25 +274,25 @@ const GarePage: React.FC<GarePageProps> = ({
             >
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 pb-1">
                 <div className="space-y-1 relative z-30">
-                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Società TAV</label>
+                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('society_tav_label')}</label>
                   <SocietySearch 
                     value={filterSociety}
                     onChange={setFilterSociety}
                     societies={societies}
-                    placeholder="Tutte le società"
+                    placeholder={t('all_societies')}
                     className="!bg-slate-900 !py-1.5 !text-[11px] !px-3"
                   />
                 </div>
                 <div className="space-y-1 relative z-20">
-                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
+                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('discipline')}</label>
                   <div className="relative group">
                     <select 
                       value={filterDiscipline} 
                       onChange={e => setFilterDiscipline(e.target.value)} 
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all appearance-none"
                     >
-                      <option value="">Tutte le discipline</option>
-                      {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+                      <option value="">{t('all_disciplines')}</option>
+                      {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{t(d)}</option>)}
                     </select>
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                       <i className="fas fa-chevron-down text-[8px]"></i>
@@ -293,14 +300,14 @@ const GarePage: React.FC<GarePageProps> = ({
                   </div>
                 </div>
                 <div className="space-y-1 relative z-10">
-                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
+                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('month')}</label>
                   <div className="relative group">
                     <select 
                       value={filterMonth} 
                       onChange={e => setFilterMonth(e.target.value)} 
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all appearance-none"
                     >
-                      <option value="">Tutti i mesi</option>
+                      <option value="">{t('all_months')}</option>
                       {monthOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
@@ -316,7 +323,7 @@ const GarePage: React.FC<GarePageProps> = ({
                   onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
                   className="text-[9px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
                 >
-                  Resetta Filtri
+                  {t('reset_filters')}
                 </button>
               </div>
             </motion.div>

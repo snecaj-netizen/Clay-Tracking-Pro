@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { SocietyEvent } from '../types';
 import { Search, Calendar, MapPin, CheckCircle2, XCircle, Loader2, Settings2 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventControlManagerProps {
   token: string;
@@ -9,6 +10,7 @@ interface EventControlManagerProps {
 
 export const EventControlManager: React.FC<EventControlManagerProps> = ({ token }) => {
   const { triggerToast, triggerConfirm } = useUI();
+  const { t, language } = useLanguage();
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,15 +41,15 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
     if (!currentStatus) {
       if (triggerConfirm) {
         triggerConfirm(
-          'Attiva Gestione',
-          'Sei sicuro di voler attivare la gestione per questa gara? Questa operazione abiliterà il sistema di iscrizioni e classifiche.',
+          t('activate_management_title'),
+          t('activate_management_confirm'),
           () => executeToggle(eventId, currentStatus),
-          'Attiva',
+          t('activate_btn'),
           'primary'
         );
         return;
       } else {
-        const confirmed = window.confirm('Sei sicuro di voler attivare la gestione per questa gara?');
+        const confirmed = window.confirm(t('activate_management_confirm'));
         if (!confirmed) return;
       }
     }
@@ -71,14 +73,14 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
         setEvents(events.map(ev => 
           ev.id === eventId ? { ...ev, is_management_enabled: !currentStatus } : ev
         ));
-        triggerToast?.(`Gara ${!currentStatus ? 'attivata' : 'disattivata'} con successo!`, 'success');
+        triggerToast?.(t('event_management_toggled_success').replace('{{status}}', !currentStatus ? t('activated') : t('deactivated')), 'success');
       } else {
         const err = await res.json();
-        triggerToast?.(err.error || 'Errore durante l\'operazione', 'error');
+        triggerToast?.(err.error || t('operation_error'), 'error');
       }
     } catch (err) {
       console.error('Error toggling management:', err);
-      triggerToast?.('Errore di rete', 'error');
+      triggerToast?.(t('connection_error'), 'error');
     } finally {
       setTogglingId(null);
     }
@@ -113,10 +115,10 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
             <div className="w-10 h-10 rounded-xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg">
               <Settings2 className="w-5 h-5" />
             </div>
-            Attivazione Gare
+            {t('activation_title')}
           </h2>
           <p className="text-slate-500 text-sm font-medium mt-1">
-            Seleziona le gare in cui abilitare il sistema di iscrizioni, batterie e classifiche.
+            {t('activation_subtitle')}
           </p>
         </div>
 
@@ -124,7 +126,7 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input 
             type="text"
-            placeholder="Cerca gara o società..."
+            placeholder={t('search_event_society_placeholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors text-white"
@@ -135,7 +137,7 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Caricamento gare...</p>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{t('loading_events')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -152,12 +154,12 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="px-2 py-0.5 rounded bg-slate-800 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-700">
-                      {ev.discipline}
+                      {t(ev.discipline)}
                     </span>
                     {ev.is_management_enabled && (
                       <span className="px-2 py-0.5 rounded bg-green-500/10 text-[9px] font-black text-green-500 uppercase tracking-widest border border-green-500/20 flex items-center gap-1">
                         <CheckCircle2 className="w-2.5 h-2.5" />
-                        Attiva
+                        {t('active_tag')}
                       </span>
                     )}
                   </div>
@@ -165,7 +167,7 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
                   <div className="space-y-1">
                     <p className="text-xs text-slate-500 flex items-center gap-2 font-medium">
                       <Calendar className="w-3 h-3 text-orange-500/50" />
-                      {new Date(ev.start_date).toLocaleDateString('it-IT')}
+                      {new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
                     </p>
                     <p className="text-xs text-slate-500 flex items-center gap-2 font-medium">
                       <MapPin className="w-3 h-3 text-orange-500/50" />
@@ -189,12 +191,12 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
                 ) : ev.is_management_enabled ? (
                   <>
                     <XCircle className="w-4 h-4" />
-                    Disattiva Gestione
+                    {t('deactivate_management_btn')}
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    Attiva Gestione
+                    {t('activate_management_btn')}
                   </>
                 )}
               </button>
@@ -205,7 +207,7 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
 
       {!loading && filteredEvents.length === 0 && (
         <div className="text-center py-24 bg-slate-900/20 rounded-[2.5rem] border-2 border-dashed border-slate-800/50">
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Nessuna gara trovata</p>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">{t('no_events_found')}</p>
         </div>
       )}
     </div>

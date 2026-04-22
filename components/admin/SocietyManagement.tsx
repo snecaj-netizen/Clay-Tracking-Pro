@@ -7,6 +7,7 @@ import SocietyDetailModal from '../SocietyDetailModal';
 import { Discipline } from '../../types';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -64,6 +65,7 @@ const SocietyCard = React.memo(({
   onSelect: (soc: any) => void 
 }) => {
   const isMySoc = currentUser?.society?.trim().toLowerCase() === soc.name.trim().toLowerCase();
+  const { t } = useLanguage();
   
   return (
     <div 
@@ -83,7 +85,7 @@ const SocietyCard = React.memo(({
           {currentUser?.role === 'admin' && (
             <span 
               className={`w-2 h-2 rounded-full ${soc.google_maps_link ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]'}`} 
-              title={soc.google_maps_link ? "Link Google Maps presente" : "Link Google Maps mancante"}
+              title={soc.google_maps_link ? t('maps_link_present') : t('maps_link_missing')}
             ></span>
           )}
         </h3>
@@ -108,7 +110,7 @@ const SocietyCard = React.memo(({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
-            title="Apri in Google Maps"
+            title={t('open_in_google_maps')}
           >
             <i className="fas fa-directions"></i>
           </a>
@@ -125,6 +127,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
   currentUser, token
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t } = useLanguage();
   const {
     societies, setSocieties, fetchSocieties, loading, backgroundLoading, error, setError,
     setShowUserForm, setEditingUser, setName, setSurname, setEmail, setRole, setSociety, setShooterCode, setPassword, setCategory, setQualification, setUserAvatar, setBirthDate, setActiveTab,
@@ -146,7 +149,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setError('L\'immagine non può superare i 2MB');
+        setError(t('image_too_large_error'));
         return;
       }
       const reader = new FileReader();
@@ -193,13 +196,13 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error('Errore durante il salvataggio della società');
+      if (!res.ok) throw new Error(t('save_error_msg'));
       
       setEditingSociety(null);
       setShowSocietyForm(false);
       resetSocietyForm();
       fetchSocieties();
-      triggerToast?.('Società salvata con successo!', 'success');
+      triggerToast?.(t('society_saved_success'), 'success');
     } catch (err: any) {
       setError(err.message);
     }
@@ -249,45 +252,45 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
 
   const handleDeleteSociety = (id: number) => {
     triggerConfirm(
-      'Elimina Società',
-      'Sei sicuro di voler eliminare questa società? L\'azione è irreversibile.',
+      t('delete_society_title'),
+      t('confirm_delete_society'),
       async () => {
         try {
           const res = await fetch(`/api/admin/societies/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+          if (!res.ok) throw new Error(t('delete_error'));
           fetchSocieties();
-          triggerToast?.('Società eliminata', 'success');
+          triggerToast?.(t('society_deleted_success'), 'success');
         } catch (err: any) {
           setError(err.message);
         }
       },
-      'Elimina',
+      t('delete'),
       'danger'
     );
   };
 
   const handleExportSocietiesExcel = () => {
     const exportData = societies.map(s => ({
-      Nome: s.name,
-      Codice: s.code,
-      Email: s.email,
-      Sito: s.website,
-      Indirizzo: s.address,
-      Città: s.city,
-      Regione: s.region,
-      CAP: s.zip,
-      Telefono: s.phone,
-      Cellulare: s.mobile,
-      Discipline: s.disciplines,
-      Latitudine: s.lat,
-      Longitudine: s.lng
+      [t('name')]: s.name,
+      [t('society_code')]: s.code,
+      [t('email')]: s.email,
+      [t('website_label')]: s.website,
+      [t('address_label')]: s.address,
+      [t('city_label')]: s.city,
+      [t('region_label')]: s.region,
+      [t('zip_label')]: s.zip,
+      [t('landline_label')]: s.phone,
+      [t('mobile_label')]: s.mobile,
+      [t('available_disciplines_label')]: s.disciplines,
+      [t('latitude_label')]: s.lat,
+      [t('longitude_label')]: s.lng
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Società');
+    XLSX.utils.book_append_sheet(wb, ws, t('societies'));
     XLSX.writeFile(wb, 'societa_clay_tracker.xlsx');
   };
 
@@ -305,24 +308,24 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
         const data = XLSX.utils.sheet_to_json(ws);
         
         const importedSocieties = data.map((row: any) => ({
-          name: row.Nome || row.name,
-          code: row.Codice || row.code,
-          email: row.Email || row.email,
-          website: row.Sito || row.website,
-          address: row.Indirizzo || row.address,
-          city: row.Città || row.city,
-          region: row.Regione || row.region,
-          zip: row.CAP || row.zip,
-          phone: row.Telefono || row.phone,
-          mobile: row.Cellulare || row.mobile,
-          disciplines: row.Discipline || row.disciplines,
-          lat: row.Latitudine || row.lat,
-          lng: row.Longitudine || row.lng
+          name: row[t('name')] || row.Nome || row.name,
+          code: row[t('society_code')] || row.Codice || row.code,
+          email: row[t('email')] || row.Email || row.email,
+          website: row[t('website_label')] || row.Sito || row.website,
+          address: row[t('address_label')] || row.Indirizzo || row.address,
+          city: row[t('city_label')] || row.Città || row.city,
+          region: row[t('region_label')] || row.Regione || row.region,
+          zip: row[t('zip_label')] || row.CAP || row.zip,
+          phone: row[t('landline_label')] || row.Telefono || row.phone,
+          mobile: row[t('mobile_label')] || row.Cellulare || row.mobile,
+          disciplines: row[t('available_disciplines_label')] || row.Discipline || row.disciplines,
+          lat: row[t('latitude_label')] || row.Latitudine || row.lat,
+          lng: row[t('longitude_label')] || row.Longitudine || row.lng
         }));
 
         triggerConfirm(
-          'Importa Società',
-          `Sei sicuro di voler importare ${importedSocieties.length} società?`,
+          t('import_societies_title'),
+          t('import_societies_confirm').replace('{{count}}', String(importedSocieties.length)),
           async () => {
             try {
               const res = await fetch('/api/admin/societies/import', {
@@ -334,21 +337,21 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                 body: JSON.stringify({ societies: importedSocieties })
               });
               
-              if (!res.ok) throw new Error('Errore durante l\'importazione');
+              if (!res.ok) throw new Error(t('import_error_msg'));
               
               fetchSocieties();
-              triggerToast?.('Importazione completata!', 'success');
+              triggerToast?.(t('import_completed_simple'), 'success');
             } catch (err) {
               console.error('Error importing societies:', err);
-              setError('Errore durante l\'importazione.');
+              setError(t('import_error_msg'));
             }
           },
-          'Importa',
+          t('import'),
           'primary'
         );
       } catch (err) {
         console.error('Error reading Excel file:', err);
-        setError('Errore nella lettura del file Excel.');
+        setError(t('excel_read_error'));
       }
     };
     reader.readAsBinaryString(file);
@@ -369,13 +372,13 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
         const data = XLSX.utils.sheet_to_json(ws);
         
         const updates = data.map((row: any) => ({
-          name: row.Nome || row.name,
-          code: row.Codice || row.code
+          name: row[t('name')] || row.Nome || row.name,
+          code: row[t('society_code')] || row.Codice || row.code
         })).filter(u => u.name && u.code);
 
         triggerConfirm(
-          'Aggiorna Codici Società',
-          `Sei sicuro di voler aggiornare i codici per ${updates.length} società?`,
+          t('update_codes'),
+          t('update_society_codes_confirm').replace('{{count}}', String(updates.length)),
           async () => {
             try {
               const res = await fetch('/api/admin/societies/update-codes', {
@@ -387,21 +390,21 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                 body: JSON.stringify({ updates })
               });
               
-              if (!res.ok) throw new Error('Errore durante l\'aggiornamento');
+              if (!res.ok) throw new Error(t('update_error_msg'));
               
               fetchSocieties();
-              triggerToast?.('Aggiornamento completata!', 'success');
+              triggerToast?.(t('update_completed'), 'success');
             } catch (err) {
               console.error('Error updating society codes:', err);
-              setError('Errore durante l\'aggiornamento.');
+              setError(t('update_error_msg'));
             }
           },
-          'Aggiorna',
+          t('update'),
           'primary'
         );
       } catch (err) {
         console.error('Error reading Excel file:', err);
-        setError('Errore nella lettura del file Excel.');
+        setError(t('excel_read_error'));
       }
     };
     reader.readAsBinaryString(file);
@@ -415,32 +418,32 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
           <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <i className="fas fa-shield-alt text-orange-600"></i>
-              Società TAV
+              {t('society_tav_title')}
               {(loading || backgroundLoading) && <i className="fas fa-circle-notch fa-spin text-orange-500 text-xs ml-2"></i>}
             </h2>
             <div className="flex items-center gap-2">
               <div className="bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800 border-l-2 border-l-orange-600">
-                <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Società</p>
-                <p className="text-xs font-black text-white">{societies.length} <span className="text-[8px] text-slate-500 uppercase">Tot</span></p>
+                <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">{t('societies')}</p>
+                <p className="text-xs font-black text-white">{societies.length} <span className="text-[8px] text-slate-500 uppercase">{t('societies_count_total')}</span></p>
               </div>
               {currentUser?.role === 'admin' && !showSocietyForm && (
                 <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide scroll-shadows">
                   <button 
                     onClick={handleExportSocietiesExcel}
                     className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 shrink-0"
-                    title="Esporta"
+                    title={t('export_label')}
                   >
                     <i className="fas fa-file-excel"></i>
-                    <span className="hidden sm:inline">Esporta</span>
+                    <span className="hidden sm:inline">{t('export_label')}</span>
                   </button>
-                  <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Aggiorna i codici delle società esistenti da un file Excel">
+                  <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title={t('update_codes_desc')}>
                     <i className="fas fa-sync-alt"></i>
-                    <span className="hidden sm:inline">Aggiorna Codici</span>
+                    <span className="hidden sm:inline">{t('update_codes')}</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleUpdateSocietiesCodesExcel} className="hidden" />
                   </label>
-                  <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title="Importa">
+                  <label className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0" title={t('import_label')}>
                     <i className="fas fa-file-import"></i>
-                    <span className="hidden sm:inline">Importa</span>
+                    <span className="hidden sm:inline">{t('import_label')}</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleImportSocietiesExcel} className="hidden" />
                   </label>
                 </div>
@@ -449,38 +452,38 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
           </div>
 
           {!showSocietyForm && (
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 bg-slate-950/30 p-4 rounded-3xl border border-slate-800/50 backdrop-blur-xl animate-in flip-in-x duration-500">
               <div className="relative flex-1">
-                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 text-xs"></i>
                 <input 
                   type="text" 
-                  placeholder="Cerca società per nome, città o regione..." 
+                  placeholder={t('search_society_placeholder')} 
                   value={societySearch}
                   onChange={(e) => setSocietySearch(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-10 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-12 pr-10 py-3 text-white text-xs font-bold focus:border-orange-500/50 outline-none transition-all placeholder:text-slate-600"
                 />
                 {societySearch && (
                   <button 
                     onClick={() => setSocietySearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
-                    title="Pulisci ricerca"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-orange-500 hover:bg-orange-500/10 rounded-full transition-all"
+                    title={t('clean_search')}
                   >
-                    <i className="fas fa-times"></i>
+                    <i className="fas fa-times-circle"></i>
                   </button>
                 )}
               </div>
-              <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
+              <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 shrink-0 shadow-inner">
                 <button
                   onClick={() => { setSocietyViewMode('list'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${societyViewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <i className="fas fa-list mr-2"></i> Lista
+                  <i className="fas fa-list text-[10px]"></i> {t('list_view_label')}
                 </button>
                 <button
                   onClick={() => { setSocietyViewMode('map'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-800/50'}`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${societyViewMode === 'map' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <i className="fas fa-map-marked-alt mr-2"></i> Mappa
+                  <i className="fas fa-map-marked-alt text-[10px]"></i> {t('map_view_label')}
                 </button>
               </div>
             </div>
@@ -503,7 +506,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
               <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                 <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                   <i className="fas fa-building text-orange-500"></i>
-                  {editingSociety ? 'Modifica Società' : 'Nuova Società'}
+                  {editingSociety ? t('edit_society_title') : t('new_society_title')}
                 </h3>
                 <button 
                   onClick={() => { setShowSocietyForm(false); setEditingSociety(null); resetSocietyForm(); }}
@@ -519,7 +522,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                     <div className="relative group">
                       <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 overflow-hidden flex items-center justify-center mb-2">
                         {socLogo ? (
-                          <img src={socLogo} alt="Logo Società" className="w-full h-full object-cover" />
+                          <img src={socLogo} alt={t('club_logo_label')} className="w-full h-full object-cover" />
                         ) : (
                           <i className="fas fa-building text-4xl text-slate-500"></i>
                         )}
@@ -529,67 +532,67 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                         <input type="file" accept="image/*" className="hidden" onChange={handleSocietyLogoChange} />
                       </label>
                     </div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo Società (Max 2MB)</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('club_logo_hint')}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome TAV (Obbligatorio)</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('club_name_label')}</label>
                       <input type="text" required value={socName} onChange={e => setSocName(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
                     </div>
                     <div className="sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Codice Società (Obbligatorio)</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('club_code_label')}</label>
                       <input type="text" required value={socCode} onChange={e => setSocCode(e.target.value)} disabled={currentUser?.role === 'society'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' ? 'opacity-50 cursor-not-allowed' : ''}`} />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('email')}</label>
                       <input type="email" value={socEmail} onChange={e => setSocEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sito Web</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('website_label')}</label>
                       <input type="url" value={socWebsite} onChange={e => setSocWebsite(e.target.value)} placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Link Google Maps (Opzionale)</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('maps_link_label')}</label>
                       <input type="url" value={socGoogleMapsLink} onChange={e => setSocGoogleMapsLink(e.target.value)} placeholder="https://goo.gl/maps/..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Contatto</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('contact_name_label')}</label>
                       <input type="text" value={socContactName} onChange={e => setSocContactName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Indirizzo</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('address_label')}</label>
                       <input type="text" value={socAddress} onChange={e => setSocAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Città</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('city_label')}</label>
                         <input type="text" value={socCity} onChange={e => setSocCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                       <div className="col-span-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Regione</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('region_label')}</label>
                         <input type="text" value={socRegion} onChange={e => setSocRegion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                       <div className="col-span-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CAP</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('zip_label')}</label>
                         <input type="text" value={socZip} onChange={e => setSocZip(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefono Fisso</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('landline_label')}</label>
                       <input type="tel" value={socPhone} onChange={e => setSocPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cellulare</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('mobile_label')}</label>
                       <input type="tel" value={socMobile} onChange={e => setSocMobile(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Giorni e Orari di Apertura</label>
-                      <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder="Es: Lun-Ven 09:00-18:00, Sab-Dom 08:00-19:00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('opening_hours_label')}</label>
+                      <input type="text" value={socOpeningHours} onChange={e => setSocOpeningHours(e.target.value)} placeholder={t('opening_hours_placeholder')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     
                     <div className="sm:col-span-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Discipline Disponibili</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">{t('available_disciplines_label')}</label>
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                         {Object.keys(Discipline).filter(k => k !== 'TRAINING').map(key => (
                           <label key={key} className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-all ${socDisciplines.includes(key) ? 'bg-orange-600/20 border-orange-600 text-orange-500' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
@@ -611,11 +614,11 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                       </div>
                     </div>
                     <div className="sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Latitudine</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('latitude_label')}</label>
                       <input type="text" value={socLat} onChange={e => setSocLat(e.target.value)} placeholder="Es: 41.9028" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                     <div className="sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Longitudine</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('longitude_label')}</label>
                       <input type="text" value={socLng} onChange={e => setSocLng(e.target.value)} placeholder="Es: 12.4964" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                     </div>
                   </div>
@@ -623,10 +626,10 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
               </div>
               <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
                 <button type="button" onClick={() => { setShowSocietyForm(false); setEditingSociety(null); resetSocietyForm(); }} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
-                  Annulla
+                  {t('cancel_label')}
                 </button>
                 <button type="submit" form="society-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-                  {editingSociety ? 'Salva' : 'Crea'}
+                  {editingSociety ? t('save') : t('create')}
                 </button>
               </div>
             </div>
@@ -646,7 +649,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
           ))}
           {filteredSocieties.length === 0 && (
             <div className="col-span-full py-12 text-center text-slate-600 italic text-sm">
-              Nessuna società trovata.
+              {t('no_societies_found')}
             </div>
           )}
         </div>
@@ -676,11 +679,11 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                     <h3 className="font-black text-white">{soc.name} {soc.code ? <span className="text-orange-500 font-bold ml-1">({soc.code})</span> : ''}</h3>
                     <p className="text-xs text-slate-400 mt-1">{soc.city} {soc.region ? `(${soc.region})` : ''}</p>
                     <div className="flex items-center justify-center gap-2 mt-2">
-                      <button 
+                       <button 
                         onClick={(e) => { e.stopPropagation(); setSelectedSociety(soc); }}
                         className="text-xs font-bold text-orange-500 hover:underline"
                       >
-                        Vedi Dettagli
+                        {t('view_details_label')}
                       </button>
                       {(soc.google_maps_link || (soc.lat && soc.lng)) && (
                         <a 
@@ -689,9 +692,9 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="text-xs font-bold text-blue-400 hover:underline flex items-center gap-1"
-                          title="Apri in Google Maps"
+                          title={t('open_in_google_maps')}
                         >
-                          <i className="fas fa-directions"></i> Naviga
+                          <i className="fas fa-directions"></i> {t('navigate_label')}
                         </a>
                       )}
                     </div>
@@ -704,7 +707,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
           {filteredSocieties.filter(s => !s.lat || !s.lng).length > 0 && (
             <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-sm border border-slate-800 rounded-xl p-3 text-xs text-slate-400 text-center z-[400]">
               <i className="fas fa-info-circle text-orange-500 mr-2"></i>
-              {filteredSocieties.filter(s => !s.lat || !s.lng).length} società non hanno coordinate e non sono visibili sulla mappa. Modificale per aggiornare la posizione.
+              {t('map_info_desc').replace('{{count}}', String(filteredSocieties.filter(s => !s.lat || !s.lng).length))}
             </div>
           )}
         </div>

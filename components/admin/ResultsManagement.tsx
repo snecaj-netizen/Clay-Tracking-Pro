@@ -6,6 +6,7 @@ import { Competition, User, UserRole, Discipline, getSeriesLayout } from '../../
 import { calculateRTE } from '../../ratingUtils';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ResultsManagementProps {
   currentUser: any;
@@ -22,6 +23,7 @@ const ResultRow = React.memo(({
   result: any, 
   onSelect: (result: any) => void 
 }) => {
+  const { t } = useLanguage();
   return (
     <tr 
       className="group bg-slate-950/40 hover:bg-slate-900/60 transition-all border border-slate-800/50 cursor-pointer"
@@ -63,7 +65,7 @@ const ResultRow = React.memo(({
           </div>
           {result.rte > 0 && (
             <span className={`text-[8px] font-black uppercase tracking-tighter ${result.rteCount < 3 ? 'text-slate-600' : 'text-amber-500/50'}`}>
-              {result.rteCount < 3 ? 'Provvisorio' : 'Qualificato'}
+              {result.rteCount < 3 ? t('provvisional') : t('qualified')}
             </span>
           )}
         </div>
@@ -86,6 +88,7 @@ const ResultRow = React.memo(({
 const ResultsManagement: React.FC<ResultsManagementProps> = ({
   currentUser, token, onEditCompetition, onDeleteCompetition
 }) => {
+  const { t, language } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
   const {
     societies, allResults, setAllResults, totalResults, resultsPage, setResultsPage, resultsPerPage,
@@ -164,14 +167,15 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-          <i className="fas fa-list-ol text-orange-500"></i> Tutti i Risultati
+          <i className="fas fa-list-ol text-orange-500"></i> {t('all_results_title')}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0 scrollbar-hide scroll-shadows">
           <button 
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase transition-all border relative ${showFilters || hasActiveFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500' : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-orange-500 hover:border-slate-700'}`}
           >
-            <i className={`fas ${showFilters ? 'fa-filter-slash' : 'fa-filter'}`}></i> Filtri
+            <i className={`fas fa-sliders-h ${showFilters ? 'rotate-180 text-orange-500' : ''} transition-transform`}></i> 
+            <span>{t('filters_label')}</span>
             {hasActiveFilters && (
               <span className="w-2 h-2 rounded-full bg-orange-500"></span>
             )}
@@ -180,168 +184,192 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
       </div>
 
       {showFilters && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 p-4 bg-slate-950/50 rounded-2xl border border-slate-800 animate-in zoom-in-95 duration-300">
-            <div className="sm:col-span-1 lg:col-span-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tiratore</label>
+        <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-user text-orange-500"></i>
+                {t('shooter')}
+              </label>
               <ShooterSearch 
                 value={filterShooter}
                 onChange={handleFilterChange(setFilterShooter)}
                 shooters={shooters}
-                placeholder="Tutti"
+                placeholder={t('all')}
               />
             </div>
-          {currentUser?.role === 'admin' && (
-            <div className="sm:col-span-1 lg:col-span-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società</label>
-              <SocietySearch 
-                value={filterSociety}
-                onChange={handleFilterChange(setFilterSociety)}
-                societies={societies}
-                placeholder="Tutte"
+            {currentUser?.role === 'admin' && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                  <i className="fas fa-building text-orange-500"></i>
+                  {t('society_label')}
+                </label>
+                <SocietySearch 
+                  value={filterSociety}
+                  onChange={handleFilterChange(setFilterSociety)}
+                  societies={societies}
+                  placeholder={t('all')}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-crosshairs text-orange-500"></i>
+                {t('discipline')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={filterDiscipline} 
+                  onChange={handleFilterChange(setFilterDiscipline)} 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all')}</option>
+                  {filterOptions.disciplines.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-map-marker-alt text-orange-500"></i>
+                {t('field_label')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={filterLocation} 
+                  onChange={handleFilterChange(setFilterLocation)} 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all')}</option>
+                  {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-calendar-alt text-orange-500"></i>
+                {t('year_label')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={filterYear} 
+                  onChange={handleFilterChange(setFilterYear)} 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all')}</option>
+                  {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-calendar-day text-orange-500"></i>
+                {t('month')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={filterMonth} 
+                  onChange={handleFilterChange(setFilterMonth)} 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all')}</option>
+                  <option value="01">{t('january')}</option>
+                  <option value="02">{t('february')}</option>
+                  <option value="03">{t('march')}</option>
+                  <option value="04">{t('april')}</option>
+                  <option value="05">{t('may')}</option>
+                  <option value="06">{t('june')}</option>
+                  <option value="07">{t('july')}</option>
+                  <option value="08">{t('august')}</option>
+                  <option value="09">{t('september')}</option>
+                  <option value="10">{t('october')}</option>
+                  <option value="11">{t('november')}</option>
+                  <option value="12">{t('december')}</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-calendar text-orange-500"></i>
+                {t('date')}
+              </label>
+              <input 
+                type="date" 
+                value={filterDate} 
+                onChange={(e) => handleFilterChange(setFilterDate)(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all"
               />
             </div>
-          )}
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina</label>
-            <div className="relative group">
-              <select 
-                value={filterDiscipline} 
-                onChange={handleFilterChange(setFilterDiscipline)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                <option value="">Tutte</option>
-                {filterOptions.disciplines.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-tag text-orange-500"></i>
+                {t('category')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={filterCategory} 
+                  onChange={handleFilterChange(setFilterCategory)} 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all')}</option>
+                  <option value="Eccellenza">{t('excellence')}</option>
+                  <option value="1*">1*</option>
+                  <option value="2*">2*</option>
+                  <option value="3*">3*</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo</label>
-            <div className="relative group">
-              <select 
-                value={filterLocation} 
-                onChange={handleFilterChange(setFilterLocation)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                <option value="">Tutti</option>
-                {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <i className="fas fa-graduation-cap text-orange-500"></i>
+                {t('qualification')}
+              </label>
+              <div className="relative group">
+                <select 
+                  value={filterQualification} 
+                  onChange={handleFilterChange(setFilterQualification)} 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{t('all')}</option>
+                  <option value="Veterani">{t('veterans')}</option>
+                  <option value="Master">{t('master')}</option>
+                  <option value="Senior">{t('senior')}</option>
+                  <option value="Lady">{t('lady')}</option>
+                  <option value="Junior">{t('junior')}</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <i className="fas fa-chevron-down text-[10px]"></i>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Anno</label>
-            <div className="relative group">
-              <select 
-                value={filterYear} 
-                onChange={handleFilterChange(setFilterYear)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+
+            <div className="sm:col-span-2 lg:col-span-5 flex justify-end pt-2">
+              <button 
+                onClick={() => {
+                  setFilterShooter(''); setFilterSociety(''); setFilterDiscipline(''); setFilterLocation(''); setFilterYear('');
+                  setFilterDate(''); setFilterMonth(''); setFilterCategory(''); setFilterQualification('');
+                  setResultsPage(1);
+                }}
+                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
               >
-                <option value="">Tutti</option>
-                {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
-              </div>
+                <i className="fas fa-undo-alt"></i>
+                {t('reset_filters')}
+              </button>
             </div>
-          </div>
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mese</label>
-            <div className="relative group">
-              <select 
-                value={filterMonth} 
-                onChange={handleFilterChange(setFilterMonth)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                <option value="">Tutti</option>
-                <option value="01">Gennaio</option>
-                <option value="02">Febbraio</option>
-                <option value="03">Marzo</option>
-                <option value="04">Aprile</option>
-                <option value="05">Maggio</option>
-                <option value="06">Giugno</option>
-                <option value="07">Luglio</option>
-                <option value="08">Agosto</option>
-                <option value="09">Settembre</option>
-                <option value="10">Ottobre</option>
-                <option value="11">Novembre</option>
-                <option value="12">Dicembre</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
-              </div>
-            </div>
-          </div>
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data</label>
-            <input 
-              type="date" 
-              value={filterDate} 
-              onChange={(e) => handleFilterChange(setFilterDate)(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all"
-            />
-          </div>
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Categoria</label>
-            <div className="relative group">
-              <select 
-                value={filterCategory} 
-                onChange={handleFilterChange(setFilterCategory)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                <option value="">Tutte</option>
-                <option value="Eccellenza">Eccellenza</option>
-                <option value="1*">1*</option>
-                <option value="2*">2*</option>
-                <option value="3*">3*</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
-              </div>
-            </div>
-          </div>
-          <div className="sm:col-span-1 lg:col-span-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qualifica</label>
-            <div className="relative group">
-              <select 
-                value={filterQualification} 
-                onChange={handleFilterChange(setFilterQualification)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
-              >
-                <option value="">Tutte</option>
-                <option value="Veterani">Veterani</option>
-                <option value="Master">Master</option>
-                <option value="Senior">Senior</option>
-                <option value="Lady">Lady</option>
-                <option value="Junior">Junior</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <i className="fas fa-chevron-down text-[10px]"></i>
-              </div>
-            </div>
-          </div>
-          <div className="sm:col-span-2 lg:col-span-5 flex justify-end">
-            <button 
-              onClick={() => { 
-                setFilterShooter(''); 
-                setFilterSociety(''); 
-                setFilterDiscipline(''); 
-                setFilterLocation(''); 
-                setFilterYear(''); 
-                setFilterDate('');
-                setFilterMonth('');
-                setFilterCategory('');
-                setFilterQualification('');
-                setResultsPage(1); 
-              }}
-              className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
-            >
-              Resetta Filtri
-            </button>
           </div>
         </div>
       )}
@@ -350,23 +378,22 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
         <table className="w-full border-separate border-spacing-y-2">
           <thead className="relative z-20">
             <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
-              <th className="px-4 py-2 text-left">Tiratore</th>
-              <th className="px-4 py-2 text-left">Cat / Qual</th>
-              <th className="px-4 py-2 text-center">Gare</th>
+              <th className="px-4 py-2 text-left">{t('shooter')}</th>
+              <th className="px-4 py-2 text-left">{t('cat_qual_short')}</th>
+              <th className="px-4 py-2 text-center">{t('races_plural')}</th>
               <th className="px-4 py-2 text-center relative">
                 <div className="flex items-center justify-center gap-1.5">
-                  Rating RTE
+                  {t('rating_rte_short')}
                   <div className="group relative">
                     <i className="fas fa-info-circle text-xs text-slate-600 cursor-help hover:text-orange-500 transition-colors p-1"></i>
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed">
-                      <p className="mb-1 text-white font-bold">Rating Tecnico di Eccellenza (RTE)</p>
-                      La media dei <span className="text-white">migliori 5 risultati</span> degli ultimi 12 mesi. 
-                      Diventa <span className="text-amber-500 font-bold">Qualificato</span> con almeno 3 gare, altrimenti è <span className="text-slate-500 font-bold">Provvisorio</span>.
+                      <p className="mb-1 text-white font-bold">{t('technical_rating_excellence')}</p>
+                      {t('ranking_rte_label')}
                     </div>
                   </div>
                 </div>
               </th>
-              <th className="px-4 py-2 text-right">Azioni</th>
+              <th className="px-4 py-2 text-right">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -384,14 +411,14 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
       {allResults.length === 0 && (
         <div className="text-center py-20 bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
           <i className="fas fa-search text-4xl text-slate-800 mb-4"></i>
-          <p className="text-slate-500 font-bold">Nessun risultato trovato con i filtri selezionati</p>
+          <p className="text-slate-500 font-bold">{t('no_results_found_filter')}</p>
         </div>
       )}
 
       {totalPages > 1 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50">
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            Pagina {resultsPage} di {totalPages}
+            {t('page_indicator').replace('{{page}}', String(resultsPage)).replace('{{total}}', String(totalPages))}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -467,7 +494,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                           <span className="ml-1">({societies.find(soc => soc.name === selectedShooterResults.society)?.code})</span>
                         )}
                       </>
-                    ) : 'Nessuna Società'}
+                    ) : t('no_society')}
                   </p>
                 </div>
               </div>
@@ -487,13 +514,12 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   return (
                     <div className="flex flex-col items-end">
                       <div className="flex items-center justify-end gap-1.5 mb-1">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rating RTE</div>
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('rating_rte_short')}</div>
                         <div className="group relative">
                           <i className="fas fa-info-circle text-[10px] text-slate-600 cursor-help hover:text-orange-500 transition-colors p-1"></i>
                           <div className="absolute top-full right-0 mt-1 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[10px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed text-left">
-                            <p className="mb-1 text-white font-bold">Rating Tecnico di Eccellenza (RTE)</p>
-                            La media dei <span className="text-white">migliori 5 risultati</span> degli ultimi 12 mesi. 
-                            Diventa <span className="text-amber-500 font-bold">Qualificato</span> con almeno 3 gare, altrimenti è <span className="text-slate-500 font-bold">Provvisorio</span>.
+                            <p className="mb-1 text-white font-bold">{t('technical_rating_excellence')}</p>
+                            {t('ranking_rte_label')}
                           </div>
                         </div>
                       </div>
@@ -505,7 +531,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border ${bestRating.isProvvisorio ? 'bg-slate-800 text-slate-500 border-slate-700' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
-                          {bestRating.isProvvisorio ? 'Provvisorio' : 'Qualificato'}
+                          {bestRating.isProvvisorio ? t('provvisional') : t('qualified')}
                         </span>
                         <span className="text-[8px] font-bold text-slate-600 uppercase">{bestRating.discipline}</span>
                       </div>
@@ -537,7 +563,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   }, {})
               ).length === 0 ? (
                 <div className="text-center py-20">
-                  <p className="text-slate-500 font-bold">Nessuna gara trovata per questo tiratore</p>
+                  <p className="text-slate-500 font-bold">{t('no_races_found_shooter')}</p>
                 </div>
               ) : (
                 Object.entries(
@@ -591,19 +617,19 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                               {r.name}
                             </h4>
                             <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Società TAV:</span>
-                              <span className="text-[9px] font-bold text-orange-500/80 uppercase tracking-widest truncate">{r.location || 'Campo N.D.'}</span>
+                              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('society_tav_label')}:</span>
+                              <span className="text-[9px] font-bold text-orange-500/80 uppercase tracking-widest truncate">{r.location || t('field_nd')}</span>
                             </div>
                           </div>
                           
                           <div className="flex items-center justify-between sm:justify-end gap-6 relative z-10">
                             <div className="text-right">
                               <div className="flex items-center justify-end gap-1 mb-0.5">
-                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Rating RTE</p>
+                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('rating_rte_short')}</p>
                                 <div className="group relative">
                                   <i className="fas fa-info-circle text-[8px] text-slate-600 cursor-help hover:text-orange-500 transition-colors"></i>
                                   <div className="absolute top-full right-0 mt-1 w-48 p-2 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl hidden group-hover:block pointer-events-none z-[100] text-[9px] font-medium text-slate-400 normal-case tracking-normal leading-relaxed text-left">
-                                    Rating calcolato sulla singola prestazione.
+                                    {t('rating_single_desc')}
                                   </div>
                                 </div>
                               </div>
@@ -614,7 +640,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Punteggio</p>
+                              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('score_label')}</p>
                               <div className="flex items-baseline gap-1">
                                 <span className="text-xl font-black text-white">{r.totalScore}</span>
                                 <span className="text-slate-600 font-black text-xs">/ {r.totalTargets}</span>
@@ -639,7 +665,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                                     setShareData({ comp: r, user: userForShare });
                                   }}
                                   className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/5"
-                                  title="Condividi"
+                                  title={t('share')}
                                 >
                                   <i className="fas fa-share-alt text-xs"></i>
                                 </button>
@@ -651,15 +677,16 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                                     }
                                   }}
                                   className="w-9 h-9 rounded-xl bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
-                                  title="Modifica"
+                                  title={t('edit')}
                                 >
                                   <i className="fas fa-edit text-xs"></i>
                                 </button>
+
                                 <button 
                                   onClick={() => {
                                     triggerConfirm(
-                                      'Elimina Gara',
-                                      `Sei sicuro di voler eliminare la gara "${r.name}"?`,
+                                      t('delete_competition_title'),
+                                      t('confirm_delete_competition'),
                                       async () => {
                                         if (onDeleteCompetition) {
                                           const success = await onDeleteCompetition(r.id);
@@ -672,12 +699,12 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                                           }
                                         }
                                       },
-                                      'Elimina',
+                                      t('delete'),
                                       'danger'
                                     );
                                   }}
                                   className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg shadow-red-600/20"
-                                  title="Elimina"
+                                  title={t('delete')}
                                 >
                                   <i className="fas fa-trash-alt text-xs"></i>
                                 </button>

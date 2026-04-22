@@ -6,6 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import { handleNetworkError } from './ConnectionStatus';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CompetitionFormProps {
   initialData?: Competition;
@@ -18,6 +19,7 @@ interface CompetitionFormProps {
   onSubmit: (comp: Competition) => void;
   onCancel: () => void;
   onNavigateToWarehouse?: () => void;
+  isSaving?: boolean;
 }
 
 const WEATHER_OPTIONS = [
@@ -29,7 +31,8 @@ const WEATHER_OPTIONS = [
   { label: 'Temporale', icon: 'fa-bolt', color: 'text-purple-400' },
 ];
 
-const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, availableCartridges = [], cartridgeTypes = [], societies = [], currentUser, onSubmit, onCancel, onNavigateToWarehouse }) => {
+const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillData, availableCartridges = [], cartridgeTypes = [], societies = [], currentUser, onSubmit, onCancel, onNavigateToWarehouse, isSaving = false }) => {
+  const { t } = useLanguage();
   const data = initialData || prefillData;
   const [name, setName] = useState(data?.name || '');
   const [location, setLocation] = useState(data?.location || '');
@@ -1099,10 +1102,16 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     </div>
     <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0 px-6 sm:px-8">
       <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
-        Annulla
+        {t('cancel')}
       </button>
-      <button type="submit" form="competition-form" className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isTraining ? 'bg-blue-600 hover:bg-blue-500' : 'bg-orange-600 hover:bg-orange-500'} text-white shadow-lg shadow-orange-600/20`}>
-        {initialData ? 'Aggiorna' : 'Salva'}
+      <button 
+        type="submit" 
+        form="competition-form" 
+        disabled={isSaving}
+        className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''} ${isTraining ? 'bg-blue-600 hover:bg-blue-500' : 'bg-orange-600 hover:bg-orange-500'} text-white shadow-lg shadow-orange-600/20`}
+      >
+        {isSaving && <i className="fas fa-circle-notch fa-spin"></i>}
+        {initialData ? t('update') : t('save')}
       </button>
     </div>
     </div>

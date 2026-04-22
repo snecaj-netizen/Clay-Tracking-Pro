@@ -2,12 +2,14 @@
 import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Competition, Discipline, getSeriesLayout } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface GeminiCoachProps {
   competitions: Competition[];
 }
 
 const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
+  const { t } = useLanguage();
   const [advice, setAdvice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [needsKey, setNeedsKey] = useState(false);
@@ -24,7 +26,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
         console.error("Error opening key selector:", err);
       }
     } else {
-      alert("Il selettore di chiavi API è disponibile solo nell'ambiente AI Studio.");
+      alert(t('api_key_selector_env_error'));
     }
   };
 
@@ -33,7 +35,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
     const relevantComps = competitions.filter(c => c.totalTargets > 0);
     
     if (relevantComps.length === 0) {
-      setAdvice("Ho bisogno di almeno una gara (conclusa o futura) salvata per poterti dare dei consigli tecnici.");
+      setAdvice(t('ai_coach_no_comps_error'));
       return;
     }
 
@@ -90,7 +92,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
         const score = c.totalScore || 0;
         const targets = c.totalTargets || 25;
         const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
-        const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
+        const status = isUpcoming ? t('upcoming_tag') : t('concluded_tag');
         
         if (isUpcoming) {
           return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Obiettivo: ${targets} piattelli.`;
@@ -103,21 +105,20 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
       }).join('\n');
 
       const prompt = `
-        Agisci come un coach esperto internazionale di Tiro a Volo.
+        ${t('ai_coach_role')}
         Data odierna: ${todayStr}
 
-        Analizza i miei risultati recenti e le mie prossime gare:
+        ${t('ai_coach_prompt_prefix')}
         ${resultsSummary}
         
-        Considerando che le discipline sono CK (Compak), SP (Sporting), ES (English Sporting), PC (Percorso Caccia), SK (Skeet), FO (Fossa Olimpica), FU (Fossa Universale), TC (Tiro Combinato), EL (Elica), SK ISSF (Skeet ISSF), TR1 (Trap 1) e DT (Double Trap).
+        ${t('ai_coach_disciplines_note')}
         
-        Fornisci 3 consigli tecnici brevi e motivazionali in italiano:
-        1. Se ci sono gare FUTURE, dai un consiglio specifico su come prepararsi o affrontarle.
-        2. Se ci sono gare CONCLUSE, analizza un trend o un punto di miglioramento.
-        3. Un consiglio generale di mental coaching o tecnica.
+        Fornisci 3 consigli tecnici brevi e motivazionali:
+        ${t('ai_coach_instruction_1')}
+        ${t('ai_coach_instruction_2')}
+        ${t('ai_coach_instruction_3')}
 
-        Sii specifico ma conciso. Usa un tono professionale e incoraggiante.
-        Formatta la risposta con punti elenco.
+        ${t('ai_coach_format_note')}
       `;
 
       // Using gemini-3-flash-preview as per guidelines
@@ -130,21 +131,21 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
 
       const text = response.text;
       if (!text) {
-        throw new Error("Il coach non ha restituito alcun consiglio. Riprova.");
+        throw new Error(t('ai_coach_no_response_error'));
       }
       
       setAdvice(text);
     } catch (error: any) {
       if (error.name === 'AbortError') return;
       console.error("Gemini Coach Error Details:", error);
-      let userMessage = "Impossibile connettersi al coach AI al momento.";
+      let userMessage = t('ai_coach_generic_error');
       
       if (error.message?.includes("API Key")) {
-        userMessage = "Errore di configurazione: Chiave API mancante.";
+        userMessage = t('ai_coach_config_error');
       } else if (error.message?.includes("model")) {
-        userMessage = "Il modello AI non è al momento disponibile.";
+        userMessage = t('ai_coach_model_error');
       } else {
-        userMessage = `Errore: ${error.message || "Connessione fallita."}`;
+        userMessage = `${t('error_label')}: ${error.message || t('connection_failed')}`;
       }
       
       setAdvice(userMessage);
@@ -166,22 +167,22 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
           <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-orange-600/40">
             <i className="fas fa-robot"></i>
           </div>
-          <h3 className="text-xl font-black text-white tracking-tight uppercase">Analisi Coach AI</h3>
+          <h3 className="text-xl font-black text-white tracking-tight uppercase">{t('ai_coach_title')}</h3>
         </div>
 
         {needsKey ? (
           <div className="flex flex-col items-start gap-4 animate-in fade-in duration-500">
             <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-2xl">
-              <p className="text-orange-200 text-xs font-bold mb-1 uppercase tracking-tight">Configurazione Richiesta</p>
+              <p className="text-orange-200 text-xs font-bold mb-1 uppercase tracking-tight">{t('api_key_required')}</p>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Per usare il Coach AI fuori dall'editor, è necessario selezionare una chiave API valida (progetto Google Cloud a pagamento).
+                {t('ai_coach_config_desc')}
               </p>
             </div>
             <button 
               onClick={checkAndOpenKeySelector}
               className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2"
             >
-              <i className="fas fa-key"></i> CONFIGURA COACH AI
+              <i className="fas fa-key"></i> {t('ai_coach_config_btn')}
             </button>
           </div>
         ) : advice ? (
@@ -193,13 +194,13 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
               onClick={() => setAdvice(null)}
               className="text-orange-500 text-xs font-bold uppercase tracking-widest hover:text-orange-400 transition-colors"
             >
-              Aggiorna Analisi
+              {t('ai_coach_refresh')}
             </button>
           </div>
         ) : (
           <div className="flex flex-col items-start gap-4">
             <p className="text-slate-400 text-sm max-w-md">
-              Il Coach Gemini analizzerà i tuoi ultimi 5 risultati reali per identificare trend e fornirti suggerimenti tecnici personalizzati.
+              {t('ai_coach_desc')}
             </p>
             <button 
               onClick={() => getCoachAdvice()}
@@ -208,11 +209,11 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
             >
               {loading ? (
                 <>
-                  <i className="fas fa-spinner fa-spin"></i> ANALISI IN CORSO...
+                  <i className="fas fa-spinner fa-spin"></i> {t('ai_coach_loading')}
                 </>
               ) : (
                 <>
-                  CHIEDI AL COACH <i className="fas fa-arrow-right"></i>
+                  {t('ai_coach_btn')} <i className="fas fa-arrow-right"></i>
                 </>
               )}
             </button>

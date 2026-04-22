@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface FAQSectionProps {
   role: 'admin' | 'society' | 'user';
@@ -8,58 +9,59 @@ interface FAQSectionProps {
 
 const FAQSection: React.FC<FAQSectionProps> = ({ role, onReplayTour }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const { t } = useLanguage();
 
   const shooterFaqs = [
     {
-      question: "Come inserisco una nuova gara?",
-      answer: "Puoi farlo in due modi: 1) Dalla sezione 'Gare/Allenamenti' cliccando su 'Nuova Gara' per inserirla da zero. 2) Dalla sezione 'Eventi', cercando la gara d'interesse e cliccando su 'Partecipa' per pre-compilare i dati."
+      question: t('faq_shooter_q1'),
+      answer: t('faq_shooter_a1')
     },
     {
-      question: "Come aggiorno i risultati di una gara?",
-      answer: "Nella sezione 'Gare/Allenamenti', trova la gara che vuoi modificare e clicca sull'icona della matita. Potrai aggiornare punteggi, note e dettagli tecnici."
+      question: t('faq_shooter_q2'),
+      answer: t('faq_shooter_a2')
     },
     {
-      question: "Come gestisco le cartucce e il magazzino?",
-      answer: "Vai nella sezione 'Magazzino'. Qui puoi aggiungere nuovi carichi di cartucce indicando marca, modello, prezzo e quantità. Il sistema calcolerà automaticamente la giacenza e le spese totali in base alle gare inserite."
+      question: t('faq_shooter_q3'),
+      answer: t('faq_shooter_a3')
     },
     {
-      question: "Come aggiorno il mio profilo?",
-      answer: "Nel pannello 'Profilo', puoi cambiare la tua email, la foto profilo e la password. Alcuni dati (come nome, cognome e società) sono gestiti dall'amministratore per garantire la correttezza delle classifiche."
+      question: t('faq_shooter_q4'),
+      answer: t('faq_shooter_a4')
     },
     {
-      question: "Come consulto i risultati ufficiali delle gare?",
-      answer: "Puoi farlo in due modi: 1) Dalla sezione 'Eventi', selezionando una gara conclusa e cliccando su 'Risultati'. 2) Dalla sezione dedicata 'Risultati Gare' nel menu principale, dove troverai tutte le competizioni concluse raggruppate per Società Organizzatrice, con classifiche e statistiche complete."
+      question: t('faq_shooter_q5'),
+      answer: t('faq_shooter_a5')
     },
     {
-      question: "Come installo l'app sul telefono?",
-      answer: "Clay Performance è una Web App. Su iPhone (Safari), tocca 'Condividi' e poi 'Aggiungi alla schermata Home'. Su Android (Chrome), tocca i tre puntini in alto a destra e seleziona 'Installa applicazione'."
+      question: t('faq_shooter_q6'),
+      answer: t('faq_shooter_a6')
     }
   ];
 
   const societyFaqs = [
     {
-      question: "Come vedo i risultati dei miei tiratori?",
-      answer: "Nella sezione 'Risultati' del tuo pannello, troverai l'elenco completo di tutte le prestazioni inserite dai tiratori iscritti alla tua società, con filtri per data e disciplina."
+      question: t('faq_society_q1'),
+      answer: t('faq_society_a1')
     },
     {
-      question: "Come inserisco e convalido i risultati di una gara?",
-      answer: "Dalla sezione 'Eventi', seleziona la gara d'interesse e vai su 'Gestisci Risultati'. Qui puoi inserire i punteggi per ogni tiratore e, una volta completati, cliccare su 'Convalida Risultati' per renderli ufficiali e visibili a tutti."
+      question: t('faq_society_q2'),
+      answer: t('faq_society_a2')
     },
     {
-      question: "Come inserisco un nuovo evento?",
-      answer: "Vai nella sezione 'Eventi' e clicca su 'Nuovo Evento'. Inserisci nome, data, disciplina e locandina. Tutti i tiratori vedranno l'evento e potranno iscriversi facilmente."
+      question: t('faq_society_q3'),
+      answer: t('faq_society_a3')
     },
     {
-      question: "Come creo le squadre per una gara?",
-      answer: "Nella sezione 'Squadre', clicca su 'Nuova Squadra'. Scegli la competizione, dai un nome alla squadra e seleziona i tiratori tra i tuoi iscritti. Potrai poi stampare o condividere la formazione."
+      question: t('faq_society_q4'),
+      answer: t('faq_society_a4')
     },
     {
-      question: "Come gestisco l'anagrafica dei tiratori?",
-      answer: "Nella sezione 'Utenti', puoi vedere tutti i tiratori iscritti alla tua società, sospendere quelli non più attivi o aiutarli a recuperare le credenziali."
+      question: t('faq_society_q5'),
+      answer: t('faq_society_a5')
     },
     {
-      question: "Come aggiorno il profilo della società?",
-      answer: "Nel pannello 'Profilo', puoi aggiornare i dati di contatto della società, la foto profilo (logo) e la password di accesso."
+      question: t('faq_society_q6'),
+      answer: t('faq_society_a6')
     }
   ];
 
@@ -68,7 +70,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ role, onReplayTour }) => {
   return (
     <div className="mt-12 pt-8 border-t border-slate-800/50">
       <h3 className="text-lg font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-        <i className="fas fa-question-circle text-orange-500"></i> FAQ & Supporto
+        <i className="fas fa-question-circle text-orange-500"></i> {t('faq_support_title')}
       </h3>
 
       <div className="space-y-3">
@@ -106,13 +108,13 @@ const FAQSection: React.FC<FAQSectionProps> = ({ role, onReplayTour }) => {
       {onReplayTour && (
         <div className="mt-8 p-6 bg-orange-600/5 border border-orange-600/20 rounded-2xl text-center">
           <p className="text-xs text-slate-400 mb-4">
-            Vuoi rivedere la presentazione iniziale delle funzionalità?
+            {t('faq_replay_tour_desc')}
           </p>
           <button
             onClick={onReplayTour}
             className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-black py-2.5 px-6 rounded-xl transition-all active:scale-95 text-[10px] uppercase tracking-widest"
           >
-            <i className="fas fa-play-circle text-orange-500"></i> Riavvia Tour App
+            <i className="fas fa-play-circle text-orange-500"></i> {t('faq_replay_tour_btn')}
           </button>
         </div>
       )}

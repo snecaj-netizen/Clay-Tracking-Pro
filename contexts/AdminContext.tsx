@@ -173,6 +173,11 @@ interface AdminContextType {
   userAvatar: string; setUserAvatar: React.Dispatch<React.SetStateAction<string>>;
   birthDate: string; setBirthDate: React.Dispatch<React.SetStateAction<string>>;
   phone: string; setPhone: React.Dispatch<React.SetStateAction<string>>;
+  nationality: string; setNationality: React.Dispatch<React.SetStateAction<string>>;
+  internationalId: string; setInternationalId: React.Dispatch<React.SetStateAction<string>>;
+  originalClub: string; setOriginalClub: React.Dispatch<React.SetStateAction<string>>;
+  isInternational: boolean; setIsInternational: React.Dispatch<React.SetStateAction<boolean>>;
+  isEmailVerified: boolean; setIsEmailVerified: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Dashboard
   showDashboard: boolean;
@@ -282,6 +287,11 @@ export const AdminProvider: React.FC<{
   const [userAvatar, setUserAvatar] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [internationalId, setInternationalId] = useState('');
+  const [originalClub, setOriginalClub] = useState('');
+  const [isInternational, setIsInternational] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   // Form Fields - Society
   const [socName, setSocName] = useState('');
@@ -715,6 +725,7 @@ export const AdminProvider: React.FC<{
     loading, setLoading, backgroundLoading, error, setError, handleRetry,
     activeTab, setActiveTab, hideInternalFAB, setHideInternalFAB, showUserForm, setShowUserForm, editingUser, setEditingUser, selectedUser, setSelectedUser, showProfilePassword, setShowProfilePassword, profileSubTab, setProfileSubTab, showSocietyForm, setShowSocietyForm, editingSociety, setEditingSociety, selectedTeamForSheet, setSelectedTeamForSheet, selectedTeamSheetAction, setSelectedTeamSheetAction, showTeamForm, setShowTeamForm, editingTeam, setEditingTeam, editingScore, setEditingScore, showFilters, setShowFilters, selectedShooterResults, setSelectedShooterResults, shareData, setShareData,
     name, setName, surname, setSurname, email, setEmail, password, setPassword, role, setRole, category, setCategory, qualification, setQualification, society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar, birthDate, setBirthDate, phone, setPhone,
+    nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
     socName, setSocName, socCode, setSocCode, socEmail, setSocEmail, socAddress, setSocAddress, socCity, setSocCity, socRegion, setSocRegion, socZip, setSocZip, socPhone, setSocPhone, socMobile, setSocMobile, socWebsite, setSocWebsite, socContactName, setSocContactName, socLogo, setSocLogo, socOpeningHours, setSocOpeningHours, socGoogleMapsLink, setSocGoogleMapsLink, socLat, setSocLat, socLng, setSocLng, socDisciplines, setSocDisciplines,
     newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId, newTeamCompetitionName, setNewTeamCompetitionName, newTeamDiscipline, setNewTeamDiscipline, newTeamSociety, setNewTeamSociety, newTeamLocation, setNewTeamLocation, newTeamDate, setNewTeamDate, newTeamTargets, setNewTeamTargets, selectedShooterIds, setSelectedShooterIds,
     filterOptions, setFilterOptions, fetchFilterOptions,

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import ExpandingFAB from './ExpandingFAB';
 import { Discipline, Challenge, ChallengeMode, ChallengeRankingEntry } from '../types';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface HallOfFameProps {
   user: any;
@@ -12,6 +13,7 @@ interface HallOfFameProps {
 
 const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
   const { triggerConfirm } = useUI();
+  const { t, language } = useLanguage();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +22,8 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [ranking, setRanking] = useState<ChallengeRankingEntry[]>([]);
   const [rankingLoading, setRankingLoading] = useState(false);
-  const [rankingCategory, setRankingCategory] = useState<string>('Tutte');
-  const [rankingQualification, setRankingQualification] = useState<string>('Tutte');
+  const [rankingCategory, setRankingCategory] = useState<string>('all');
+  const [rankingQualification, setRankingQualification] = useState<string>('all');
 
   // Form state
   const [name, setName] = useState('');
@@ -135,8 +137,8 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
 
   const handleDelete = (id: string) => {
     triggerConfirm(
-      'Elimina Sfida',
-      'Sei sicuro di voler eliminare questa sfida? Questa azione non può essere annullata.',
+      t('delete_challenge'),
+      t('confirm_delete_challenge'),
       async () => {
         try {
           const res = await fetch(`/api/admin/challenges/${id}`, {
@@ -148,7 +150,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
           console.error('Error deleting challenge:', err);
         }
       },
-      'Elimina',
+      t('delete'),
       'danger'
     );
   };
@@ -166,31 +168,31 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
 
   const getModeDescription = (m: ChallengeMode) => {
     switch (m) {
-      case ChallengeMode.BEST_SCORE: return "Vince chi realizza il punteggio più alto in una singola gara.";
-      case ChallengeMode.AVERAGE: return "Classifica basata sulla media di tutti i piattelli rotti in tutte le gare disputate.";
-      case ChallengeMode.TOP_THREE_AVG: return "Vengono considerati solo i 3 migliori risultati di ogni tiratore. Ottimo per chi gareggia spesso.";
-      case ChallengeMode.TOTAL_HITS: return "Classifica di volume: vince chi rompe più piattelli in totale nel periodo.";
-      case ChallengeMode.ACCURACY: return "Percentuale di successo (Piattelli Rotti / Piattelli Lanciati).";
-      case ChallengeMode.CONSISTENCY: return "Premia la regolarità: vince chi ha la minor variazione di punteggio tra le serie (più sei costante, meglio è).";
-      case ChallengeMode.BEST_SERIES: return "Vince chi realizza la miglior serie singola (es. un 25/25).";
-      case ChallengeMode.PARTICIPATION: return "Premia la fedeltà: vince chi partecipa a più gare presso la società.";
-      case ChallengeMode.TOP_FIVE_AVG: return "Media calcolata sui 5 migliori risultati. Premia la costanza ad alto livello.";
-      case ChallengeMode.CLUTCH_PERFORMANCE: return "Media punti ottenuti solo nell'ultima serie di ogni gara. Premia i nervi saldi!";
-      case ChallengeMode.PERFECT_SERIES: return "Vince chi colleziona il maggior numero di serie perfette (25 su 25).";
-      case ChallengeMode.POINTS_RANKING: return "Punteggio stile F1 basato sulla posizione in classifica di ogni gara (1°: 25pt, 2°: 18pt, ecc.).";
-      case ChallengeMode.HANDICAP: return "Punteggio con bonus basato sulla categoria FITAV (Ecc: +0, 1^: +1, 2^: +2, 3^: +3).";
-      case ChallengeMode.SUM_BEST_THREE: return "Somma totale dei 3 migliori punteggi ottenuti nel periodo.";
-      case ChallengeMode.SUM_BEST_FIVE: return "Somma totale dei 5 migliori punteggi ottenuti nel periodo.";
+      case ChallengeMode.BEST_SCORE: return t('best_score_desc');
+      case ChallengeMode.AVERAGE: return t('average_desc');
+      case ChallengeMode.TOP_THREE_AVG: return t('top_three_avg_desc');
+      case ChallengeMode.TOTAL_HITS: return t('total_hits_desc');
+      case ChallengeMode.ACCURACY: return t('accuracy_desc');
+      case ChallengeMode.CONSISTENCY: return t('consistency_desc');
+      case ChallengeMode.BEST_SERIES: return t('best_series_desc');
+      case ChallengeMode.PARTICIPATION: return t('participation_desc');
+      case ChallengeMode.TOP_FIVE_AVG: return t('top_five_avg_desc');
+      case ChallengeMode.CLUTCH_PERFORMANCE: return t('clutch_performance_desc');
+      case ChallengeMode.PERFECT_SERIES: return t('perfect_series_desc');
+      case ChallengeMode.POINTS_RANKING: return t('points_ranking_desc');
+      case ChallengeMode.HANDICAP: return t('handicap_desc');
+      case ChallengeMode.SUM_BEST_THREE: return t('sum_best_three_desc');
+      case ChallengeMode.SUM_BEST_FIVE: return t('sum_best_five_desc');
       default: return "";
     }
   };
 
-  const categories = ['Tutte', ...Array.from(new Set(ranking.map(r => r.category)))].filter(c => c !== 'N/D');
-  const qualifications = ['Tutte', ...Array.from(new Set(ranking.map(r => r.qualification)))].filter(q => q !== 'N/D');
+  const categories = ['all', ...Array.from(new Set(ranking.map(r => r.category)))].filter(c => c !== 'N/D');
+  const qualifications = ['all', ...Array.from(new Set(ranking.map(r => r.qualification)))].filter(q => q !== 'N/D');
   
   const filteredRanking = ranking.filter(r => {
-    const matchCat = rankingCategory === 'Tutte' || r.category === rankingCategory;
-    const matchQual = rankingQualification === 'Tutte' || r.qualification === rankingQualification;
+    const matchCat = rankingCategory === 'all' || r.category === rankingCategory;
+    const matchQual = rankingQualification === 'all' || r.qualification === rankingQualification;
     return matchCat && matchQual;
   });
 
@@ -207,9 +209,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">
-            <i className="fas fa-trophy text-orange-500 mr-2"></i> Hall of Fame
+            <i className="fas fa-trophy text-orange-500 mr-2"></i> {t('hall_of_fame')}
           </h2>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Sfide e Contest tra Tiratori</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">{t('hall_of_fame_desc')}</p>
         </div>
         {(user?.role === 'admin' || user?.role === 'society') && (
           <div className="hidden sm:block">
@@ -221,16 +223,16 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
       {showForm && (
         <div className="bg-slate-950/50 border border-slate-800 rounded-3xl p-6 animate-in slide-in-from-top-4 duration-300">
           <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-            <i className="fas fa-edit text-orange-500"></i> {editingChallenge ? 'Modifica Sfida' : 'Dettagli Nuova Sfida'}
+            <i className="fas fa-edit text-orange-500"></i> {editingChallenge ? t('edit_challenge') : t('new_challenge_details')}
           </h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Società Ospitante *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('hosting_society')} *</label>
               <SocietySearch 
                 value={societyId}
                 onChange={(val) => setSocietyId(Number(val))}
                 societies={societies.filter(s => user?.role === 'admin' || s.name === user.society)}
-                placeholder="Seleziona Società"
+                placeholder={t('select_society')}
                 useId={true}
                 disabled={user?.role === 'society'}
                 required
@@ -238,7 +240,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Sfida *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('challenge_name')} *</label>
               <input 
                 required
                 type="text"
@@ -250,7 +252,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Disciplina *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('discipline')} *</label>
               <select 
                 required
                 value={discipline}
@@ -264,7 +266,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Modalità Classifica *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('challenge_mode')} *</label>
               <select 
                 required
                 value={mode}
@@ -281,7 +283,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Inizio</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('start_date')}</label>
               <input 
                 type="date"
                 value={startDate}
@@ -292,7 +294,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data Fine *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('end_date')} *</label>
               <input 
                 required
                 type="date"
@@ -304,7 +306,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Premio in Palio *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('prize_label')} *</label>
               <input 
                 required
                 type="text"
@@ -322,14 +324,14 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                   onClick={resetForm}
                   className="bg-slate-800 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-700 transition-all"
                 >
-                  Annulla
+                  {t('cancel')}
                 </button>
               )}
               <button 
                 type="submit"
                 className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-orange-500 transition-all shadow-xl shadow-orange-600/20 active:scale-95"
               >
-                {editingChallenge ? 'Salva Modifiche' : 'Pubblica Sfida'}
+                {editingChallenge ? t('save_changes') : t('publish_challenge')}
               </button>
             </div>
           </form>
@@ -340,7 +342,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
         {challenges.length === 0 ? (
           <div className="col-span-full bg-slate-900/50 border border-slate-800 border-dashed rounded-3xl p-20 text-center">
             <i className="fas fa-ghost text-slate-700 text-4xl mb-4"></i>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Nessuna sfida creata</p>
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{t('no_challenges')}</p>
           </div>
         ) : (
           challenges.map(c => (
@@ -361,14 +363,14 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleEdit(c); }}
                       className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition-all flex items-center justify-center border border-slate-700/50"
-                      title="Modifica"
+                      title={t('update_profile')}
                     >
                       <i className="fas fa-edit text-xs"></i>
                     </button>
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}
                       className="w-8 h-8 rounded-lg bg-red-950/30 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center border border-red-900/30"
-                      title="Elimina"
+                      title={t('delete')}
                     >
                       <i className="fas fa-trash-alt text-xs"></i>
                     </button>
@@ -387,20 +389,20 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
               
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800/50">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Premio</span>
+                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{t('prize_label')}</span>
                   <span className="text-sm font-black text-emerald-500 uppercase truncate">{c.prize}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Scadenza</span>
+                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{t('expiration')}</span>
                   <span className="text-sm font-black text-slate-300 uppercase">
-                    {new Date(c.endDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                    {new Date(c.endDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: '2-digit', month: 'short' })}
                   </span>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Modalità</span>
+                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{t('challenge_mode')}</span>
                   <span className="text-[10px] font-bold text-slate-400 uppercase">{c.mode}</span>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-slate-500 group-hover:bg-orange-600 group-hover:text-white transition-all">
@@ -445,13 +447,13 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                       <span className="text-orange-500 ml-1">({societies.find(s => s.name === selectedChallenge.societyName)?.code})</span>
                     )}
                   </span>
-                  <span><i className="fas fa-calendar-alt text-orange-500 mr-2"></i> {new Date(selectedChallenge.startDate).toLocaleDateString()} - {new Date(selectedChallenge.endDate).toLocaleDateString()}</span>
+                  <span><i className="fas fa-calendar-alt text-orange-500 mr-2"></i> {new Date(selectedChallenge.startDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')} - {new Date(selectedChallenge.endDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}</span>
                   <span><i className="fas fa-trophy text-emerald-500 mr-2"></i> {selectedChallenge.prize}</span>
                 </div>
                 <div className="mt-4 p-3 bg-orange-600/10 border border-orange-500/20 rounded-xl">
                   <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">
                     <i className="fas fa-info-circle mr-2"></i>
-                    Come scalare la classifica: {getModeDescription(selectedChallenge.mode)}
+                    {t('how_to_rank')}: {getModeDescription(selectedChallenge.mode)}
                   </p>
                 </div>
               </div>
@@ -461,12 +463,12 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
             <div className="flex-1 overflow-y-auto p-6 sm:p-8 no-scrollbar">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <i className="fas fa-list-ol text-orange-500"></i> Classifica Real-Time
+                  <i className="fas fa-list-ol text-orange-500"></i> {t('realtime_ranking')}
                 </h3>
                 
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">Categoria:</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">{t('category')}:</span>
                     <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 overflow-x-auto no-scrollbar scroll-shadows">
                       {categories.map(cat => (
                         <button 
@@ -474,13 +476,13 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                           onClick={() => setRankingCategory(cat)}
                           className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${rankingCategory === cat ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
                         >
-                          {cat}
+                          {cat === 'all' ? t('all') : cat}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">Qualifica:</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">{t('qualification')}:</span>
                     <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar scroll-shadows">
                       {qualifications.map(qual => (
                         <button 
@@ -488,7 +490,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                           onClick={() => setRankingQualification(qual)}
                           className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${rankingQualification === qual ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
                         >
-                          {qual}
+                          {qual === 'all' ? t('all') : qual}
                         </button>
                       ))}
                     </div>
@@ -499,18 +501,14 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
               {rankingLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-4"></div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Calcolo risultati in corso...</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('calculating_results')}</p>
                 </div>
               ) : filteredRanking.length === 0 ? (
                 <div className="text-center py-20 bg-slate-900/20 rounded-3xl border border-dashed border-slate-800">
                   <i className="fas fa-bullseye text-slate-800 text-4xl mb-4"></i>
-                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Nessun risultato trovato per questa sfida</p>
+                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">{t('no_results_for_challenge')}</p>
                   <p className="text-[10px] text-slate-600 mt-2 italic">
-                    Nota: Partecipano solo i tiratori iscritti a {selectedChallenge.societyName}
-                    {societies.find(s => s.name === selectedChallenge.societyName)?.code && (
-                      <span className="ml-1">({societies.find(s => s.name === selectedChallenge.societyName)?.code})</span>
-                    )}
-                    {' '}che hanno gareggiato presso la stessa società.
+                    {t('challenge_note').replace('{society}', selectedChallenge.societyName)}
                   </p>
                 </div>
               ) : (
@@ -533,7 +531,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                         </div>
                         <div className="flex items-center gap-3 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                           <span><i className="fas fa-medal mr-1 text-slate-600"></i> {entry.qualification}</span>
-                          <span><i className="fas fa-calendar-check mr-1 text-slate-600"></i> {entry.competitionCount} Gare</span>
+                          <span><i className="fas fa-calendar-check mr-1 text-slate-600"></i> {entry.competitionCount} {t('competitions_label')}</span>
                         </div>
                       </div>
 
@@ -542,14 +540,14 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
                           {entry.value}
                         </div>
                         <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-1">
-                          {selectedChallenge.mode === ChallengeMode.TOTAL_HITS ? 'Piattelli' : 
+                          {selectedChallenge.mode === ChallengeMode.TOTAL_HITS ? t('hits_value') : 
                            selectedChallenge.mode === ChallengeMode.ACCURACY ? '%' : 
-                           selectedChallenge.mode === ChallengeMode.PARTICIPATION ? 'Gare' :
-                           selectedChallenge.mode === ChallengeMode.PERFECT_SERIES ? 'Serie' :
-                           selectedChallenge.mode === ChallengeMode.CONSISTENCY ? 'Deviazione' :
-                           selectedChallenge.mode === ChallengeMode.POINTS_RANKING ? 'Punti F1' :
-                           selectedChallenge.mode === ChallengeMode.HANDICAP ? 'Punti + Bonus' :
-                           selectedChallenge.mode.includes('Media') ? 'Media' : 'Punti'}
+                           selectedChallenge.mode === ChallengeMode.PARTICIPATION ? t('competitions_label') :
+                           selectedChallenge.mode === ChallengeMode.PERFECT_SERIES ? t('series_value') :
+                           selectedChallenge.mode === ChallengeMode.CONSISTENCY ? t('deviation_value') :
+                           selectedChallenge.mode === ChallengeMode.POINTS_RANKING ? t('f1_points_value') :
+                           selectedChallenge.mode === ChallengeMode.HANDICAP ? t('bonus_points_value') :
+                           selectedChallenge.mode.includes('Media') ? t('average_label') : t('points_value')}
                         </div>
                       </div>
                     </div>
@@ -564,7 +562,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
       {/* Floating Add Button for Challenges */}
       <ExpandingFAB 
         show={user?.role === 'admin' || user?.role === 'society'}
-        label={showForm ? 'Chiudi' : 'Nuova Sfida'}
+        label={showForm ? t('close_label') : t('new_challenge')}
         isClose={showForm}
         onClick={() => {
           if (showForm) {
@@ -584,4 +582,3 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ user, token }) => {
 };
 
 export default HallOfFame;
-

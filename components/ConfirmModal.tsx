@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -17,11 +18,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   message, 
   onConfirm, 
   onCancel,
-  confirmText = 'Conferma',
+  confirmText,
   variant = 'danger'
 }) => {
+  const { language, t } = useLanguage();
   if (!isOpen) return null;
 
+  const resolvedConfirmText = confirmText || t('confirm_btn');
   const isDanger = variant === 'danger';
 
   return createPortal(
@@ -41,13 +44,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             onClick={onCancel}
             className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl transition-all active:scale-95 text-[10px] uppercase tracking-widest"
           >
-            Annulla
+            {t('cancel_label')}
           </button>
           <button 
             onClick={() => { onConfirm(); onCancel(); }}
             className={`flex-1 ${isDanger ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 'bg-orange-600 hover:bg-orange-500 shadow-orange-600/20'} text-white font-black py-3 rounded-xl transition-all active:scale-95 shadow-lg text-[10px] uppercase tracking-widest`}
           >
-            {confirmText}
+            {resolvedConfirmText}
           </button>
         </div>
       </div>

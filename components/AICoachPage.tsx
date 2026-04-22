@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Competition, Cartridge, Discipline, CompetitionLevel } from '../types';
 import ReactMarkdown from 'react-markdown';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
   role: 'user' | 'model';
@@ -21,6 +22,7 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   cartridges = [], 
   user 
 }) => {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -54,13 +56,11 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
           ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== CompetitionLevel.TRAINING).length
           : competitions.length;
 
+        const nameDisplay = user?.name || (isSociety ? t('society_label') : t('shooter'));
+
         const greeting = isSociety 
-          ? `Buongiorno alla ${user?.name || 'Società'}! 👋 Sono il vostro Consulente AI per la Squadra. Ho analizzato i risultati delle GARE dei vostri tiratori (${filteredCount} record agonistici). 
-
-Posso aiutarvi a identificare i tiratori più in forma, suggerire strategie per le prossime competizioni o analizzare le performance collettive nelle gare ufficiali.`
-          : `Ciao ${user?.name || 'Tiratore'}! 👋 Sono il tuo Coach AI. Ho analizzato i tuoi ${competitions.length} record salvati. 
-
-Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli per l'allenamento di domani o valutare la tua costanza nell'ultimo periodo.`;
+          ? `${t('coach_welcome_society').replace('{{name}}', nameDisplay).replace('{{count}}', filteredCount.toString())} \n\n ${t('coach_welcome_society_desc')}`
+          : `${t('coach_welcome_shooter').replace('{{name}}', nameDisplay).replace('{{count}}', filteredCount.toString())} \n\n ${t('coach_welcome_shooter_desc')}`;
         
         setMessages([{
           role: 'model',
@@ -73,7 +73,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
     } else if (messages.length === 0 && competitions.length === 0) {
       setMessages([{
         role: 'model',
-        text: "Benvenuto! 👋 Sono il tuo Coach AI. Al momento non vedo risultati salvati. Inizia a registrare i risultati così potrò analizzare le performance e darti consigli mirati!",
+        text: t('coach_welcome_no_results'),
         timestamp: new Date()
       }]);
     }
@@ -150,45 +150,26 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 30); // More data for society
 
-      const context = isSociety ? `
-        Sei un Consulente Tecnico AI per una Società di Tiro a Volo.
-        Data odierna: ${todayStr}
-        
-        Dati della Società:
-        - Nome: ${user?.name}
-        - Ruolo: Gestore Società
-        - Gare recenti e future (ultime 30):
-        ${lastComps.map(c => {
-          const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
-          const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
-          return `- ${status} ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Note: ${c.notes || 'Nessuna'}`;
-        }).join('\n')}
-        
-        Obiettivo: Analizzare le performance di squadra nelle GARE concluse e fornire consigli/strategie per quelle FUTURE. 
-        Identificare i tiratori più competitivi, suggerire strategie per le prossime competizioni o convocazioni basate sui risultati agonistici.
-        Rispondi in modo professionale, strategico e orientato alla crescita della società. Usa il Markdown.
-      ` : `
-        Sei un Coach esperto di Tiro a Volo (Trap, Skeet, Sporting, Compak, Elica, Skeet ISSF, Trap 1, Double Trap).
-        Data odierna: ${todayStr}
-
-        Dati dell'utente:
-        - Nome: ${user?.name} ${user?.surname}
-        - Ruolo: ${user?.role}
-        - Ultimi 20 risultati (gare concluse e future):
-        ${lastComps.slice(0, 20).map(c => {
-          const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
-          const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
-          return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Media: ${c.averagePerSeries.toFixed(2)}, Note: ${c.notes || 'Nessuna'}`;
-        }).join('\n')}
-        
-        Magazzino Cartucce:
-        ${cartridges.map(c => `- ${c.producer} ${c.model} (${c.leadNumber}), Qta: ${c.quantity}`).join('\n')}
-
-        Rispondi in modo professionale, tecnico e motivazionale. Usa il Markdown per la formattazione.
-        Se l'utente chiede consigli su una gara specifica (conclusa), analizza le note e i punteggi.
-        Se l'utente ha una gara FUTURA in programma, fornisci consigli su come affrontarla, quale attrezzatura/cartucce usare e su cosa concentrarsi.
-        Se chiede consigli per l'allenamento, suggerisci esercizi basati sulle sue debolezze emerse dalle gare passate.
-      `;
+      const context = isSociety 
+        ? t('ai_coach_sys_society')
+            .replace('{{today}}', todayStr)
+            .replace('{{name}}', user?.name || '')
+            .replace('{{records}}', lastComps.map(c => {
+              const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
+              const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
+              return `- ${status} ${c.date}: ${c.userName || 'Tiratore'} ${c.userSurname || ''} - ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Note: ${c.notes || 'Nessuna'}`;
+            }).join('\n'))
+        : t('ai_coach_sys_shooter')
+            .replace('{{today}}', todayStr)
+            .replace('{{name}}', user?.name || '')
+            .replace('{{surname}}', user?.surname || '')
+            .replace('{{role}}', user?.role || '')
+            .replace('{{records}}', lastComps.slice(0, 20).map(c => {
+              const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
+              const status = isUpcoming ? '[FUTURA/IN CORSO]' : '[CONCLUSA]';
+              return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Punteggio: ${c.totalScore}/${c.totalTargets}, Media: ${c.averagePerSeries.toFixed(2)}, Note: ${c.notes || 'Nessuna'}`;
+            }).join('\n'))
+            .replace('{{cartridges}}', cartridges.map(c => `- ${c.producer} ${c.model} (${c.leadNumber}), Qta: ${c.quantity}`).join('\n'));
 
       const chat = ai.chats.create({
         model: "gemini-3-flash-preview",
@@ -209,7 +190,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
       
       setMessages(prev => [...prev, {
         role: 'model',
-        text: modelText || "Scusa, non sono riuscito a elaborare una risposta. Riprova.",
+        text: modelText || t('coach_error_no_response'),
         timestamp: new Date()
       }]);
 
@@ -217,7 +198,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
       console.error("Coach Error:", error);
       setMessages(prev => [...prev, {
         role: 'model',
-        text: "Si è verificato un errore nella comunicazione con il Coach. Verifica la tua connessione o la chiave API.",
+        text: t('coach_error_generic'),
         timestamp: new Date()
       }]);
     } finally {
@@ -227,17 +208,17 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
   };
 
   const suggestedQuestions = user?.role === 'society' ? [
-    "Quali sono i 3 tiratori più in forma nelle gare?",
-    "Suggerisci una strategia di squadra per la prossima competizione.",
-    "Analizza i risultati collettivi dell'ultima gara ufficiale.",
-    "Chi consiglieresti di convocare per il prossimo campionato?",
-    "Identifica i tiratori con i migliori punteggi agonistici."
+    t('q_top_3_form'),
+    t('q_team_strategy'),
+    t('q_analyze_last_results'),
+    t('q_recommend_convocations'),
+    t('q_identify_competitive')
   ] : [
-    "Analizza il mio trend delle ultime 5 gare.",
-    "Come posso migliorare nel Compak Sporting?",
-    "Suggeriscimi un allenamento per domani.",
-    "Quali cartucce sembrano funzionare meglio per me?",
-    "Analizza la mia tenuta mentale basandoti sulle note."
+    t('q_analyze_trend'),
+    t('q_improve_compak'),
+    t('q_practice_suggestion'),
+    t('q_best_cartridges'),
+    t('q_mental_analysis')
   ];
 
   return (
@@ -253,10 +234,10 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
-              {user?.role === 'society' ? 'Consulente AI Società' : 'Coach AI Personale'}
+              {user?.role === 'society' ? t('coach_ai_consultant') : t('coach_ai_personal')}
             </h2>
             <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">
-              {coachStatus === 'thinking' ? 'Analisi in corso...' : (user?.role === 'society' ? 'Pronto per l\'analisi di squadra' : 'Il Coach è pronto ad aiutarti')}
+              {coachStatus === 'thinking' ? t('coach_thinking') : (user?.role === 'society' ? t('coach_ready_society') : t('coach_ready_shooter'))}
             </p>
           </div>
         </div>
@@ -266,7 +247,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
             onClick={checkAndOpenKeySelector}
             className="bg-orange-600/10 hover:bg-orange-600/20 text-orange-500 border border-orange-500/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all"
           >
-            <i className="fas fa-key sm:mr-2"></i> <span className="hidden sm:inline">Configura API</span>
+            <i className="fas fa-key sm:mr-2"></i> <span className="hidden sm:inline">{t('configure_api')}</span>
           </button>
         )}
       </div>
@@ -329,7 +310,7 @@ Come posso aiutarti oggi? Posso analizzare una gara specifica, darti consigli pe
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'ENTER' && handleSend()}
-              placeholder="Chiedi qualcosa al tuo Coach..."
+              placeholder={t('coach_input_placeholder')}
               className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-orange-600/50 transition-all"
             />
             <button

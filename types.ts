@@ -135,6 +135,11 @@ export interface User {
   birth_date?: string;
   phone?: string;
   is_logged_in?: boolean;
+  is_international?: boolean;
+  nationality?: string;
+  international_id?: string;
+  original_club?: string;
+  email_verified?: boolean;
 }
 
 export interface DashboardStats {
@@ -180,6 +185,8 @@ export interface SocietyEvent {
   is_management_enabled?: boolean;
   is_ongoing?: boolean;
   is_next?: boolean;
+  is_public?: boolean;
+  region?: string;
 }
 
 export interface PrizeSetting {
