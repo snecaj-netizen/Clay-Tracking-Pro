@@ -47,11 +47,19 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
+    // Default to light theme for public portal if no preference is saved
+    if (savedTheme === 'light' || (!savedTheme && currentView === 'public-portal')) {
       setIsLightMode(true);
       document.documentElement.classList.add('light-theme');
+    } else if (savedTheme === 'dark') {
+      setIsLightMode(false);
+      document.documentElement.classList.remove('light-theme');
+    } else if (!savedTheme && currentView !== 'public-portal') {
+      // Default to dark mode for other views if no preference is saved
+      setIsLightMode(false);
+      document.documentElement.classList.remove('light-theme');
     }
-  }, []);
+  }, [currentView]);
 
   const toggleTheme = () => {
     if (isLightMode) {

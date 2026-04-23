@@ -415,6 +415,8 @@ const translations: Translations = {
   'races_plural': { it: 'Gare', en: 'Competitions' },
   'back_to_portal': { it: 'Torna al Portale', en: 'Back to Portal' },
   'shooters_with_results': { it: 'Tiratori con risultati', en: 'Shooters with results' },
+  'competition_results': { it: 'Risultati Gara', en: 'Competition Results' },
+  'results_management': { it: 'Gestione Risultati', en: 'Results Management' },
   'managed_races_society_desc': { it: 'Gestisci le gare della tua società', en: 'Manage your society\'s competitions' },
   'my_society': { it: 'La mia Società', en: 'My Society' },
   'shooters_tab': { it: 'TIRATORI', en: 'SHOOTERS' },

@@ -964,7 +964,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight leading-none transition-colors">
-                {readOnly ? (language === 'it' ? 'Risultati Gara' : 'Race Results') : (language === 'it' ? 'Gestione Risultati' : 'Results Management')}
+                {readOnly ? t('competition_results') : t('results_management')}
               </h2>
               <div className="flex items-center gap-3 mt-1.5">
                 <p className="text-orange-500 font-bold tracking-widest text-[9px] sm:text-[10px] uppercase flex items-center gap-2">
