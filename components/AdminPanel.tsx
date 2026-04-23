@@ -424,12 +424,12 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
 
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
-        <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full shadow-xl flex-wrap">
+        <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 [.light-theme_&]:bg-white p-1 rounded-xl border border-slate-800 [.light-theme_&]:border-slate-200 w-full shadow-xl flex-wrap transition-colors">
              {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <div className="flex-1 min-w-[120px] flex gap-1">
                 <button 
-                  onClick={() => { onNavigate ? onNavigate('public-portal') : setActiveTab('event-results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-indigo-600/20 text-indigo-500 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white flex items-center justify-center"
+                  onClick={() => { window.open('/portal', '_blank'); }}
+                  className="flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-indigo-600/20 text-indigo-500 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white flex items-center justify-center [.light-theme_&]:bg-indigo-50 [.light-theme_&]:text-indigo-600 [.light-theme_&]:border-indigo-100"
                 >
                   <i className="fas fa-external-link-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{t('results_portal_preview')}</span><span className="md:hidden">{t('portal_short')}</span>
                 </button>
@@ -553,14 +553,14 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           token={token} 
         />
       ) : activeTab === 'profile' ? (
-        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-slate-900 [.light-theme_&]:bg-white border border-slate-700 [.light-theme_&]:border-slate-200 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+            <h2 className="text-xl font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight flex items-center gap-2">
               <i className="fas fa-user-circle text-orange-500"></i> {currentUser?.role === 'society' ? t('club_profile') : t('profile')}
             </h2>
 
             {/* Sub-navigation */}
-            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 flex-wrap">
+            <div className="flex bg-slate-950 [.light-theme_&]:bg-slate-50 p-1 rounded-2xl border border-slate-800 [.light-theme_&]:border-slate-200 flex-wrap transition-colors">
               <button
                 onClick={() => setProfileSubTab('details')}
                 className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs lg:text-sm font-black uppercase tracking-widest transition-all ${

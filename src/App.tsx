@@ -71,11 +71,19 @@ const App: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   
   const getInitialView = () => {
-    const path = window.location.pathname;
-    const hash = window.location.hash;
-    if (path === '/portal' || path === '/risultati' || hash === '#portal' || hash === '#risultati') {
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, "");
+    const hash = window.location.hash.toLowerCase();
+    
+    // Check if we are on a portal-related path or search results
+    if (path === '/portal' || path === '/risultati' || hash === '#portal' || hash === '#risultati' || path.endsWith('/portal')) {
       return 'public-portal';
     }
+    
+    // If not logged in, always default to the public portal as the landing page
+    if (!token) {
+      return 'public-portal';
+    }
+    
     return user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare';
   };
 
@@ -220,7 +228,7 @@ const App: React.FC = () => {
         setView('settings');
       } else if (path === '/notifications') {
         setView('notifications');
-      } else if (path === '/portal' || path === '/risultati') {
+      } else if (path.toLowerCase().includes('/portal') || path.toLowerCase().includes('/risultati')) {
         setView('public-portal');
       }
     };
@@ -716,6 +724,7 @@ const App: React.FC = () => {
   };
 
   // Allow seeing the public portal without a token
+  // Only show the full login screen if we're not on the public portal and the user isn't logged in
   if (!token && view !== 'public-portal') {
     return <Auth onLogin={handleLogin} onGoToPortal={() => setView('public-portal')} />;
   }
