@@ -443,7 +443,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
 
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
-        <div className="hidden sm:flex sticky top-[104px] z-30 bg-slate-900 [.light-theme_&]:bg-white p-1 rounded-xl border border-slate-800 [.light-theme_&]:border-slate-200 w-full shadow-xl flex-wrap transition-colors">
+        <div className="hidden sm:flex sticky top-16 z-30 bg-slate-900 [.light-theme_&]:bg-white p-1 rounded-xl border border-slate-800 [.light-theme_&]:border-slate-200 w-full shadow-xl flex-wrap transition-colors">
              {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <div className="flex-1 min-w-[120px] flex gap-1">
                 <button 

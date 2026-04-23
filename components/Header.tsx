@@ -23,11 +23,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const [isLightMode, setIsLightMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const handleCloseAllMenus = () => {
       setIsProfileOpen(false);
       setIsNotificationOpen(false);
+      setIsSidebarOpen(false);
     };
 
     window.addEventListener('clay-tracker-close-menus', handleCloseAllMenus);
@@ -92,7 +94,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const hasSocietaAccess = user?.role === 'admin' || checkAccess(resultsAccess.societa, user?.society);
   const hasTiratoriAccess = user?.role === 'admin' || checkAccess(resultsAccess.tiratori, user?.society);
 
-  const isAnyMenuOpen = isProfileOpen || isNotificationOpen;
+  const isAnyMenuOpen = isProfileOpen || isNotificationOpen || isSidebarOpen;
 
   const menuItems = user?.role === 'society' ? [
     { id: 'gare', label: t('events'), icon: 'fa-calendar-alt' },
@@ -115,21 +117,95 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     <>
       {isAnyMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[1080] sm:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[1080] animate-in fade-in duration-200"
           onClick={() => {
             setIsProfileOpen(false);
             setIsNotificationOpen(false);
+            setIsSidebarOpen(false);
             window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
           }}
         ></div>
       )}
+
+      {/* Sidebar for Desktop/Tablet */}
+      <div 
+        className={`fixed inset-y-0 left-0 w-72 bg-slate-950 [.light-theme_&]:bg-white border-r border-slate-900/50 [.light-theme_&]:border-slate-200 z-[1200] transform transition-transform duration-300 ease-in-out shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-900 [.light-theme_&]:border-slate-100">
+            <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">{t('menu')}</h2>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white [.light-theme_&]:hover:text-black transition-colors"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto no-scrollbar">
+            {menuItems.map((item) => (
+              <button 
+                key={item.id}
+                onClick={() => {
+                  onNavigate(item.id, (item as any).tab);
+                  setIsSidebarOpen(false);
+                }} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 [.light-theme_&]:text-slate-500 hover:text-slate-200 [.light-theme_&]:hover:text-slate-900 hover:bg-slate-900/50 [.light-theme_&]:hover:bg-slate-50'}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentView === item.id ? 'bg-white/20' : 'bg-slate-900 [.light-theme_&]:bg-slate-100'}`}>
+                  <i className={`fas ${item.icon} text-xs`}></i>
+                </div>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+          
+          {/* Footer of Sidebar */}
+          <div className="p-4 border-t border-slate-900 [.light-theme_&]:border-slate-100 space-y-4">
+            {!user?.is_international && (
+              <div className="px-2">
+                <div className="text-[10px] font-black text-slate-600 [.light-theme_&]:text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">{t('language_label') || 'Lingua'}</div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setLanguage('it')}
+                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'it' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-900 [.light-theme_&]:bg-slate-100 text-slate-500 [.light-theme_&]:text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900 border border-slate-800 [.light-theme_&]:border-slate-200'}`}
+                  >
+                    ITA
+                  </button>
+                  <button 
+                    onClick={() => setLanguage('en')}
+                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-900 [.light-theme_&]:bg-slate-100 text-slate-500 [.light-theme_&]:text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900 border border-slate-800 [.light-theme_&]:border-slate-200'}`}
+                  >
+                    ENG
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="text-[10px] text-slate-600 text-center uppercase tracking-[0.2em] italic opacity-50">
+              Clay Performance v0.0.1
+            </div>
+          </div>
+        </div>
+      </div>
+
       <header className="fixed top-0 left-0 right-0 bg-slate-950/95 [.light-theme_&]:bg-white/95 backdrop-blur-xl border-b border-slate-900/50 [.light-theme_&]:border-slate-200 z-[1100] transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Hamburger Menu Button - Desktop/Tablet Only */}
             {(currentView !== 'public-portal' || user) && (
-              <div className="hidden sm:flex items-center gap-1 mr-2">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="hidden sm:flex h-10 px-3 rounded-xl items-center gap-2 bg-slate-900 [.light-theme_&]:bg-white text-slate-400 [.light-theme_&]:text-slate-500 border border-slate-800 [.light-theme_&]:border-slate-200 hover:border-orange-500/50 hover:text-orange-500 transition-all active:scale-95"
+                title={t('menu')}
+              >
+                <i className="fas fa-bars"></i>
+                <span className="text-[10px] font-black uppercase tracking-widest">MENU</span>
+              </button>
+            )}
+
+            {(currentView !== 'public-portal' || user) && (
+              <div className="hidden lg:flex items-center gap-1">
                 <button 
                   onClick={onGoBack} 
                   disabled={!canGoBack}
@@ -354,21 +430,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
           </div>
         </div>
 
-        {/* Row 2: Desktop/Tablet Navigation (Hidden on Mobile) */}
-        {(currentView !== 'public-portal' || user) && (
-          <nav className="hidden sm:flex items-center gap-1 pb-3 overflow-x-auto no-scrollbar scroll-shadows">
-            {menuItems.map((item) => (
-              <button 
-                key={item.id}
-                onClick={() => onNavigate(item.id, (item as any).tab)} 
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'}`}
-              >
-                <i className={`fas ${item.icon} text-xs`}></i>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-        )}
+        {/* Navigation was here - moved to sidebar */}
       </div>
     </header>
     </>

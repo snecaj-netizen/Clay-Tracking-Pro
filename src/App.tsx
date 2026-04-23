@@ -781,7 +781,7 @@ const App: React.FC = () => {
           }}
         />
       )}
-           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-[104px] flex-1 w-full pb-24 sm:pb-8`}>
+           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 flex-1 w-full pb-24 sm:pb-8`}>
         <Suspense fallback={<LoadingFallback />}>
           {view === 'le-tue-gare' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
