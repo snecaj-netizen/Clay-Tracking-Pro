@@ -173,11 +173,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
   const displayLang = (authMode === 'register' && regData.is_international) ? 'en' : language;
 
   const content = (
-    <div className={`${isModal ? 'bg-slate-900 border border-slate-800 rounded-3xl p-8 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-300' : 'bg-slate-900 border border-slate-800 rounded-3xl p-8 w-full max-w-lg shadow-2xl'} overflow-y-auto max-h-[90vh] no-scrollbar`} onClick={e => e.stopPropagation()}>
+    <div className={`${isModal ? 'bg-slate-900 [.light-theme_&]:bg-white border border-slate-800 [.light-theme_&]:border-slate-200 rounded-3xl p-8 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-300 transition-colors' : 'bg-slate-900 [.light-theme_&]:bg-white border border-slate-800 [.light-theme_&]:border-slate-200 rounded-3xl p-8 w-full max-w-lg shadow-2xl transition-colors'} overflow-y-auto max-h-[90vh] no-scrollbar`} onClick={e => e.stopPropagation()}>
       {isModal && onClose && (
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 hover:text-white hover:border-slate-700 transition-all active:scale-95 z-10"
+          className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-slate-950 [.light-theme_&]:bg-slate-50 border border-slate-800 [.light-theme_&]:border-slate-200 flex items-center justify-center text-slate-500 hover:text-white [.light-theme_&]:hover:text-slate-900 hover:border-slate-700 transition-all active:scale-95 z-10"
         >
           <i className="fas fa-times"></i>
         </button>
@@ -185,10 +185,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
       
       <div className="text-center mb-8">
         <img src="/icon.svg" alt="Clay Performance" className="w-16 h-16 mx-auto mb-4 rounded-2xl shadow-lg shadow-orange-600/20" />
-        <h1 className="text-2xl font-black text-white uppercase tracking-tight">
+        <h1 className="text-2xl font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight">
           Clay <span className="text-orange-600">Performance</span>
         </h1>
-        <p className="text-slate-500 text-sm mt-2">
+        <p className="text-slate-500 [.light-theme_&]:text-slate-400 text-sm mt-2">
           {authMode === 'login' 
             ? (displayLang === 'it' ? 'Accedi al tuo account' : 'Sign in to your account')
             : (displayLang === 'it' ? 'Crea il tuo profilo' : 'Create your profile')}
@@ -218,24 +218,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
         {authMode === 'login' ? (
           <>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={displayLang === 'it' ? 'La tua email' : 'Your email'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest ml-1">Email</label>
+              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={displayLang === 'it' ? 'La tua email' : 'Your email'} className="w-full bg-slate-950 [.light-theme_&]:bg-slate-50 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-xl px-4 py-3 text-white [.light-theme_&]:text-slate-900 text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
             
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
+              <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest ml-1">Password</label>
               <div className="relative">
                 <input 
                   type={showPassword ? "text" : "password"} 
                   required 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                  className="w-full bg-slate-950 [.light-theme_&]:bg-slate-50 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-xl px-4 py-3 pr-12 text-white [.light-theme_&]:text-slate-900 text-sm focus:border-orange-600 outline-none transition-all" 
                 />
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900 transition-colors"
                 >
                   <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                 </button>
@@ -393,14 +393,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
 
   if (isModal) {
     return (
-      <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
+      <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/80 [.light-theme_&]:bg-white/80 backdrop-blur-sm animate-in fade-in duration-300 transition-colors" onClick={onClose}>
         {content}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-100 flex items-center justify-center p-4 transition-colors">
       {content}
     </div>
   );

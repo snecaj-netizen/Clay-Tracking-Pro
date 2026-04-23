@@ -665,6 +665,7 @@ const App: React.FC = () => {
     if (newView === 'admin-control') newUrl = '/admin/control';
     if (newView === 'gare') newUrl = tab ? `/gare?tab=${tab}` : '/gare';
     if (newView === 'la-mia-societa') newUrl = tab ? `/la-mia-societa?tab=${tab}` : '/la-mia-societa';
+    if (newView === 'public-portal') newUrl = '/portal';
     if (newView === 'profile') newUrl = '/profile';
     if (newView === 'settings') newUrl = '/settings';
     if (newView === 'notifications') newUrl = '/notifications';

@@ -664,6 +664,24 @@ const HistoryList: React.FC<HistoryListProps> = ({
         </div>
         
         <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex bg-slate-900 p-0.5 rounded-xl border border-slate-800 h-9 mr-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              title={t('list_label')}
+            >
+              <i className="fas fa-list-ul"></i>
+              <span className="hidden xs:inline">{t('list_label')}</span>
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5 ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              title={t('calendar_label')}
+            >
+              <i className="fas fa-calendar-alt"></i>
+              <span className="hidden xs:inline">{t('calendar_label')}</span>
+            </button>
+          </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${showFilters ? 'bg-orange-500 border-orange-400 text-white shadow-lg rotate-180' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300'}`}
@@ -675,28 +693,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
 
       {showFilters && (
         <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            {/* View Mode Column */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <i className="fas fa-eye text-orange-500"></i>
-                {t('view')}
-              </label>
-              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 h-[46px]">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  {t('list_label')}
-                </button>
-                <button
-                  onClick={() => setViewMode('calendar')}
-                  className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  {t('calendar_label')}
-                </button>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                 <i className="fas fa-crosshairs text-orange-500"></i>

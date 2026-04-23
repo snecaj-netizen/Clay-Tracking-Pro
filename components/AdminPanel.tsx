@@ -183,6 +183,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
   const [profileNationality, setProfileNationality] = useState(currentUser?.nationality || '');
   const [profileInternationalId, setProfileInternationalId] = useState(currentUser?.international_id || '');
   const [profileOriginalClub, setProfileOriginalClub] = useState(currentUser?.original_club || '');
+  const [profileEmailVerified, setProfileEmailVerified] = useState(!!currentUser?.email_verified);
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -201,6 +202,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
       setProfileNationality(currentUser.nationality || '');
       setProfileInternationalId(currentUser.international_id || '');
       setProfileOriginalClub(currentUser.original_club || '');
+      setProfileEmailVerified(!!currentUser.email_verified);
     }
   }, [currentUser]);
 
@@ -249,12 +251,18 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           nationality: profileNationality || undefined,
           international_id: profileInternationalId || undefined,
           original_club: profileOriginalClub || undefined,
+          email_verified: profileEmailVerified,
           password: profilePassword || undefined
         }),
       });
 
       if (!res.ok) throw new Error(t('profile_update_error'));
       
+      // Refresh local user lists in AdminContext if we are an admin
+      if (currentUser?.role === 'admin') {
+        fetchUsers();
+      }
+
       if (onUserUpdate) {
         onUserUpdate({
           ...currentUser,
@@ -270,7 +278,8 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           phone: profilePhone,
           nationality: profileNationality,
           international_id: profileInternationalId,
-          original_club: profileOriginalClub
+          original_club: profileOriginalClub,
+          email_verified: profileEmailVerified
         });
       }
       
@@ -614,6 +623,28 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentUser?.role === 'admin' && (
+                    <div className="md:col-span-2 bg-slate-950/50 p-4 rounded-2xl border border-slate-800 flex items-center justify-between group hover:border-orange-500/30 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${profileEmailVerified ? 'bg-emerald-500/20 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800 text-slate-500'}`}>
+                          <i className={`fas ${profileEmailVerified ? 'fa-check-circle' : 'fa-envelope-open'}`}></i>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">{t('email_verified')}</label>
+                          <p className={`text-xs font-bold ${profileEmailVerified ? 'text-emerald-500' : 'text-slate-400'}`}>
+                            {profileEmailVerified ? t('verified') : t('not_verified')}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setProfileEmailVerified(!profileEmailVerified)}
+                        className={`w-12 h-6 rounded-full relative transition-all duration-300 ${profileEmailVerified ? 'bg-emerald-600 shadow-[0_0_10px_rgba(5,150,105,0.4)]' : 'bg-slate-800'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${profileEmailVerified ? 'left-7' : 'left-1'}`}></div>
+                      </button>
+                    </div>
+                  )}
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('name')}</label>
                     <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} disabled={currentUser?.role !== 'admin'} className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`} />

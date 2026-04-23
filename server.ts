@@ -1268,12 +1268,10 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// User Profile Routes
-app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
+ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { 
     name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone,
-    nationality, international_id, original_club
+    nationality, international_id, original_club, email_verified
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -1286,13 +1284,15 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
         `UPDATE users SET 
           name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, 
           society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11,
-          nationality = $13, international_id = $14, original_club = $15
+          nationality = $13, international_id = $14, original_club = $15,
+          email_verified = $16
         WHERE id = $12`,
         [
           name, surname, email, hash, category, finalQualification, 
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
-          nationality || null, international_id || null, original_club || null
+          nationality || null, international_id || null, original_club || null,
+          !!email_verified
         ]
       );
     } else {
@@ -1300,13 +1300,15 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
         `UPDATE users SET 
           name = $1, surname = $2, email = $3, category = $4, qualification = $5, 
           society = $6, shooter_code = $7, avatar = $8, birth_date = $9, phone = $10,
-          nationality = $12, international_id = $13, original_club = $14
+          nationality = $12, international_id = $13, original_club = $14,
+          email_verified = $15
         WHERE id = $11`,
         [
           name, surname, email, category, finalQualification, 
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
-          nationality || null, international_id || null, original_club || null
+          nationality || null, international_id || null, original_club || null,
+          !!email_verified
         ]
       );
     }
@@ -1707,7 +1709,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const role = req.query.role as string;
     const excludeRole = req.query.excludeRole as string;
     
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, nationality, international_id, original_club FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
     let params: any[] = [];
     let whereClauses: string[] = [];

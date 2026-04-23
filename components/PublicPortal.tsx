@@ -53,16 +53,16 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
 
   if (viewingEvent) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white p-4">
+      <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 p-4 transition-colors">
         <button 
           onClick={() => setViewingEvent(null)}
-          className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+          className="mb-6 flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors"
         >
           <i className="fas fa-arrow-left"></i>
           <span className="text-sm font-bold uppercase tracking-widest">{t('back_to_portal')}</span>
         </button>
         
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="bg-slate-900/50 [.light-theme_&]:bg-white border border-slate-800 [.light-theme_&]:border-slate-200 rounded-3xl overflow-hidden shadow-2xl transition-colors">
           <EventResultsManager 
             event={viewingEvent} 
             token={token || ''} 
@@ -76,20 +76,20 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
+    <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 p-4 md:p-8 transition-colors">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-12 text-center">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 mb-6"
+          className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 mb-6 [.light-theme_&]:bg-orange-500/5 [.light-theme_&]:border-orange-500/10"
         >
           <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">
             {t('live_results_subtitle')}
           </span>
         </motion.div>
-        <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-4 italic text-white">
+        <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-4 italic text-white [.light-theme_&]:text-slate-900">
           {t('portal_title').includes('Online') ? (
             <>
               {t('portal_title').replace('Online', '').trim()}{' '}
@@ -99,16 +99,16 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
             t('portal_title')
           )}
         </h1>
-        <p className="text-slate-400 max-w-2xl mx-auto text-sm font-medium">
+        <p className="text-slate-400 [.light-theme_&]:text-slate-600 max-w-2xl mx-auto text-sm font-medium">
           {t('portal_subtitle')}
         </p>
       </div>
 
       {/* Filters */}
       <div className="max-w-7xl mx-auto mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950/50 p-6 rounded-3xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950/50 [.light-theme_&]:bg-white p-6 rounded-3xl border border-slate-800/80 [.light-theme_&]:border-slate-200 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 transition-colors">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+            <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
               <i className="fas fa-search text-orange-500"></i>
               {t('search_race')}
             </label>
@@ -118,13 +118,13 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                 placeholder={t('search_events_placeholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-3 px-4 text-xs font-bold text-white focus:border-orange-500/50 outline-none transition-all"
+                className="w-full bg-slate-900 [.light-theme_&]:bg-slate-100 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-2xl py-3 px-4 text-xs font-bold text-white [.light-theme_&]:text-slate-900 focus:border-orange-500/50 outline-none transition-all"
               />
             </div>
           </div>
           
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+            <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
               <i className="fas fa-map-marker-alt text-orange-500"></i>
               {t('region_label')}
             </label>
@@ -132,7 +132,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
               <select 
                 value={selectedRegion}
                 onChange={(e) => setSelectedRegion(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-3 px-4 text-xs font-bold text-white focus:border-orange-500/50 outline-none transition-all appearance-none cursor-pointer"
+                className="w-full bg-slate-900 [.light-theme_&]:bg-slate-100 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-2xl py-3 px-4 text-xs font-bold text-white [.light-theme_&]:text-slate-900 focus:border-orange-500/50 outline-none transition-all appearance-none cursor-pointer"
               >
                 <option value="">{t('all_regions')}</option>
                 {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -144,7 +144,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+            <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
               <i className="fas fa-crosshairs text-orange-500"></i>
               {t('discipline')}
             </label>
@@ -152,7 +152,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
               <select 
                 value={selectedDiscipline}
                 onChange={(e) => setSelectedDiscipline(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-3 px-4 text-xs font-bold text-white focus:border-orange-500/50 outline-none transition-all appearance-none cursor-pointer"
+                className="w-full bg-slate-900 [.light-theme_&]:bg-slate-100 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-2xl py-3 px-4 text-xs font-bold text-white [.light-theme_&]:text-slate-900 focus:border-orange-500/50 outline-none transition-all appearance-none cursor-pointer"
               >
                 <option value="">{t('all_disciplines')}</option>
                 {Object.values(Discipline).map(d => <option key={d} value={d}>{t(d)}</option>)}
@@ -182,7 +182,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
                   layout
-                  className="group bg-slate-900/40 border border-slate-800/50 rounded-3xl p-6 hover:bg-slate-900/60 hover:border-orange-500/20 transition-all cursor-pointer relative overflow-hidden"
+                  className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-800/50 [.light-theme_&]:border-slate-200 rounded-3xl p-6 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-orange-500/20 transition-all cursor-pointer relative overflow-hidden shadow-xl [.light-theme_&]:shadow-slate-200/50"
                   onClick={() => setViewingEvent(event)}
                 >
                   {/* Status Badge */}
@@ -200,7 +200,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         <i className={`fas ${event.type === 'Internazionale' ? 'fa-globe' : 'fa-trophy'} text-xl`}></i>
                       </div>
                       <div className="flex flex-col">
-                        <h3 className="text-lg font-black uppercase leading-tight group-hover:text-orange-500 transition-colors">
+                        <h3 className="text-lg font-black uppercase leading-tight group-hover:text-orange-500 transition-colors text-white [.light-theme_&]:text-slate-900">
                           {event.name}
                         </h3>
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -210,24 +210,24 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-950/50 rounded-2xl p-3 border border-slate-800/50">
+                      <div className="bg-slate-950/50 [.light-theme_&]:bg-slate-50 rounded-2xl p-3 border border-slate-800/50 [.light-theme_&]:border-slate-200">
                         <span className="text-[8px] font-black text-slate-500 uppercase block mb-1">{t('discipline')}</span>
-                        <span className="text-[10px] font-bold text-white truncate block">{t(event.discipline)}</span>
+                        <span className="text-[10px] font-bold text-white [.light-theme_&]:text-slate-700 truncate block">{t(event.discipline)}</span>
                       </div>
-                      <div className="bg-slate-950/50 rounded-2xl p-3 border border-slate-800/50">
+                      <div className="bg-slate-950/50 [.light-theme_&]:bg-slate-50 rounded-2xl p-3 border border-slate-800/50 [.light-theme_&]:border-slate-200">
                         <span className="text-[8px] font-black text-slate-500 uppercase block mb-1">{t('targets')}</span>
-                        <span className="text-[10px] font-bold text-white block">{event.targets} DT</span>
+                        <span className="text-[10px] font-bold text-white [.light-theme_&]:text-slate-700 block">{event.targets} DT</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-800/50 [.light-theme_&]:border-slate-100">
                       <div className="flex items-center gap-2">
                         <i className="far fa-calendar text-[10px] text-slate-500"></i>
-                        <span className="text-[10px] font-bold text-slate-400">
+                        <span className="text-[10px] font-bold text-slate-400 [.light-theme_&]:text-slate-500">
                           {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-[10px] font-black uppercase text-slate-400">
+                      <div className="flex items-center gap-4 text-[10px] font-black uppercase text-slate-400 [.light-theme_&]:text-slate-500">
                         <div className="flex items-center gap-1">
                           <i className="fas fa-bullseye"></i>
                           <span>{event.result_count || 0} {t('shooters_with_results')}</span>
@@ -240,11 +240,11 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
             </AnimatePresence>
           </div>
         ) : (
-          <div className="bg-slate-900/20 border border-slate-800/50 rounded-3xl p-20 text-center">
-            <div className="w-20 h-20 rounded-full bg-slate-900/50 border border-slate-800 flex items-center justify-center mx-auto mb-6 text-slate-600">
+          <div className="bg-slate-900/20 [.light-theme_&]:bg-white border border-slate-800/50 [.light-theme_&]:border-slate-200 rounded-3xl p-20 text-center shadow-xl [.light-theme_&]:shadow-slate-200/50 transition-colors">
+            <div className="w-20 h-20 rounded-full bg-slate-900/50 [.light-theme_&]:bg-slate-50 border border-slate-800 [.light-theme_&]:border-slate-200 flex items-center justify-center mx-auto mb-6 text-slate-600">
               <i className="fas fa-search text-3xl"></i>
             </div>
-            <h3 className="text-xl font-black uppercase italic mb-2">{t('no_events')}</h3>
+            <h3 className="text-xl font-black uppercase italic mb-2 text-white [.light-theme_&]:text-slate-900">{t('no_events')}</h3>
             <p className="text-slate-500 text-sm">{t('no_public_events_matching')}</p>
           </div>
         )}

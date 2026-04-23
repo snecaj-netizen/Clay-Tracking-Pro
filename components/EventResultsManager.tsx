@@ -955,16 +955,16 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-slate-900 rounded-none sm:rounded-[2.5rem] w-full h-full sm:h-auto sm:max-w-[98vw] max-h-[100dvh] sm:max-h-[98vh] flex flex-col overflow-hidden border-0 sm:border border-slate-800 shadow-2xl animate-in zoom-in-95 duration-300">
-        <div className="p-4 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 shadow-lg relative z-10">
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-0 sm:p-4 bg-black/80 [.light-theme_&]:bg-slate-900/80 backdrop-blur-sm transition-colors">
+      <div className="bg-slate-900 [.light-theme_&]:bg-white rounded-none sm:rounded-[2.5rem] w-full h-full sm:h-auto sm:max-w-[98vw] max-h-[100dvh] sm:max-h-[98vh] flex flex-col overflow-hidden border-0 sm:border border-slate-800 [.light-theme_&]:border-slate-200 shadow-2xl animate-in zoom-in-95 duration-300 transition-colors">
+        <div className="p-4 sm:p-8 border-b border-slate-800 [.light-theme_&]:border-slate-200 flex justify-between items-center bg-slate-950 [.light-theme_&]:bg-slate-50 shrink-0 shadow-lg relative z-10 transition-colors">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg sm:text-xl shadow-inner border border-orange-500/20">
               <i className="fas fa-trophy"></i>
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight leading-none">
-                {readOnly ? 'Risultati Gara' : 'Gestione Risultati'}
+              <h2 className="text-xl sm:text-2xl font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight leading-none transition-colors">
+                {readOnly ? (language === 'it' ? 'Risultati Gara' : 'Race Results') : (language === 'it' ? 'Gestione Risultati' : 'Results Management')}
               </h2>
               <div className="flex items-center gap-3 mt-1.5">
                 <p className="text-orange-500 font-bold tracking-widest text-[9px] sm:text-[10px] uppercase flex items-center gap-2">
@@ -1373,9 +1373,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           )}
 
           {/* Results Table Section */}
-          <div className={`w-full ${(readOnly || event.status === 'validated') ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 shrink-0 md:shrink`}>
+          <div className={`w-full ${(readOnly || event.status === 'validated') ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 [.light-theme_&]:bg-white shrink-0 md:shrink transition-colors`}>
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-              <h3 className="text-lg font-bold text-white uppercase tracking-widest">
+              <h3 className="text-lg font-bold text-white [.light-theme_&]:text-slate-900 uppercase tracking-widest transition-colors">
                 {event.status === 'validated' ? t('pdf_final_ranking') : (readOnly ? t('pdf_general_ranking') : t('pdf_provisional_ranking'))}
               </h3>
               
@@ -1388,7 +1388,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     placeholder={t('search_shooter_ranking_placeholder')} 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600 font-bold"
+                    className="w-full bg-slate-900 [.light-theme_&]:bg-slate-50 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-xl py-2 pl-9 pr-10 text-sm text-white [.light-theme_&]:text-slate-900 focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/50 transition-all placeholder:text-slate-600 font-bold"
                   />
                   {searchTerm && (
                     <button
@@ -1400,7 +1400,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   )}
                 </div>
 
-                <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
+                <div className="flex bg-slate-900 [.light-theme_&]:bg-slate-100 rounded-xl p-1 border border-slate-800 [.light-theme_&]:border-slate-200 transition-colors">
                   <button
                     onClick={() => setViewMode('generale')}
                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}

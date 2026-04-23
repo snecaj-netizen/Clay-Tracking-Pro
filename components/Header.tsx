@@ -115,7 +115,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
           }}
         ></div>
       )}
-      <header className="fixed top-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-b border-slate-900/50 z-[1100]">
+      <header className="fixed top-0 left-0 right-0 bg-slate-950/95 [.light-theme_&]:bg-white/95 backdrop-blur-xl border-b border-slate-900/50 [.light-theme_&]:border-slate-200 z-[1100] transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
@@ -125,7 +125,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 <button 
                   onClick={onGoBack} 
                   disabled={!canGoBack}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoBack ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoBack ? 'bg-slate-900 [.light-theme_&]:bg-white text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white border border-slate-800 [.light-theme_&]:border-slate-200' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
                   title={t('previous')}
                 >
                   <i className="fas fa-chevron-left text-xs"></i>
@@ -133,7 +133,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 <button 
                   onClick={onGoForward} 
                   disabled={!canGoForward}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoForward ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoForward ? 'bg-slate-900 [.light-theme_&]:bg-white text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white border border-slate-800 [.light-theme_&]:border-slate-200' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
                   title={t('next')}
                 >
                   <i className="fas fa-chevron-right text-xs"></i>
@@ -151,7 +151,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 <i className="fas fa-bullseye text-xl text-white"></i>
               </div>
               <div className="text-left">
-                <h1 className="text-base sm:text-xl font-black tracking-tight text-white leading-none text-left">
+                <h1 className="text-base sm:text-xl font-black tracking-tight text-white [.light-theme_&]:text-slate-900 leading-none text-left">
                   Clay <span className="text-orange-600">Performance</span>
                 </h1>
               </div>
@@ -168,13 +168,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                     }
                     setIsProfileOpen(!isProfileOpen);
                   }}
-                  className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' || isProfileOpen ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
+                  className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 rounded-xl border transition-all active:scale-95 group ${currentView === 'admin' || isProfileOpen ? 'bg-orange-600 border-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 [.light-theme_&]:bg-white border-slate-800 [.light-theme_&]:border-slate-200 hover:border-slate-700'}`}
                 >
                   <div className="hidden sm:block text-right">
                     <div className={`text-xs font-black uppercase tracking-widest ${currentView === 'admin' || isProfileOpen ? 'text-orange-200' : 'text-slate-500'}`}>
                       {user?.role === 'admin' ? t('admin_role') : user?.role === 'society' ? t('society_role') : t('shooter_role')}
                     </div>
-                    <div className={`text-sm font-bold ${currentView === 'admin' || isProfileOpen ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                    <div className={`text-sm font-bold ${currentView === 'admin' || isProfileOpen ? 'text-white' : 'text-slate-200 [.light-theme_&]:text-slate-700 group-hover:text-white [.light-theme_&]:group-hover:text-black'}`}>
                       {user?.name} {user?.surname}
                     </div>
                   </div>
@@ -184,7 +184,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                     {isProfileOpen ? t('close_menu') : t('open_menu')}
                   </span>
 
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all overflow-hidden ${currentView === 'admin' || isProfileOpen ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-orange-500'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all overflow-hidden ${currentView === 'admin' || isProfileOpen ? 'bg-white/20 text-white' : 'bg-slate-800 [.light-theme_&]:bg-slate-100 text-slate-400 group-hover:text-orange-500'}`}>
                     {user?.avatar ? (
                       <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
@@ -196,10 +196,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
                 {/* Profile Dropdown Menu */}
                 {isProfileOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-2 z-[1100] animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="px-4 py-3 border-b border-slate-800 mb-1">
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 [.light-theme_&]:bg-white border border-slate-800 [.light-theme_&]:border-slate-200 rounded-2xl shadow-2xl py-2 z-[1100] animate-in fade-in slide-in-from-top-2 duration-200 transition-colors">
+                    <div className="px-4 py-3 border-b border-slate-800 [.light-theme_&]:border-slate-100 mb-1">
                       <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('account')}</div>
-                      <div className="text-sm font-bold text-white truncate">{user?.email}</div>
+                      <div className="text-sm font-bold text-white [.light-theme_&]:text-slate-900 truncate">{user?.email}</div>
                       {user && !user.email_verified && user.role !== 'admin' && (
                         <div className="text-[9px] font-black text-orange-500 uppercase flex items-center gap-1 mt-1 font-mono">
                           <i className="fas fa-exclamation-triangle"></i>
@@ -210,7 +210,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                     
                     <button 
                       onClick={() => { onNavigate('profile'); setIsProfileOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white [.light-theme_&]:hover:text-black transition-colors"
                     >
                       <i className="fas fa-user-circle w-5 text-slate-500"></i>
                       {t('your_profile')}
@@ -227,12 +227,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                       </button>
                       <button 
                         onClick={() => {
-                          const portalUrl = `${window.location.origin}/public-portal`;
+                          const portalUrl = `${window.location.origin}/portal`;
                           navigator.clipboard.writeText(portalUrl).then(() => {
                             triggerToast(t('portal_link_copied'), 'success');
                           });
                         }}
-                        className="px-4 flex items-center justify-center bg-slate-800 text-slate-400 rounded-xl hover:bg-slate-700 hover:text-white transition-all border border-slate-700 active:scale-95"
+                        className="px-4 flex items-center justify-center bg-slate-800 [.light-theme_&]:bg-slate-100 text-slate-400 [.light-theme_&]:text-slate-500 rounded-xl hover:bg-slate-700 [.light-theme_&]:hover:bg-slate-200 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-all border border-slate-700 [.light-theme_&]:border-slate-200 active:scale-95"
                         title={t('copy_portal_link')}
                       >
                         <i className="fas fa-copy"></i>
@@ -241,18 +241,18 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
                     {/* Language Selector in Profile Menu */}
                     {!user?.is_international && (
-                      <div className="px-4 py-2 border-t border-slate-800/50 mt-1">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{t('language_label') || 'Lingua'}</div>
+                      <div className="px-4 py-2 border-t border-slate-800/50 [.light-theme_&]:border-slate-100 mt-1">
+                        <div className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest mb-2">{t('language_label') || 'Lingua'}</div>
                         <div className="flex gap-2">
                           <button 
                             onClick={() => setLanguage('it')}
-                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'it' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'it' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 [.light-theme_&]:bg-slate-100 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-slate-200 [.light-theme_&]:hover:text-slate-900'}`}
                           >
                             Italiano
                           </button>
                           <button 
                             onClick={() => setLanguage('en')}
-                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 [.light-theme_&]:bg-slate-100 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-slate-200 [.light-theme_&]:hover:text-slate-900'}`}
                           >
                             English
                           </button>

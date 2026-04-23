@@ -239,7 +239,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
       if (onUserUpdate && editingUser && editingUser.id === currentUser.id) {
         onUserUpdate({
           ...currentUser,
-          name, surname, email, role, category, qualification, society, shooter_code: shooterCode, avatar: userAvatar, birth_date: birthDate, phone
+          name, surname, email, role, category, qualification, society, shooter_code: shooterCode, avatar: userAvatar, birth_date: birthDate, phone,
+          email_verified: isEmailVerified
         });
       }
     } catch (err: any) {
