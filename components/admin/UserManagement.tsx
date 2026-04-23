@@ -589,26 +589,28 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
       {showFilters && !showUserForm && (
         <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-                <i className="fas fa-user-tag text-orange-500"></i>
-                {t('filter_role')}
-              </label>
-              <select
-                value={filterRole}
-                onChange={(e) => {
-                  setFilterRole(e.target.value);
-                  setUsersPage(1);
-                }}
-                className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-xl px-4 py-3 focus:border-orange-500 transition-colors appearance-none cursor-pointer font-bold"
-              >
-                <option value="">{t('all_roles')}</option>
-                <option value="user">{t('shooter_role')}</option>
-                <option value="society">{t('society_role')}</option>
-                <option value="admin">{t('admin_role')}</option>
-              </select>
-            </div>
+          <div className={`grid grid-cols-1 ${currentUser?.role === 'admin' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+            {currentUser?.role === 'admin' && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                  <i className="fas fa-user-tag text-orange-500"></i>
+                  {t('filter_role')}
+                </label>
+                <select
+                  value={filterRole}
+                  onChange={(e) => {
+                    setFilterRole(e.target.value);
+                    setUsersPage(1);
+                  }}
+                  className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-xl px-4 py-3 focus:border-orange-500 transition-colors appearance-none cursor-pointer font-bold"
+                >
+                  <option value="">{t('all_roles')}</option>
+                  <option value="user">{t('shooter_role')}</option>
+                  <option value="society">{t('society_role')}</option>
+                  <option value="admin">{t('admin_role')}</option>
+                </select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
