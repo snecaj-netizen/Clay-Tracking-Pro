@@ -44,7 +44,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
   initialTab,
   onToggleFAB
 }) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach'>(initialTab || 'results');
   const [direction, setDirection] = useState(0);
