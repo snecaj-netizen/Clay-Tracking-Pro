@@ -116,9 +116,9 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
 
   const handlePortalPreview = async () => {
     try {
-      const portalUrl = `${window.location.origin}/portal`;
+      const portalUrl = "tinyurl.com/risultatilive";
       const societyName = user?.society || 'Società';
-      const doc = await generatePortalFlyer(societyName, portalUrl);
+      const doc = await generatePortalFlyer(societyName, portalUrl, language as 'it' | 'en');
       
       // Preview in new window
       const pdfBlob = doc.output('blob');

@@ -1,12 +1,29 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
-export const generatePortalFlyer = async (societyName: string, portalUrl: string) => {
+export const generatePortalFlyer = async (societyName: string, portalUrl: string, lang: 'it' | 'en' = 'it') => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4'
   });
+
+  const texts = {
+    it: {
+      portal: "PORTALE RISULTATI ONLINE",
+      scan: "Scansiona il QR Code per visualizzare",
+      realtime: "i risultati e le classifiche in tempo reale",
+      direct: "Link diretto:",
+      footer: "Sviluppato da Clay Performance - www.clay-performance.it"
+    },
+    en: {
+      portal: "ONLINE RESULTS PORTAL",
+      scan: "Scan the QR Code to view",
+      realtime: "real-time results and rankings",
+      direct: "Direct link:",
+      footer: "Powered by Clay Performance - www.clay-performance.it"
+    }
+  }[lang];
 
   // Background color (White for printer-friendliness)
   doc.setFillColor(255, 255, 255);
@@ -21,7 +38,6 @@ export const generatePortalFlyer = async (societyName: string, portalUrl: string
   doc.rect(0, 38, 210, 2, 'F');
 
   // Logo
-  // Using a more robust logo representation if SVG is not supported easily
   const logoUrl = "https://placehold.jp/ea580c/ffffff/180x180.png?text=%E2%A6%BF&css=%7B%22font-size%22%3A%22140px%22%7D";
   
   try {
@@ -51,13 +67,13 @@ export const generatePortalFlyer = async (societyName: string, portalUrl: string
 
   doc.setFontSize(16);
   doc.setTextColor(234, 88, 12); // orange-600
-  doc.text("PORTALE RISULTATI ONLINE", 105, 85, { align: 'center' });
+  doc.text(texts.portal, 105, 85, { align: 'center' });
 
   doc.setTextColor(71, 85, 105); // slate-600
   doc.setFontSize(14);
   doc.setFont("helvetica", "normal");
-  doc.text("Scansiona il QR Code per visualizzare", 105, 110, { align: 'center' });
-  doc.text("i risultati e le classifiche in tempo reale", 105, 118, { align: 'center' });
+  doc.text(texts.scan, 105, 110, { align: 'center' });
+  doc.text(texts.realtime, 105, 118, { align: 'center' });
 
   // QR Code box
   doc.setDrawColor(226, 232, 240); // slate-200
@@ -82,7 +98,7 @@ export const generatePortalFlyer = async (societyName: string, portalUrl: string
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Link diretto:", 105, 265, { align: 'center' });
+  doc.text(texts.direct, 105, 265, { align: 'center' });
   doc.setTextColor(234, 88, 12);
   doc.setFontSize(14);
   doc.text(portalUrl.replace('https://', '').replace('http://', ''), 105, 275, { align: 'center' });
@@ -90,7 +106,7 @@ export const generatePortalFlyer = async (societyName: string, portalUrl: string
   doc.setTextColor(148, 163, 184); // slate-400
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("Sviluppato da Clay Performance - www.clay-performance.it", 105, 290, { align: 'center' });
+  doc.text(texts.footer, 105, 290, { align: 'center' });
 
   return doc;
 };
