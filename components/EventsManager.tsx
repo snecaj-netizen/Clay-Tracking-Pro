@@ -28,8 +28,8 @@ interface EventsManagerProps {
   isSubPage?: boolean;
   hideHeader?: boolean;
   initialEvents?: SocietyEvent[];
-  viewMode?: 'list' | 'calendar' | 'results' | 'managed';
-  onViewModeChange?: (mode: 'list' | 'calendar' | 'results' | 'managed') => void;
+  viewMode?: 'list' | 'calendar' | 'results' | 'managed' | 'portal';
+  onViewModeChange?: (mode: 'list' | 'calendar' | 'results' | 'managed' | 'portal') => void;
   showFilters?: boolean;
   onShowFiltersChange?: (show: boolean) => void;
   onExportExcel?: () => void;
@@ -207,7 +207,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [loading, setLoading] = useState(!initialEvents || initialEvents.length === 0);
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<SocietyEvent | null>(null);
-  const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar' | 'results' | 'managed'>(initialViewMode as any);
+  const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | 'portal'>(initialViewMode as any);
   const viewMode = externalViewMode || internalViewMode;
   const setViewMode = onViewModeChange || setInternalViewMode;
 
@@ -498,6 +498,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     });
   }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterRegistrationOpen]);
 
+  const portalEvents = React.useMemo(() => {
+    return managedEvents.filter(ev => ev.is_public);
+  }, [managedEvents]);
+
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
     const day = new Date(year, month, 1).getDay();
@@ -549,21 +553,32 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         </div>
 
         {showTabs && (
-        <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit">
+          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit overflow-x-auto custom-scrollbar no-scrollbar">
             <button 
               onClick={() => setViewMode('results')} 
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-poll"></i> {t('results_tab')}
             </button>
             <button 
               onClick={() => setViewMode('managed')} 
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'managed' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'managed' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-tasks"></i> {t('management_tab')}
               {managedEvents.length > 0 && (
                 <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'managed' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
                   {managedEvents.length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setViewMode('portal')} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'portal' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-globe"></i> {t('portal_tab')}
+              {portalEvents.length > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'portal' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {portalEvents.length}
                 </span>
               )}
             </button>
@@ -714,6 +729,120 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           {t('edit_competition')}
                         </button>
                       )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPortalView = () => {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col gap-1.5">
+            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-500 flex items-center justify-center text-base">
+                <i className="fas fa-globe"></i>
+              </div>
+              {t('portal_tab')}
+            </h2>
+            <p className="text-slate-500 text-xs font-medium ml-10.5">
+              {t('portal_events_desc')}
+            </p>
+          </div>
+
+          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit overflow-x-auto custom-scrollbar no-scrollbar">
+            <button 
+              onClick={() => setViewMode('results')} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-poll"></i> {t('results_tab')}
+            </button>
+            <button 
+              onClick={() => setViewMode('managed')} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'managed' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-tasks"></i> {t('management_tab')}
+              {managedEvents.length > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'managed' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {managedEvents.length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setViewMode('portal')} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'portal' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-globe"></i> {t('portal_tab')}
+              {portalEvents.length > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'portal' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {portalEvents.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {portalEvents.length === 0 ? (
+          <div className="py-24 text-center bg-slate-900/20 rounded-[2.5rem] border-2 border-dashed border-slate-800/50 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-emerald-500/50 text-3xl shadow-inner">
+                <i className="fas fa-globe"></i>
+              </div>
+              <div className="max-w-md mx-auto px-6">
+                <h4 className="text-xl font-black text-slate-400 uppercase tracking-widest mb-2">{t('no_portal_events')}</h4>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {t('no_portal_events_desc')}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {portalEvents.map(ev => {
+              const isPast = isPastEvent(ev);
+              return (
+                <div key={ev.id} className={`rounded-2xl border p-4 sm:p-5 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-emerald-500/50'}`}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
+                  
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-600/20 text-emerald-400 text-[8px] font-black uppercase tracking-widest border border-emerald-500/20">
+                            {ev.discipline}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 bg-emerald-600/20 text-emerald-400`}>
+                            {t('portal_tab')}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-emerald-400 transition-colors leading-tight mb-0.5">{ev.name}</h3>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i className="fas fa-calendar-alt text-emerald-500/50 w-3"></i>
+                            {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                          </p>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i className="fas fa-map-marker-alt text-emerald-500/50 w-3"></i>
+                            {ev.location || t('field_nd')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-auto space-y-2 pt-4 border-t border-white/5">
+                      <button 
+                        onClick={() => handleTogglePublic(ev)}
+                        className="w-full py-2.5 rounded-xl bg-rose-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all active:scale-95 shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2.5"
+                      >
+                        <i className="fas fa-eye-slash text-xs"></i>
+                        {t('remove_from_portal')}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1495,7 +1624,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         {(user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) && (
                           <button 
                             onClick={() => setViewMode('results')} 
-                            className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'results' || viewMode === 'managed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+                            className={`flex items-center justify-center w-8 sm:w-auto sm:px-3 h-7 sm:h-9 rounded-lg text-[9px] sm:text-[10px] font-black uppercase transition-all ${viewMode === 'results' || viewMode === 'managed' || viewMode === 'portal' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
                             title={t('results')}
                           >
                             <i className="fas fa-trophy"></i>
@@ -1801,6 +1930,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
 
         {viewMode === 'managed' ? (
           renderManagedView()
+        ) : viewMode === 'portal' ? (
+          renderPortalView()
         ) : viewMode === 'calendar' ? (
           renderCalendarView()
         ) : viewMode === 'results' ? (
