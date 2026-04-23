@@ -542,18 +542,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
               )}
             </div>
           )}
-          <div className="relative flex-1 flex items-center gap-2">
-            <div className="flex-1">
-              <UserSearchInput 
-                placeholder={t('search_user_placeholder')} 
-                value={userSearchTerm}
-                onChange={(val) => {
-                  setUserSearchTerm(val);
-                  setUsersPage(1);
-                }}
-              />
-            </div>
-            
+          <div className="flex items-center gap-2 flex-1 sm:justify-end">
             <button 
               onClick={() => setShowFilters(!showFilters)}
               className={`w-11 h-11 sm:w-auto sm:px-3 sm:py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center sm:gap-2 border shrink-0 ${
@@ -617,18 +606,14 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 <i className="fas fa-search text-orange-500"></i>
                 {t('search_user_placeholder')}
               </label>
-              <div className="relative">
-                <input 
-                  type="text"
-                  placeholder={t('search_user_placeholder')}
-                  value={userSearchTerm}
-                  onChange={(e) => {
-                    setUserSearchTerm(e.target.value);
-                    setUsersPage(1);
-                  }}
-                  className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-xl px-4 py-3 focus:border-orange-500 transition-colors font-bold outline-none"
-                />
-              </div>
+              <UserSearchInput 
+                placeholder={t('search_user_placeholder')} 
+                value={userSearchTerm}
+                onChange={(val) => {
+                  setUserSearchTerm(val);
+                  setUsersPage(1);
+                }}
+              />
             </div>
 
             <div className="flex items-end justify-end pt-2">
