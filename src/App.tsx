@@ -75,7 +75,7 @@ const App: React.FC = () => {
     const hash = window.location.hash.toLowerCase();
     
     // Check if we are on a portal-related path or search results
-    if (path === '/portal' || path === '/risultati' || hash === '#portal' || hash === '#risultati' || path.endsWith('/portal')) {
+    if (path === '/portal' || path === '/public-portal' || path === '/risultati' || hash === '#portal' || hash === '#risultati' || path.endsWith('/portal')) {
       return 'public-portal';
     }
     
@@ -206,6 +206,8 @@ const App: React.FC = () => {
       
       if (path === '/le-tue-gare') {
         setView('le-tue-gare');
+      } else if (path === '/portal' || path === '/public-portal') {
+        setView('public-portal');
       } else if (path === '/admin/events') {
         setView('admin-events');
       } else if (path === '/admin/control') {

@@ -17,6 +17,7 @@ import { Competition, Cartridge, CartridgeType, AppData, User } from '../types';
 import { AdminProvider, useAdmin } from '../contexts/AdminContext';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { generatePortalFlyer } from '../lib/pdfUtils';
 
 type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications' | 'event-control';
 
@@ -108,6 +109,24 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
     }).catch(err => {
       console.error('Copy failed', err);
     });
+  };
+
+  const handlePortalPreview = async () => {
+    try {
+      const portalUrl = `${window.location.origin}/portal`;
+      const societyName = currentUser?.society || 'Società';
+      const doc = await generatePortalFlyer(societyName, portalUrl);
+      
+      // Preview in new window
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
+      
+      triggerToast(t('pdf_generated_success'), 'success');
+    } catch (error) {
+      console.error('Error generating portal PDF:', error);
+      triggerToast(t('pdf_generation_error'), 'error');
+    }
   };
 
   useEffect(() => {
@@ -338,10 +357,10 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <div className="flex gap-1">
                 <button 
-                  onClick={() => { onNavigate ? onNavigate('public-portal') : setActiveTab('event-results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  onClick={handlePortalPreview}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-indigo-600/20 text-indigo-500 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white"
                 >
-                  <i className="fas fa-external-link-alt"></i> {t('results_portal')}
+                  <i className="fas fa-file-pdf"></i> {t('results_portal_preview')}
                 </button>
                 <button 
                   onClick={copyPortalLink}
@@ -428,10 +447,10 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
              {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <div className="flex-1 min-w-[120px] flex gap-1">
                 <button 
-                  onClick={() => { window.open('/portal', '_blank'); }}
+                  onClick={handlePortalPreview}
                   className="flex-1 py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-indigo-600/20 text-indigo-500 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white flex items-center justify-center [.light-theme_&]:bg-indigo-50 [.light-theme_&]:text-indigo-600 [.light-theme_&]:border-indigo-100"
                 >
-                  <i className="fas fa-external-link-alt mr-1 lg:mr-2"></i> <span className="hidden md:inline">{t('results_portal_preview')}</span><span className="md:hidden">{t('portal_short')}</span>
+                  <i className="fas fa-file-pdf mr-1 lg:mr-2"></i> <span className="hidden md:inline">{t('results_portal_preview')}</span><span className="md:hidden">{t('portal_short')}</span>
                 </button>
                 <button 
                   onClick={copyPortalLink}

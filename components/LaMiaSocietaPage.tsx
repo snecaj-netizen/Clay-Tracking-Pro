@@ -5,6 +5,7 @@ import AICoachPage from './AICoachPage';
 
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { generatePortalFlyer } from '../lib/pdfUtils';
 
 interface LaMiaSocietaPageProps {
   user: any;
@@ -113,6 +114,24 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
     if (token) fetchStats();
   }, [token]);
 
+  const handlePortalPreview = async () => {
+    try {
+      const portalUrl = `${window.location.origin}/portal`;
+      const societyName = user?.society || 'Società';
+      const doc = await generatePortalFlyer(societyName, portalUrl);
+      
+      // Preview in new window
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
+      
+      triggerToast(t('pdf_generated_success'), 'success');
+    } catch (error) {
+      console.error('Error generating portal PDF:', error);
+      triggerToast(t('pdf_generation_error'), 'error');
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Sticky Header Section */}
@@ -127,11 +146,11 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
             {/* Portal Buttons */}
             <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
                <button 
-                  onClick={() => { window.open('/public-portal', '_blank'); }}
+                  onClick={handlePortalPreview}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all bg-indigo-600/20 text-indigo-500 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white"
-                  title={t('results_portal')}
+                  title={t('results_portal_preview_label')}
                 >
-                  <i className="fas fa-external-link-alt"></i> 
+                  <i className="fas fa-file-pdf"></i> 
                   <span className="hidden sm:inline">{t('results_portal_preview')}</span>
                 </button>
                 <button 
