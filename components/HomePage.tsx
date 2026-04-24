@@ -129,13 +129,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
               {t('logout')}
             </span>
           </button>
-
-          {/* Footer Info */}
-          <div className="text-center">
-            <p className="text-[7px] font-black text-slate-300 dark:text-slate-800 uppercase tracking-[0.3em]">
-              {t('copyright_notice').replace('{year}', new Date().getFullYear().toString()).replace('Stefano Necaj', 'Stefano Necaj')}
-            </p>
-          </div>
         </div>
       </div>
     </div>

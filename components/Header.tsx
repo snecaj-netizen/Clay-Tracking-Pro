@@ -239,8 +239,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                 <i className="fas fa-bullseye text-xl text-white"></i>
               </div>
               <div className="text-left">
-                <h1 className="text-base sm:text-xl font-black tracking-tight text-white [.light-theme_&]:text-slate-900 leading-none text-left">
-                  Clay <span className="text-orange-600">Performance</span>
+                <h1 className="text-base sm:text-xl font-black tracking-tight text-white [.light-theme_&]:text-slate-900 leading-tight sm:leading-none text-left">
+                  Clay <br className="sm:hidden" /> <span className="text-orange-600">Performance</span>
                 </h1>
               </div>
             </button>
