@@ -26,6 +26,7 @@ import SocietyDetailModal from '@/components/SocietyDetailModal';
 import NotificationsPage from '@/components/NotificationsPage';
 import NotificationsManager from '@/components/NotificationsManager';
 import PublicPortal from '@/components/PublicPortal';
+import HomePage from '@/components/HomePage';
 
 import { useUI } from '@/contexts/UIContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -56,11 +57,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Automatically set language to English for international users on mount/refresh
-    // if they don't have a preferred language set yet or if it was defaulted to Italian
-    if (user?.is_international && language === 'it') {
-       // Only force English if it looks like they haven't explicitly chosen Italian
-       // or if we want to strictly follow the requirement of English for internationals
-       setLanguage('en');
+    // We want to force it if they haven't explicitly chosen Italian recently
+    if (user?.is_international) {
+      const savedLang = localStorage.getItem('app_language');
+      if (savedLang !== 'en' && savedLang !== 'it') {
+        setLanguage('en');
+      } else if (language === 'it' && !savedLang) {
+        setLanguage('en');
+      }
     }
   }, [user?.is_international, language, setLanguage]);
   
@@ -84,15 +88,15 @@ const App: React.FC = () => {
       return 'public-portal';
     }
     
-    return user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare';
+    return 'home';
   };
 
-  const [view, setView] = useState<'le-tue-gare' | 'warehouse' | 'gare' | 'la-mia-societa' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal'>(
+  const [view, setView] = useState<'home' | 'le-tue-gare' | 'warehouse' | 'gare' | 'la-mia-societa' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal'>(
     getInitialView()
   );
-  const [historyStack, setHistoryStack] = useState<{view: string, tab?: string}[]>([{ view: user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare' }]);
+  const [historyStack, setHistoryStack] = useState<{view: string, tab?: string}[]>([{ view: token ? 'home' : 'public-portal' }]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [previousView, setPreviousView] = useState<'le-tue-gare' | 'gare' | 'la-mia-societa' | 'warehouse' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal' | null>(null);
+  const [previousView, setPreviousView] = useState<'home' | 'le-tue-gare' | 'gare' | 'la-mia-societa' | 'warehouse' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
@@ -228,6 +232,8 @@ const App: React.FC = () => {
       
       if (path === '/le-tue-gare') {
         setView('le-tue-gare');
+      } else if (path === '/home') {
+        setView('home');
       } else if (path === '/portal' || path === '/public-portal') {
         setView('public-portal');
       } else if (path === '/admin/events') {
@@ -346,13 +352,11 @@ const App: React.FC = () => {
     }
 
     if (newUser.role === 'society') {
-      setView('la-mia-societa');
-      setInitialAdminTab('results');
-      window.history.pushState({ view: 'la-mia-societa' }, '', '/la-mia-societa');
+      setView('home');
+      window.history.pushState({ view: 'home' }, '', '/home');
     } else {
-      setView('le-tue-gare');
-      setInitialAdminTab(null);
-      window.history.pushState({ view: 'le-tue-gare' }, '', '/le-tue-gare');
+      setView('home');
+      window.history.pushState({ view: 'home' }, '', '/home');
     }
   };
 
@@ -372,6 +376,16 @@ const App: React.FC = () => {
       'primary'
     );
   };
+
+  useEffect(() => {
+    const handleLogoutEvent = () => {
+      handleLogout();
+    };
+    window.addEventListener('clay-tracker-logout', handleLogoutEvent);
+    return () => {
+      window.removeEventListener('clay-tracker-logout', handleLogoutEvent);
+    };
+  }, [handleLogout]);
 
   const handleUserUpdate = (updatedUser: any) => {
     setUser(updatedUser);
@@ -700,6 +714,7 @@ const App: React.FC = () => {
     
     // Update browser history
     let newUrl = '/';
+    if (newView === 'home') newUrl = '/home';
     if (newView === 'le-tue-gare') newUrl = '/le-tue-gare';
     if (newView === 'admin-events') newUrl = '/admin/events';
     if (newView === 'admin-control') newUrl = '/admin/control';
@@ -782,23 +797,25 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-50 flex flex-col ${view === 'ai-coach' ? 'pb-0' : 'pb-24 sm:pb-8'}`}>
+    <div className={`min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50 flex flex-col ${view === 'ai-coach' || view === 'home' ? 'pb-0' : 'pb-24 sm:pb-8'}`}>
       <ConnectionStatus />
-      <Header 
-        currentView={view} 
-        onNavigate={handleNavigate} 
-        onLogout={handleLogout}
-        user={user}
-        appSettings={appSettings}
-        canGoBack={historyIndex > 0}
-        canGoForward={historyIndex < historyStack.length - 1}
-        onGoBack={handleGoBack}
-        onGoForward={handleGoForward}
-        onLoginClick={() => setShowLoginModal(true)}
-        onRefreshUser={fetchUserProfile}
-      />
+      {view !== 'home' && (
+        <Header 
+          currentView={view} 
+          onNavigate={handleNavigate} 
+          onLogout={handleLogout}
+          user={user}
+          appSettings={appSettings}
+          canGoBack={historyIndex > 0}
+          canGoForward={historyIndex < historyStack.length - 1}
+          onGoBack={handleGoBack}
+          onGoForward={handleGoForward}
+          onLoginClick={() => setShowLoginModal(true)}
+          onRefreshUser={fetchUserProfile}
+        />
+      )}
 
-      {user && !user.email_verified && view !== 'public-portal' && (
+      {user && !user.email_verified && view !== 'public-portal' && view !== 'home' && (
         <div className="fixed top-16 left-0 right-0 z-50 px-4 py-2 bg-orange-600 shadow-xl border-b border-orange-500/30 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-500">
           <i className="fas fa-exclamation-circle text-white text-sm animate-pulse"></i>
           <span className="text-[11px] font-bold text-white uppercase tracking-wider">
@@ -834,8 +851,14 @@ const App: React.FC = () => {
           }}
         />
       )}
-           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 flex-1 w-full pb-24 sm:pb-8`}>
+           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${view === 'home' ? 'pt-0 pb-0' : 'pt-16 pb-24 sm:pb-8'} flex-1 w-full`}>
         <Suspense fallback={<LoadingFallback />}>
+          {view === 'home' && (
+            <HomePage 
+              user={user} 
+              onNavigate={handleNavigate} 
+            />
+          )}
           {view === 'le-tue-gare' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <LeTueGarePage 
@@ -1244,7 +1267,7 @@ const App: React.FC = () => {
       )}
       
       {/* Bottom Navigation for Mobile */}
-      {user && (
+      {user && view !== 'home' && (
         <BottomNavigation 
           currentView={view} 
           onNavigate={handleNavigate} 

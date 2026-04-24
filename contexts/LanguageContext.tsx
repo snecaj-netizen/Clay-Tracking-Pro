@@ -27,6 +27,11 @@ const translations: Translations = {
   'user_management': { it: 'Gestione Utente', en: 'User Management' },
   'settings': { it: 'Impostazioni', en: 'Settings' },
   'logout': { it: 'Esci', en: 'Logout' },
+  'home': { it: 'Home', en: 'Home' },
+  'register_your_race': { it: 'Registra la tua gara', en: 'Record your race' },
+  'dashboard_desc': { it: 'Inserisci i tuoi risultati e allenamenti', en: 'Enter your results and training' },
+  'society_portal': { it: 'Portale Società', en: 'Club Portal' },
+  'shooter_portal': { it: 'Portale Tiratori', en: 'Shooter Portal' },
   'account': { it: 'Account', en: 'Account' },
   'management': { it: 'Gestione', en: 'Management' },
   'profile': { it: 'Profilo', en: 'Profile' },
@@ -1139,8 +1144,23 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>(() => {
     try {
+      // 1. Priority: check if user is international from localStorage
+      const userStr = localStorage.getItem('auth_user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.is_international) {
+           // For international users, we default to English unless they explicitly chose Italian
+           const saved = localStorage.getItem('app_language');
+           if (saved === 'it') return 'it';
+           return 'en';
+        }
+      }
+
+      // 2. Standard saved preference
       const saved = localStorage.getItem('app_language');
-      return (saved as Language) || 'it';
+      if (saved === 'en' || saved === 'it') return saved as Language;
+      
+      return 'it';
     } catch (e) {
       console.warn('LocalStorage not available for language preference:', e);
       return 'it';

@@ -21,7 +21,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward, onLoginClick, onRefreshUser }) => {
   const { language, setLanguage, t } = useLanguage();
   const { triggerToast } = useUI();
-  const [isLightMode, setIsLightMode] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -50,26 +50,26 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
-    // Default to light theme for public portal if no preference is saved
-    if (savedTheme === 'light' || (!savedTheme && currentView === 'public-portal')) {
+    // Default to light theme if no preference is saved
+    if (savedTheme === 'dark') {
+      setIsLightMode(false);
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light-theme');
+    } else {
       setIsLightMode(true);
+      document.documentElement.classList.remove('dark');
       document.documentElement.classList.add('light-theme');
-    } else if (savedTheme === 'dark') {
-      setIsLightMode(false);
-      document.documentElement.classList.remove('light-theme');
-    } else if (!savedTheme && currentView !== 'public-portal') {
-      // Default to dark mode for other views if no preference is saved
-      setIsLightMode(false);
-      document.documentElement.classList.remove('light-theme');
     }
-  }, [currentView]);
+  }, []);
 
   const toggleTheme = () => {
     if (isLightMode) {
+      document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light-theme');
       localStorage.setItem('theme', 'dark');
       setIsLightMode(false);
     } else {
+      document.documentElement.classList.remove('dark');
       document.documentElement.classList.add('light-theme');
       localStorage.setItem('theme', 'light');
       setIsLightMode(true);
@@ -98,16 +98,19 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
   const isAnyMenuOpen = isProfileOpen || isNotificationOpen || isSidebarOpen;
 
   const menuItems = user?.role === 'society' ? [
+    { id: 'home', label: t('home'), icon: 'fa-home' },
     { id: 'gare', label: t('events'), icon: 'fa-calendar-alt' },
     { id: 'la-mia-societa', label: t('managed_races'), icon: 'fa-building' },
     { id: 'societies', label: t('societies'), icon: 'fa-shield-alt' },
   ] : user?.role === 'admin' ? [
+    { id: 'home', label: t('home'), icon: 'fa-home' },
     { id: 'le-tue-gare', label: t('your_results'), icon: 'fa-list-ul' },
     { id: 'warehouse', label: t('warehouse'), icon: 'fa-box-open' },
     { id: 'gare', label: t('events'), icon: 'fa-calendar-alt' },
     { id: 'la-mia-societa', label: t('managed_races'), icon: 'fa-building' },
     { id: 'societies', label: t('societies'), icon: 'fa-shield-alt' },
   ] : [
+    { id: 'home', label: t('home'), icon: 'fa-home' },
     { id: 'le-tue-gare', label: t('your_results'), icon: 'fa-list-ul' },
     { id: 'warehouse', label: t('warehouse'), icon: 'fa-box-open' },
     { id: 'gare', label: t('events'), icon: 'fa-calendar-alt' },
@@ -228,7 +231,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             <button 
               onClick={() => {
                 if (currentView === 'public-portal' && !user) return;
-                onNavigate(user?.role === 'society' ? 'la-mia-societa' : 'le-tue-gare');
+                onNavigate('home');
               }}
               className={`flex items-center gap-3 hover:opacity-80 transition-opacity active:scale-95 ${currentView === 'public-portal' && !user ? 'cursor-default' : ''}`}
             >

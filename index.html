@@ -7,7 +7,7 @@
     <link rel="apple-touch-icon-precomposed" href="https://placehold.jp/ea580c/ffffff/180x180.png?text=%E2%A6%BF&css=%7B%22font-size%22%3A%22140px%22%7D" crossorigin="anonymous">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clay Performance</title>
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#f8fafc">
     <meta name="description" content="Professional Clay Shooting Performance Tracker">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -21,6 +21,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             screens: {
@@ -35,11 +36,12 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
-        html { color-scheme: dark; }
-        html.light-theme { color-scheme: light; }
+        html { color-scheme: light; }
+        html.dark { color-scheme: dark; }
         
-        /* Chart Variables */
-        :root {
+        /* Base styles for light/dark transition */
+        body { background-color: #f8fafc; color: #0f172a; }
+        html.dark body { background-color: #0f172a; color: #f8fafc; }
             --chart-grid: #1e293b;
             --chart-text: #64748b;
             --chart-tooltip-bg: #0f172a;
