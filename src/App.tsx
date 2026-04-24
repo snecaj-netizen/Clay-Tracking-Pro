@@ -111,6 +111,28 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTour, setShowTour] = useState(false);
+  
+  const fetchUserProfile = useCallback(async (signal?: AbortSignal) => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/user/profile', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        // Only update if something changed to avoid unnecessary re-renders
+        const currentUserStr = JSON.stringify(user);
+        const newUserStr = JSON.stringify(userData);
+        if (currentUserStr !== newUserStr) {
+          setUser(userData);
+          localStorage.setItem('auth_user', newUserStr);
+        }
+      }
+    } catch (err) {
+      // Ignore errors
+    }
+  }, [token, user]);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -245,6 +267,9 @@ const App: React.FC = () => {
     if (!token) return;
     setError(null);
     try {
+      // Refresh user profile asynchronously
+      fetchUserProfile(signal);
+
       const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes] = await Promise.all([
         fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
@@ -765,6 +790,7 @@ const App: React.FC = () => {
         onGoBack={handleGoBack}
         onGoForward={handleGoForward}
         onLoginClick={() => setShowLoginModal(true)}
+        onRefreshUser={fetchUserProfile}
       />
 
       {showLoginModal && (

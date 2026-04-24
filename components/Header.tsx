@@ -15,9 +15,10 @@ interface HeaderProps {
   onGoBack?: () => void;
   onGoForward?: () => void;
   onLoginClick?: () => void;
+  onRefreshUser?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward, onLoginClick }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward, onLoginClick, onRefreshUser }) => {
   const { language, setLanguage, t } = useLanguage();
   const { triggerToast } = useUI();
   const [isLightMode, setIsLightMode] = useState(false);
@@ -249,6 +250,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   onClick={() => {
                     if (!isProfileOpen) {
                       window.dispatchEvent(new CustomEvent('clay-tracker-close-menus'));
+                      onRefreshUser?.();
                     }
                     setIsProfileOpen(!isProfileOpen);
                   }}

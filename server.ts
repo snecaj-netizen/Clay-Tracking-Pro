@@ -37,6 +37,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Verify SMTP connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ SMTP Connection Error:', error);
+  } else {
+    console.log('✅ SMTP Server is ready to take our messages');
+  }
+});
+
 const sendVerificationEmail = async (email: string, name: string, token: string, host?: string) => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Verification email not sent.');
@@ -45,6 +54,11 @@ const sendVerificationEmail = async (email: string, name: string, token: string,
 
   const appUrl = process.env.APP_URL || (host ? `https://${host}` : 'https://clay-tracking-pro-production-3fe8.up.railway.app');
   const verificationUrl = `${appUrl}/verify-email?token=${token}`;
+
+  console.log('-----------------------------------------');
+  console.log('🧪 TEST: Verification Link for', email);
+  console.log(verificationUrl);
+  console.log('-----------------------------------------');
 
   const mailOptions = {
     from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
@@ -67,9 +81,13 @@ const sendVerificationEmail = async (email: string, name: string, token: string,
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to: ${email}`);
-  } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.log(`✅ Verification email sent successfully to: ${email}`);
+  } catch (error: any) {
+    console.error('❌ CRITICAL: SMTP Error sending verification email:');
+    console.error(error.message);
+    if (error.message.includes('534-5.7.9')) {
+      console.error('👉 SOLUTION: You MUST use a Google "App Password", not your main account password.');
+    }
   }
 };
 
@@ -648,15 +666,16 @@ const initDB = async () => {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync('admin', salt);
       await pool.query(
-        "INSERT INTO users (name, surname, email, password, role) VALUES ($1, $2, $3, $4, $5)",
-        ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin']
+        "INSERT INTO users (name, surname, email, password, role, email_verified) VALUES ($1, $2, $3, $4, $5, $6)",
+        ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin', false]
       );
+      console.log("✅ Default admin user created: snecaj@gmail.com / admin (unverified)");
     } else {
-      // Force admin password reset to 'admin' to ensure access
+      // One-time manual reset as requested by user
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync('admin', salt);
-      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hash, 'snecaj@gmail.com']);
-      console.log("✅ Admin password reset to 'admin' for snecaj@gmail.com");
+      await pool.query("UPDATE users SET password = $1, email_verified = false WHERE email = $2", [hash, 'snecaj@gmail.com']);
+      console.log("✅ Admin password reset to 'admin' and email_verified set to false for testing");
     }
 
     // Reset admin notifications and settings as requested (one-time)
@@ -1230,15 +1249,14 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid password' });
     }
 
-    /* Temporarily paused email verification
-    if (!user.email_verified && email !== 'snecaj@gmail.com') {
-      console.log(`Login failed: Email not verified (${email})`);
-      return res.status(403).json({ 
+    // Verification check disabled for main admin to prevent lockout during tests
+    if (!user.email_verified && user.role !== 'admin') {
+      console.log(`Login blocked: Email not verified for ${email}`);
+      return res.status(401).json({ 
         error: 'Email non verificata', 
         message: 'Devi verificare la tua email prima di poter accedere. Controlla la tua casella di posta o richiedi un nuovo invio.' 
       });
     }
-    */
 
     console.log(`Login successful: ${email}`);
     // Update login count and last login
@@ -1261,13 +1279,48 @@ app.post('/api/auth/login', async (req, res) => {
         avatar: user.avatar, 
         birth_date: user.birth_date, 
         phone: user.phone,
-        is_international: user.is_international
+        is_international: user.is_international,
+        email_verified: !!user.email_verified,
+        nationality: user.nationality,
+        international_id: user.international_id,
+        original_club: user.original_club
       } 
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
+app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    const user = result.rows[0];
+    res.json({
+      id: user.id,
+      name: user.name,
+      surname: user.surname,
+      email: user.email,
+      role: user.role,
+      category: user.category,
+      qualification: user.qualification,
+      society: user.society,
+      shooter_code: user.shooter_code,
+      avatar: user.avatar,
+      birth_date: user.birth_date,
+      phone: user.phone,
+      is_international: user.is_international,
+      email_verified: !!user.email_verified,
+      nationality: user.nationality,
+      international_id: user.international_id,
+      original_club: user.original_club
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
  app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { 
     name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone,

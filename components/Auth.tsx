@@ -93,20 +93,25 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
           body: JSON.stringify({ email, password }),
         });
 
-        let data;
+        let data = {};
+        const text = await res.text();
         try {
-          data = await res.json();
+          data = JSON.parse(text);
         } catch (e) {
+          // If not JSON, use the raw text if short, otherwise use status
+          if (text.length > 0 && text.length < 100) {
+            throw new Error(text);
+          }
           throw new Error(`Errore del server (${res.status}). Riprova più tardi.`);
         }
 
         if (!res.ok) {
-          if (res.status === 403 && data.message) {
-            setError(data.message);
+          if ((res.status === 403 || res.status === 401) && (data as any).message) {
+            setError((data as any).message);
             // Allow resending verification
             return;
           }
-          throw new Error(data.error || `Errore di autenticazione (${res.status})`);
+          throw new Error((data as any).error || (data as any).message || `Errore di autenticazione (${res.status})`);
         }
 
         onLogin(data.token, data.user);
@@ -198,7 +203,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
       {error && (
         <div className="bg-red-950/50 border border-red-900/50 text-red-500 p-4 rounded-xl text-sm mb-6 text-center animate-in slide-in-from-top-2">
           {error}
-          {error.includes('verificata') && (
+          {(error.toLowerCase().includes('verificata') || error.toLowerCase().includes('verificare')) && (
             <button 
               onClick={handleResendVerification}
               className="block mx-auto mt-2 text-orange-500 font-bold hover:underline"
