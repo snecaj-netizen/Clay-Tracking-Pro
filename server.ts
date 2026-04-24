@@ -1249,7 +1249,9 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid password' });
     }
 
-    // Verification check disabled for main admin to prevent lockout during tests
+    // Verification check as a warning in UI rather than hard block
+    /* Removed hard block to allow initial access for auto-generated accounts */
+    /*
     if (!user.email_verified && user.role !== 'admin') {
       console.log(`Login blocked: Email not verified for ${email}`);
       return res.status(401).json({ 
@@ -1257,6 +1259,7 @@ app.post('/api/auth/login', async (req, res) => {
         message: 'Devi verificare la tua email prima di poter accedere. Controlla la tua casella di posta o richiedi un nuovo invio.' 
       });
     }
+    */
 
     console.log(`Login successful: ${email}`);
     // Update login count and last login

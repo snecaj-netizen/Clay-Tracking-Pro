@@ -793,6 +793,30 @@ const App: React.FC = () => {
         onRefreshUser={fetchUserProfile}
       />
 
+      {user && !user.email_verified && user.role !== 'admin' && view !== 'public-portal' && (
+        <div className="fixed top-16 left-0 right-0 z-40 px-4 py-2 bg-orange-600/90 backdrop-blur-md border-b border-orange-500/30 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-500">
+          <i className="fas fa-exclamation-circle text-white text-sm animate-pulse"></i>
+          <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+            {t('email_not_verified_label') || 'Email non verificata'}
+          </span>
+          <button 
+            onClick={() => {
+              // Open profile section in settings or relevant view
+              if (user.role === 'admin' || user.role === 'society') {
+                handleNavigate('settings');
+              } else {
+                handleNavigate('dashboard');
+              }
+              // Dispatch event to open profile modal if exists
+              window.dispatchEvent(new CustomEvent('clay-tracker-open-profile'));
+            }}
+            className="px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-black/10 hover:bg-orange-50 transition-colors"
+          >
+            {t('verify_now') || 'Verifica Ora'}
+          </button>
+        </div>
+      )}
+
       {showLoginModal && (
         <Auth 
           isModal 
