@@ -49,8 +49,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
       roles: ['user', 'admin']
     },
     {
-      id: 'gare',
-      tab: 'risultati',
+      id: 'public-portal',
       label: t('results_portal') || 'Risultati Online',
       icon: 'fa-trophy',
       color: 'bg-slate-800',
@@ -75,7 +74,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
   });
 
   return (
-    <div className="flex-1 overflow-y-auto no-scrollbar pb-12 transition-colors bg-white dark:bg-slate-950">
+    <div className="flex-1 pb-12 transition-colors bg-white dark:bg-slate-950">
       <div className="max-w-md mx-auto px-6 pt-8 flex flex-col min-h-full">
         {/* Logo and Welcome Section */}
         <div className="text-center space-y-4 mb-10">
