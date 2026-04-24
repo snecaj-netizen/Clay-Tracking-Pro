@@ -158,6 +158,7 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
       window.history.pushState({}, '', targetUrl);
       window.dispatchEvent(new PopStateEvent('popstate'));
       setShowDropdown(false);
+      onToggle?.(false);
     } else {
       window.location.href = targetUrl;
     }
@@ -167,6 +168,7 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
     window.history.pushState({}, '', '/notifications');
     window.dispatchEvent(new PopStateEvent('popstate'));
     setShowDropdown(false);
+    onToggle?.(false);
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
