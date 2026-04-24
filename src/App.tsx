@@ -649,6 +649,11 @@ const App: React.FC = () => {
       newView = 'gare';
     }
 
+    if (newView === 'profile' && user?.role === 'society') {
+      newView = 'la-mia-societa';
+      tab = 'profile';
+    }
+
     if (newView === 'la-mia-societa' && tab) {
       setInitialAdminTab(tab);
     } else if (newView === 'la-mia-societa' && user?.role === 'society') {
@@ -793,26 +798,24 @@ const App: React.FC = () => {
         onRefreshUser={fetchUserProfile}
       />
 
-      {user && !user.email_verified && user.role !== 'admin' && view !== 'public-portal' && (
-        <div className="fixed top-16 left-0 right-0 z-40 px-4 py-2 bg-orange-600/90 backdrop-blur-md border-b border-orange-500/30 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-500">
+      {user && !user.email_verified && view !== 'public-portal' && (
+        <div className="fixed top-16 left-0 right-0 z-50 px-4 py-2 bg-orange-600 shadow-xl border-b border-orange-500/30 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-500">
           <i className="fas fa-exclamation-circle text-white text-sm animate-pulse"></i>
           <span className="text-[11px] font-bold text-white uppercase tracking-wider">
-            {t('email_not_verified_label') || 'Email non verificata'}
+            {t('email_not_verified_label')}
           </span>
           <button 
             onClick={() => {
-              // Open profile section in settings or relevant view
-              if (user.role === 'admin' || user.role === 'society') {
-                handleNavigate('settings');
+              if (user.role === 'society') {
+                handleNavigate('la-mia-societa', 'profile');
               } else {
-                handleNavigate('dashboard');
+                handleNavigate('profile');
               }
-              // Dispatch event to open profile modal if exists
               window.dispatchEvent(new CustomEvent('clay-tracker-open-profile'));
             }}
             className="px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-black/10 hover:bg-orange-50 transition-colors"
           >
-            {t('verify_now') || 'Verifica Ora'}
+            {t('verify_label')}
           </button>
         </div>
       )}

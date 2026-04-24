@@ -283,6 +283,8 @@ const translations: Translations = {
   'international_id_label': { it: 'ID Internazionale', en: 'International ID' },
   'original_club_label': { it: 'Club Originale', en: 'Original Club' },
   'email_not_verified_label': { it: 'Email non verificata', en: 'Email not verified' },
+  'verify_now': { it: 'Verifica Ora', en: 'Verify Now' },
+  'verify_label': { it: 'Verifica', en: 'Verify' },
   'language_label': { it: 'Lingua', en: 'Language' },
   'search_user_placeholder': { it: 'Cerca utente per nome o cognome...', en: 'Search user by name or surname...' },
   'filter_role': { it: 'Filtra per Ruolo', en: 'Filter by Role' },

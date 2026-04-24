@@ -93,7 +93,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
           body: JSON.stringify({ email, password }),
         });
 
-        let data = {};
+        let data: any = {};
         const text = await res.text();
         try {
           data = JSON.parse(text);
@@ -127,7 +127,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
           body: JSON.stringify(regData),
         });
 
-        let data;
+        let data: any;
         try {
           data = await res.json();
         } catch (e) {

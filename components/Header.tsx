@@ -286,7 +286,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                     <div className="px-4 py-3 border-b border-slate-800 [.light-theme_&]:border-slate-100 mb-1">
                       <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('account')}</div>
                       <div className="text-sm font-bold text-white [.light-theme_&]:text-slate-900 truncate">{user?.email}</div>
-                      {user && !user.email_verified && user.role !== 'admin' && (
+                      {user && !user.email_verified && (
                         <div className="text-[9px] font-black text-orange-500 uppercase flex items-center gap-1 mt-1 font-mono">
                           <i className="fas fa-exclamation-triangle"></i>
                           {t('email_not_verified_label')}

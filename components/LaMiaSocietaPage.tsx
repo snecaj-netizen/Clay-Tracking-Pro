@@ -22,7 +22,7 @@ interface LaMiaSocietaPageProps {
   setShowTour: any;
   appSettings: any;
   fetchSettings: any;
-  initialTab?: 'results' | 'users' | 'team' | 'halloffame';
+  initialTab?: 'results' | 'users' | 'team' | 'halloffame' | 'profile' | 'settings';
   onToggleFAB?: (hide: boolean) => void;
 }
 
@@ -46,7 +46,7 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
 }) => {
   const { language, t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
-  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach'>(initialTab || 'results');
+  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'team' | 'halloffame' | 'coach' | 'profile' | 'settings'>(initialTab || 'results');
   const [direction, setDirection] = useState(0);
   const [stats, setStats] = useState({ users: 0, teams: 0 });
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -64,9 +64,9 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
     }
   }, [activeTab]);
 
-  const availableTabs: ('results' | 'users' | 'team' | 'halloffame' | 'coach')[] = ['results', 'users', 'team', 'halloffame', 'coach'];
+  const availableTabs: ('results' | 'users' | 'team' | 'halloffame' | 'coach' | 'profile' | 'settings')[] = ['results', 'users', 'team', 'halloffame', 'coach', 'profile', 'settings'];
 
-  const handleTabChange = (newTab: 'results' | 'users' | 'team' | 'halloffame' | 'coach') => {
+  const handleTabChange = (newTab: 'results' | 'users' | 'team' | 'halloffame' | 'coach' | 'profile' | 'settings') => {
     const currentIndex = availableTabs.indexOf(activeTab);
     const nextIndex = availableTabs.indexOf(newTab);
     setDirection(nextIndex > currentIndex ? 1 : -1);
@@ -189,7 +189,13 @@ const LaMiaSocietaPage: React.FC<LaMiaSocietaPageProps> = ({
                 onClick={() => handleTabChange(tab)}
                 className={`flex-1 min-w-[120px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-widest ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
-                {tab === 'results' ? t('results_races_tab') : tab === 'users' ? t('shooters_tab') : tab === 'team' ? t('teams_tab') : tab === 'halloffame' ? t('hall_of_fame_tab_label') : t('coach_ai_tab_label')}
+                {tab === 'results' ? t('results_races_tab') : 
+                 tab === 'users' ? t('shooters_tab') : 
+                 tab === 'team' ? t('teams_tab') : 
+                 tab === 'halloffame' ? t('hall_of_fame_tab_label') : 
+                 tab === 'coach' ? t('coach_ai_tab_label') :
+                 tab === 'profile' ? t('profile') :
+                 t('settings')}
               </button>
             ))}
           </div>
