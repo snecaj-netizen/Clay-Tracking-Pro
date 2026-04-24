@@ -285,6 +285,8 @@ const translations: Translations = {
   'email_not_verified_label': { it: 'Email non verificata', en: 'Email not verified' },
   'verify_now': { it: 'Verifica Ora', en: 'Verify Now' },
   'verify_label': { it: 'Verifica', en: 'Verify' },
+  'resend_verification_btn': { it: 'Reinvia Email per verifica', en: 'Resend Verification Email' },
+  'verification_sent_success': { it: 'Email di verifica inviata con successo!', en: 'Verification email sent successfully!' },
   'language_label': { it: 'Lingua', en: 'Language' },
   'search_user_placeholder': { it: 'Cerca utente per nome o cognome...', en: 'Search user by name or surname...' },
   'filter_role': { it: 'Filtra per Ruolo', en: 'Filter by Role' },

@@ -674,7 +674,35 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('email')}</label>
-                    <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                    <div className="flex gap-2">
+                      <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
+                      {!profileEmailVerified && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/auth/resend-verification', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email: profileEmail })
+                              });
+                              if (res.ok) {
+                                triggerToast(t('verification_sent_success'), 'success');
+                              } else {
+                                const data = await res.json();
+                                triggerToast(data.error || t('error_send_generic'), 'error');
+                              }
+                            } catch (err) {
+                              triggerToast(t('error_send_generic'), 'error');
+                            }
+                          }}
+                          className="px-3 bg-orange-600/10 text-orange-500 hover:bg-orange-600 hover:text-white rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap border border-orange-500/30"
+                        >
+                          <i className="fas fa-paper-plane mr-2"></i>
+                          {t('resend_verification_btn')}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('birth_date')}</label>
