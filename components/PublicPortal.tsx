@@ -217,20 +217,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
 
   return (
     <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 p-4 md:p-8 transition-colors">
-      <div className="max-w-7xl mx-auto mb-12 text-center">
+      <div className="max-w-7xl mx-auto mb-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 mb-6 [.light-theme_&]:bg-orange-500/5 [.light-theme_&]:border-orange-500/10"
+          className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-orange-500/10 border border-orange-500/20 [.light-theme_&]:bg-orange-500/5 [.light-theme_&]:border-orange-500/10"
         >
-          <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">
+          <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
+          <span className="text-sm md:text-lg font-black uppercase tracking-[0.2em] text-orange-500">
             {t('live_results_subtitle')}
           </span>
         </motion.div>
-        <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-4 italic text-white [.light-theme_&]:text-slate-900">
-           {t('results_portal')}
-        </h1>
       </div>
 
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -238,10 +235,10 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         <div className="flex bg-slate-900/50 [.light-theme_&]:bg-slate-200/50 p-1 rounded-2xl border border-slate-800/50 [.light-theme_&]:border-slate-200">
           <button
             onClick={() => setViewMode('ongoing')}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`px-6 py-2 rounded-xl font-black uppercase tracking-widest transition-all ${
               viewMode === 'ongoing' 
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20 text-xs' 
+                : 'text-slate-500 hover:text-slate-300 text-[9px]'
             }`}
           >
             <i className="fas fa-play mr-2"></i>
@@ -249,10 +246,10 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
           </button>
           <button
             onClick={() => setViewMode('past')}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`px-6 py-2 rounded-xl font-black uppercase tracking-widest transition-all ${
               viewMode === 'past' 
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20 text-xs' 
+                : 'text-slate-500 hover:text-slate-300 text-[9px]'
             }`}
           >
             <i className="fas fa-history mr-2"></i>
@@ -365,15 +362,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
             {/* Conditional Section based on viewMode */}
             {viewMode === 'ongoing' ? (
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500">
-                     <i className="fas fa-play text-sm"></i>
-                  </div>
-                  <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight underline decoration-orange-500 decoration-4 underline-offset-8">
-                    {t('ongoing_events')}
-                  </h2>
-                </div>
-  
                 {ongoingSocieties.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {ongoingSocieties.map((soc, idx) => (
@@ -383,19 +371,19 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
                         onClick={() => setSelectedSociety({ name: soc.name, type: 'ongoing' })}
-                        className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-800/50 [.light-theme_&]:border-slate-200 rounded-3xl p-6 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-orange-500/30 transition-all cursor-pointer shadow-xl relative overflow-hidden"
+                        className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-green-500/30 [.light-theme_&]:border-green-500/20 rounded-3xl p-6 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-green-500/50 transition-all cursor-pointer shadow-xl relative overflow-hidden"
                       >
                         <div className="flex items-center justify-between mb-4">
                            <div className="flex flex-col">
-                              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">{soc.region}</span>
-                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-orange-500 transition-colors">{soc.name}</h3>
+                              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">{soc.region}</span>
+                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-green-500 transition-colors">{soc.name}</h3>
                            </div>
-                           <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 group-hover:border-orange-500/50 transition-colors">
-                             <i className="fas fa-chevron-right text-xs text-slate-500 group-hover:text-orange-500"></i>
+                           <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 group-hover:border-green-500/50 transition-colors">
+                             <i className="fas fa-chevron-right text-xs text-slate-500 group-hover:text-green-500"></i>
                            </div>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                          <i className="fas fa-trophy text-orange-500"></i>
+                          <i className="fas fa-trophy text-green-500"></i>
                           <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')} {t('active_competitions')}</span>
                         </div>
                       </motion.div>
@@ -409,15 +397,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
               </section>
             ) : (
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800/50 border border-slate-800 flex items-center justify-center text-slate-500">
-                     <i className="fas fa-history text-sm"></i>
-                  </div>
-                  <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight text-slate-400">
-                    {t('past_events')}
-                  </h2>
-                </div>
-  
                 {pastSocieties.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {pastSocieties.map((soc, idx) => (
@@ -427,14 +406,14 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
                         onClick={() => setSelectedSociety({ name: soc.name, type: 'past' })}
-                        className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-800/50 [.light-theme_&]:border-slate-200 rounded-3xl p-6 hover:border-slate-600 transition-all cursor-pointer shadow-lg grayscale hover:grayscale-0"
+                        className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-700 [.light-theme_&]:border-slate-300 rounded-3xl p-6 hover:border-slate-500 transition-all cursor-pointer shadow-lg grayscale hover:grayscale-0"
                       >
                         <div className="flex items-center justify-between mb-4">
                            <div className="flex flex-col">
                               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{soc.region}</span>
                               <h3 className="text-xl font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors">{soc.name}</h3>
                            </div>
-                           <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 group-hover:border-slate-600 transition-colors">
+                           <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-700 group-hover:border-slate-500 transition-colors">
                              <i className="fas fa-chevron-right text-xs text-slate-600"></i>
                            </div>
                         </div>
