@@ -334,13 +334,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                         <div className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest mb-2">{t('language_label') || 'Lingua'}</div>
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => setLanguage('it')}
+                            onClick={() => { setLanguage('it'); setIsProfileOpen(false); }}
                             className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'it' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 [.light-theme_&]:bg-slate-100 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-slate-200 [.light-theme_&]:hover:text-slate-900'}`}
                           >
                             Italiano
                           </button>
                           <button 
-                            onClick={() => setLanguage('en')}
+                            onClick={() => { setLanguage('en'); setIsProfileOpen(false); }}
                             className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 [.light-theme_&]:bg-slate-100 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-slate-200 [.light-theme_&]:hover:text-slate-900'}`}
                           >
                             English

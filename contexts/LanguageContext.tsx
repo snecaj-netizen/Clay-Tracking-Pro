@@ -300,6 +300,15 @@ const translations: Translations = {
   'export_excel': { it: 'Esporta Excel', en: 'Export Excel' },
 
   // Public Portal
+  'ongoing_events': { it: 'Gare in corso', en: 'Ongoing competitions' },
+  'past_events': { it: 'Gare passate', en: 'Past competitions' },
+  'active_competitions': { it: 'Gare attive', en: 'Active competitions' },
+  'back_to_results': { it: 'Torna ai risultati', en: 'Back to results' },
+  'back_to_societies': { it: 'Torna all\'elenco società', en: 'Back to clubs list' },
+  'events_at_society': { it: 'Gare presso', en: 'Competitions at' },
+  'error_loading': { it: 'Errore nel caricamento', en: 'Loading error' },
+  'show_filters': { it: 'Mostra Filtri', en: 'Show Filters' },
+  'hide_filters': { it: 'Nascondi Filtri', en: 'Hide Filters' },
   'portal_title': { it: 'Risultati Competizioni Online', en: 'Online Competition Results' },
   'portal_subtitle': { it: 'Gare Attive e Risultati in Tempo Reale', en: 'Active Competitions and Real-time Results' },
   'live_results_subtitle': { it: 'Risultati Live Clay Performance', en: 'Clay Performance Live Results' },
@@ -480,7 +489,6 @@ const translations: Translations = {
   'user_management_title': { it: 'Gestione Utenti', en: 'User Management' },
   'your_shooters_title': { it: 'I tuoi Tiratori', en: 'Your Shooters' },
   'search_events': { it: 'Ricerca gare...', en: 'Search competitions...' },
-  'ongoing_events': { it: 'Gare in corso o concluse', en: 'Ongoing or finished competitions' },
   'reg_open': { it: 'Iscrizioni Aperte', en: 'Registration Open' },
   'results': { it: 'Risultati', en: 'Results' },
   'register': { it: 'Iscriviti', en: 'Register' },
