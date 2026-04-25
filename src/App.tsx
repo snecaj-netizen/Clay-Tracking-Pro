@@ -173,100 +173,109 @@ const App: React.FC = () => {
   const [gareCreateEvent, setGareCreateEvent] = useState<number>(0);
   
   // Handle deep links from notifications and browser history
-  useEffect(() => {
-    // Initialize browser history state if it doesn't exist
-    if (!window.history.state || window.history.state.index === undefined) {
-      window.history.replaceState({ view, tab: null, index: 0 }, '', window.location.pathname + window.location.search);
-    }
-
-    const handleNavigation = (event?: PopStateEvent) => {
-      // If triggered by popstate (browser back/forward), use the state object
-      if (event && event.state && event.state.view) {
-        let { view: newView, tab, index } = event.state;
-        
-        if (newView === 'le-tue-gare' && user?.role === 'society') {
-          newView = 'gare';
-        }
-
-        if (newView === 'la-mia-societa' && tab) {
-          setInitialAdminTab(tab);
-        } else if (newView === 'la-mia-societa' && user?.role === 'society') {
-          setInitialAdminTab('users');
-        } else if (newView === 'admin-events') {
-          setInitialAdminTab('event-results');
-          setInitialEventViewMode('managed');
-        } else if (newView === 'admin-control') {
-          setInitialAdminTab('event-control');
-        } else {
-          setInitialAdminTab(null);
-          setInitialEventViewMode(null);
-        }
-
-        if (newView === 'gare' && tab) {
-          setInitialViewMode(tab);
-        } else {
-          setInitialViewMode(null);
-        }
-        
-        if (newView !== 'societies' && newView !== 'la-mia-societa') {
-          setInitialSocietyName(null);
-        }
-        
-        setPreviousView(null);
-        if (newView === 'le-tue-gare' && tab) {
-          setLeTueGareTab(tab);
-        }
-
-        setView(newView);
-        
-        // Sync internal index for desktop buttons
-        if (index !== undefined) {
-          setHistoryIndex(index);
-        }
-        return;
+    const isFirstMount = React.useRef(true);
+    useEffect(() => {
+      // Initialize browser history state if it doesn't exist
+      if (!window.history.state || window.history.state.index === undefined) {
+        window.history.replaceState({ view, tab: null, index: 0 }, '', window.location.pathname + window.location.search);
       }
+  
+      const handleNavigation = (event?: PopStateEvent) => {
+        // If triggered by popstate (browser back/forward), use the state object
+        if (event && event.state && event.state.view) {
+          let { view: newView, tab, index } = event.state;
+          
+          if (newView === 'le-tue-gare' && user?.role === 'society') {
+            newView = 'gare';
+          }
+  
+          if (newView === 'la-mia-societa' && tab) {
+            setInitialAdminTab(tab);
+          } else if (newView === 'la-mia-societa' && user?.role === 'society') {
+            setInitialAdminTab('users');
+          } else if (newView === 'admin-events') {
+            setInitialAdminTab('event-results');
+            setInitialEventViewMode('managed');
+          } else if (newView === 'admin-control') {
+            setInitialAdminTab('event-control');
+          } else {
+            setInitialAdminTab(null);
+            setInitialEventViewMode(null);
+          }
+  
+          if (newView === 'gare' && tab) {
+            setInitialViewMode(tab);
+          } else {
+            setInitialViewMode(null);
+          }
+          
+          if (newView !== 'societies' && newView !== 'la-mia-societa') {
+            setInitialSocietyName(null);
+          }
+          
+          setPreviousView(null);
+          if (newView === 'le-tue-gare' && tab) {
+            setLeTueGareTab(tab);
+          }
+  
+          setView(newView);
+          
+          // Sync internal index for desktop buttons
+          if (index !== undefined) {
+            setHistoryIndex(index);
+          }
+          return;
+        }
+  
+        // Fallback for deep links (initial load or external links)
+        // CRITICAL: only run if we are not in a transient state like 'new' 
+        // and only on first mount or if it's a real navigation event (which it's not here as event is undefined)
+        if (view === 'new' || view === 'profile' || view === 'settings') return;
 
-      // Fallback for deep links (initial load or external links)
-      const path = window.location.pathname;
-      const searchParams = new URLSearchParams(window.location.search);
+        const path = window.location.pathname;
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        if (path === '/le-tue-gare') {
+          setView('le-tue-gare');
+        } else if (path === '/home') {
+          setView('home');
+        } else if (path === '/portal' || path === '/public-portal') {
+          setView('public-portal');
+        } else if (path === '/admin/events') {
+          setView('admin-events');
+        } else if (path === '/admin/control') {
+          setView('admin-control');
+        } else if (path === '/gare') {
+          setView('gare');
+          const id = searchParams.get('id');
+          if (id) {
+            setInitialEventId(id);
+          }
+        } else if (path === '/la-mia-societa') {
+          setView('la-mia-societa');
+          const tab = searchParams.get('tab');
+          if (tab) {
+            setInitialAdminTab(tab);
+          }
+        } else if (path === '/profile') {
+          setView('profile');
+        } else if (path === '/settings') {
+          setView('settings');
+        } else if (path === '/notifications') {
+          setView('notifications');
+        } else if (path.toLowerCase().includes('/portal') || path.toLowerCase().includes('/risultati')) {
+          setView('public-portal');
+        }
+      };
+  
+      if (isFirstMount.current) {
+        handleNavigation();
+        isFirstMount.current = false;
+      }
       
-      if (path === '/le-tue-gare') {
-        setView('le-tue-gare');
-      } else if (path === '/home') {
-        setView('home');
-      } else if (path === '/portal' || path === '/public-portal') {
-        setView('public-portal');
-      } else if (path === '/admin/events') {
-        setView('admin-events');
-      } else if (path === '/admin/control') {
-        setView('admin-control');
-      } else if (path === '/gare') {
-        setView('gare');
-        const id = searchParams.get('id');
-        if (id) {
-          setInitialEventId(id);
-        }
-      } else if (path === '/la-mia-societa') {
-        setView('la-mia-societa');
-        const tab = searchParams.get('tab');
-        if (tab) {
-          setInitialAdminTab(tab);
-        }
-      } else if (path === '/profile') {
-        setView('profile');
-      } else if (path === '/settings') {
-        setView('settings');
-      } else if (path === '/notifications') {
-        setView('notifications');
-      } else if (path.toLowerCase().includes('/portal') || path.toLowerCase().includes('/risultati')) {
-        setView('public-portal');
-      }
-    };
-
-    handleNavigation();
-    window.addEventListener('popstate', handleNavigation);
-    return () => window.removeEventListener('popstate', handleNavigation);
-  }, [user]);
+      window.addEventListener('popstate', handleNavigation);
+      return () => window.removeEventListener('popstate', handleNavigation);
+    }, [user, view]);
 
   // Fetch data from API
   const fetchData = useCallback(async (signal?: AbortSignal) => {

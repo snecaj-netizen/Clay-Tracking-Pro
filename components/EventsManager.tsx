@@ -956,15 +956,18 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     fetchEvents(controller.signal);
 
     // Auto-refresh events list every 60 seconds to keep data updated
+    // Only refresh if no form or modal is open to avoid unexpected UI resets
     const intervalId = setInterval(() => {
-      fetchEvents();
+      if (!showForm && !editingEvent && !selectedEvent && !managingResultsEvent && !managingSquadsEvent && !registeringEvent && !managingEventDetail) {
+        fetchEvents();
+      }
     }, 60000);
 
     return () => {
       controller.abort();
       clearInterval(intervalId);
     };
-  }, [token]);
+  }, [token, showForm, editingEvent, selectedEvent, managingResultsEvent, managingSquadsEvent, registeringEvent, managingEventDetail]);
 
   useEffect(() => {
     if (managingResultsEvent) {

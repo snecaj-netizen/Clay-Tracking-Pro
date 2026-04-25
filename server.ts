@@ -667,15 +667,16 @@ const initDB = async () => {
       const hash = bcrypt.hashSync('admin', salt);
       await pool.query(
         "INSERT INTO users (name, surname, email, password, role, email_verified) VALUES ($1, $2, $3, $4, $5, $6)",
-        ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin', false]
+        ['Admin', 'User', 'snecaj@gmail.com', hash, 'admin', true]
       );
-      console.log("✅ Default admin user created: snecaj@gmail.com / admin (unverified)");
+      console.log("✅ Default admin user created: snecaj@gmail.com / admin (verified)");
     } else {
-      // One-time manual reset as requested by user
-      const salt = bcrypt.genSaltSync(10);
-      const hash = bcrypt.hashSync('admin', salt);
-      await pool.query("UPDATE users SET password = $1, email_verified = false WHERE email = $2", [hash, 'snecaj@gmail.com']);
-      console.log("✅ Admin password reset to 'admin' and email_verified set to false for testing");
+      // Admin exists, ensure it is verified if it's the master admin
+      if (rows[0].email === 'snecaj@gmail.com' && !rows[0].email_verified) {
+        await pool.query("UPDATE users SET email_verified = true WHERE email = $1", ['snecaj@gmail.com']);
+        console.log("✅ Master admin email verified automatically.");
+      }
+      console.log("✅ Admin user verified in database.");
     }
 
     // Reset admin notifications and settings as requested (one-time)
@@ -1333,6 +1334,10 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   const finalQualification = getAutoQualification(birth_date, qualification);
 
   try {
+    const existingUserRes = await pool.query("SELECT email_verified FROM users WHERE id = $1", [req.user.id]);
+    const currentEmailVerified = existingUserRes.rows[0]?.email_verified || false;
+    const targetEmailVerified = email_verified !== undefined ? !!email_verified : currentEmailVerified;
+
     if (password) {
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
@@ -1348,7 +1353,7 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
           nationality || null, international_id || null, original_club || null,
-          !!email_verified
+          targetEmailVerified
         ]
       );
     } else {
@@ -1364,7 +1369,7 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
           nationality || null, international_id || null, original_club || null,
-          !!email_verified
+          targetEmailVerified
         ]
       );
     }
@@ -1983,9 +1988,11 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
   }
 
   try {
-    const userCheck = await pool.query("SELECT role, society FROM users WHERE id = $1", [req.params.id]);
+    const userCheck = await pool.query("SELECT role, society, email_verified FROM users WHERE id = $1", [req.params.id]);
     if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
+    const targetEmailVerified = email_verified !== undefined ? !!email_verified : userCheck.rows[0].email_verified;
+
     if (req.user.role === 'society') {
       if (userCheck.rows[0].role === 'admin') {
         return res.status(403).json({ error: 'Le società non possono modificare gli amministratori' });
@@ -2008,7 +2015,7 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
         "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18 WHERE id = $19",
         [
           name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
-          !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
+          !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
           req.params.id
         ]
       );
@@ -2017,7 +2024,7 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
         "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17 WHERE id = $18",
         [
           name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
-          !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
+          !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
           req.params.id
         ]
       );
@@ -4378,6 +4385,7 @@ const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: 
 };
 // Public endpoints for results portal
 app.get('/api/public/events', async (req, res) => {
+  console.log(`[${new Date().toISOString()}] PUBLIC FETCH: GET /api/public/events from ${req.ip}`);
   try {
     const { rows: events } = await pool.query(
       `SELECT e.*, 
@@ -4387,9 +4395,11 @@ app.get('/api/public/events', async (req, res) => {
        WHERE COALESCE(is_public, FALSE) = TRUE
        ORDER BY start_date DESC`
     );
+    console.log(`[${new Date().toISOString()}] PUBLIC FETCH: Success, found ${events.length} events`);
     res.json(events);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error(`[${new Date().toISOString()}] PUBLIC FETCH ERROR:`, err);
+    res.status(500).json({ error: 'Failed to fetch public events', details: err.message });
   }
 });
 

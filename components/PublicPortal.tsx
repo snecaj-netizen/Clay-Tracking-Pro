@@ -24,20 +24,27 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
   const [selectedDiscipline, setSelectedDiscipline] = useState('');
   const [viewingEvent, setViewingEvent] = useState<SocietyEvent | null>(null);
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchPublicEvents();
   }, []);
 
   const fetchPublicEvents = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/public/events');
       if (res.ok) {
         const data = await res.json();
         setEvents(data);
+      } else {
+        const errData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+        setError(`${t('error_fetching_public_events')}: ${errData.error || res.statusText}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching public events:', err);
+      setError(`${t('error_fetching_public_events')}: ${err.message || 'Failed to fetch'}`);
     } finally {
       setLoading(false);
     }
@@ -171,6 +178,20 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-xs font-black uppercase tracking-widest text-slate-500">{t('loading_events')}</span>
+          </div>
+        ) : error ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-12 text-center shadow-xl">
+             <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6 text-red-500">
+              <i className="fas fa-exclamation-triangle text-2xl"></i>
+            </div>
+            <h3 className="text-lg font-black uppercase mb-2 text-white">{t('error_loading')}</h3>
+            <p className="text-slate-400 text-sm mb-6">{error}</p>
+            <button 
+              onClick={fetchPublicEvents}
+              className="px-6 py-2 bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-orange-600/20"
+            >
+              {t('retry')}
+            </button>
           </div>
         ) : filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -75,7 +75,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
 
   return (
     <div className="flex-1 pb-12 transition-colors bg-white dark:bg-slate-950">
-      <div className="max-w-md mx-auto px-6 pt-8 flex flex-col min-h-full">
+      <div className="max-w-md mx-auto px-2 sm:px-6 pt-8 flex flex-col min-h-full">
         {/* Logo and Welcome Section */}
         <div className="text-center space-y-4 mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-600 rounded-2xl shadow-2xl shadow-orange-600/20 transform -rotate-6 animate-in zoom-in duration-700">
@@ -97,7 +97,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
             <button
               key={`${btn.id}-${idx}`}
               onClick={() => onNavigate(btn.id, btn.tab)}
-              className="group relative flex items-center gap-5 w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-orange-500/30 hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
+              className="group relative flex items-center gap-5 w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-300/80 dark:border-slate-700/80 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-orange-500/50 hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
             >
               <div className={`w-12 h-12 rounded-xl ${btn.color} flex items-center justify-center text-white text-lg shadow-md group-hover:scale-110 transition-transform`}>
                 <i className={`fas ${btn.icon}`}></i>
