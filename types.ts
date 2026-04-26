@@ -187,6 +187,7 @@ export interface SocietyEvent {
   is_next?: boolean;
   is_public?: boolean;
   region?: string;
+  society_code?: string;
 }
 
 export interface PrizeSetting {

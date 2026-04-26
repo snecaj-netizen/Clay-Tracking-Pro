@@ -31,7 +31,119 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
 
   useEffect(() => {
     fetchPublicEvents();
+    // Ensure we have a valid initial state for this portal if we don't have one
+    if (!window.history.state || window.history.state.view !== 'public-portal') {
+      window.history.replaceState({ view: 'public-portal', portalView: 'home' }, '');
+    }
   }, []);
+
+  useEffect(() => {
+    // Support browser back/forward buttons
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state;
+      console.log('PopState event:', state);
+
+      if (state && state.view === 'public-portal') {
+        if (state.portalView === 'home') {
+          setViewingEvent(null);
+          setSelectedSociety(null);
+        } else if (state.portalView === 'society') {
+          setViewingEvent(null);
+          setSelectedSociety({ name: state.name, type: state.type });
+        } else if (state.portalView === 'event') {
+          if (events.length > 0) {
+            const found = events.find(ev => ev.id === state.eventId);
+            if (found) {
+              setViewingEvent(found);
+              setSelectedSociety(null);
+            }
+          } else {
+            // If events not loaded yet, we'll wait for them
+            // But we can set a temporary placeholder ID to catch it when they load
+             setViewingEvent({ id: state.eventId } as any);
+             setSelectedSociety(null);
+          }
+        }
+      } else if (!state || (state.view !== 'public-portal' && !state.portalView)) {
+        // Handle physical back from portal to whatever was before
+        setViewingEvent(null);
+        setSelectedSociety(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [events]);
+
+  // Handle catching the event after it loads if we only had the ID from popstate
+  useEffect(() => {
+    if (viewingEvent && !viewingEvent.name && events.length > 0) {
+      const found = events.find(ev => ev.id === viewingEvent.id);
+      if (found) setViewingEvent(found);
+    }
+  }, [events, viewingEvent]);
+
+  // Scroll to top on navigation
+  useEffect(() => {
+    if (selectedSociety || viewingEvent) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [selectedSociety, viewingEvent]);
+
+  const handleSelectSociety = (name: string, type: 'ongoing' | 'past') => {
+    setSelectedSociety({ name, type });
+    window.history.pushState({ view: 'public-portal', portalView: 'society', name, type }, '');
+  };
+
+  const handleSelectEvent = (event: SocietyEvent) => {
+    setViewingEvent(event);
+    window.history.pushState({ view: 'public-portal', portalView: 'event', eventId: event.id }, '');
+  };
+
+  const handleBackFromEvent = () => {
+    setViewingEvent(null);
+    // Only go back if the current history state is indeed the event
+    if (window.history.state?.portalView === 'event') {
+      window.history.back();
+    }
+  };
+
+  const handleBackFromSociety = () => {
+    setViewingEvent(null);
+    setSelectedSociety(null);
+    // Only go back if the current history state is indeed the society
+    if (window.history.state?.portalView === 'society') {
+      window.history.back();
+    }
+  };
+
+  const NavigationControls = React.memo(() => (
+    <div className="hidden md:block sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md [.light-theme_&]:bg-white/80 border-b border-slate-900 [.light-theme_&]:border-slate-200 px-4 py-3">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => window.history.back()}
+            className="w-10 h-10 rounded-full bg-slate-900 [.light-theme_&]:bg-slate-100 flex items-center justify-center hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-200 transition-colors border border-slate-800 [.light-theme_&]:border-slate-200 cursor-pointer shadow-sm active:scale-95 group"
+            title={t('back')}
+          >
+            <i className="fas fa-chevron-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
+          </button>
+          <button 
+            onClick={() => window.history.forward()}
+            className="w-10 h-10 rounded-full bg-slate-900 [.light-theme_&]:bg-slate-100 flex items-center justify-center hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-200 transition-colors border border-slate-800 [.light-theme_&]:border-slate-200 cursor-pointer shadow-sm active:scale-95 group"
+            title={t('forward')}
+          >
+            <i className="fas fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('live_results_subtitle')}</span>
+           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+        </div>
+        <div className="w-20" />
+      </div>
+    </div>
+  ));
 
   const fetchPublicEvents = async () => {
     setLoading(true);
@@ -42,12 +154,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         const data = await res.json();
         setEvents(data);
       } else {
-        const errData = await res.json().catch(() => ({ error: 'Unknown server error' }));
-        setError(`${t('error_fetching_public_events')}: ${errData.error || res.statusText}`);
+        const errData = await res.json().catch(() => ({ error: 'Unknown server error', details: '' }));
+        const errorMessage = errData.details ? `${errData.error}: ${errData.details}` : (errData.error || res.statusText);
+        setError(`${t('error_fetching_public_events')}: ${errorMessage}`);
       }
     } catch (err: any) {
       console.error('Error fetching public events:', err);
-      setError(`${t('error_fetching_public_events')}: ${err.message || 'Failed to fetch'}`);
+      // Detailed error for "Failed to fetch" which is usually a network error
+      const detail = err.message === 'Failed to fetch' 
+        ? 'Network error - check if server is running or if request is blocked.' 
+        : err.message;
+      setError(`${t('error_fetching_public_events')}: ${detail}`);
     } finally {
       setLoading(false);
     }
@@ -79,14 +196,15 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
   };
 
   const groupEventsBySociety = (eventList: SocietyEvent[]) => {
-    const groups: { [key: string]: { name: string, region: string, count: number } } = {};
+    const groups: { [key: string]: { name: string, region: string, count: number, code?: string } } = {};
     
     eventList.forEach(event => {
       if (!groups[event.location]) {
         groups[event.location] = {
           name: event.location,
           region: event.region || t('unspecified'),
-          count: 0
+          count: 0,
+          code: event.society_code
         };
       }
       groups[event.location].count++;
@@ -99,39 +217,69 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
     });
   };
 
+  const handleDragEnd = (_: any, info: any) => {
+    // Only detect swipes on x axis with enough velocity or distance
+    if (info.offset.x > 50 || info.velocity.x > 500) { 
+      if (viewingEvent) handleBackFromEvent();
+      else if (selectedSociety) handleBackFromSociety();
+    }
+  };
+
   if (viewingEvent) {
     return (
-      <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 p-4 transition-colors">
-        <button 
-          onClick={() => setViewingEvent(null)}
-          className="mb-6 flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors"
-        >
-          <i className="fas fa-arrow-left"></i>
-          <span className="text-sm font-bold uppercase tracking-widest">{t('back_to_results')}</span>
-        </button>
-        
-        <div className="bg-slate-900/50 [.light-theme_&]:bg-white border border-slate-800 [.light-theme_&]:border-slate-200 rounded-3xl overflow-hidden shadow-2xl transition-colors">
-          <EventResultsManager 
-            event={viewingEvent} 
-            token={token || ''} 
-            readOnly={true} 
-            user={null}
-            onClose={() => setViewingEvent(null)}
-          />
+      <motion.div 
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
+      >
+        <NavigationControls />
+
+        <div className="p-4 md:p-8">
+          <div className="flex items-center gap-4 mb-6">
+            <button 
+              onClick={handleBackFromEvent}
+              className="flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors bg-slate-900/40 [.light-theme_&]:bg-slate-200 px-4 py-2 rounded-xl"
+            >
+              <i className="fas fa-arrow-left"></i>
+              <span className="text-sm font-bold uppercase tracking-widest">{t('back_to_results')}</span>
+            </button>
+          </div>
+          
+          <div className={`bg-slate-900/50 [.light-theme_&]:bg-white border rounded-3xl overflow-hidden shadow-2xl transition-colors ${viewMode === 'ongoing' ? 'border-green-500/30' : 'border-slate-700'}`}>
+            <EventResultsManager 
+              event={viewingEvent} 
+              token={token || ''} 
+              readOnly={true} 
+              user={null}
+              onClose={handleBackFromEvent}
+            />
+          </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   if (selectedSociety) {
     const list = selectedSociety.type === 'ongoing' ? ongoingEvents : pastEvents;
     const filteredList = filterEvents(list.filter(e => e.location === selectedSociety.name));
+    const borderColor = selectedSociety.type === 'ongoing' ? 'border-green-500/30' : 'border-slate-700';
 
     return (
-      <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 p-4 md:p-8 transition-colors">
+      <motion.div 
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
+      >
+        <NavigationControls />
+
+        <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <button 
-            onClick={() => setSelectedSociety(null)}
+            onClick={handleBackFromSociety}
             className="mb-8 flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors bg-slate-900/40 [.light-theme_&]:bg-slate-100 px-4 py-2 rounded-xl"
           >
             <i className="fas fa-arrow-left"></i>
@@ -140,84 +288,95 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
 
           <div className="mb-12">
              <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic mb-2">
-               {t('events_at_society')} <span className="text-orange-500">{selectedSociety.name}</span>
+               {t('events_at_society')} <span className="text-orange-500">{(selectedSociety as any).code ? `${(selectedSociety as any).code} - ` : ''}{selectedSociety.name}</span>
              </h2>
              <span className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em]">
                {selectedSociety.type === 'ongoing' ? t('ongoing_events') : t('past_events')}
              </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredList.map((event, idx) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -5 }}
                 transition={{ delay: idx * 0.05 }}
-                onClick={() => setViewingEvent(event)}
-                className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-800/50 [.light-theme_&]:border-slate-200 rounded-3xl p-6 hover:border-orange-500/20 transition-all cursor-pointer relative overflow-hidden shadow-xl"
+                onClick={() => handleSelectEvent(event)}
+                className="group bg-white/70 backdrop-blur-sm [.dark-theme_&]:bg-slate-900 border border-slate-200/60 [.dark-theme_&]:border-slate-800 rounded-2xl p-5 hover:shadow-2xl transition-all cursor-pointer relative flex flex-col shadow-sm"
               >
-                <div className="absolute top-4 right-4">
-                  <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                    event.status === 'validated' ? 'bg-green-500/20 text-green-500' : 'bg-orange-500/20 text-orange-500 animate-pulse'
+                <div className="flex justify-between items-start mb-3">
+                  <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                    event.status === 'validated' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 animate-bounce'
                   }`}>
                     {event.status === 'validated' ? t('finished_label') : t('live_label')}
-                  </span>
+                  </div>
+                  {event.society_code && (
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      TAV: {event.society_code}
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 shrink-0">
-                      <i className={`fas ${event.type === 'Internazionale' ? 'fa-globe' : 'fa-trophy'} text-xl`}></i>
+                <h3 className="text-lg md:text-xl font-black uppercase leading-tight mb-3 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
+                  {event.name}
+                </h3>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 flex-grow text-[10px] text-slate-500 [.dark-theme_&]:text-slate-400 font-bold uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 min-w-max">
+                    <i className="far fa-calendar text-[9px]"></i>
+                    <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">
+                      {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')} - {new Date(event.end_date || event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 min-w-max border-l border-slate-200 [.dark-theme_&]:border-slate-800 pl-4">
+                    <i className="fas fa-crosshairs text-[9px]"></i>
+                    <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">{t(event.discipline)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 [.dark-theme_&]:border-slate-800/50 pt-4">
+                  <div className="flex items-center gap-4 text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <i className="fas fa-bullseye text-[9px]"></i>
+                      <span className="text-[9px] font-black">{event.targets}</span>
                     </div>
-                    <div className="flex flex-col">
-                      <h3 className="text-lg font-black uppercase leading-tight group-hover:text-orange-500 transition-colors">
-                        {event.name}
-                      </h3>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        {event.location}
-                      </span>
+                    <div className="flex items-center gap-1.5">
+                      <i className="fas fa-users text-[9px]"></i>
+                      <span className="text-[9px] font-black">{event.result_count || 0}</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-950/50 [.light-theme_&]:bg-slate-50 rounded-2xl p-3 border border-slate-800/50">
-                      <span className="text-[8px] font-black text-slate-500 uppercase block mb-1">{t('discipline')}</span>
-                      <span className="text-[10px] font-bold truncate block">{t(event.discipline)}</span>
-                    </div>
-                    <div className="bg-slate-950/50 [.light-theme_&]:bg-slate-50 rounded-2xl p-3 border border-slate-800/50">
-                      <span className="text-[8px] font-black text-slate-500 uppercase block mb-1">{t('targets')}</span>
-                      <span className="text-[10px] font-bold block">{event.targets} DT</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
-                    <div className="flex items-center gap-2">
-                      <i className="far fa-calendar text-[10px] text-slate-500"></i>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400">
-                      <i className="fas fa-users"></i>
-                      <span>{event.result_count || 0}</span>
-                    </div>
-                  </div>
+                  <button className="bg-orange-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 group-hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/20 active:scale-95">
+                    <i className="fas fa-eye text-[10px]"></i>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{t('view_button')}</span>
+                  </button>
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
       </div>
-    );
-  }
+    </motion.div>
+  );
+}
 
   const ongoingSocieties = groupEventsBySociety(filterEvents(ongoingEvents));
   const pastSocieties = groupEventsBySociety(filterEvents(pastEvents));
 
   return (
-    <div className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 p-4 md:p-8 transition-colors">
-      <div className="max-w-7xl mx-auto mb-6 text-center">
+      <motion.div 
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
+      >
+        <NavigationControls />
+
+        <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto mb-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -370,13 +529,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
-                        onClick={() => setSelectedSociety({ name: soc.name, type: 'ongoing' })}
+                        onClick={() => handleSelectSociety(soc.name, 'ongoing')}
                         className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-green-500/30 [.light-theme_&]:border-green-500/20 rounded-3xl p-6 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-green-500/50 transition-all cursor-pointer shadow-xl relative overflow-hidden"
                       >
                         <div className="flex items-center justify-between mb-4">
                            <div className="flex flex-col">
-                              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">{soc.region}</span>
-                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-green-500 transition-colors">{soc.name}</h3>
+                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-green-500 transition-colors">
+                                {soc.code ? `${soc.code} - ` : ''}{soc.name}
+                              </h3>
+                              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest mt-1">
+                                {t('region_label')}: {soc.region}
+                              </span>
                            </div>
                            <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 group-hover:border-green-500/50 transition-colors">
                              <i className="fas fa-chevron-right text-xs text-slate-500 group-hover:text-green-500"></i>
@@ -384,7 +547,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                           <i className="fas fa-trophy text-green-500"></i>
-                          <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')} {t('active_competitions')}</span>
+                          <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')}</span>
                         </div>
                       </motion.div>
                     ))}
@@ -405,13 +568,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
-                        onClick={() => setSelectedSociety({ name: soc.name, type: 'past' })}
+                        onClick={() => handleSelectSociety(soc.name, 'past')}
                         className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-700 [.light-theme_&]:border-slate-300 rounded-3xl p-6 hover:border-slate-500 transition-all cursor-pointer shadow-lg grayscale hover:grayscale-0"
                       >
                         <div className="flex items-center justify-between mb-4">
                            <div className="flex flex-col">
-                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{soc.region}</span>
-                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors">{soc.name}</h3>
+                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors">
+                                {soc.code ? `${soc.code} - ` : ''}{soc.name}
+                              </h3>
+                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">
+                                {t('region_label')}: {soc.region}
+                              </span>
                            </div>
                            <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-700 group-hover:border-slate-500 transition-colors">
                              <i className="fas fa-chevron-right text-xs text-slate-600"></i>
@@ -419,7 +586,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                           <i className="fas fa-calendar-check opacity-50"></i>
-                          <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')} {t('concluded')}</span>
+                          <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')}</span>
                         </div>
                       </motion.div>
                     ))}
@@ -435,6 +602,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         )}
       </div>
     </div>
+  </motion.div>
   );
 };
 

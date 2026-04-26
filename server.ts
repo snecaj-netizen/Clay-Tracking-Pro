@@ -4385,21 +4385,38 @@ const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: 
 };
 // Public endpoints for results portal
 app.get('/api/public/events', async (req, res) => {
-  console.log(`[${new Date().toISOString()}] PUBLIC FETCH: GET /api/public/events from ${req.ip}`);
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH: GET /api/public/events from ${req.ip}`);
   try {
-    const { rows: events } = await pool.query(
-      `SELECT e.*, 
+    const query = `
+      SELECT 
+        e.*, 
         (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.id) as registration_count,
-        (SELECT COUNT(*) FROM competitions WHERE event_id = e.id) as result_count
-       FROM events e 
-       WHERE COALESCE(is_public, FALSE) = TRUE
-       ORDER BY start_date DESC`
-    );
-    console.log(`[${new Date().toISOString()}] PUBLIC FETCH: Success, found ${events.length} events`);
+        (SELECT COUNT(*) FROM competitions WHERE event_id = e.id) as result_count,
+        s.code as society_code,
+        u.name as creator_name
+      FROM events e 
+      LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name))
+      WHERE COALESCE(e.is_public, FALSE) = TRUE
+      ORDER BY e.start_date DESC
+    `;
+    
+    const { rows: events } = await pool.query(query);
+    console.log(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH: Success, found ${events.length} events`);
     res.json(events);
   } catch (err: any) {
-    console.error(`[${new Date().toISOString()}] PUBLIC FETCH ERROR:`, err);
-    res.status(500).json({ error: 'Failed to fetch public events', details: err.message });
+    console.error(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH ERROR:`, {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch public events', 
+      details: err.message,
+      code: err.code 
+    });
   }
 });
 
