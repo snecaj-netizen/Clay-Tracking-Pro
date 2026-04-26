@@ -4391,8 +4391,6 @@ app.get('/api/public/events', async (req, res) => {
     const query = `
       SELECT 
         e.*, 
-        (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.id) as registration_count,
-        (SELECT COUNT(*) FROM competitions WHERE event_id = e.id) as result_count,
         s.code as society_code,
         u.name as creator_name
       FROM events e 
@@ -4402,8 +4400,9 @@ app.get('/api/public/events', async (req, res) => {
       ORDER BY e.start_date DESC
     `;
     
+    console.log(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH: Executing query...`);
     const { rows: events } = await pool.query(query);
-    console.log(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH: Success, found ${events.length} events`);
+    console.log(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH: Query executed, found ${events.length} rows`);
     res.json(events);
   } catch (err: any) {
     console.error(`[${new Date().toISOString()}] [${requestId}] PUBLIC FETCH ERROR:`, {
@@ -4412,6 +4411,7 @@ app.get('/api/public/events', async (req, res) => {
       code: err.code,
       detail: err.detail
     });
+    // Send a clearer message to the client
     res.status(500).json({ 
       error: 'Failed to fetch public events', 
       details: err.message,
@@ -5217,7 +5217,7 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
 
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
-  const buildPath = path.resolve(process.cwd(), 'build');
+  const buildPath = path.resolve(process.cwd(), 'dist');
 
   if (!isProd) {
     try {
@@ -5252,7 +5252,7 @@ async function setupVite(app: any) {
 }
 
 function serveStatic(app: any) {
-  const buildPath = path.resolve(process.cwd(), 'build');
+  const buildPath = path.resolve(process.cwd(), 'dist');
   app.use(express.static(buildPath));
   app.use((req: any, res: any) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));

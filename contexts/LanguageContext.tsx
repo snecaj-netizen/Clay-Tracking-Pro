@@ -318,6 +318,7 @@ const translations: Translations = {
   'finished': { it: 'Conclusa', en: 'Finished' },
   'targets': { it: 'Piattelli', en: 'Targets' },
   'no_public_events_matching': { it: 'Non ci sono gare pubbliche che corrispondono ai filtri selezionati.', en: 'There are no public competitions matching the selected filters.' },
+  'refresh': { it: 'Aggiorna', en: 'Refresh' },
   'dal': { it: 'dal', en: 'from' },
   'al': { it: 'al', en: 'to' },
   'view_button': { it: 'Visualizza', en: 'View' },

@@ -1746,6 +1746,20 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             )}
           </div>
         </div>
+
+        {/* Floating Refresh Button */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1050]">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => fetchResultsAndTeams(false)}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900/90 [.light-theme_&]:bg-slate-100/95 backdrop-blur-md border border-slate-800/50 [.light-theme_&]:border-slate-300 shadow-2xl text-slate-300 [.light-theme_&]:text-slate-800 hover:text-white [.light-theme_&]:hover:text-black transition-all font-bold uppercase tracking-widest text-[10px]"
+          >
+            <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
+            <span>{loading ? t('loading_short') : t('refresh')}</span>
+          </motion.button>
+        </div>
       </div>
       {/* PDF Preview Modal */}
       <AnimatePresence>

@@ -139,6 +139,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         <div className="flex items-center gap-3">
            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('live_results_subtitle')}</span>
            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+           <button 
+             onClick={(e) => {
+               e.stopPropagation();
+               fetchPublicEvents();
+             }}
+             disabled={loading}
+             className="ml-2 w-8 h-8 rounded-lg bg-slate-900 [.light-theme_&]:bg-slate-100 flex items-center justify-center text-white [.light-theme_&]:text-slate-900 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-200 transition-colors border border-slate-800 [.light-theme_&]:border-slate-200 shadow-sm active:scale-90 disabled:opacity-50"
+             title={t('refresh')}
+           >
+             <i className={`fas fa-sync-alt text-[10px] ${loading ? 'fa-spin' : ''}`}></i>
+           </button>
         </div>
         <div className="w-20" />
       </div>

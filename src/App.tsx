@@ -1276,7 +1276,7 @@ const App: React.FC = () => {
       )}
       
       {/* Bottom Navigation for Mobile */}
-      {user && view !== 'home' && (
+      {user && view !== 'home' && view !== 'public-portal' && (
         <BottomNavigation 
           currentView={view} 
           onNavigate={handleNavigate} 
