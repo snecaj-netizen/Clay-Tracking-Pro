@@ -553,7 +553,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         </div>
 
         {showTabs && (
-          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit overflow-x-auto custom-scrollbar no-scrollbar">
+          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-full overflow-x-auto no-scrollbar">
             <button 
               onClick={() => setViewMode('results')} 
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
@@ -756,7 +756,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             </p>
           </div>
 
-          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-fit overflow-x-auto custom-scrollbar no-scrollbar">
+          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800 w-full overflow-x-auto no-scrollbar">
             <button 
               onClick={() => setViewMode('results')} 
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
