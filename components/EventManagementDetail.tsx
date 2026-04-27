@@ -12,6 +12,7 @@ import FitavScoreSheet from './FitavScoreSheet';
 import ExpandingFAB from './ExpandingFAB';
 import { EventRegistrationModal } from './EventRegistrationModal';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventManagementDetailProps {
   event: SocietyEvent;
@@ -41,6 +42,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   refreshVersion = 0
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'registrations' | 'squads' | 'results'>(initialTab);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [squads, setSquads] = useState<EventSquad[]>([]);
@@ -491,10 +493,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <button 
                   onClick={fetchData}
-                  className="flex-1 md:flex-none px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 md:flex-none px-4 py-3 rounded-xl bg-slate-900 [.light-theme_&]:bg-slate-100 border border-slate-800 [.light-theme_&]:border-slate-200 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-slate-200 [.light-theme_&]:hover:text-black transition-colors flex items-center justify-center gap-2"
                 >
                   <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Aggiorna</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t('refresh')}</span>
                 </button>
                 <button 
                   onClick={() => {
