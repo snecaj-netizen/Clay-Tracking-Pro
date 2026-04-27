@@ -1147,7 +1147,7 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
 
 interface LanguageContextType {
   language: Language;
-  setLanguage: (lang: Language) => void;
+  setLanguage: (lang: Language, manual?: boolean) => void;
   t: (key: string) => string;
 }
 
@@ -1160,10 +1160,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const userStr = localStorage.getItem('auth_user');
       if (userStr) {
         const user = JSON.parse(userStr);
-        if (user.is_international) {
-           // For international users, we default to English unless they explicitly chose Italian
+        // Robust check for is_international (handle boolean, string, or number)
+        const isInternational = user.is_international === true || 
+                               user.is_international === 'true' || 
+                               user.is_international === 1 || 
+                               user.is_international === '1';
+        
+        if (isInternational) {
+           // For international users, we default to English unless they explicitly chose Italian manually
+           const manualChoice = localStorage.getItem('manual_lang_selection');
            const saved = localStorage.getItem('app_language');
-           if (saved === 'it') return 'it';
+           if (manualChoice === 'true' && saved === 'it') return 'it';
            return 'en';
         }
       }
@@ -1189,8 +1196,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     document.documentElement.lang = language;
   }, [language]);
 
-  const handleSetLanguage = (lang: Language) => {
-    console.log(`Manual language switch triggered: ${lang}`);
+  const handleSetLanguage = (lang: Language, manual: boolean = true) => {
+    if (manual) {
+      console.log(`Manual language switch triggered: ${lang}`);
+      try {
+        localStorage.setItem('manual_lang_selection', 'true');
+      } catch (e) {}
+    } else {
+      console.log(`Automatic language switch triggered: ${lang}`);
+    }
     setLanguage(lang);
   };
 

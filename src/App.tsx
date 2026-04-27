@@ -56,17 +56,27 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Automatically set language to English for international users on mount/refresh
-    // We want to force it if they haven't explicitly chosen Italian recently
-    if (user?.is_international) {
-      const savedLang = localStorage.getItem('app_language');
-      if (savedLang !== 'en' && savedLang !== 'it') {
-        setLanguage('en');
-      } else if (language === 'it' && !savedLang) {
-        setLanguage('en');
+    // Robust check for is_international
+    const isInternational = user?.is_international === true || 
+                           user?.is_international === 'true' || 
+                           user?.is_international === 1 || 
+                           user?.is_international === '1';
+
+    const hasExplicitChoice = localStorage.getItem('manual_lang_selection');
+
+    // Force language to English for international users unless they have explicitly chosen Italian 
+    if (isInternational && language === 'it') {
+      if (hasExplicitChoice !== 'true') {
+        setLanguage('en', false);
+      }
+    } 
+    // Conversely, ensure local users see Italian if they haven't explicitly chosen English
+    else if (user && !isInternational && language === 'en') {
+      if (hasExplicitChoice !== 'true') {
+        setLanguage('it', false);
       }
     }
-  }, [user?.is_international, language, setLanguage]);
+  }, [user?.is_international, user === null, language, setLanguage]);
   
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
@@ -356,8 +366,21 @@ const App: React.FC = () => {
     setUser(newUser);
     
     // Automatically set language to English for international users
-    if (newUser.is_international) {
-      setLanguage('en');
+    const isInternational = newUser.is_international === true || 
+                           newUser.is_international === 'true' || 
+                           newUser.is_international === 1 || 
+                           newUser.is_international === '1';
+
+    if (isInternational) {
+      setLanguage('en', false);
+      // Clear manual selection to ensure default takes place
+      localStorage.removeItem('manual_lang_selection');
+    } else {
+      // For local users, we want to ensure it's Italian unless they already had a manual preference
+      const hasExplicitChoice = localStorage.getItem('manual_lang_selection');
+      if (hasExplicitChoice !== 'true') {
+        setLanguage('it', false);
+      }
     }
 
     if (newUser.role === 'society') {
@@ -376,6 +399,7 @@ const App: React.FC = () => {
       () => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        localStorage.removeItem('manual_lang_selection');
         setToken(null);
         setUser(null);
         setCompetitions([]);

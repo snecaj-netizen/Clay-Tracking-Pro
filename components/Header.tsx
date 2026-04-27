@@ -165,8 +165,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
           
           {/* Footer of Sidebar */}
           <div className="p-4 border-t border-slate-900 [.light-theme_&]:border-slate-100 space-y-4">
-            {!user?.is_international && (
-              <div className="px-2">
+            <div className="px-2">
                 <div className="text-[10px] font-black text-slate-600 [.light-theme_&]:text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">{t('language_label') || 'Lingua'}</div>
                 <div className="flex gap-2">
                   <button 
@@ -183,7 +182,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   </button>
                 </div>
               </div>
-            )}
             <div className="text-[10px] text-slate-600 text-center uppercase tracking-[0.2em] italic opacity-50">
               Clay Performance v0.0.1
             </div>
@@ -329,8 +327,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                     </div>
 
                     {/* Language Selector in Profile Menu */}
-                    {!user?.is_international && (
-                      <div className="px-4 py-2 border-t border-slate-800/50 [.light-theme_&]:border-slate-100 mt-1">
+                    <div className="px-4 py-2 border-t border-slate-800/50 [.light-theme_&]:border-slate-100 mt-1">
                         <div className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest mb-2">{t('language_label') || 'Lingua'}</div>
                         <div className="flex gap-2">
                           <button 
@@ -347,7 +344,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                           </button>
                         </div>
                       </div>
-                    )}
+                    
 
                     {(user?.role === 'admin' || user?.role === 'society') && (
                       <div className="py-1">
