@@ -398,7 +398,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
 
   if (isModal) {
     return (
-      <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/80 [.light-theme_&]:bg-white/80 backdrop-blur-sm animate-in fade-in duration-300 transition-colors" onClick={onClose}>
+      <div 
+        className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/80 [.light-theme_&]:bg-white/80 backdrop-blur-sm animate-in fade-in duration-300 transition-colors" 
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose?.();
+        }}
+      >
         {content}
       </div>
     );

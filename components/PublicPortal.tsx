@@ -117,45 +117,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
     }
   };
 
-  const NavigationControls = React.memo(() => (
-    <div className="hidden md:block sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md [.light-theme_&]:bg-white/80 border-b border-slate-900 [.light-theme_&]:border-slate-200 px-4 py-3">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => window.history.back()}
-            className="w-10 h-10 rounded-full bg-slate-900 [.light-theme_&]:bg-slate-100 flex items-center justify-center hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-200 transition-colors border border-slate-800 [.light-theme_&]:border-slate-200 cursor-pointer shadow-sm active:scale-95 group"
-            title={t('back')}
-          >
-            <i className="fas fa-chevron-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
-          </button>
-          <button 
-            onClick={() => window.history.forward()}
-            className="w-10 h-10 rounded-full bg-slate-900 [.light-theme_&]:bg-slate-100 flex items-center justify-center hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-200 transition-colors border border-slate-800 [.light-theme_&]:border-slate-200 cursor-pointer shadow-sm active:scale-95 group"
-            title={t('forward')}
-          >
-            <i className="fas fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('live_results_subtitle')}</span>
-           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-           <button 
-             onClick={(e) => {
-               e.stopPropagation();
-               fetchPublicEvents();
-             }}
-             disabled={loading}
-             className="ml-2 w-8 h-8 rounded-lg bg-slate-900 [.light-theme_&]:bg-slate-100 flex items-center justify-center text-white [.light-theme_&]:text-slate-900 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-200 transition-colors border border-slate-800 [.light-theme_&]:border-slate-200 shadow-sm active:scale-90 disabled:opacity-50"
-             title={t('refresh')}
-           >
-             <i className={`fas fa-sync-alt text-[10px] ${loading ? 'fa-spin' : ''}`}></i>
-           </button>
-        </div>
-        <div className="w-20" />
-      </div>
-    </div>
-  ));
-
   const fetchPublicEvents = async () => {
     setLoading(true);
     setError(null);
@@ -245,8 +206,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         onDragEnd={handleDragEnd}
         className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
       >
-        <NavigationControls />
-
         <div className="p-4 md:p-8">
           <div className="flex items-center gap-4 mb-6">
             <button 
@@ -285,8 +244,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         onDragEnd={handleDragEnd}
         className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
       >
-        <NavigationControls />
-
         <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <button 
@@ -384,10 +341,8 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         onDragEnd={handleDragEnd}
         className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
       >
-        <NavigationControls />
-
         <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto mb-6 text-center">
+        <div className="max-w-7xl mx-auto mb-6 flex items-center justify-center gap-4">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -398,6 +353,15 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
             {t('live_results_subtitle')}
           </span>
         </motion.div>
+        
+        <button 
+          onClick={fetchPublicEvents}
+          disabled={loading}
+          className="w-10 h-10 rounded-xl bg-orange-600/10 border border-orange-500/20 flex items-center justify-center text-orange-500 hover:bg-orange-600 hover:text-white transition-all shadow-sm active:scale-90 disabled:opacity-50"
+          title={t('refresh')}
+        >
+          <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
+        </button>
       </div>
 
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
