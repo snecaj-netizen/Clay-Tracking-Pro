@@ -538,57 +538,91 @@ const HistoryList: React.FC<HistoryListProps> = ({
     return (
       <div className="flex flex-col lg:flex-row gap-6 mt-6">
         {/* Calendar Column */}
-        <div className="flex-grow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <i className="fas fa-calendar-alt text-orange-500"></i>
-              {monthName}
-            </h3>
-            <div className="flex gap-1">
+        <div className="w-full lg:w-7/12 xl:w-1/2 bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-2xl overflow-hidden backdrop-blur-sm relative h-fit">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">{monthName.split(' ')[0]}</h3>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">{monthName.split(' ')[1]}</p>
+            </div>
+            <div className="flex gap-1.5 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800">
               <button 
                 onClick={() => changeMonth(-1)}
-                className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-orange-500 hover:border-slate-600 transition-all"
+                className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"
               >
                 <i className="fas fa-chevron-left text-xs"></i>
               </button>
               <button 
                 onClick={() => changeMonth(1)}
-                className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-orange-500 hover:border-slate-600 transition-all"
+                className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 hover:text-white hover:bg-orange-600 transition-all active:scale-90"
               >
                 <i className="fas fa-chevron-right text-xs"></i>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-2 mb-4 relative z-10">
             {weekDays.map(d => (
-              <div key={d} className="text-center py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">{d}</div>
+              <div key={d} className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] py-2">
+                {d.slice(0, 1)}
+              </div>
             ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 relative z-10">
             {calendarDays.map((d, i) => {
-              const hasEvents = d.date && compsByDate[d.date]?.length > 0;
+              const dayEvents = d.date ? compsByDate[d.date] : null;
               const isToday = d.date === today;
               const isSelected = d.date === selectedDay;
               
+              let highlightClass = 'bg-slate-900/40 border-slate-800/60 hover:border-slate-600 hover:bg-slate-800/60';
+              let glowClass = '';
+              
+              if (dayEvents && dayEvents.length > 0) {
+                const hasComp = dayEvents.some(c => c.discipline !== Discipline.TRAINING);
+                const hasOngoing = dayEvents.some(c => {
+                  const compDate = new Date(c.date);
+                  compDate.setHours(0, 0, 0, 0);
+                  const endDate = c.endDate ? new Date(c.endDate) : compDate;
+                  endDate.setHours(0, 0, 0, 0);
+                  const todayDate = new Date();
+                  todayDate.setHours(0, 0, 0, 0);
+                  return todayDate >= compDate && todayDate <= endDate;
+                });
+                const hasNextUpcoming = dayEvents.some(c => c.id === nextUpcomingCompId);
+
+                if (hasOngoing) {
+                  highlightClass = 'bg-orange-950/40 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.4)] text-orange-500 z-10';
+                  glowClass = 'animate-pulse';
+                } else if (hasNextUpcoming) {
+                  highlightClass = 'bg-emerald-950/40 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] text-emerald-500 z-10';
+                } else {
+                  highlightClass = hasComp 
+                    ? 'bg-orange-600/10 border-orange-500/30 text-orange-500' 
+                    : 'bg-blue-600/10 border-blue-500/30 text-blue-400';
+                  glowClass = hasComp ? 'shadow-[0_0_15px_rgba(234,88,12,0.1)]' : 'shadow-[0_0_15px_rgba(59,130,246,0.1)]';
+                }
+              }
+
               return (
                 <div 
                   key={i}
                   onClick={() => d.date && setSelectedDay(d.date)}
                   className={`
-                    aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all cursor-pointer border
-                    ${!d.isCurrentMonth ? 'opacity-20 pointer-events-none' : ''}
-                    ${isToday ? 'bg-orange-500 text-white border-orange-400' : isSelected ? 'bg-slate-800 text-white border-slate-600 shadow-[0_0_10px_rgba(255,255,255,0.05)]' : 'bg-slate-900/50 text-slate-400 border-slate-800/50 hover:border-slate-600'}
+                    aspect-square rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-all cursor-pointer border
+                    ${!d.isCurrentMonth ? 'opacity-0 pointer-events-none' : ''}
+                    ${isSelected ? 'border-orange-600 bg-orange-600/20 scale-105 z-10' : highlightClass}
+                    ${glowClass}
                   `}
                 >
-                  <span className={`text-sm font-black ${isToday ? 'text-white' : isSelected ? 'text-white' : 'text-slate-300'}`}>{d.day}</span>
-                  {hasEvents && !isToday && (
-                    <div className="flex gap-0.5 mt-1">
-                      {compsByDate[d.date!].slice(0, 3).map((c, idx) => (
-                        <div key={idx} className={`w-1 h-1 rounded-full ${c.discipline === Discipline.TRAINING ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
-                      ))}
+                  <span className={`font-black ${isToday ? 'text-white bg-orange-600 w-7 h-7 sm:w-9 sm:h-9 text-sm sm:text-base flex items-center justify-center rounded-full shadow-lg shadow-orange-600/20' : isSelected ? 'text-white text-base sm:text-lg' : 'text-slate-300 text-sm sm:text-base'}`}>
+                    {d.day}
+                  </span>
+                  {dayEvents && dayEvents.length > 0 && !isToday && (
+                    <div className="absolute bottom-1.5 sm:bottom-2 flex gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${dayEvents.some(c => c.discipline !== Discipline.TRAINING) ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
                     </div>
-                  )}
-                  {isToday && hasEvents && (
-                    <div className="w-1.5 h-1.5 bg-white rounded-full mt-1"></div>
                   )}
                 </div>
               );
@@ -597,51 +631,108 @@ const HistoryList: React.FC<HistoryListProps> = ({
         </div>
 
         {/* Details Column */}
-        <div className="lg:w-80 w-full flex flex-col">
-          <div className="bg-slate-900/40 rounded-2xl p-5 border border-slate-800/60 backdrop-blur-sm sticky top-6">
-            <h4 className="text-sm font-black text-white uppercase tracking-tighter mb-4 flex items-center gap-2">
-              <i className="fas fa-list-ul text-orange-500"></i>
-              {selectedDay 
-                ? `${new Date(selectedDay).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: 'numeric', month: 'long' })}` 
-                : t('select_date')}
-            </h4>
-            
-            <div className="space-y-3">
-              {!selectedDay ? (
-                <div className="text-center py-8">
-                  <i className="fas fa-calendar-day text-slate-700 text-3xl mb-3"></i>
-                  <p className="text-xs text-slate-500 leading-relaxed italic">{t('select_date_desc')}</p>
+        <div className="w-full lg:w-5/12 xl:w-1/2 flex flex-col">
+          {selectedDay ? (
+            <div className="bg-slate-900/40 rounded-[2rem] p-6 border border-slate-800/50 shadow-xl h-full animate-in fade-in slide-in-from-right-4">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/50">
+                <div>
+                  <h4 className="text-sm font-black text-white uppercase tracking-widest">
+                    {t('day_events_title')}
+                  </h4>
+                  <p className="text-[10px] text-slate-500 font-bold mt-1">
+                    {new Date(selectedDay).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
                 </div>
-              ) : compsByDate[selectedDay]?.length > 0 ? (
-                compsByDate[selectedDay].map(c => (
-                  <div key={c.id} className="bg-slate-900/80 rounded-xl p-3 border border-slate-700/50 hover:border-orange-500/50 transition-all group">
-                    <div className="flex items-center gap-2 mb-1">
-                       <span className={`w-2 h-2 rounded-full ${c.discipline === Discipline.TRAINING ? 'bg-blue-500' : 'bg-orange-500'}`}></span>
-                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">
-                         {c.discipline === Discipline.TRAINING ? t('practice') : c.discipline}
-                       </span>
-                    </div>
-                    <div className="text-xs font-bold text-white group-hover:text-orange-400 transition-colors truncate">{c.name}</div>
-                    <div className="text-[10px] text-slate-600 mt-1 flex items-center gap-1 italic">
-                      <i className="fas fa-map-marker-alt text-[8px]"></i>
-                      {c.location}
-                    </div>
-                    {c.totalScore > 0 && (
-                      <div className="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-2">
-                        <span className="text-[9px] font-bold text-slate-500">{t('score_label')}</span>
-                        <span className="text-xs font-black text-white">{c.totalScore}/{c.totalTargets}</span>
-                      </div>
-                    )}
+                <button 
+                  onClick={() => setSelectedDay(null)} 
+                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
+                >
+                  <i className="fas fa-times text-xs"></i>
+                </button>
+              </div>
+              
+              <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+                {!compsByDate[selectedDay] || compsByDate[selectedDay].length === 0 ? (
+                  <div className="bg-slate-950/30 p-8 rounded-2xl border border-dashed border-slate-800 text-center flex flex-col items-center justify-center h-48">
+                    <i className="fas fa-calendar-times text-slate-700 text-3xl mb-3"></i>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('no_events_recorded')}</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <i className="fas fa-coffee text-slate-700 text-2xl mb-2"></i>
-                  <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">{t('no_events_recorded')}</p>
-                </div>
-              )}
+                ) : (
+                  compsByDate[selectedDay].map(c => {
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const start = new Date(c.date);
+                    start.setHours(0,0,0,0);
+                    const end = new Date(c.endDate || c.date);
+                    end.setHours(0,0,0,0);
+                    const ongoing = today >= start && today <= end;
+                    const past = end < today;
+                    const isNext = c.id === nextUpcomingCompId;
+
+                    return (
+                      <div 
+                        key={c.id} 
+                        onClick={() => toggleDetails(c.id)}
+                        className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-700 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              {ongoing && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
+                                  {t('live_label')}
+                                </span>
+                              )}
+                              {isNext && !ongoing && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
+                                  {t('next_competition')}
+                                </span>
+                              )}
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${c.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
+                                {c.discipline === Discipline.TRAINING ? t('practice') : c.discipline.split(' ')[0]}
+                              </span>
+                            </div>
+                            <h3 className="text-sm font-black text-white truncate group-hover:text-orange-400 transition-colors uppercase italic tracking-tight">{c.name}</h3>
+                            <p className="text-[10px] text-slate-400 mt-1 truncate">
+                              <i className="fas fa-map-marker-alt mr-1"></i>
+                              {c.location}
+                            </p>
+                          </div>
+                          {c.totalScore > 0 && (
+                            <div className="text-right shrink-0">
+                              <div className="text-lg font-black text-white leading-none">{c.totalScore}</div>
+                              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{t('score_label')}</div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-calendar-alt text-slate-600"></i>
+                            <span>{new Date(c.date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-bullseye text-slate-600"></i>
+                            <span>{c.totalTargets} {t('targets_count_label')}</span>
+                          </div>
+                        </div>
+
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-slate-900/20 rounded-[2rem] p-6 border border-slate-800/30 h-full flex flex-col items-center justify-center text-center min-h-[300px] lg:min-h-0">
+              <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                <i className="fas fa-hand-pointer text-slate-600 text-2xl"></i>
+              </div>
+              <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">{t('select_date_instruction')}</h4>
+              <p className="text-xs text-slate-500 max-w-[200px]">{t('select_date_desc')}</p>
+            </div>
+          )}
         </div>
       </div>
     );
