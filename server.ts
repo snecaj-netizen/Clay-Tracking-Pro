@@ -171,6 +171,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_international BOOLEAN DEFAULT false");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'it'");
     } catch (_) {
       console.log("Columns already exist or error adding them");
     }
@@ -808,8 +809,11 @@ const initDB = async () => {
         if (userIds.length > 0) {
           await sendPushNotification(
             userIds, 
-            "Gara in arrivo!", 
-            `La gara "${event.name}" inizierà tra 2 giorni presso ${event.location}.`, 
+            { it: "Gara in arrivo!", en: "Upcoming Event!" }, 
+            { 
+              it: `La gara "${event.name}" inizierà tra 2 giorni presso ${event.location}.`,
+              en: `The event "${event.name}" will start in 2 days at ${event.location}.`
+            }, 
             `/events?id=${event.id}`,
             event.visibility === 'Pubblica' ? 'all' : 'society'
           );
@@ -875,8 +879,11 @@ const initDB = async () => {
         const names = compNames.join(', ');
         await sendPushNotification(
           [userId], 
-          "Com'è andata oggi?", 
-          `Com'è andata oggi a ${names}? Inserisci il risultato per vedere come cambia la tua media!`, 
+          { it: "Com'è andata oggi?", en: "How did it go today?" }, 
+          { 
+            it: `Com'è andata oggi a ${names}? Inserisci il risultato per vedere come cambia la tua media!`,
+            en: `How did it go today at ${names}? Enter your score to see how your average changes!`
+          }, 
           `/history`,
           'all'
         );
@@ -1015,11 +1022,18 @@ app.post('/api/notifications/bulk-delete', authenticateToken, async (req: any, r
 });
 
 // Helper to send push notifications
-const sendPushNotification = async (userIds: (number | string)[], title: string, body: string, url: string, recipientType?: 'all' | 'society' | 'team') => {
+const sendPushNotification = async (
+  userIds: (number | string)[], 
+  title: string | { it: string, en: string }, 
+  body: string | { it: string, en: string }, 
+  url: string, 
+  recipientType?: 'all' | 'society' | 'team'
+) => {
   try {
     // Get Admin ID and settings
-    const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
+    const { rows: adminRows } = await pool.query("SELECT id, language FROM users WHERE email = 'snecaj@gmail.com'");
     const adminId = adminRows[0]?.id;
+    const adminLanguage = adminRows[0]?.language || 'it';
 
     if (!adminId) return;
 
@@ -1032,9 +1046,6 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
     const numericAdminId = Number(adminId);
     let numericUserIds = [...new Set(userIds.map(id => Number(id)).filter(id => !isNaN(id)))];
 
-    // If admin notifications are enabled, and this is a system-wide or empty-target notification, add admin
-    // BUT: The user now wants a "compact" message for the admin.
-    // So we'll handle the admin separately if it's a system event.
     if (settings.admin_notifications_enabled) {
       if (numericUserIds.length === 0 || recipientType === 'all') {
         if (!numericUserIds.includes(numericAdminId)) {
@@ -1043,67 +1054,50 @@ const sendPushNotification = async (userIds: (number | string)[], title: string,
       }
     }
 
-    // 1. Filter users by rate limit
-    const usersToNotify = [];
-    for (const userId of numericUserIds) {
-      // Get user's specific rate limit or fallback to global admin setting
-      let userRateLimit = settings.rate_limit;
-      const { rows: userSettingsRows } = await pool.query("SELECT rate_limit FROM notification_settings WHERE user_id = $1", [userId]);
-      if (userSettingsRows.length > 0 && userSettingsRows[0].rate_limit !== undefined) {
-        userRateLimit = userSettingsRows[0].rate_limit;
-      }
+    // 1. Fetch user languages and notification settings/counts in bulk
+    if (numericUserIds.length === 0) return;
 
-      // Count notifications sent today
-      const today = new Date().toISOString().split('T')[0];
-      const { rows: countRows } = await pool.query(
-        "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND DATE(created_at) = $2",
-        [userId, today]
-      );
-      const notificationsSentToday = parseInt(countRows[0].count);
-
-      if (notificationsSentToday < userRateLimit) {
-        usersToNotify.push(userId);
-      } else {
-        console.log(`Rate limit reached for user ${userId}. Skipping notification.`);
-      }
-    }
-
-    // 2. Save notifications for each user in the filtered list
-    for (const userId of usersToNotify) {
-      await pool.query(
-        "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
-        [userId, title, body, url]
-      );
-    }
-
-    // 3. Send Push Notifications
-    if (usersToNotify.length === 0) return;
-
-    const { rows: subscriptions } = await pool.query(
-      "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
-      [usersToNotify]
+    const { rows: userDatas } = await pool.query(
+      `SELECT u.id, u.language, ns.rate_limit, 
+        (SELECT COUNT(*) FROM notifications n WHERE n.user_id = u.id AND DATE(n.created_at) = CURRENT_DATE) as today_count
+       FROM users u
+       LEFT JOIN notification_settings ns ON u.id = ns.user_id
+       WHERE u.id = ANY($1)`,
+      [numericUserIds]
     );
 
-    // Deduplicate subscriptions by endpoint
-    const uniqueSubscriptions = [];
-    const seenEndpoints = new Set();
-    for (const sub of subscriptions) {
-      const endpoint = sub.subscription.endpoint;
-      if (!seenEndpoints.has(endpoint)) {
-        seenEndpoints.add(endpoint);
-        uniqueSubscriptions.push(sub);
-      }
-    }
+    const usersToNotify = userDatas.filter(u => {
+      const limit = u.rate_limit !== null ? u.rate_limit : settings.rate_limit;
+      return parseInt(u.today_count) < limit;
+    });
 
-    for (const sub of uniqueSubscriptions) {
-      try {
-        const payload = JSON.stringify({ title, body, url });
-        await webpush.sendNotification(sub.subscription, payload);
-      } catch (err: any) {
-        if (err.statusCode === 404 || err.statusCode === 410) {
-          await pool.query("DELETE FROM push_subscriptions WHERE id = $1", [sub.id]);
-        } else {
-          console.error("Error sending push notification:", err);
+    if (usersToNotify.length === 0) return;
+
+    // 2. Save notifications and prepare for push
+    for (const userData of usersToNotify) {
+      const lang = (userData.language || 'it') as 'it' | 'en';
+      const resolvedTitle = typeof title === 'string' ? title : (title[lang] || title['it']);
+      const resolvedBody = typeof body === 'string' ? body : (body[lang] || body['it']);
+
+      await pool.query(
+        "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
+        [userData.id, resolvedTitle, resolvedBody, url]
+      );
+
+      // Sending individual push (simplified, could be optimized but safer for per-user translation)
+      const { rows: subscriptions } = await pool.query(
+        "SELECT * FROM push_subscriptions WHERE user_id = $1",
+        [userData.id]
+      );
+
+      for (const sub of subscriptions) {
+        try {
+          const payload = JSON.stringify({ title: resolvedTitle, body: resolvedBody, url });
+          await webpush.sendNotification(sub.subscription, payload);
+        } catch (err: any) {
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            await pool.query("DELETE FROM push_subscriptions WHERE id = $1", [sub.id]);
+          }
         }
       }
     }
@@ -1140,7 +1134,8 @@ app.post('/api/auth/register', async (req, res) => {
     name, surname, email, password, 
     birth_date, phone, 
     is_international, nationality, international_id, original_club,
-    society, shooter_code, qualification, category
+    society, shooter_code, qualification, category,
+    language
   } = req.body;
 
   try {
@@ -1152,6 +1147,7 @@ app.post('/api/auth/register', async (req, res) => {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
     const verificationToken = crypto.randomBytes(32).toString('hex');
+    const userLanguage = language || (!!is_international ? 'en' : 'it');
     
     let finalQualification = qualification;
     if (!qualification && birth_date) {
@@ -1166,14 +1162,14 @@ app.post('/api/auth/register', async (req, res) => {
         birth_date, phone, status, 
         is_international, nationality, international_id, original_club,
         society, shooter_code, qualification, category,
-        verification_token, email_verified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+        verification_token, email_verified, language
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
       [
         name, surname, email, hash, 'user', 
         birth_date || null, phone || null, 'active',
         !!is_international, nationality || null, international_id || null, original_club || null,
         finalSociety || null, shooter_code || null, finalQualification || null, category || null,
-        verificationToken, false
+        verificationToken, false, userLanguage
       ]
     );
 
@@ -1287,7 +1283,8 @@ app.post('/api/auth/login', async (req, res) => {
         email_verified: !!user.email_verified,
         nationality: user.nationality,
         international_id: user.international_id,
-        original_club: user.original_club
+        original_club: user.original_club,
+        language: user.language
       } 
     });
   } catch (err: any) {
@@ -1318,17 +1315,18 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
       email_verified: !!user.email_verified,
       nationality: user.nationality,
       international_id: user.international_id,
-      original_club: user.original_club
+      original_club: user.original_club,
+      language: user.language
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
- app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
+  app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { 
     name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone,
-    nationality, international_id, original_club, email_verified
+    nationality, international_id, original_club, email_verified, language
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -1346,14 +1344,14 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, 
           society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11,
           nationality = $13, international_id = $14, original_club = $15,
-          email_verified = $16
+          email_verified = $16, language = $17
         WHERE id = $12`,
         [
           name, surname, email, hash, category, finalQualification, 
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
           nationality || null, international_id || null, original_club || null,
-          targetEmailVerified
+          targetEmailVerified, language || 'it'
         ]
       );
     } else {
@@ -1362,14 +1360,14 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           name = $1, surname = $2, email = $3, category = $4, qualification = $5, 
           society = $6, shooter_code = $7, avatar = $8, birth_date = $9, phone = $10,
           nationality = $12, international_id = $13, original_club = $14,
-          email_verified = $15
+          email_verified = $15, language = $16
         WHERE id = $11`,
         [
           name, surname, email, category, finalQualification, 
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
           nationality || null, international_id || null, original_club || null,
-          targetEmailVerified
+          targetEmailVerified, language || 'it'
         ]
       );
     }
@@ -1431,8 +1429,11 @@ app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdm
 
           await sendPushNotification(
             recipientIds,
-            "Iscrizioni Aperte!",
-            body,
+            { it: "Iscrizioni Aperte!", en: "Registration Open!" },
+            { 
+              it: body,
+              en: `Registration for the competition "${event.name}" at ${event.location} is now open! Register now!`
+            },
             `/gare?id=${event.id}`,
             'all'
           );
@@ -1890,8 +1891,18 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     
     // Notify Admin about new user
     const newUserId = rows[0].id;
-    const creatorName = req.user.role === 'society' ? `la società ${req.user.society}` : 'l\'amministratore';
-    sendPushNotification([], "Nuovo Utente Registrato", `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorName}.`, `/admin?tab=users`);
+    const creatorNameObj = req.user.role === 'society' 
+      ? { it: `la società ${req.user.society}`, en: `the society ${req.user.society}` }
+      : { it: "l'amministratore", en: "the administrator" };
+
+    sendPushNotification([], 
+      { it: "Nuovo Utente Registrato", en: "New User Registered" },
+      { 
+        it: `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorNameObj.it}.`,
+        en: `A new shooter has been added: ${name} ${surname} by ${creatorNameObj.en}.`
+      }, 
+      `/admin?tab=users`
+    );
 
     res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, shooter_code, avatar, birth_date, phone, status: 'active' });
   } catch (err: any) {
@@ -1978,7 +1989,7 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { 
     name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status,
-    is_international, nationality, international_id, original_club, email_verified
+    is_international, nationality, international_id, original_club, email_verified, language
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -2012,27 +2023,34 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18 WHERE id = $19",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20 WHERE id = $19",
         [
           name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
-          req.params.id
+          req.params.id, language || 'it'
         ]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17 WHERE id = $18",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19 WHERE id = $18",
         [
           name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
-          req.params.id
+          req.params.id, language || 'it'
         ]
       );
     }
     
     // Notify Admin if a society modifies a user
     if (req.user.role === 'society') {
-      sendPushNotification([], "Utente Modificato", `La società ${req.user.society} ha modificato i dati dell'utente: ${name} ${surname}.`, `/admin?tab=users`);
+      sendPushNotification([], 
+        { it: "Utente Modificato", en: "User Modified" },
+        { 
+          it: `La società ${req.user.society} ha modificato i dati dell'utente: ${name} ${surname}.`,
+          en: `The society ${req.user.society} has modified the following user: ${name} ${surname}.`
+        }, 
+        `/admin?tab=users`
+      );
     }
 
     res.json({ success: true });
@@ -2653,7 +2671,15 @@ app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, asyn
       );
       const userIds = users.map(u => u.id);
       if (userIds.length > 0) {
-        sendPushNotification(userIds, "Nuova Sfida!", `${name} - ${prize}`, `/challenges`, 'society');
+        sendPushNotification(userIds, 
+          { it: "Nuova Sfida!", en: "New Challenge!" },
+          { 
+            it: `${name} - ${prize}`,
+            en: `${name} - ${prize}`
+          }, 
+          `/challenges`, 
+          'society'
+        );
       }
     }
 
@@ -3092,8 +3118,11 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
     if (allInvolvedIds.length > 0) {
       sendPushNotification(
         allInvolvedIds,
-        "Squadra Aggiornata",
-        `La squadra "${name}" è stata modificata. Controlla i dettagli.`,
+        { it: "Squadra Aggiornata", en: "Squad Updated" },
+        { 
+          it: `La squadra "${name}" è stata modificata. Controlla i dettagli.`,
+          en: `The squad "${name}" has been modified. Check the details.`
+        },
         `/history`,
         'team'
       );
@@ -3137,8 +3166,11 @@ app.delete('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (re
     if (memberIds.length > 0) {
       sendPushNotification(
         memberIds,
-        "Squadra Sciolta",
-        `La squadra "${team.name}" è stata eliminata dall'amministratore o dalla società.`,
+        { it: "Squadra Sciolta", en: "Squad Disbanded" },
+        { 
+          it: `La squadra "${team.name}" è stata eliminata dall'amministratore o dalla società.`,
+          en: `The squad "${team.name}" has been deleted by the administrator or the club.`
+        },
         `/history`,
         'team'
       );
@@ -3245,8 +3277,11 @@ app.post('/api/teams/:id/send-competition', authenticateToken, requireAdminOrSoc
     if (team.member_ids && team.member_ids.length > 0) {
       sendPushNotification(
         team.member_ids.filter((id: any) => id !== null),
-        "Gara Assegnata!",
-        `La gara "${team.competition_name || team.name}" è stata assegnata alla tua squadra "${team.name}".`,
+        { it: "Gara Assegnata!", en: "Event Assigned!" },
+        { 
+          it: `La gara "${team.competition_name || team.name}" è stata assegnata alla tua squadra "${team.name}".`,
+          en: `The event "${team.competition_name || team.name}" has been assigned to your squad "${team.name}".`
+        },
         `/history`,
         'team'
       );
@@ -3416,8 +3451,11 @@ app.post('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
       // Send push notification to team members
       await sendPushNotification(
         memberIds,
-        "Nuova Squadra!",
-        `Sei stato inserito nella squadra "${name}" per la gara "${event.name}".`,
+        { it: "Nuova Squadra!", en: "New Squad!" },
+        { 
+          it: `Sei stato inserito nella squadra "${name}" per la gara "${event.name}".`,
+          en: `You have been added to the squad "${name}" for the event "${event.name}".`
+        },
         `/history`,
         'team'
       );
@@ -3503,8 +3541,11 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
         // Send push notification to team members
         await sendPushNotification(
           memberIds,
-          "Squadra Aggiornata",
-          `La squadra "${name}" per la gara "${event.name}" è stata modificata.`,
+          { it: "Squadra Aggiornata", en: "Squad Updated" },
+          { 
+            it: `La squadra "${name}" per la gara "${event.name}" è stata modificata.`,
+            en: `The squad "${name}" for the event "${event.name}" has been modified.`
+          },
           `/history`,
           'team'
         );
@@ -4035,7 +4076,15 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     }
     
     if (userIds.length > 0) {
-      sendPushNotification(userIds, "Nuovo Evento!", `${name} presso ${location}`, `/events?id=${id}`, visibility === 'Pubblica' ? 'all' : 'society');
+      sendPushNotification(userIds, 
+        { it: "Nuovo Evento!", en: "New Event!" },
+        { 
+          it: `${name} presso ${location}`,
+          en: `${name} at ${location}`
+        }, 
+        `/events?id=${id}`, 
+        visibility === 'Pubblica' ? 'all' : 'society'
+      );
     }
 
     // Admin compact notification
@@ -4172,7 +4221,15 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
       }
     }
     if (userIds.length > 0) {
-      sendPushNotification(userIds, "Evento Aggiornato", `L'evento "${name}" ha subito delle modifiche.`, `/events?id=${req.params.id}`, visibility === 'Pubblica' ? 'all' : 'society');
+      sendPushNotification(userIds, 
+        { it: "Evento Aggiornato", en: "Event Updated" },
+        { 
+          it: `L'evento "${name}" ha subito delle modifiche.`,
+          en: `The event "${name}" has been modified.`
+        }, 
+        `/events?id=${req.params.id}`, 
+        visibility === 'Pubblica' ? 'all' : 'society'
+      );
     }
 
     // Admin compact notification
@@ -4227,7 +4284,15 @@ app.delete('/api/events/:id', authenticateToken, async (req: any, res) => {
       }
     }
     if (userIds.length > 0) {
-      sendPushNotification(userIds, "Evento Annullato", `L'evento "${event.name}" è stato annullato.`, `/events`, event.visibility === 'Pubblica' ? 'all' : 'society');
+      sendPushNotification(userIds, 
+        { it: "Evento Annullato", en: "Event Cancelled" },
+        { 
+          it: `L'evento "${event.name}" è stato annullato.`,
+          en: `The event "${event.name}" has been cancelled.`
+        }, 
+        `/events`, 
+        event.visibility === 'Pubblica' ? 'all' : 'society'
+      );
     }
 
     // Admin compact notification
@@ -4375,10 +4440,16 @@ const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: 
     const { rows: settingsRows } = await pool.query("SELECT admin_notifications_enabled FROM notification_settings WHERE user_id = $1", [adminId]);
     if (settingsRows.length > 0 && !settingsRows[0].admin_notifications_enabled) return;
 
-    const targetDesc = visibility === 'Pubblica' ? 'tutti i tiratori' : `i tiratori della "${targetSociety || 'Società'}"`;
-    const body = `La ${entityType} "${name}" è stata ${action} ed inviata a ${targetDesc} da ${from}.`;
+    const targetDesc = visibility === 'Pubblica' 
+      ? { it: 'tutti i tiratori', en: 'all shooters' } 
+      : { it: `i tiratori della "${targetSociety || 'Società'}"`, en: `shooters of "${targetSociety || 'Club'}"` };
     
-    await sendPushNotification([adminId], "Notifica Admin", body, entityType === 'gara' ? '/events' : '/challenges');
+    const body = {
+      it: `La ${entityType === 'gara' ? 'gara' : 'sfida'} "${name}" è stata ${action} ed inviata a ${targetDesc.it} da ${from}.`,
+      en: `The ${entityType === 'gara' ? 'event' : 'challenge'} "${name}" has been ${action === 'inserita' ? 'inserted' : action === 'aggiornata' ? 'updated' : 'deleted'} and sent to ${targetDesc.en} by ${from}.`
+    };
+    
+    await sendPushNotification([adminId], { it: "Notifica Admin", en: "Admin Notification" }, body, entityType === 'gara' ? '/events' : '/challenges');
   } catch (err) {
     console.error("Error in sendAdminCompactNotification:", err);
   }

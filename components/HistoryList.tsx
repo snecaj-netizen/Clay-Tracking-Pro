@@ -19,6 +19,13 @@ interface HistoryListProps {
   showFiltersProp?: boolean;
   onViewModeChange?: (mode: 'list' | 'calendar') => void;
   onShowFiltersChange?: (show: boolean) => void;
+  filterDisciplineProp?: string;
+  onFilterDisciplineChange?: (val: string) => void;
+  filterLocationProp?: string;
+  onFilterLocationChange?: (val: string) => void;
+  filterStatusProp?: 'ALL' | 'CONCLUDED' | 'UPCOMING';
+  onFilterStatusChange?: (val: 'ALL' | 'CONCLUDED' | 'UPCOMING') => void;
+  hideHeader?: boolean;
 }
 
 const HistoryList: React.FC<HistoryListProps> = ({ 
@@ -34,7 +41,14 @@ const HistoryList: React.FC<HistoryListProps> = ({
   viewModeProp = 'list',
   showFiltersProp = false,
   onViewModeChange,
-  onShowFiltersChange
+  onShowFiltersChange,
+  filterDisciplineProp = 'ALL',
+  onFilterDisciplineChange,
+  filterLocationProp = 'ALL',
+  onFilterLocationChange,
+  filterStatusProp = 'ALL',
+  onFilterStatusChange,
+  hideHeader = false
 }) => {
   const { t, language } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
@@ -57,9 +71,18 @@ const HistoryList: React.FC<HistoryListProps> = ({
   };
   
   // Stati filtri
-  const [filterDiscipline, setFilterDiscipline] = useState<string>('ALL');
-  const [filterLocation, setFilterLocation] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'CONCLUDED' | 'UPCOMING'>('ALL');
+  const [internalFilterDiscipline, setInternalFilterDiscipline] = useState<string>('ALL');
+  const filterDiscipline = filterDisciplineProp || internalFilterDiscipline;
+  const setFilterDiscipline = onFilterDisciplineChange || setInternalFilterDiscipline;
+
+  const [internalFilterLocation, setInternalFilterLocation] = useState<string>('ALL');
+  const filterLocation = filterLocationProp || internalFilterLocation;
+  const setFilterLocation = onFilterLocationChange || setInternalFilterLocation;
+
+  const [internalFilterStatus, setInternalFilterStatus] = useState<'ALL' | 'CONCLUDED' | 'UPCOMING'>('ALL');
+  const filterStatus = filterStatusProp || internalFilterStatus;
+  const setFilterStatus = onFilterStatusChange || setInternalFilterStatus;
+
   const [sortOrder, setSortOrder] = useState<'DESC' | 'ASC'>('ASC');
 
   // Estrazione opzioni filtri dai dati reali
@@ -531,9 +554,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const renderCalendarView = () => {
     const today = new Date().toISOString().split('T')[0];
     const monthName = currentMonth.toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { month: 'long', year: 'numeric' });
-    const weekDays = language === 'it' 
-      ? ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
-      : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weekDays = [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')];
 
     return (
       <div className="flex flex-col lg:flex-row gap-6 mt-6">
@@ -741,46 +762,48 @@ const HistoryList: React.FC<HistoryListProps> = ({
   return (
     <div className="w-full">
       {/* Header e Filtri */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <div className="flex items-center gap-2">
-          <div className={`p-2 rounded-xl border border-slate-800 ${viewMode === 'list' ? 'bg-orange-500/10 text-orange-500' : 'bg-slate-900 text-slate-500'}`}>
-             <i className={`fas ${viewMode === 'list' ? 'fa-list-ul' : 'fa-calendar-alt'}`}></i>
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-xl border border-slate-800 ${viewMode === 'list' ? 'bg-orange-500/10 text-orange-500' : 'bg-slate-900 text-slate-500'}`}>
+               <i className={`fas ${viewMode === 'list' ? 'fa-list-ul' : 'fa-calendar-alt'}`}></i>
+            </div>
+            <div>
+              <h2 className="text-base font-black text-white uppercase tracking-tighter leading-none">{viewMode === 'list' ? t('list_view_title') : t('calendar_view_title')}</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-60">
+                {filteredCompetitions.length} {t('events_label')}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-black text-white uppercase tracking-tighter leading-none">{viewMode === 'list' ? t('list_view_title') : t('calendar_view_title')}</h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-60">
-              {filteredCompetitions.length} {t('events_label')}
-            </p>
+          
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex bg-slate-900 p-0.5 rounded-xl border border-slate-800 h-9 mr-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                title={t('list_label')}
+              >
+                <i className="fas fa-list-ul"></i>
+                <span className="hidden xs:inline">{t('list_label')}</span>
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`px-3 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5 ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                title={t('calendar_label')}
+              >
+                <i className="fas fa-calendar-alt"></i>
+                <span className="hidden xs:inline">{t('calendar_label')}</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${showFilters ? 'bg-orange-500 border-orange-400 text-white shadow-lg rotate-180' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300'}`}
+            >
+              <i className="fas fa-sliders-h"></i>
+            </button>
           </div>
         </div>
-        
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex bg-slate-900 p-0.5 rounded-xl border border-slate-800 h-9 mr-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
-              title={t('list_label')}
-            >
-              <i className="fas fa-list-ul"></i>
-              <span className="hidden xs:inline">{t('list_label')}</span>
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`px-3 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5 ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
-              title={t('calendar_label')}
-            >
-              <i className="fas fa-calendar-alt"></i>
-              <span className="hidden xs:inline">{t('calendar_label')}</span>
-            </button>
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${showFilters ? 'bg-orange-500 border-orange-400 text-white shadow-lg rotate-180' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300'}`}
-          >
-            <i className="fas fa-sliders-h"></i>
-          </button>
-        </div>
-      </div>
+      )}
 
       {showFilters && (
         <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-6">

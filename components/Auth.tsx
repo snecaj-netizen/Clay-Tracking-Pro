@@ -121,10 +121,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
           throw new Error(displayLang === 'it' ? 'Le password non coincidono.' : 'Passwords do not match.');
         }
 
+        const registrationData = {
+          ...regData,
+          language: displayLang
+        };
+
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(regData),
+          body: JSON.stringify(registrationData),
         });
 
         let data: any;

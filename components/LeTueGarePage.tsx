@@ -32,6 +32,10 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   const { triggerConfirm, triggerToast } = useUI();
   const [activeTab, setActiveTab] = useState<'history' | 'report' | 'coach'>('history');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterLocation, setFilterLocation] = useState('ALL');
+  const [filterDiscipline, setFilterDiscipline] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'CONCLUDED' | 'UPCOMING'>('ALL');
   const [direction, setDirection] = useState(0);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +88,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   return (
     <div className="space-y-4">
       {/* Sticky Header Section */}
-      <div className="sticky top-16 z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-16 z-40 bg-slate-950/95 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2 space-y-1.5 sm:space-y-2 border-b border-slate-900/50 shadow-2xl transition-all">
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-list-ul text-orange-600"></i>
@@ -116,6 +120,36 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
             </button>
           ))}
         </div>
+
+        {/* Action Buttons Row - Align with GarePage */}
+        {activeTab === 'history' && (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${showFilters ? 'bg-orange-600/10 border-orange-500/50 text-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.1)]' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-orange-500'}`}
+            >
+              <i className={`fas fa-sliders-h ${showFilters ? 'rotate-180 text-orange-500' : ''} transition-transform`}></i>
+              {t('filters_label')}
+            </button>
+
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button 
+                onClick={() => setViewMode('list')} 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+              >
+                <i className="fas fa-list"></i>
+                <span className="hidden sm:inline">{t('list_label_short')}</span>
+              </button>
+              <button 
+                onClick={() => setViewMode('calendar')} 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-orange-500'}`}
+              >
+                <i className="fas fa-calendar-alt"></i>
+                <span className="hidden sm:inline">{t('calendar_label_short')}</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="pt-2">
@@ -140,6 +174,15 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
                 token={token}
                 viewModeProp={viewMode}
                 onViewModeChange={setViewMode}
+                showFiltersProp={showFilters}
+                onShowFiltersChange={setShowFilters}
+                filterDisciplineProp={filterDiscipline}
+                onFilterDisciplineChange={setFilterDiscipline}
+                filterLocationProp={filterLocation}
+                onFilterLocationChange={setFilterLocation}
+                filterStatusProp={filterStatus}
+                onFilterStatusChange={setFilterStatus}
+                hideHeader={true}
               />
             )}
             

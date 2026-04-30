@@ -1156,18 +1156,21 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>(() => {
     try {
-      // 1. Priority: check if user is international from localStorage
+      // 1. Priority: check if user has a saved language preference in their profile
       const userStr = localStorage.getItem('auth_user');
       if (userStr) {
         const user = JSON.parse(userStr);
-        // Robust check for is_international (handle boolean, string, or number)
+        if (user.language === 'en' || user.language === 'it') {
+          return user.language;
+        }
+
+        // 2. Secondary Priority: check if user is international
         const isInternational = user.is_international === true || 
                                user.is_international === 'true' || 
                                user.is_international === 1 || 
                                user.is_international === '1';
         
         if (isInternational) {
-           // For international users, we default to English unless they explicitly chose Italian manually
            const manualChoice = localStorage.getItem('manual_lang_selection');
            const saved = localStorage.getItem('app_language');
            if (manualChoice === 'true' && saved === 'it') return 'it';

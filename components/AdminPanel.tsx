@@ -84,7 +84,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
   appSettings, onSettingsUpdate, initialEventViewMode, onToggleFAB
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
-  const { language, t } = useLanguage();
+  const { language, t, setLanguage } = useLanguage();
   const {
     activeTab, setActiveTab,
     users, allUsers, fetchUsers,
@@ -203,6 +203,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
   const [profileInternationalId, setProfileInternationalId] = useState(currentUser?.international_id || '');
   const [profileOriginalClub, setProfileOriginalClub] = useState(currentUser?.original_club || '');
   const [profileEmailVerified, setProfileEmailVerified] = useState(!!currentUser?.email_verified);
+  const [profileLanguage, setProfileLanguage] = useState(currentUser?.language || 'it');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -222,6 +223,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
       setProfileInternationalId(currentUser.international_id || '');
       setProfileOriginalClub(currentUser.original_club || '');
       setProfileEmailVerified(!!currentUser.email_verified);
+      setProfileLanguage(currentUser.language || 'it');
     }
   }, [currentUser]);
 
@@ -271,6 +273,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           international_id: profileInternationalId || undefined,
           original_club: profileOriginalClub || undefined,
           email_verified: profileEmailVerified,
+          language: profileLanguage,
           password: profilePassword || undefined
         }),
       });
@@ -298,9 +301,13 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           nationality: profileNationality,
           international_id: profileInternationalId,
           original_club: profileOriginalClub,
-          email_verified: profileEmailVerified
+          email_verified: profileEmailVerified,
+          language: profileLanguage
         });
       }
+      
+      // Update global language context if the user changed their own language
+      setLanguage(profileLanguage, true); // true to mark as manual selection
       
       setProfileSuccess(t('profile_success_msg'));
       setProfilePassword('');
@@ -808,6 +815,27 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                   )}
+                  <div className="md:col-span-2 border-t border-slate-800 pt-6">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('language')}</label>
+                    <div className="flex gap-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setProfileLanguage('it')}
+                        className={`flex-1 flex items-center justify-center gap-3 py-3 rounded-xl border transition-all ${profileLanguage === 'it' ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+                      >
+                        <span className="text-lg">🇮🇹</span>
+                        <span className="text-xs font-black uppercase tracking-widest">Italiano</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProfileLanguage('en')}
+                        className={`flex-1 flex items-center justify-center gap-3 py-3 rounded-xl border transition-all ${profileLanguage === 'en' ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'}`}
+                      >
+                        <span className="text-lg">🇬🇧</span>
+                        <span className="text-xs font-black uppercase tracking-widest">English</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-8 rounded-xl transition-all active:scale-95 text-xs uppercase shadow-lg shadow-orange-600/20">
                   {t('update_profile')}
