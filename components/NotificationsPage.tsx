@@ -1,6 +1,7 @@
 import React from 'react';
 import NotificationsManager from './NotificationsManager';
 import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface NotificationsPageProps {
   token: string;
@@ -9,6 +10,7 @@ interface NotificationsPageProps {
 
 const NotificationsPage: React.FC<NotificationsPageProps> = ({ token, userRole }) => {
   const { triggerConfirm } = useUI();
+  const { t } = useLanguage();
   return (
     <div className="space-y-4">
       {/* Sticky Header Section */}
@@ -16,7 +18,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ token, userRole }
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-bell text-orange-600"></i>
-            Notifiche
+            {t('notifications_label')}
           </h2>
         </div>
       </div>

@@ -149,9 +149,14 @@ const EventCard = React.memo(({
       </div>
       
       <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-2.5 border-t border-slate-800/50 mt-2">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <i className="fas fa-calendar-alt text-slate-600"></i>
-          <span>{new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
+          <span className="whitespace-nowrap">
+            {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+            {ev.end_date && ev.end_date !== ev.start_date && (
+              <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+            )}
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="text-right shrink-0 flex items-center gap-1">
@@ -381,7 +386,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
         if (ev.start_date.slice(0, 7) !== filterMonth) return false;
       }
-      if (filterRegistrationOpen && !ev.is_management_enabled) return false;
+      if (filterRegistrationOpen) {
+        if (!ev.is_management_enabled) return false;
+        
+        // Filter out past competitions for registration list
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const eventEnd = new Date(ev.end_date);
+        eventEnd.setHours(23, 59, 59, 999);
+        if (eventEnd < today) return false;
+      }
       return true;
     });
     
@@ -635,7 +649,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         <div className="flex flex-col gap-1 mt-1">
                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <i className="fas fa-calendar-alt text-indigo-500/50 w-3"></i>
-                            {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                            <span className="whitespace-nowrap italic text-slate-300">
+                              {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                              {ev.end_date && ev.end_date !== ev.start_date && (
+                                <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                              )}
+                            </span>
                           </p>
                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <i className="fas fa-map-marker-alt text-indigo-500/50 w-3"></i>
@@ -825,7 +844,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         <div className="flex flex-col gap-1 mt-1">
                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <i className="fas fa-calendar-alt text-emerald-500/50 w-3"></i>
-                            {new Date(ev.start_date || '').toLocaleDateString('it-IT')}
+                            <span className="whitespace-nowrap italic text-slate-300">
+                              {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                              {ev.end_date && ev.end_date !== ev.start_date && (
+                                <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                              )}
+                            </span>
                           </p>
                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <i className="fas fa-map-marker-alt text-emerald-500/50 w-3"></i>
@@ -1500,7 +1524,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
                         <div className="flex items-center gap-2">
                           <i className="fas fa-calendar-alt text-slate-600"></i>
-                          <span>{new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
+                          <span className="whitespace-nowrap">
+                            {new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                            {ev.end_date && ev.end_date !== ev.start_date && (
+                              <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                            )}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <i className="fas fa-tag text-slate-600"></i>
@@ -1721,7 +1750,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               <div className="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
                 <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                   <i className="fas fa-calendar-plus text-orange-500"></i>
-                  {editingEvent ? t('edit_competition') : t('new_event_button')}
+                  {editingEvent ? t('edit_competition') : t('new_event_title')}
                 </h3>
                 <button 
                   onClick={resetForm}
@@ -2003,7 +2032,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{t('competition_date_label')}</p>
                           <p className="text-xs font-bold text-white flex items-center gap-2">
                             <i className="far fa-calendar text-orange-500"></i>
-                            {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB')}
+                            <span className="whitespace-nowrap">
+                              {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                              {ev.end_date && ev.end_date !== ev.start_date && (
+                                <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                              )}
+                            </span>
                           </p>
                         </div>
                         <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
@@ -2185,7 +2219,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
                     <div className="flex items-center gap-2">
                       <i className="fas fa-calendar-alt text-slate-600"></i>
-                      <span>{new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
+                      <span className="whitespace-nowrap text-slate-300">
+                        {new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                        {ev.end_date && ev.end_date !== ev.start_date && (
+                          <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                        )}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right shrink-0 flex items-center gap-1.5">

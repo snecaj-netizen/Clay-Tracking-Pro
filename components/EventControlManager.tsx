@@ -38,51 +38,67 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
   }, [token]);
 
   const handleToggleManagement = async (eventId: string, currentStatus: boolean) => {
+    if (togglingId) return;
+
+    const performToggle = async () => {
+      console.log(`Starting toggle for event ${eventId}, current status: ${currentStatus}`);
+      setTogglingId(eventId);
+      
+      const timeoutId = setTimeout(() => {
+        console.warn(`Toggle operation for event ${eventId} timed out after 15s`);
+        setTogglingId(prev => prev === eventId ? null : prev);
+      }, 15000);
+
+      try {
+        const res = await fetch(`/api/admin/events/${eventId}/toggle-management`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ enabled: !currentStatus })
+        });
+
+        if (res.ok) {
+          const updatedEvent = await res.json();
+          setEvents(prev => prev.map(ev => 
+            ev.id === eventId ? { ...ev, is_management_enabled: updatedEvent.is_management_enabled } : ev
+          ));
+          triggerToast?.(t('event_management_toggled_success').replace('{{status}}', updatedEvent.is_management_enabled ? t('activated') : t('deactivated')), 'success');
+        } else {
+          let errorMsg = t('operation_error');
+          try {
+            const err = await res.json();
+            errorMsg = err.error || errorMsg;
+          } catch (e) {
+            if (res.status === 403) errorMsg = t('validate_permission_error');
+          }
+          console.error(`Toggle error for ${eventId}:`, errorMsg);
+          triggerToast?.(errorMsg, 'error');
+        }
+      } catch (err) {
+        console.error(`Network error toggling management for ${eventId}:`, err);
+        triggerToast?.(t('connection_error'), 'error');
+      } finally {
+        clearTimeout(timeoutId);
+        setTogglingId(null);
+      }
+    };
+
     if (!currentStatus) {
       if (triggerConfirm) {
         triggerConfirm(
           t('activate_management_title'),
           t('activate_management_confirm'),
-          () => executeToggle(eventId, currentStatus),
+          performToggle,
           t('activate_btn'),
           'primary'
         );
-        return;
-      } else {
-        const confirmed = window.confirm(t('activate_management_confirm'));
-        if (!confirmed) return;
+      } else if (window.confirm(t('activate_management_confirm'))) {
+        performToggle();
       }
-    }
-
-    executeToggle(eventId, currentStatus);
-  };
-
-  const executeToggle = async (eventId: string, currentStatus: boolean) => {
-    setTogglingId(eventId);
-    try {
-      const res = await fetch(`/api/admin/events/${eventId}/toggle-management`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ enabled: !currentStatus })
-      });
-
-      if (res.ok) {
-        setEvents(events.map(ev => 
-          ev.id === eventId ? { ...ev, is_management_enabled: !currentStatus } : ev
-        ));
-        triggerToast?.(t('event_management_toggled_success').replace('{{status}}', !currentStatus ? t('activated') : t('deactivated')), 'success');
-      } else {
-        const err = await res.json();
-        triggerToast?.(err.error || t('operation_error'), 'error');
-      }
-    } catch (err) {
-      console.error('Error toggling management:', err);
-      triggerToast?.(t('connection_error'), 'error');
-    } finally {
-      setTogglingId(null);
+    } else {
+      performToggle();
     }
   };
 
@@ -122,7 +138,27 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
           </p>
         </div>
 
-        <div className="relative w-full md:w-80">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <div className="bg-slate-900/60 p-1 rounded-xl border border-slate-800 flex items-center shrink-0">
+            <div className="px-3 py-1 border-r border-slate-800">
+              <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none">{t('total')}</p>
+              <p className="text-xs font-black text-white mt-1 leading-none">{events.length}</p>
+            </div>
+            <div className="px-3 py-1 border-r border-slate-800">
+              <p className="text-[8px] text-orange-500 font-black uppercase tracking-widest leading-none">{t('active_monitoring_label')}</p>
+              <p className="text-xs font-black text-white mt-1 leading-none">{events.filter(e => e.is_management_enabled).length}</p>
+            </div>
+            <button 
+              onClick={fetchEvents}
+              disabled={loading}
+              className="px-3 py-1 text-slate-500 hover:text-orange-500 transition-colors disabled:opacity-50"
+              title={t('refresh')}
+            >
+              <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <div className="relative w-full md:w-80">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input 
             type="text"
@@ -130,7 +166,8 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors text-white"
-          />
+            />
+          </div>
         </div>
       </div>
 
@@ -167,7 +204,11 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
                   <div className="space-y-1">
                     <p className="text-xs text-slate-500 flex items-center gap-2 font-medium">
                       <Calendar className="w-3 h-3 text-orange-500/50" />
-                      {new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
+                      {(() => {
+                        const start = new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US');
+                        const end = ev.end_date ? new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US') : null;
+                        return end && end !== start ? `${start} - ${end}` : start;
+                      })()}
                     </p>
                     <p className="text-xs text-slate-500 flex items-center gap-2 font-medium">
                       <MapPin className="w-3 h-3 text-orange-500/50" />

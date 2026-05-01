@@ -77,6 +77,9 @@ const Warehouse: React.FC<WarehouseProps> = ({
 
   const [filterYear, setFilterYear] = useState<string>('ALL');
   const [updatingGroupId, setUpdatingGroupId] = useState<string | null>(null);
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustingGroup, setAdjustingGroup] = useState<any>(null);
+  const [adjustValue, setAdjustValue] = useState<string>('');
   const typeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Cartridge Stock Form states
@@ -260,17 +263,22 @@ const Warehouse: React.FC<WarehouseProps> = ({
   };
 
   const handleSetExact = (typeGroup: any) => {
-    const newVal = window.prompt(`${t('set_exact_stock_desc_part1')} ${typeGroup.producer} ${typeGroup.model} (${t('lead_label')} ${typeGroup.leadNumber}${typeGroup.grams ? ` • ${typeGroup.grams}g` : ''}).\n${t('new_total_stock')}:`, typeGroup.total.toString());
-    
-    if (newVal !== null && newVal.trim() !== '') {
-      const parsed = parseInt(newVal);
-      if (!isNaN(parsed) && parsed >= 0) {
-        const diff = parsed - typeGroup.total;
-        if (diff !== 0) {
-          handleQuickAdjust(typeGroup, diff);
-        }
+    setAdjustingGroup(typeGroup);
+    setAdjustValue(typeGroup.total.toString());
+    setShowAdjustModal(true);
+  };
+
+  const confirmSetExact = () => {
+    if (!adjustingGroup) return;
+    const parsed = parseInt(adjustValue);
+    if (!isNaN(parsed) && parsed >= 0) {
+      const diff = parsed - adjustingGroup.total;
+      if (diff !== 0) {
+        handleQuickAdjust(adjustingGroup, diff);
       }
     }
+    setShowAdjustModal(false);
+    setAdjustingGroup(null);
   };
 
   const resetForm = () => {
@@ -861,6 +869,69 @@ const Warehouse: React.FC<WarehouseProps> = ({
       </div>
 
       {/* Floating Add Button for Warehouse - Only on Types and History tabs */}
+      {/* Custom Stock Adjustment Modal */}
+      <AnimatePresence>
+        {showAdjustModal && adjustingGroup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAdjustModal(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                  <i className="fas fa-boxes-stacked"></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase tracking-tight leading-none">{t('adjust_stock')}</h3>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                    {adjustingGroup.producer} {adjustingGroup.model}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">
+                    {t('new_total_stock')}
+                  </label>
+                  <input 
+                    type="number"
+                    value={adjustValue}
+                    onChange={(e) => setAdjustValue(e.target.value)}
+                    autoFocus
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center text-2xl font-black text-white focus:border-orange-500 transition-all outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => setShowAdjustModal(false)}
+                    className="flex-1 py-3.5 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all"
+                  >
+                    {t('cancel')}
+                  </button>
+                  <button 
+                    onClick={confirmSetExact}
+                    className="flex-1 py-3.5 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-orange-600/20"
+                  >
+                    {t('save')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <ExpandingFAB 
         show={activeTab === 'types' || activeTab === 'history'}
         label={showForm ? t('close_label') : activeTab === 'types' ? t('new_type') : t('new_purchase')}

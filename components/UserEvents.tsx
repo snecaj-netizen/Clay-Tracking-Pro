@@ -111,6 +111,7 @@ export const UserEvents: React.FC<UserEventsProps> = ({
           onInitialViewModeHandled={() => {}}
           hideViewSwitcher={true}
           appSettings={appSettings}
+          filterRegistrationOpen={activeTab === 'registration'}
         />
       </div>
     </div>

@@ -235,7 +235,7 @@ export default function NotificationsManager({ token, userRole }: NotificationsM
           console.error('Error deleting notification:', err);
         }
       },
-      'Elimina',
+      t('delete_btn'),
       'danger'
     );
   };

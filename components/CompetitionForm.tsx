@@ -152,11 +152,15 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return events.filter(e => 
-      e.name.toLowerCase().includes(eventSearch.toLowerCase()) ||
-      e.location.toLowerCase().includes(eventSearch.toLowerCase()) ||
-      e.discipline.toLowerCase().includes(eventSearch.toLowerCase())
-    ).sort((a, b) => {
+    return events.filter(e => {
+      const eventEnd = new Date(e.end_date || e.start_date);
+      eventEnd.setHours(23, 59, 59, 999);
+      if (eventEnd < today) return false;
+
+      return e.name.toLowerCase().includes(eventSearch.toLowerCase()) ||
+        e.location.toLowerCase().includes(eventSearch.toLowerCase()) ||
+        e.discipline.toLowerCase().includes(eventSearch.toLowerCase());
+    }).sort((a, b) => {
       const dateA = new Date(a.start_date);
       const dateB = new Date(b.start_date);
       
@@ -591,8 +595,14 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                             <span className="text-[8px] font-black bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">
                               {event.discipline}
                             </span>
-                            <span className="text-[10px] text-slate-500 font-bold ml-auto">
-                              {new Date(event.start_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            <span className="text-[10px] text-slate-500 font-bold ml-auto whitespace-nowrap">
+                              {new Date(event.start_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                              {event.end_date && event.end_date !== event.start_date && (
+                                <> - {new Date(event.end_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</>
+                              )}
+                              <span className="ml-1 opacity-60">
+                                {new Date(event.start_date).getFullYear()}
+                              </span>
                             </span>
                           </div>
                           <h4 className="text-sm font-black text-white group-hover:text-orange-500 transition-colors truncate">{event.name}</h4>

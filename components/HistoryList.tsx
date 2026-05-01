@@ -342,10 +342,9 @@ const HistoryList: React.FC<HistoryListProps> = ({
                         </span>
                       )}
                       <span className="text-slate-500 text-[10px] font-bold uppercase ml-auto sm:ml-0">
-                        {comp.endDate ? (
-                          `${new Date(comp.date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: '2-digit' })} - ${new Date(comp.endDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })}`
-                        ) : (
-                          new Date(comp.date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+                        {new Date(comp.date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                        {comp.endDate && comp.endDate !== comp.date && (
+                          <> - {new Date(comp.endDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
                         )}
                       </span>
                     </div>
@@ -730,7 +729,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
                         <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
                           <div className="flex items-center gap-2">
                             <i className="fas fa-calendar-alt text-slate-600"></i>
-                            <span>{new Date(c.date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</span>
+                            <span>
+                              {new Date(c.date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                              {c.endDate && c.endDate !== c.date && (
+                                <> - {new Date(c.endDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                              )}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <i className="fas fa-bullseye text-slate-600"></i>

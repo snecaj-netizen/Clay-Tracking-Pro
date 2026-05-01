@@ -295,7 +295,10 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                   <div className="flex items-center gap-1.5 min-w-max">
                     <i className="far fa-calendar text-[9px]"></i>
                     <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">
-                      {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')} - {new Date(event.end_date || event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')}
+                      {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                      {event.end_date && event.end_date !== event.start_date && (
+                        <> - {new Date(event.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 min-w-max border-l border-slate-200 [.dark-theme_&]:border-slate-800 pl-4">

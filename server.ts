@@ -1074,33 +1074,67 @@ const sendPushNotification = async (
     if (usersToNotify.length === 0) return;
 
     // 2. Save notifications and prepare for push
+    const notificationValues: string[] = [];
+    const notificationParams: any[] = [];
+    
+    usersToNotify.forEach((userData, i) => {
+      const lang = (userData.language || 'it') as 'it' | 'en';
+      const resolvedTitle = typeof title === 'string' ? title : (title[lang] || title['it']);
+      const resolvedBody = typeof body === 'string' ? body : (body[lang] || body['it']);
+      
+      const baseIdx = i * 4;
+      notificationValues.push(`($${baseIdx + 1}, $${baseIdx + 2}, $${baseIdx + 3}, $${baseIdx + 4})`);
+      notificationParams.push(userData.id, resolvedTitle, resolvedBody, url);
+    });
+
+    if (notificationParams.length > 0) {
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, body, url) VALUES ${notificationValues.join(', ')}`,
+        notificationParams
+      );
+    }
+
+    // Bulk fetch all subscriptions for the relevant users
+    const { rows: allSubscriptions } = await pool.query(
+      "SELECT * FROM push_subscriptions WHERE user_id = ANY($1)",
+      [usersToNotify.map(u => u.id)]
+    );
+
+    const subscriptionsByUser: { [key: number]: any[] } = {};
+    allSubscriptions.forEach(sub => {
+      if (!subscriptionsByUser[sub.user_id]) subscriptionsByUser[sub.user_id] = [];
+      subscriptionsByUser[sub.user_id].push(sub);
+    });
+
+    // 3. Prepare push promises
+    const pushPromises: Promise<any>[] = [];
+
     for (const userData of usersToNotify) {
       const lang = (userData.language || 'it') as 'it' | 'en';
       const resolvedTitle = typeof title === 'string' ? title : (title[lang] || title['it']);
       const resolvedBody = typeof body === 'string' ? body : (body[lang] || body['it']);
 
-      await pool.query(
-        "INSERT INTO notifications (user_id, title, body, url) VALUES ($1, $2, $3, $4)",
-        [userData.id, resolvedTitle, resolvedBody, url]
-      );
-
-      // Sending individual push (simplified, could be optimized but safer for per-user translation)
-      const { rows: subscriptions } = await pool.query(
-        "SELECT * FROM push_subscriptions WHERE user_id = $1",
-        [userData.id]
-      );
-
-      for (const sub of subscriptions) {
-        try {
-          const payload = JSON.stringify({ title: resolvedTitle, body: resolvedBody, url });
-          await webpush.sendNotification(sub.subscription, payload);
-        } catch (err: any) {
-          if (err.statusCode === 404 || err.statusCode === 410) {
-            await pool.query("DELETE FROM push_subscriptions WHERE id = $1", [sub.id]);
-          }
-        }
+      const userSubs = subscriptionsByUser[userData.id] || [];
+      for (const sub of userSubs) {
+        pushPromises.push(
+          (async () => {
+            try {
+              const payload = JSON.stringify({ title: resolvedTitle, body: resolvedBody, url });
+              if (typeof webpush !== 'undefined') {
+                await webpush.sendNotification(sub.subscription, payload);
+              }
+            } catch (err: any) {
+              if (err.statusCode === 404 || err.statusCode === 410) {
+                await pool.query("DELETE FROM push_subscriptions WHERE id = $1", [sub.id]);
+              }
+            }
+          })()
+        );
       }
     }
+    
+    // Process all push notifications in parallel
+    await Promise.all(pushPromises);
   } catch (err) {
     console.error("Error in sendPushNotification:", err);
   }
@@ -1377,10 +1411,26 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdmin, async (req: any, res) => {
+app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   try {
     const { id } = req.params;
     const { enabled } = req.body;
+
+    // Check ownership if not admin
+    if (req.user.role !== 'admin') {
+      const { rows: eventSearch } = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+      if (eventSearch.length === 0) {
+        return res.status(404).json({ error: 'Evento non trovato' });
+      }
+      const event = eventSearch[0];
+      
+      const { rows: userSearch } = await pool.query('SELECT society FROM users WHERE id = $1', [req.user.id]);
+      const userSociety = userSearch[0]?.society;
+
+      if (!userSociety || userSociety !== event.location) {
+        return res.status(403).json({ error: 'Non autorizzato a gestire questa gara' });
+      }
+    }
 
     const result = await pool.query(
       'UPDATE events SET is_management_enabled = $1 WHERE id = $2 RETURNING *',
@@ -1427,7 +1477,8 @@ app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdm
             }
           }
 
-          await sendPushNotification(
+          // Fire and forget combined push notification
+          sendPushNotification(
             recipientIds,
             { it: "Iscrizioni Aperte!", en: "Registration Open!" },
             { 
@@ -1436,7 +1487,7 @@ app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdm
             },
             `/gare?id=${event.id}`,
             'all'
-          );
+          ).catch(e => console.error("Error sending registration notification:", e));
         }
       } catch (notifyErr) {
         console.error("Error sending notifications for opened registrations:", notifyErr);

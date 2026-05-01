@@ -171,6 +171,8 @@ const translations: Translations = {
   'export': { it: 'Esporta', en: 'Export' },
   'import': { it: 'Importa', en: 'Import' },
   'new_event': { it: 'Nuovo Evento', en: 'New Competition' },
+  'new_event_button': { it: 'Nuovo Evento', en: 'New Competition' },
+  'new_event_title': { it: 'Nuovo Evento', en: 'New Competition' },
   'search_society': { it: 'Cerca società...', en: 'Search club...' },
   'view_details': { it: 'Vedi Dettagli', en: 'View Details' },
   'close_fab': { it: 'Chiudi', en: 'Close' },
@@ -709,6 +711,7 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   
   // Warehouse
   'set_exact_stock_desc_part1': { it: 'Imposta la giacenza totale per', en: 'Set exact stock for' },
+  'adjust_stock': { it: 'Regola Giacenza', en: 'Adjust Stock' },
   'new_total_stock': { it: 'Nuova giacenza totale', en: 'New total stock' },
   'lead_label': { it: 'Piombo', en: 'Lead' },
   'lead_label_short': { it: 'P.', en: 'Lead' },
@@ -933,7 +936,6 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   'confirm_reopen_competition': { it: 'Sei sicuro di voler riaprire questa gara? La società potrà nuovamente modificare i risultati.', en: 'Are you sure you want to reopen this competition? The club will be able to modify the results again.' },
   'reopen': { it: 'Riapri', en: 'Reopen' },
   'error_reopening_competition': { it: 'Errore durante la riapertura della gara', en: 'Error during the reopening of the competition' },
-  'new_event_title': { it: 'Nuovo Evento', en: 'New Competition' },
   'edit_event_title': { it: 'Modifica Evento', en: 'Edit Competition' },
   'file_too_large_error': { it: 'Il file è troppo grande. Dimensione massima: 5MB', en: 'The file is too large. Maximum size: 5MB' },
   'no_events_to_export': { it: 'Nessun evento da esportare.', en: 'No competitions to export.' },
