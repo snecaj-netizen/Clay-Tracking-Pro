@@ -2,6 +2,7 @@
 import React from 'react';
 import { Discipline } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { motion, useScroll, useMotionValueEvent } from 'motion/react';
 
 interface BottomNavigationProps {
   currentView: string;
@@ -13,6 +14,25 @@ interface BottomNavigationProps {
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate, user, appSettings }) => {
   const { t } = useLanguage();
   const resultsAccess = appSettings?.event_results_access || {};
+  const [isVisible, setIsVisible] = React.useState(true);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = scrollY.getPrevious() || 0;
+    const diff = latest - previous;
+
+    // Hide the bottom menu when scrolling down. Reappear when scrolling up.
+    // scrollY decreases (diff < 0) -> scroll up (moving towards top of page)
+    // scrollY increases (diff > 0) -> scroll down (moving towards bottom of page)
+    
+    if (Math.abs(diff) > 5) { // small threshold to avoid jitter
+      if (diff > 0 && latest > 50) {
+        setIsVisible(false); // Hide on scroll down
+      } else if (diff < 0) {
+        setIsVisible(true);  // Show on scroll up
+      }
+    }
+  });
 
   const checkAccess = (access: any, userSociety: string | undefined) => {
     if (typeof access === 'boolean') return access;
@@ -45,7 +65,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
   navItems.push({ id: 'societies', label: t('societies'), icon: 'fa-shield-alt' });
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t-2 border-orange-600 z-[1000] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+    <motion.nav 
+      initial={false}
+      animate={{ y: isVisible ? 0 : 100 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      className="sm:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t-2 border-orange-600 z-[1000] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]"
+    >
       <div className="flex items-center justify-around h-16 px-1 overflow-x-auto no-scrollbar scroll-shadows">
         {navItems.map((item) => {
           const isActive = currentView === item.id;
@@ -77,7 +102,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
           );
         })}
       </div>
-    </nav>
+    </motion.nav>
   );
 };
 

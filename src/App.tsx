@@ -13,6 +13,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import UpdateNotification from '@/components/UpdateNotification';
 import ExpandingFAB from '@/components/ExpandingFAB';
 import { ConnectionStatus, handleNetworkError } from '@/components/ConnectionStatus';
+import { motion, AnimatePresence } from 'motion/react';
 
 import Warehouse from '@/components/Warehouse';
 import AdminPanel from '@/components/AdminPanel';
@@ -886,6 +887,15 @@ const App: React.FC = () => {
       )}
            <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${view === 'home' ? 'pt-0 pb-0' : 'pt-16 pb-24 sm:pb-8'} flex-1 w-full`}>
         <Suspense fallback={<LoadingFallback />}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
           {view === 'home' && (
             <HomePage 
               user={user} 
@@ -1221,13 +1231,15 @@ const App: React.FC = () => {
           )}
 
           {view === 'notifications' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="h-full">
               <NotificationsPage 
                 token={token || ''} 
                 userRole={user?.role} 
               />
             </div>
           )}
+            </motion.div>
+          </AnimatePresence>
         </Suspense>
       </main>
 

@@ -85,7 +85,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
             <h1 className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic">
               CLAY <span className="text-orange-600">PERFORMANCE</span>
             </h1>
-            <p className="text-slate-500 dark:text-slate-500 text-[7px] font-black uppercase tracking-[0.4em] ml-1">
+            <p className="text-slate-500 dark:text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] ml-1">
               {isSociety ? t('society_portal') : t('shooter_portal')}
             </p>
           </div>
@@ -103,10 +103,10 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
                 <i className={`fas ${btn.icon}`}></i>
               </div>
               <div className="text-left flex-1">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                <div className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 group-hover:text-black dark:group-hover:text-white transition-colors">
                   {btn.label}
                 </div>
-                <div className="text-[10px] font-medium text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors line-clamp-1 mt-0.5">
+                <div className="text-xs font-medium text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors line-clamp-1 mt-0.5">
                   {btn.description}
                 </div>
               </div>
@@ -124,7 +124,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-300 active:scale-95"
           >
             <i className="fas fa-sign-out-alt text-[10px]"></i>
-            <span className="text-[8px] font-black uppercase tracking-widest leading-none pt-0.5">
+            <span className="text-[10px] font-black uppercase tracking-widest leading-none pt-0.5">
               {t('logout')}
             </span>
           </button>

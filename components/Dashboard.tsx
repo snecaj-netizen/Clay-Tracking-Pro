@@ -119,25 +119,25 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center gap-2 ml-2">
           <i className="fas fa-trophy text-orange-500"></i>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('race_performance')}</h2>
+          <h2 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">{t('race_performance')}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('finished_races')}</p>
-            <h3 className="text-3xl font-black text-white">{compStats?.count || 0}</h3>
+            <p className="text-slate-500 text-xs font-bold mb-1 uppercase tracking-wider">{t('finished_races')}</p>
+            <h3 className="text-4xl font-black text-white">{compStats?.count || 0}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl border-l-4 border-l-orange-600">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('race_average')} /25</p>
-            <h3 className="text-3xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
+            <p className="text-slate-500 text-xs font-bold mb-1 uppercase tracking-wider">{t('race_average')} /25</p>
+            <h3 className="text-4xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl relative group">
-            <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-wider">{t('best_placement')}</p>
+            <p className="text-slate-500 text-xs font-bold mb-1 uppercase tracking-wider">{t('best_placement')}</p>
             {compStats?.bestPlacementComp ? (
               <div>
                 <div className="flex items-baseline justify-between">
                   <div className="flex items-baseline gap-1">
-                    <h3 className="text-3xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
-                    <span className="text-xs font-bold text-slate-400 uppercase">{t('position_label')}</span>
+                    <h3 className="text-4xl font-black text-white">{compStats.bestPlacementComp.position}°</h3>
+                    <span className="text-sm font-bold text-slate-400 uppercase">{t('position_label')}</span>
                   </div>
                   <button 
                     onClick={() => setShareData({ comp: compStats.bestPlacementComp! })}
@@ -148,16 +148,16 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </button>
                 </div>
                 <div className="mt-1">
-                  <p className="text-[10px] font-bold text-orange-500 uppercase truncate" title={compStats.bestPlacementComp.name}>
+                  <p className="text-xs font-bold text-orange-500 uppercase truncate" title={compStats.bestPlacementComp.name}>
                     {compStats.bestPlacementComp.name}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     {t('average')}: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
                   </p>
                 </div>
               </div>
             ) : (
-              <h3 className="text-3xl font-black text-slate-700">-</h3>
+              <h3 className="text-4xl font-black text-slate-700">-</h3>
             )}
           </div>
         </div>
@@ -169,12 +169,12 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between ml-2">
             <div className="flex items-center gap-2">
               <i className="fas fa-star text-amber-500"></i>
-              <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">{t('technical_rating_title')}</h2>
+              <h2 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">{t('technical_rating_title')}</h2>
             </div>
             <div className="group relative">
               <i className="fas fa-info-circle text-slate-600 cursor-help"></i>
               <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <p className="text-[10px] text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed">
                   {t('technical_rating_desc')}
                 </p>
               </div>
@@ -188,14 +188,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                 
                 <div className="flex justify-between items-start relative z-10">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate max-w-[150px]" title={r.discipline}>
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-wider truncate max-w-[150px]" title={r.discipline}>
                       {t(r.discipline)}
                     </p>
                     <div className="flex items-baseline gap-1">
-                      <h3 className={`text-3xl font-black ${r.isProvvisorio ? 'text-slate-400' : 'text-amber-500'}`}>
+                      <h3 className={`text-4xl font-black ${r.isProvvisorio ? 'text-slate-400' : 'text-amber-500'}`}>
                         {r.rating.toFixed(2)}
                       </h3>
-                      <span className="text-xs font-bold text-slate-500">/25</span>
+                      <span className="text-sm font-bold text-slate-500">/25</span>
                     </div>
                   </div>
                   <div className="text-right">
