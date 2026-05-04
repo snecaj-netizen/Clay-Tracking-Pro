@@ -42,6 +42,8 @@ interface AdminContextType {
   setSelectedSociety: React.Dispatch<React.SetStateAction<any | null>>;
   societySearch: string;
   setSocietySearch: React.Dispatch<React.SetStateAction<string>>;
+  societyRegionSearch: string;
+  setSocietyRegionSearch: React.Dispatch<React.SetStateAction<string>>;
   societyViewMode: 'list' | 'map';
   setSocietyViewMode: React.Dispatch<React.SetStateAction<'list' | 'map'>>;
   fetchSocieties: (signal?: AbortSignal, isBackground?: boolean) => Promise<void>;
@@ -234,6 +236,7 @@ export const AdminProvider: React.FC<{
   const [societies, setSocieties] = useState<any[]>(initialSocieties || []);
   const [selectedSociety, setSelectedSociety] = useState<any | null>(null);
   const [societySearch, setSocietySearch] = useState('');
+  const [societyRegionSearch, setSocietyRegionSearch] = useState('');
   const debouncedSocietySearch = useDebounce(societySearch, 500);
   const [societyViewMode, setSocietyViewMode] = useState<'list' | 'map'>('list');
 
@@ -729,7 +732,7 @@ export const AdminProvider: React.FC<{
     currentUser, token,
     users, setUsers, allUsers, setAllUsers, totalUsers, usersPage, setUsersPage, usersPerPage, setUsersPerPage, userSearchTerm, setUserSearchTerm, filterRole, setFilterRole, userFilterSociety, setUserFilterSociety, fetchUsers, fetchAllUsers,
     teams, setTeams, teamStats, setTeamStats, fetchTeams, fetchTeamStats,
-    societies, setSocieties, selectedSociety, setSelectedSociety, societySearch, setSocietySearch, societyViewMode, setSocietyViewMode, fetchSocieties,
+    societies, setSocieties, selectedSociety, setSelectedSociety, societySearch, setSocietySearch, societyRegionSearch, setSocietyRegionSearch, societyViewMode, setSocietyViewMode, fetchSocieties,
     events, setEvents, fetchEvents,
     allResults, setAllResults, totalResults, resultsPage, setResultsPage, resultsPerPage, filterShooter, setFilterShooter, filterSociety, setFilterSociety, filterDiscipline, setFilterDiscipline, filterLocation, setFilterLocation, filterYear, setFilterYear, filterMonth, setFilterMonth, filterDate, setFilterDate, filterCategory, setFilterCategory, filterQualification, setFilterQualification, fetchAllResults,
     loading, setLoading, backgroundLoading, error, setError, handleRetry,

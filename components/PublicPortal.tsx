@@ -160,7 +160,8 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
   const filterEvents = (eventList: SocietyEvent[]) => {
     return eventList.filter(event => {
       const matchesSearch = event.name.toLowerCase().includes(search.toLowerCase()) || 
-                            event.location.toLowerCase().includes(search.toLowerCase());
+                            event.location.toLowerCase().includes(search.toLowerCase()) ||
+                            (event.region && event.region.toLowerCase().includes(search.toLowerCase()));
       const matchesRegion = selectedRegion === '' || event.region === selectedRegion;
       const matchesDiscipline = selectedDiscipline === '' || event.discipline === selectedDiscipline;
       return matchesSearch && matchesRegion && matchesDiscipline;

@@ -15,7 +15,7 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
   value, 
   onChange, 
   societies, 
-  placeholder = "Cerca Campo / TAV...", 
+  placeholder = "Cerca società o codice...", 
   className = "",
   required = false,
   disabled = false,
@@ -56,8 +56,11 @@ const SocietySearch: React.FC<SocietySearchProps> = ({
   }, [value, societies, useId]);
 
   const filteredSocieties = societies.filter(soc => {
-    const displayName = `${soc.name}${soc.code ? ` (${soc.code})` : ''}`.toLowerCase();
-    return displayName.includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    const name = soc.name?.toLowerCase() || '';
+    const code = soc.code?.toLowerCase() || '';
+    
+    return name.includes(term) || code.includes(term);
   });
 
   const handleSelect = (soc: any) => {

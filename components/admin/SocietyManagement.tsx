@@ -131,19 +131,27 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
   const {
     societies, setSocieties, fetchSocieties, loading, backgroundLoading, error, setError,
     setShowUserForm, setEditingUser, setName, setSurname, setEmail, setRole, setSociety, setShooterCode, setPassword, setCategory, setQualification, setUserAvatar, setBirthDate, setActiveTab,
-    showSocietyForm, setShowSocietyForm, editingSociety, setEditingSociety, societySearch, setSocietySearch, societyViewMode, setSocietyViewMode, selectedSociety, setSelectedSociety,
+    showSocietyForm, setShowSocietyForm, editingSociety, setEditingSociety, societySearch, setSocietySearch, societyRegionSearch, setSocietyRegionSearch, societyViewMode, setSocietyViewMode, selectedSociety, setSelectedSociety,
     socName, setSocName, socCode, setSocCode, socEmail, setSocEmail, socWebsite, setSocWebsite, socGoogleMapsLink, setSocGoogleMapsLink, socContactName, setSocContactName, socAddress, setSocAddress, socCity, setSocCity, socRegion, setSocRegion, socZip, setSocZip, socPhone, setSocPhone, socMobile, setSocMobile, socLogo, setSocLogo, socOpeningHours, setSocOpeningHours, socDisciplines, setSocDisciplines,
     socLat, setSocLat, socLng, setSocLng
   } = useAdmin();
 
   const filteredSocieties = useMemo(() => {
-    return societies.filter(soc => 
-      soc.name.toLowerCase().includes(societySearch.toLowerCase()) ||
-      (soc.city && soc.city.toLowerCase().includes(societySearch.toLowerCase())) ||
-      (soc.region && soc.region.toLowerCase().includes(societySearch.toLowerCase())) ||
-      (soc.code && soc.code.toLowerCase().includes(societySearch.toLowerCase()))
-    );
-  }, [societies, societySearch]);
+    return societies.filter(soc => {
+      const term = societySearch.toLowerCase();
+      const regionTerm = societyRegionSearch.toLowerCase();
+      
+      const matchesSearch = !term || 
+        soc.name.toLowerCase().includes(term) || 
+        (soc.code && soc.code.toLowerCase().includes(term));
+        
+      const matchesRegion = !regionTerm || 
+        (soc.region && soc.region.toLowerCase().includes(regionTerm)) ||
+        (soc.city && soc.city.toLowerCase().includes(regionTerm));
+        
+      return matchesSearch && matchesRegion;
+    });
+  }, [societies, societySearch, societyRegionSearch]);
 
   const handleSocietyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -460,7 +468,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
           </div>
 
           {!showSocietyForm && (
-            <div className="flex flex-col sm:flex-row gap-4 bg-slate-950/30 p-4 rounded-3xl border border-slate-800/50 backdrop-blur-xl animate-in flip-in-x duration-500">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 bg-slate-950/30 p-4 rounded-3xl border border-slate-800/50 backdrop-blur-xl animate-in flip-in-x duration-500">
               <div className="relative flex-1">
                 <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 text-xs"></i>
                 <input 
@@ -473,6 +481,25 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
                 {societySearch && (
                   <button 
                     onClick={() => setSocietySearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-orange-500 hover:bg-orange-500/10 rounded-full transition-all"
+                    title={t('clean_search')}
+                  >
+                    <i className="fas fa-times-circle"></i>
+                  </button>
+                )}
+              </div>
+              <div className="relative flex-1">
+                <i className="fas fa-map-marker-alt absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 text-xs"></i>
+                <input 
+                  type="text" 
+                  placeholder={t('search_region_placeholder')} 
+                  value={societyRegionSearch}
+                  onChange={(e) => setSocietyRegionSearch(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-12 pr-10 py-3 text-white text-xs font-bold focus:border-orange-500/50 outline-none transition-all placeholder:text-slate-600"
+                />
+                {societyRegionSearch && (
+                  <button 
+                    onClick={() => setSocietyRegionSearch('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-orange-500 hover:bg-orange-500/10 rounded-full transition-all"
                     title={t('clean_search')}
                   >
