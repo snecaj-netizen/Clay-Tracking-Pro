@@ -181,8 +181,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ratings.map((r) => (
-              <div key={r.discipline} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl relative overflow-hidden group">
+            {ratings.map((r, idx) => (
+              <div key={`${r.discipline}-${idx}`} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl relative overflow-hidden group">
                 {/* Background Decoration */}
                 <div className={`absolute -top-12 -right-12 w-24 h-24 rounded-full blur-3xl transition-colors ${r.isProvvisorio ? 'bg-slate-800/20' : 'bg-amber-500/10'}`}></div>
                 

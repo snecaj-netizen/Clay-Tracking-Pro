@@ -95,8 +95,8 @@ const SocietyCard = React.memo(({
         </div>
         {soc.disciplines && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {soc.disciplines.split(',').slice(0, 5).map((d: string) => (
-              <span key={d} className="text-[8px] font-black text-orange-500/80 bg-orange-500/10 px-1 rounded uppercase">{d}</span>
+            {soc.disciplines.split(',').slice(0, 5).map((d: string, idx: number) => (
+              <span key={`${d}-${soc.id}-${idx}`} className="text-[8px] font-black text-orange-500/80 bg-orange-500/10 px-1 rounded uppercase">{d}</span>
             ))}
             {soc.disciplines.split(',').length > 5 && <span className="text-[8px] font-black text-slate-500">...</span>}
           </div>
@@ -339,8 +339,16 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
               
               if (!res.ok) throw new Error(t('import_error_msg'));
               
+              const data = await res.json();
               fetchSocieties();
-              triggerToast?.(t('import_completed_simple'), 'success');
+              
+              triggerToast?.(
+                t('import_completed')
+                  .replace('{{created}}', String(data.created))
+                  .replace('{{updated}}', String(data.updated))
+                  .replace('{{errors}}', String(data.errors)),
+                'success'
+              );
             } catch (err) {
               console.error('Error importing societies:', err);
               setError(t('import_error_msg'));

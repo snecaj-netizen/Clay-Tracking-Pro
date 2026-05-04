@@ -2661,6 +2661,142 @@ app.delete('/api/admin/societies/:id', authenticateToken, requireAdmin, async (r
   }
 });
 
+app.post('/api/admin/societies/import', authenticateToken, requireAdmin, async (req: any, res) => {
+  const { societies } = req.body;
+  if (!Array.isArray(societies)) return res.status(400).json({ error: 'Invalid data format' });
+
+  const results = { created: 0, updated: 0, skipped: 0, errors: 0 };
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    
+    for (const s of societies) {
+      if (!s.name || !s.code) {
+        results.errors++;
+        continue;
+      }
+
+      try {
+        // Find society by code
+        const { rows: existing } = await client.query(
+          "SELECT * FROM societies WHERE LOWER(TRIM(code)) = LOWER(TRIM($1))", 
+          [s.code]
+        );
+        
+        if (existing.length > 0) {
+          const e = existing[0];
+          const updateFields = [];
+          const updateParams = [];
+          
+          const fieldsMap = [
+            { key: 'name', val: s.name },
+            { key: 'email', val: s.email },
+            { key: 'website', val: s.website },
+            { key: 'address', val: s.address },
+            { key: 'city', val: s.city },
+            { key: 'region', val: s.region },
+            { key: 'zip_code', val: s.zip || s.zip_code },
+            { key: 'phone', val: s.phone },
+            { key: 'mobile', val: s.mobile },
+            { key: 'disciplines', val: s.disciplines },
+            { key: 'lat', val: s.lat },
+            { key: 'lng', val: s.lng }
+          ];
+
+          for (const field of fieldsMap) {
+            const dbVal = e[field.key];
+            const newVal = field.val;
+            // Update only if database value is null or empty, and new value is provided
+            if ((dbVal === null || String(dbVal).trim() === '') && newVal !== undefined && newVal !== null && String(newVal).trim() !== '') {
+              updateFields.push(`${field.key} = $${updateParams.length + 1}`);
+              updateParams.push(newVal);
+            }
+          }
+
+          if (updateFields.length > 0) {
+            updateParams.push(e.id);
+            await client.query(
+              `UPDATE societies SET ${updateFields.join(', ')} WHERE id = $${updateParams.length}`,
+              updateParams
+            );
+            results.updated++;
+          } else {
+            results.skipped++;
+          }
+        } else {
+          // Create new if not found by code
+          await client.query(
+            "INSERT INTO societies (name, code, email, website, address, city, region, zip_code, phone, mobile, disciplines, lat, lng) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+            [
+              s.name, s.code, s.email || null, s.website || null, s.address || null, 
+              s.city || null, s.region || null, s.zip || s.zip_code || null, s.phone || null, 
+              s.mobile || null, s.disciplines || null, 
+              s.lat ? parseFloat(s.lat) : null, s.lng ? parseFloat(s.lng) : null
+            ]
+          );
+          results.created++;
+        }
+      } catch (err) {
+        console.error('Error importing society:', s.name, err);
+        results.errors++;
+      }
+    }
+    
+    await client.query('COMMIT');
+    res.json(results);
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/admin/societies/update-codes', authenticateToken, requireAdmin, async (req: any, res) => {
+  const { updates } = req.body;
+  if (!Array.isArray(updates)) return res.status(400).json({ error: 'Invalid data format' });
+
+  const results = { updated: 0, skipped: 0, errors: 0 };
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    
+    for (const u of updates) {
+      if (!u.name || !u.code) {
+        results.errors++;
+        continue;
+      }
+
+      try {
+        const { rowCount } = await client.query(
+          "UPDATE societies SET code = $1 WHERE LOWER(TRIM(name)) = LOWER(TRIM($2)) AND (code IS NULL OR code = '')",
+          [u.code, u.name]
+        );
+        
+        if (rowCount > 0) {
+          results.updated++;
+        } else {
+          // Check if it already has the same code or name doesn't exist or already has a different code
+          results.skipped++;
+        }
+      } catch (err) {
+        console.error('Error updating society code:', u.name, err);
+        results.errors++;
+      }
+    }
+    
+    await client.query('COMMIT');
+    res.json(results);
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Challenges Routes
 app.get('/api/challenges', authenticateToken, async (req: any, res) => {
   try {

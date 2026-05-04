@@ -121,8 +121,8 @@ const SocietyDetailModal: React.FC<SocietyDetailModalProps> = ({
               <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Discipline Disponibili</p>
                 <div className="flex flex-wrap gap-2">
-                  {society.disciplines.split(',').map((d: string) => (
-                    <span key={d} className="px-2 py-1 rounded-lg bg-orange-600/20 text-orange-500 text-[10px] font-black border border-orange-600/30 uppercase tracking-wider">
+                  {society.disciplines.split(',').map((d: string, idx: number) => (
+                    <span key={`${d}-${idx}`} className="px-2 py-1 rounded-lg bg-orange-600/20 text-orange-500 text-[10px] font-black border border-orange-600/30 uppercase tracking-wider">
                       {d}
                     </span>
                   ))}

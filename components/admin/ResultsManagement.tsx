@@ -224,7 +224,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">{t('all')}</option>
-                  {filterOptions.disciplines.map(d => <option key={d} value={d}>{d}</option>)}
+                  {[...new Set(filterOptions.disciplines)].map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                   <i className="fas fa-chevron-down text-[10px]"></i>
@@ -243,7 +243,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">{t('all')}</option>
-                  {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
+                  {[...new Set(filterOptions.locations)].map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                   <i className="fas fa-chevron-down text-[10px]"></i>
@@ -262,7 +262,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">{t('all')}</option>
-                  {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
+                  {[...new Set(filterOptions.years)].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                   <i className="fas fa-chevron-down text-[10px]"></i>

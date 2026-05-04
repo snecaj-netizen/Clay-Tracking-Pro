@@ -193,6 +193,7 @@ const translations: Translations = {
   'ris_ind_short': { it: 'Ris. Ind.', en: 'Ind. Res.' },
   'class_short': { it: 'Class.', en: 'Rank' },
   'portal_short': { it: 'Portale', en: 'Portal' },
+  'society_name': { it: 'Denominazione Sociale', en: 'Society Name' },
   'name': { it: 'Nome', en: 'First Name' },
   'surname': { it: 'Cognome', en: 'Last Name' },
   'club': { it: 'Società', en: 'Club' },

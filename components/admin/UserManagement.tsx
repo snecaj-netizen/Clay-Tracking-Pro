@@ -179,6 +179,13 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
 
   useEffect(() => {
+    if (role === 'society') {
+      setSurname('');
+      setIsInternational(false);
+    }
+  }, [role, setSurname, setIsInternational]);
+
+  useEffect(() => {
     if (currentUser?.role === 'society' && showUserForm && !editingUser) {
       setSociety(currentUser.society || '');
     }
@@ -756,8 +763,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
             {/* Row 2: Nome, Cognome */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('name')}</label>
+              <div className={role === 'society' ? 'md:col-span-2' : ''}>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{role === 'society' ? t('society_name') : t('name')}</label>
                 <input 
                   type="text" 
                   required 
@@ -767,17 +774,19 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
                 />
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('surname')}</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={surname} 
-                  onChange={e => setSurname(e.target.value)} 
-                  disabled={currentUser?.role === 'society' && !!editingUser}
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                />
-              </div>
+              {role !== 'society' && (
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('surname')}</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={surname} 
+                    onChange={e => setSurname(e.target.value)} 
+                    disabled={currentUser?.role === 'society' && !!editingUser}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
+                </div>
+              )}
             </div>
 
             {/* Row 3: Data di Nascita, Telefono */}
@@ -838,19 +847,23 @@ const UserManagement: React.FC<UserManagementProps> = ({
             {/* Row 4.5: International Toggle & Status (Admin Only) */}
             {currentUser?.role === 'admin' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('international_shooter_label')}</span>
-                    <span className="text-[9px] text-slate-500 font-medium leading-none">{t('international_shooter_desc')}</span>
+                {role !== 'society' ? (
+                  <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('international_shooter_label')}</span>
+                      <span className="text-[9px] text-slate-500 font-medium leading-none">{t('international_shooter_desc')}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsInternational(!isInternational)}
+                      className={`w-10 h-5 rounded-full transition-all relative ${isInternational ? 'bg-orange-600' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isInternational ? 'right-1' : 'left-1'}`}></div>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsInternational(!isInternational)}
-                    className={`w-10 h-5 rounded-full transition-all relative ${isInternational ? 'bg-orange-600' : 'bg-slate-700'}`}
-                  >
-                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isInternational ? 'right-1' : 'left-1'}`}></div>
-                  </button>
-                </div>
+                ) : (
+                  <div className="hidden md:block"></div>
+                )}
                 <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('verified_email_label_desc')}</span>

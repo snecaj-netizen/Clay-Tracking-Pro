@@ -369,7 +369,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
           
           <div className="grid grid-cols-1 gap-2">
             {filteredTeamStats.map((stat, idx) => (
-              <div key={`${stat.name}-${stat.discipline}`} className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-3 flex items-center justify-between group hover:border-orange-500/30 transition-all">
+              <div key={`${stat.user_id || stat.id || idx}-${stat.discipline}`} className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-3 flex items-center justify-between group hover:border-orange-500/30 transition-all">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${idx === 0 ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20' : idx === 1 ? 'bg-slate-300 text-slate-950' : idx === 2 ? 'bg-orange-700 text-white' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}>
                     {idx + 1}

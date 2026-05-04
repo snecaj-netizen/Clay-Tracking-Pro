@@ -540,7 +540,11 @@ export const AdminProvider: React.FC<{
       });
       if (res.ok) {
         const data = await res.json();
-        setFilterOptions(data);
+        setFilterOptions({
+          disciplines: Array.from(new Set(data.disciplines || [])),
+          locations: Array.from(new Set(data.locations || [])),
+          years: Array.from(new Set(data.years || []))
+        });
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') console.error(err);
