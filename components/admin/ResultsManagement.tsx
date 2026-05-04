@@ -26,8 +26,7 @@ const ResultRow = React.memo(({
   const { t } = useLanguage();
   return (
     <tr 
-      className="group bg-slate-950/40 hover:bg-slate-900/60 transition-all border border-slate-800/50 cursor-pointer"
-      onClick={() => onSelect(result)}
+      className="group bg-slate-950/40 hover:bg-slate-900/60 transition-all border border-slate-800/50"
     >
       <td className="px-4 py-4 rounded-l-2xl">
         <div className="flex items-center gap-3">
@@ -72,13 +71,12 @@ const ResultRow = React.memo(({
       </td>
       <td className="px-4 py-4 text-right rounded-r-2xl">
         <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(result);
-          }}
-          className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 hover:text-orange-500 hover:border-orange-500/50 transition-all flex items-center justify-center ml-auto"
+          onClick={() => onSelect(result)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600/20 text-orange-500 hover:bg-orange-600 hover:text-white border border-orange-600/40 hover:border-orange-500 transition-all ml-auto group-hover:scale-105 shadow-sm hover:shadow-orange-600/20"
+          title={t('view_results')}
         >
-          <i className="fas fa-eye text-[10px]"></i>
+          <i className="fas fa-eye text-sm"></i>
+          <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">{t('view_results')}</span>
         </button>
       </td>
     </tr>

@@ -57,11 +57,11 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
       roles: ['user', 'society', 'admin']
     },
     {
-      id: 'profile',
-      label: t('your_profile') || 'Il mio Profilo',
-      icon: 'fa-user-circle',
+      id: isSociety ? 'la-mia-societa' : 'profile',
+      label: isSociety ? (t('my_society') || 'La mia Società') : (t('your_profile') || 'Il mio Profilo'),
+      icon: isSociety ? 'fa-building' : 'fa-user-circle',
       color: 'bg-slate-800',
-      description: t('profile_data') || 'Gestisci i tuoi dati e le impostazioni',
+      description: isSociety ? (t('managed_races_society_desc') || 'Gestisci le gare della tua società') : (t('profile_data') || 'Gestisci i tuoi dati e le impostazioni'),
       roles: ['user', 'society', 'admin']
     }
   ];
