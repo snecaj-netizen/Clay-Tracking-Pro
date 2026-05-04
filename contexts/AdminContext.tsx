@@ -22,6 +22,8 @@ interface AdminContextType {
   setUserSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   filterRole: string;
   setFilterRole: React.Dispatch<React.SetStateAction<string>>;
+  userFilterSociety: string;
+  setUserFilterSociety: React.Dispatch<React.SetStateAction<string>>;
   fetchUsers: (signal?: AbortSignal, isBackground?: boolean) => Promise<void>;
   fetchAllUsers: (signal?: AbortSignal) => Promise<void>;
 
@@ -210,16 +212,19 @@ export const AdminProvider: React.FC<{
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const debouncedUserSearchTerm = useDebounce(userSearchTerm, 500);
   const [filterRole, setFilterRole] = useState('');
+  const [userFilterSociety, setUserFilterSociety] = useState('');
 
   const usersPageRef = useRef(usersPage);
   const usersPerPageRef = useRef(usersPerPage);
   const userSearchTermRef = useRef(userSearchTerm);
   const filterRoleRef = useRef(filterRole);
+  const userFilterSocietyRef = useRef(userFilterSociety);
 
   useEffect(() => { usersPageRef.current = usersPage; }, [usersPage]);
   useEffect(() => { usersPerPageRef.current = usersPerPage; }, [usersPerPage]);
   useEffect(() => { userSearchTermRef.current = userSearchTerm; }, [userSearchTerm]);
   useEffect(() => { filterRoleRef.current = filterRole; }, [filterRole]);
+  useEffect(() => { userFilterSocietyRef.current = userFilterSociety; }, [userFilterSociety]);
 
   // Teams State
   const [teams, setTeams] = useState<any[]>([]);
@@ -350,7 +355,8 @@ export const AdminProvider: React.FC<{
         page: usersPageRef.current.toString(),
         limit: usersPerPageRef.current.toString(),
         search: userSearchTermRef.current,
-        role: filterRoleRef.current
+        role: filterRoleRef.current,
+        society: userFilterSocietyRef.current
       });
       
       if (filterRoleRef.current !== 'society') {
@@ -705,7 +711,7 @@ export const AdminProvider: React.FC<{
     if (token && (currentUser?.role === 'admin' || currentUser?.role === 'society')) {
       fetchUsers();
     }
-  }, [debouncedUserSearchTerm, usersPage, usersPerPage, filterRole, fetchUsers, token, currentUser?.role]);
+  }, [debouncedUserSearchTerm, usersPage, usersPerPage, filterRole, userFilterSociety, fetchUsers, token, currentUser?.role]);
 
   // Trigger fetchAllResults when debounced shooter search or other filters change
   useEffect(() => {
@@ -717,7 +723,7 @@ export const AdminProvider: React.FC<{
 
   const value = {
     currentUser, token,
-    users, setUsers, allUsers, setAllUsers, totalUsers, usersPage, setUsersPage, usersPerPage, setUsersPerPage, userSearchTerm, setUserSearchTerm, filterRole, setFilterRole, fetchUsers, fetchAllUsers,
+    users, setUsers, allUsers, setAllUsers, totalUsers, usersPage, setUsersPage, usersPerPage, setUsersPerPage, userSearchTerm, setUserSearchTerm, filterRole, setFilterRole, userFilterSociety, setUserFilterSociety, fetchUsers, fetchAllUsers,
     teams, setTeams, teamStats, setTeamStats, fetchTeams, fetchTeamStats,
     societies, setSocieties, selectedSociety, setSelectedSociety, societySearch, setSocietySearch, societyViewMode, setSocietyViewMode, fetchSocieties,
     events, setEvents, fetchEvents,

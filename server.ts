@@ -1821,6 +1821,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const search = req.query.search as string;
     const role = req.query.role as string;
     const excludeRole = req.query.excludeRole as string;
+    const societyFilter = req.query.society as string;
     
     let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, nationality, international_id, original_club FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
@@ -1852,6 +1853,11 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     if (excludeRole) {
       whereClauses.push("role != $" + (params.length + 1));
       params.push(excludeRole);
+    }
+
+    if (societyFilter) {
+      whereClauses.push("LOWER(society) LIKE $" + (params.length + 1));
+      params.push("%" + societyFilter.toLowerCase() + "%");
     }
     
     if (search) {

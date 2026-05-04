@@ -160,6 +160,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const {
     users, totalUsers, loading, backgroundLoading, error, setError, fetchUsers, fetchSocieties, societies,
     userSearchTerm, setUserSearchTerm, usersPage, setUsersPage, usersPerPage, setUsersPerPage, filterRole, setFilterRole,
+    userFilterSociety, setUserFilterSociety,
     showDashboard, setShowDashboard, fetchedDashboardStats, dashboardStats, kpiFilter, setKpiFilter,
     showUserForm, setShowUserForm, editingUser, setEditingUser,
     name, setName, surname, setSurname, email, setEmail, password, setPassword,
@@ -175,7 +176,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const hasActiveFilters = filterRole !== '' || userSearchTerm !== '';
+  const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
 
   useEffect(() => {
     if (currentUser?.role === 'society' && showUserForm && !editingUser) {
@@ -601,34 +602,53 @@ const UserManagement: React.FC<UserManagementProps> = ({
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-                <i className="fas fa-search text-orange-500"></i>
-                {t('search_user_placeholder')}
-              </label>
-              <UserSearchInput 
-                placeholder={t('search_user_placeholder')} 
-                value={userSearchTerm}
-                onChange={(val) => {
-                  setUserSearchTerm(val);
-                  setUsersPage(1);
-                }}
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                  <i className="fas fa-search text-orange-500"></i>
+                  {t('search_user_placeholder')}
+                </label>
+                <UserSearchInput 
+                  placeholder={t('search_user_placeholder')} 
+                  value={userSearchTerm}
+                  onChange={(val) => {
+                    setUserSearchTerm(val);
+                    setUsersPage(1);
+                  }}
+                />
+              </div>
 
-            <div className="flex items-end justify-end pt-2">
-              <button 
-                onClick={() => {
-                  setUserSearchTerm('');
-                  setFilterRole('');
-                  setUsersPage(1);
-                }}
-                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
-              >
-                <i className="fas fa-undo-alt"></i>
-                {t('reset_filters')}
-              </button>
-            </div>
+              {currentUser?.role === 'admin' && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                    <i className="fas fa-building text-orange-500"></i>
+                    {t('society')}
+                  </label>
+                  <SocietySearch 
+                    value={userFilterSociety}
+                    onChange={(val) => {
+                      setUserFilterSociety(val);
+                      setUsersPage(1);
+                    }}
+                    societies={societies}
+                    placeholder={t('select_dot')}
+                  />
+                </div>
+              )}
+
+              <div className="flex items-end justify-end pt-2">
+                <button 
+                  onClick={() => {
+                    setUserSearchTerm('');
+                    setFilterRole('');
+                    setUserFilterSociety('');
+                    setUsersPage(1);
+                  }}
+                  className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
+                >
+                  <i className="fas fa-undo-alt"></i>
+                  {t('reset_filters')}
+                </button>
+              </div>
           </div>
         </div>
       )}
