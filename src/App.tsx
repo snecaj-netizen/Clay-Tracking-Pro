@@ -55,17 +55,11 @@ const App: React.FC = () => {
     const updateHeaderVisibility = () => {
       const currentScrollY = window.scrollY;
       
-      // On mobile (less than 640px usually for sm in Tailwind)
-      if (window.innerWidth < 640) {
-        if (currentScrollY > lastScrollY && currentScrollY > 100) {
-          // Scrolling down - hide header
-          setIsHeaderVisible(false);
-        } else {
-          // Scrolling up - show header
-          setIsHeaderVisible(true);
-        }
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down - hide header
+        setIsHeaderVisible(false);
       } else {
-        // Always show header on desktop
+        // Scrolling up - show header
         setIsHeaderVisible(true);
       }
       
