@@ -359,7 +359,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
     <div className="space-y-6">
       {/* Tab Switcher - Mobile (Scrollable Tabs) */}
       {!hideTabs && (
-        <div className="sm:hidden sticky top-16 z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg overflow-x-auto no-scrollbar scroll-shadows">
+        <div className="sm:hidden sticky top-[var(--header-top)] z-[1020] bg-slate-950/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-slate-700 shadow-lg overflow-x-auto no-scrollbar scroll-shadows transition-all duration-300">
           <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 min-w-max">
             {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <div className="flex gap-1">
@@ -450,7 +450,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
 
       {/* Tab Switcher - Desktop */}
       {!hideTabs && (
-        <div className="hidden sm:flex sticky top-16 z-30 bg-slate-900 [.light-theme_&]:bg-white p-1 rounded-xl border border-slate-800 [.light-theme_&]:border-slate-200 w-full shadow-xl flex-wrap transition-colors">
+        <div className="hidden sm:flex sticky top-[var(--header-top)] z-30 bg-slate-900 [.light-theme_&]:bg-white p-1 rounded-xl border border-slate-800 [.light-theme_&]:border-slate-200 w-full shadow-xl flex-wrap transition-all duration-300">
              {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
               <div className="flex-1 min-w-[120px] flex gap-1">
                 <button 

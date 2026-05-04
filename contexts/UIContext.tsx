@@ -22,11 +22,14 @@ interface UIContextType {
   setConfirmConfig: React.Dispatch<React.SetStateAction<ConfirmConfig>>;
   toastConfig: ToastConfig;
   setToastConfig: React.Dispatch<React.SetStateAction<ToastConfig>>;
+  isHeaderVisible: boolean;
+  setIsHeaderVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
     isOpen: false,
     title: '',
@@ -55,7 +58,9 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       confirmConfig,
       setConfirmConfig,
       toastConfig,
-      setToastConfig
+      setToastConfig,
+      isHeaderVisible,
+      setIsHeaderVisible
     }}>
       {children}
     </UIContext.Provider>

@@ -43,7 +43,7 @@ export const UserEvents: React.FC<UserEventsProps> = ({
   return (
     <div className="space-y-4">
       {/* Sticky Header Section for Gare */}
-      <div className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all">
+      <div className="sticky top-[var(--header-top)] z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 space-y-2 sm:space-y-3 border-b border-slate-900/50 shadow-2xl transition-all duration-300">
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <i className="fas fa-calendar-alt text-orange-600"></i>

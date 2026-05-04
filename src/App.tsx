@@ -42,9 +42,49 @@ const App: React.FC = () => {
   const { 
     triggerConfirm, triggerToast, 
     confirmConfig, setConfirmConfig, 
-    toastConfig, setToastConfig 
+    toastConfig, setToastConfig,
+    isHeaderVisible, setIsHeaderVisible
   } = useUI();
   const { t, language, setLanguage } = useLanguage();
+
+  // Scroll logic for header visibility on mobile
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+
+    const updateHeaderVisibility = () => {
+      const currentScrollY = window.scrollY;
+      
+      // On mobile (less than 640px usually for sm in Tailwind)
+      if (window.innerWidth < 640) {
+        if (currentScrollY > lastScrollY && currentScrollY > 100) {
+          // Scrolling down - hide header
+          setIsHeaderVisible(false);
+        } else {
+          // Scrolling up - show header
+          setIsHeaderVisible(true);
+        }
+      } else {
+        // Always show header on desktop
+        setIsHeaderVisible(true);
+      }
+      
+      lastScrollY = currentScrollY;
+      ticking = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          updateHeaderVisibility();
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [setIsHeaderVisible]);
   
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
   const [user, setUser] = useState<any>(() => {
@@ -850,7 +890,7 @@ const App: React.FC = () => {
       )}
 
       {user && !user.email_verified && view !== 'public-portal' && view !== 'home' && (
-        <div className="fixed top-16 left-0 right-0 z-50 px-4 py-2 bg-orange-600 shadow-xl border-b border-orange-500/30 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-500">
+        <div className="fixed top-[var(--header-top)] left-0 right-0 z-50 px-4 py-2 bg-orange-600 shadow-xl border-b border-orange-500/30 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-300 transition-all">
           <i className="fas fa-exclamation-circle text-white text-sm animate-pulse"></i>
           <span className="text-[11px] font-bold text-white uppercase tracking-wider">
             {t('email_not_verified_label')}

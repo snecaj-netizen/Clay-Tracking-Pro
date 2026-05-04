@@ -1577,7 +1577,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       ) : (
         <>
           {!hideHeader && (
-            <div className={`sticky ${isSubPage ? 'top-[116px] sm:top-[168px]' : 'top-16'} z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all`}>
+            <div className={`sticky ${isSubPage ? 'top-[calc(var(--header-top)+52px)] sm:top-[calc(var(--header-top)+104px)]' : 'top-[var(--header-top)]'} z-30 bg-slate-950/95 backdrop-blur-xl -mx-4 px-4 py-2 sm:py-3 border-b border-slate-900/50 shadow-2xl transition-all duration-300`}>
             <div className="flex flex-col gap-2 sm:gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>

@@ -20,11 +20,23 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user, appSettings, canGoBack, canGoForward, onGoBack, onGoForward, onLoginClick, onRefreshUser }) => {
   const { language, setLanguage, t } = useLanguage();
-  const { triggerToast } = useUI();
+  const { triggerToast, isHeaderVisible } = useUI();
   const [isLightMode, setIsLightMode] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Update CSS variable based on header visibility
+    const root = document.documentElement;
+    if (isHeaderVisible) {
+      root.style.setProperty('--header-top', '64px');
+      root.style.setProperty('--header-translate', '0px');
+    } else {
+      root.style.setProperty('--header-top', '0px');
+      root.style.setProperty('--header-translate', '-64px');
+    }
+  }, [isHeaderVisible]);
 
   useEffect(() => {
     const handleCloseAllMenus = () => {
@@ -189,7 +201,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
         </div>
       </div>
 
-      <header className="fixed top-0 left-0 right-0 bg-slate-950/95 [.light-theme_&]:bg-white/95 backdrop-blur-xl border-b border-slate-900/50 [.light-theme_&]:border-slate-200 z-[1100] transition-colors">
+      <header 
+        className={`fixed top-0 left-0 right-0 bg-slate-950/95 [.light-theme_&]:bg-white/95 backdrop-blur-xl border-b border-slate-900/50 [.light-theme_&]:border-slate-200 z-[1100] transition-all duration-300 ${!isHeaderVisible ? '-translate-y-full' : 'translate-y-0'}`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Row 1: Logo and User Actions */}
         <div className="flex items-center justify-between h-16">
