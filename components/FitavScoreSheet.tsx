@@ -22,9 +22,10 @@ interface FitavScoreSheetProps {
     logo?: string;
   };
   autoAction?: 'print' | 'download' | null;
+  hideTimes?: boolean;
 }
 
-const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose, hostingSociety, autoAction }) => {
+const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose, hostingSociety, autoAction, hideTimes }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -208,7 +209,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
               </div>
               <div className="flex items-end gap-2">
                 <span className="text-slate-500">Orario:</span>
-                <span className="flex-1 border-b border-black pb-0.5 text-center">{team.startTime || '--:--'}</span>
+                <span className="flex-1 border-b border-black pb-0.5 text-center">{hideTimes ? '' : (team.startTime || '--:--')}</span>
               </div>
               <div className="flex items-end gap-2">
                 <span className="text-slate-500">Campo:</span>

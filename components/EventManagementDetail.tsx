@@ -1873,6 +1873,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           event={event}
           onClose={() => setSelectedSquadsForSheet(null)}
           hostingSociety={societies.find(s => s.name === event.location)}
+          hideTimes={!showTimes}
         />
       )}
 

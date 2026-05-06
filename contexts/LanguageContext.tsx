@@ -226,6 +226,7 @@ const translations: Translations = {
   'category_label': { it: 'Categoria', en: 'Category' },
   'qualification_label': { it: 'Qualifica', en: 'Qualification' },
   'cancel_label': { it: 'Annulla', en: 'Cancel' },
+  'edit_label': { it: 'Modifica', en: 'Edit' },
   'save_label': { it: 'Salva', en: 'Save' },
   'notifications_management': { it: 'Gestione Notifiche', en: 'Notifications Management' },
   'notifications_desc_admin': { it: 'Configura e monitora il sistema di avvisi', en: 'Configure and monitor the alert system' },
