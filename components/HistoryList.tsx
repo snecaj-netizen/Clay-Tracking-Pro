@@ -700,7 +700,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                               {ongoing && (
                                 <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                                  {t('live_label')}
+                                  {t('in_progress')}
                                 </span>
                               )}
                               {isNext && !ongoing && (

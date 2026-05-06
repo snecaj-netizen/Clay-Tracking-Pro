@@ -488,26 +488,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       const startA = new Date(a.start_date);
       startA.setHours(0, 0, 0, 0);
       const endA = new Date(a.end_date || a.start_date);
-      endA.setHours(0, 0, 0, 0);
+      endA.setHours(23, 59, 59, 999);
 
       const startB = new Date(b.start_date);
       startB.setHours(0, 0, 0, 0);
       const endB = new Date(b.end_date || b.start_date);
-      endB.setHours(0, 0, 0, 0);
+      endB.setHours(23, 59, 59, 999);
 
       const isPastA = endA < today;
       const isPastB = endB < today;
 
-      // If one is past and the other is not, non-past comes first
+      // 1. Past priority (Past last)
       if (!isPastA && isPastB) return -1;
       if (isPastA && !isPastB) return 1;
 
-      // If both are past, sort descending (newest past event first)
+      // 2. Management Enabled priority (Enabled first)
+      if (a.is_management_enabled && !b.is_management_enabled) return -1;
+      if (!a.is_management_enabled && b.is_management_enabled) return 1;
+
+      // 3. If both are past, sort descending (newest past event first)
       if (isPastA && isPastB) {
         return startB.getTime() - startA.getTime();
       }
 
-      // If both are future, sort ascending (closest future event first)
+      // 4. If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
   }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterRegistrationOpen]);
@@ -625,8 +629,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {managedEvents.map(ev => {
               const isPast = isPastEvent(ev);
+              const isActivated = ev.is_management_enabled;
+              
               return (
-                <div key={ev.id} className={`rounded-2xl border p-4 sm:p-5 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-indigo-500/50'}`}>
+                <div key={ev.id} className={`rounded-2xl border p-4 sm:p-5 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${
+                  isActivated && !isPast 
+                    ? 'bg-slate-900/80 border-emerald-500/50 ring-1 ring-emerald-500/20 shadow-emerald-500/5 hover:border-emerald-400' 
+                    : isPast 
+                      ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' 
+                      : 'bg-slate-900/80 border-slate-800 hover:border-indigo-500/50'
+                }`}>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-600/10 transition-colors"></div>
                   
                   <div className="relative z-10 flex flex-col h-full">
@@ -636,9 +648,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           <span className="px-2 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[8px] font-black uppercase tracking-widest border border-indigo-500/20">
                             {ev.discipline}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
-                            {ev.status === 'validated' ? t('finished_label') : t('live_label')}
-                          </span>
+                          {(ev.status === 'validated' || ev.is_management_enabled) && (
+                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
+                              {ev.status === 'validated' ? t('finished_label') : t('live_label')}
+                            </span>
+                          )}
                           {isPast && (
                             <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-widest border border-slate-700">
                               {t('past')}
@@ -1496,7 +1510,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            {ongoing && (
+                            {ongoing && ev.is_management_enabled && (
                               <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
                                 {t('live_label')}
                               </span>
@@ -2046,7 +2060,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }
                     }}
-                    className={`group relative bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden hover:border-orange-500/50 transition-all duration-300 ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:shadow-2xl hover:shadow-orange-500/10' : 'opacity-75 cursor-default'}`}
+                    className={`group relative bg-slate-900/50 border ${ev.is_management_enabled ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.15)] animate-in fade-in zoom-in duration-500' : 'border-slate-800'} rounded-3xl overflow-hidden hover:border-orange-500/50 transition-all duration-300 ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:shadow-2xl hover:shadow-orange-500/10' : 'opacity-75 cursor-default'}`}
                   >
                     {/* Results Badge */}
                     {Number(ev.result_count) > 0 && (
@@ -2089,11 +2103,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1">
                                 <i className="fas fa-check-circle"></i> {t('validated_label')}
                               </span>
-                            ) : (
+                            ) : ev.is_management_enabled ? (
                               <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
                                 <i className="fas fa-clock"></i> {t('live_label')}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -2216,7 +2230,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   <div className="flex items-start justify-between gap-3 pr-8">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        {ongoing && (
+                        {ongoing && ev.is_management_enabled && (
                           <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
                             {t('live_label')}
                           </span>

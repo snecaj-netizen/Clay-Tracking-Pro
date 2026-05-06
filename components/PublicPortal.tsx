@@ -276,11 +276,13 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                 className="group bg-white/70 backdrop-blur-sm [.dark-theme_&]:bg-slate-900 border border-slate-200/60 [.dark-theme_&]:border-slate-800 rounded-2xl p-5 hover:shadow-2xl transition-all cursor-pointer relative flex flex-col shadow-sm"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                    event.status === 'validated' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 animate-bounce'
-                  }`}>
-                    {event.status === 'validated' ? t('finished_label') : t('live_label')}
-                  </div>
+                  {(event.status === 'validated' || event.is_management_enabled) && (
+                    <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                      event.status === 'validated' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 animate-bounce'
+                    }`}>
+                      {event.status === 'validated' ? t('finished_label') : t('live_label')}
+                    </div>
+                  )}
                   {event.society_code && (
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                       TAV: {event.society_code}
