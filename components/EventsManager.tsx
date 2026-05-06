@@ -937,6 +937,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(null);
   const [hasSocietyRanking, setHasSocietyRanking] = useState(false);
   const [hasTeamRanking, setHasTeamRanking] = useState(false);
+  const [totalFields, setTotalFields] = useState<number>(1);
   const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
@@ -1002,6 +1003,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       const updated = events.find(e => e.id === viewingResultsEvent.id);
       if (updated) setViewingResultsEvent(updated);
     }
+    if (managingEventDetail) {
+      const updated = events.find(e => e.id === managingEventDetail.id);
+      if (updated) setManagingEventDetail(updated);
+    }
   }, [events]);
 
   const handleEdit = (ev: SocietyEvent) => {
@@ -1021,6 +1026,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     setRankingPreferenceOverride(ev.ranking_preference_override || null);
     setHasSocietyRanking(ev.has_society_ranking || false);
     setHasTeamRanking(ev.has_team_ranking || false);
+    
+    // Auto-calculate fields based on targets: 1 field per 25 targets
+    const calculated = Math.max(1, Math.ceil((ev.targets || 0) / 25));
+    setTotalFields(calculated);
+    
     setIsPublic(ev.is_public || false);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1073,6 +1083,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     setRankingPreferenceOverride(null);
     setHasSocietyRanking(false);
     setHasTeamRanking(false);
+    setTotalFields(1);
     setIsPublic(false);
     setShowForm(false);
   };
@@ -1099,6 +1110,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       ranking_preference_override: rankingPreferenceOverride,
       has_society_ranking: hasSocietyRanking,
       has_team_ranking: hasTeamRanking,
+      total_fields: totalFields,
       is_public: isPublic
     };
 
@@ -1812,8 +1824,38 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
 
                     <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('total_fields_label')} *</label>
+                      <select 
+                        required 
+                        value={totalFields} 
+                        onChange={(e) => setTotalFields(parseInt(e.target.value))} 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none transition-all appearance-none"
+                      >
+                        {Array.from({ length: Math.max(1, Math.ceil(targets / 25)) }, (_, i) => i + 1).map(num => (
+                          <option key={num} value={num}>{num} {num === 1 ? 'Campo' : 'Campi'}</option>
+                        ))}
+                      </select>
+                      <p className="text-[9px] text-slate-600 font-medium px-1 uppercase tracking-tight">
+                        {t('total_fields_desc')}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('targets_count_label')} *</label>
-                      <input type="number" required min="25" step="25" value={targets} onChange={(e) => setTargets(parseInt(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+                      <input 
+                        type="number" 
+                        required 
+                        min="25" 
+                        step="25" 
+                        value={targets} 
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          setTargets(val);
+                          // Auto-calculate fields: 1 field per 25 targets
+                          setTotalFields(Math.max(1, Math.ceil(val / 25)));
+                        }} 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" 
+                      />
                     </div>
 
                     <div className="space-y-2">

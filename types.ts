@@ -86,6 +86,7 @@ export interface Competition {
   shooting_session?: string;
   registration_notes?: string;
   registration_phone?: string;
+  bib_number?: number;
 }
 
 export interface Cartridge {
@@ -188,6 +189,8 @@ export interface SocietyEvent {
   is_public?: boolean;
   region?: string;
   society_code?: string;
+  total_fields?: number;
+  total_rounds?: number;
 }
 
 export interface PrizeSetting {
@@ -218,11 +221,13 @@ export interface EventRegistration {
   category?: string;
   qualification?: string;
   email?: string;
+  bib_number?: number;
 }
 
 export interface EventSquadMember {
   id?: number;
   position: number;
+  bib_number?: number;
   registration_id: number;
   first_name: string;
   last_name: string;
@@ -237,7 +242,9 @@ export interface EventSquad {
   event_id: string;
   squad_number: number;
   field_number: number;
+  round_number?: number;
   start_time: string;
+  squad_day?: string;
   members: EventSquadMember[];
   is_locked?: boolean;
 }

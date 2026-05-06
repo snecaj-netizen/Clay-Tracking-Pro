@@ -57,6 +57,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const categories = useMemo(() => Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean))).sort(), [results]);
   const qualifications = useMemo(() => Array.from(new Set(results.map(r => r.qualification_at_time || r.qualification).filter(Boolean))).sort(), [results]);
 
+  const INTERNATIONAL_CODES = ['MAN', 'LAD', 'JUN', 'SEN', 'VET', 'MAS'];
+  const shouldShowInternational = event.type === 'Internazionale';
+
+  const formatDisplayValue = (val: string | null | undefined) => {
+    if (!val) return '-';
+    if (!shouldShowInternational && INTERNATIONAL_CODES.includes(val.toUpperCase())) {
+      return '';
+    }
+    return val;
+  };
+
   const canExportPDF = user?.role === 'admin' || user?.role === 'society';
 
   const shootersWithoutResults = useMemo(() => {
@@ -353,7 +364,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       currentY += 5;
 
       const seriesHeaders = Array.from({ length: pdfMaxSeriesCount }).map((_, i) => `S${i + 1}`);
-      const headers = [[t('pdf_pos'), t('pdf_prize'), t('pdf_shooter'), t('pdf_cat_qual'), ...seriesHeaders, t('pdf_total'), t('pdf_shoot_off')]];
+      const headers = [[t('pdf_pos'), 'BIB', t('pdf_shooter'), t('pdf_cat_qual'), ...seriesHeaders, t('pdf_total'), t('pdf_shoot_off')]];
 
       autoTable(doc, {
         startY: currentY,
@@ -365,10 +376,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           );
           
           return [
-            index + 1,
-            isPrize ? t('pdf_prize') : '',
+            `${index + 1}${isPrize ? ' (P)' : ''}`,
+            r.bib_number || '-',
             `${r.user_surname || ''} ${r.user_name || ''}${r.shooter_code ? `\n(${r.shooter_code})` : ''}`,
-            `${r.category_at_time || r.category || '-'}/${r.qualification_at_time || r.qualification || '-'}`,
+            `${formatDisplayValue(r.category_at_time || r.category)}/${formatDisplayValue(r.qualification_at_time || r.qualification)}`,
             ...seriesData,
             r.totalscore || 0,
             r.shoot_off || '-'
@@ -378,8 +389,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
         bodyStyles: { fontSize: 7 },
         columnStyles: {
-          0: { cellWidth: 10 }, // Pos
-          1: { cellWidth: 8, halign: 'center' }, // P
+          0: { cellWidth: 15 }, // Pos
+          1: { cellWidth: 10, halign: 'center' }, // BIB
           2: { cellWidth: 'auto' }, // Tiratore
         },
         margin: { left: 15, right: 15 },
@@ -1555,7 +1566,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <thead>
                     <tr className="border-b border-slate-800 text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-500">
                       <th className="p-2 sm:p-3 font-black">{t('pos_short')}</th>
-                      <th className="p-2 sm:p-3 font-black text-center">{t('prize_label')}</th>
+                      <th className="p-2 sm:p-3 font-black text-center">BIB</th>
                       <th className="p-2 sm:p-3 font-black">{t('shooter')}</th>
                       <th className="p-2 sm:p-3 font-black">{t('cat_qua')}</th>
                       {Array.from({ length: maxSeriesCount }).map((_, i) => (
@@ -1579,10 +1590,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         return (
                           <tr key={`reg-${r.registration_id}`} className="border-b border-slate-800/50 bg-slate-900/30">
                             <td className="p-2 sm:p-3 text-slate-500 font-bold text-xs sm:text-sm">-</td>
-                            <td className="p-2 sm:p-3 text-center">
-                              <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[8px] uppercase font-bold">
-                                {t('registered_label')}
-                              </span>
+                            <td className="p-2 sm:p-3 text-center text-orange-500 font-black text-xs">
+                              {r.bib_number || '-'}
                             </td>
                             <td className="p-2 sm:p-3 text-slate-300 font-medium text-xs sm:text-sm">
                               <div className="flex flex-col">
@@ -1593,7 +1602,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               </div>
                             </td>
                             <td className="p-2 sm:p-3 text-slate-500 text-[10px] sm:text-xs">
-                              {r.category} / {r.qualification}
+                              <div className="flex items-center gap-1">
+                                {formatDisplayValue(r.category)}
+                                {formatDisplayValue(r.category) && formatDisplayValue(r.qualification) && <span>/</span>}
+                                {formatDisplayValue(r.qualification)}
+                                {!formatDisplayValue(r.category) && !formatDisplayValue(r.qualification) && <span>-</span>}
+                              </div>
                             </td>
                             {Array.from({ length: maxSeriesCount }).map((_, i) => (
                               <td key={i} className="p-2 sm:p-3 text-center text-slate-700">-</td>
@@ -1633,13 +1647,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       return (
                         <React.Fragment key={r.id}>
                           <tr className="border-b border-slate-800/50 transition-colors">
-                            <td className="p-2 sm:p-3 text-white font-bold text-xs sm:text-sm">{idx + 1}</td>
-                            <td className="p-2 sm:p-3 text-center">
-                              {getPrizeStatus(r) && (
-                                <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 flex items-center justify-center font-black text-[10px] sm:text-xs mx-auto shadow-[0_0_10px_rgba(234,179,8,0.2)]" title={t('goes_to_prize')}>
-                                  P
-                                </span>
-                              )}
+                            <td className="p-2 sm:p-3 text-white font-bold text-xs sm:text-sm whitespace-nowrap">
+                              {idx + 1} {getPrizeStatus(r) && <span className="text-yellow-500 text-[10px] ml-1 font-black">(P)</span>}
+                            </td>
+                            <td className="p-2 sm:p-3 text-center text-orange-500 font-black text-xs sm:text-sm">
+                              {r.bib_number || '-'}
                             </td>
                             <td className="p-2 sm:p-3 text-white font-medium text-xs sm:text-sm">
                               <div className="flex flex-col">
@@ -1655,13 +1667,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               </div>
                             </td>
                             <td className="p-2 sm:p-3 text-slate-400 text-[10px] sm:text-xs">
-                              <span className={(effectivePref === 'categoria') ? 'text-white font-bold' : ''}>
-                                {rCat || '-'}
-                              </span>
-                              <span className="mx-1">/</span>
-                              <span className={(effectivePref === 'qualifica') ? 'text-white font-bold' : ''}>
-                                {rQual || '-'}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                {formatDisplayValue(rCat) && (
+                                  <span className={(effectivePref === 'categoria') ? 'text-white font-bold' : ''}>
+                                    {formatDisplayValue(rCat)}
+                                  </span>
+                                )}
+                                {formatDisplayValue(rCat) && formatDisplayValue(rQual) && (
+                                  <span className="text-slate-600">/</span>
+                                )}
+                                {formatDisplayValue(rQual) && (
+                                  <span className={(effectivePref === 'qualifica') ? 'text-white font-bold' : ''}>
+                                    {formatDisplayValue(rQual)}
+                                  </span>
+                                )}
+                                {!formatDisplayValue(rCat) && !formatDisplayValue(rQual) && <span>-</span>}
+                              </div>
                             </td>
                           {Array.from({ length: maxSeriesCount }).map((_, i) => (
                             <td key={i} className={`p-2 sm:p-3 font-mono text-[11px] sm:text-sm text-center ${r.scores && r.scores[i] === 25 ? 'text-red-500 font-black' : 'text-slate-300'}`}>

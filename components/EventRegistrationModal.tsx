@@ -34,17 +34,17 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   const { language, t } = useLanguage();
-  const SESSIONS = [t('morning'), t('afternoon'), t('no_choice')];
+  const SESSIONS = [t('morning'), t('afternoon')];
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
     user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
-    registration_day: initialData?.registration_day || t('no_choice'),
+    registration_day: initialData?.registration_day || '',
     registration_type: initialData?.registration_type || t('cat_reg'),
     shotgun_brand: initialData?.shotgun_brand || 'Beretta',
     shotgun_model: initialData?.shotgun_model || '',
     cartridge_brand: initialData?.cartridge_brand || 'Fiocchi',
     cartridge_model: initialData?.cartridge_model || '',
-    shooting_session: initialData?.shooting_session || 'Nessuna scelta',
+    shooting_session: initialData?.shooting_session || t('morning'),
     notes: initialData?.notes || '',
     phone: initialData?.phone || (isAdminOrSociety ? '' : (user.phone || ''))
   });
@@ -85,6 +85,33 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
       fetchShooters();
     }
   }, [user.role]);
+
+  const getEventDays = () => {
+    if (!event.start_date || !event.end_date) return [];
+    const start = new Date(event.start_date);
+    const end = new Date(event.end_date);
+    const days = [];
+    let current = new Date(start);
+    
+    while (current <= end) {
+      days.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return days;
+  };
+
+  const eventDays = getEventDays();
+  const isSingleDay = eventDays.length <= 1;
+
+  useEffect(() => {
+    if (!initialData && eventDays.length > 0) {
+      if (isSingleDay) {
+        setFormData(prev => ({ ...prev, registration_day: eventDays[0] }));
+      } else if (!formData.registration_day) {
+        setFormData(prev => ({ ...prev, registration_day: eventDays[0] }));
+      }
+    }
+  }, [eventDays, isSingleDay, initialData, formData.registration_day]);
 
   const handleShooterSelect = (val: any, id?: number) => {
     const shooter = shooters.find(s => s.id === id);
@@ -214,7 +241,15 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
         <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
           <div>
             <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">{initialData ? t('edit_registration') : t('reg_title')}</h3>
-            <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest mt-1">{event.name}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+              <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest">{event.name}</p>
+              <span className="hidden sm:inline text-slate-700">•</span>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="w-2.5 h-2.5" />
+                {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB')}
+                {event.start_date !== event.end_date && ` - ${new Date(event.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB')}`}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-lg border border-slate-700">
             <X className="w-6 h-6" />
@@ -227,7 +262,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
               {(user.role === 'admin' || user.role === 'society') ? (
                 <div className="md:col-span-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('select_shooter_label')}</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('select_shooter_label')} *</label>
                   <ShooterSearch 
                     value={selectedShooter?.id || ''}
                     onChange={handleShooterSelect}
@@ -244,15 +279,15 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               )}
               
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('shooter_code_label')}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('shooter_code_label')} *</label>
                 <p className="font-bold text-white">{selectedShooter?.shooter_code || '-'}</p>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('societies')}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('societies')} *</label>
                 <p className="font-bold text-white">{selectedShooter?.society || '-'}</p>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('cat_qua')}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('cat_qua')} *</label>
                 <p className="font-bold text-white">{selectedShooter?.category || '-'} / {selectedShooter?.qualification || '-'}</p>
               </div>
             </div>
@@ -262,7 +297,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Phone className="w-3 h-3 text-orange-500" />
-                  {t('phone')}
+                  {t('phone')} *
                 </label>
                 <input
                   type="tel"
@@ -279,27 +314,51 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Calendar className="w-3 h-3 text-orange-500" />
-                    {t('select_day')}
+                    {t('select_day')} *
                   </label>
-                  <select
-                    value={formData.registration_day}
-                    onChange={e => setFormData({ ...formData, registration_day: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
-                  >
-                    <option value={t('no_choice')}>{t('no_choice')}</option>
-                    <option value={t('day_1')}>{t('day_1')}</option>
-                    <option value={t('day_2')}>{t('day_2')}</option>
-                  </select>
+                  {isSingleDay ? (
+                    <div className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-slate-400 rounded-xl flex items-center justify-between cursor-not-allowed opacity-75">
+                      <span className="font-bold">
+                        {(() => {
+                          const date = new Date(formData.registration_day);
+                          if (isNaN(date.getTime())) return formData.registration_day;
+                          const dayNum = String(date.getDate()).padStart(2, '0');
+                          const monthNum = String(date.getMonth() + 1).padStart(2, '0');
+                          const yearNum = date.getFullYear();
+                          return `${dayNum}/${monthNum}/${yearNum}`;
+                        })()}
+                      </span>
+                      <Shield className="w-3 h-3 text-slate-600" />
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.registration_day}
+                      required
+                      onChange={e => setFormData({ ...formData, registration_day: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="" disabled>Seleziona Giorno</option>
+                      {eventDays.map(day => {
+                        const date = new Date(day);
+                        const dayNum = String(date.getDate()).padStart(2, '0');
+                        const monthNum = String(date.getMonth() + 1).padStart(2, '0');
+                        return (
+                          <option key={day} value={day}>{dayNum}/{monthNum}</option>
+                        );
+                      })}
+                    </select>
+                  )}
                 </div>
 
                 {/* Registration Type */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Target className="w-3 h-3 text-orange-500" />
-                    {t('registration_type_label')}
+                    {t('registration_type_label')} *
                   </label>
                   <select
                     value={formData.registration_type}
+                    required
                     onChange={e => setFormData({ ...formData, registration_type: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
@@ -313,10 +372,11 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Shield className="w-3 h-3 text-orange-500" />
-                    {language === 'it' ? 'Fucile' : 'Shotgun'}
+                    {language === 'it' ? 'Fucile' : 'Shotgun'} *
                   </label>
                   <select
                     value={formData.shotgun_brand}
+                    required
                     onChange={e => setFormData({ ...formData, shotgun_brand: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
@@ -340,10 +400,11 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                     <Info className="w-3 h-3 text-orange-500" />
-                    {language === 'it' ? 'Cartuccia' : 'Cartridge'}
+                    {language === 'it' ? 'Cartuccia' : 'Cartridge'} *
                   </label>
                   <select
                     value={formData.cartridge_brand}
+                    required
                     onChange={e => setFormData({ ...formData, cartridge_brand: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
@@ -366,7 +427,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
               {/* Session */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sessione di Tiro</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sessione di Tiro *</label>
                 <div className="flex flex-wrap gap-2">
                   {SESSIONS.map(session => (
                     <button

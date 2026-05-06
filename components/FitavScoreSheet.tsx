@@ -7,10 +7,12 @@ import jsPDF from 'jspdf';
 interface FitavScoreSheetProps {
   teams: {
     name: string;
-    members: { id: string; name: string; surname: string; category?: string }[];
+    members: { id: string; name: string; surname: string; category?: string; bib_number?: number }[];
     competition_name?: string;
     society?: string;
     date?: string;
+    startTime?: string;
+    roundNumber?: number;
   }[];
   event?: SocietyEvent;
   onClose: () => void;
@@ -38,6 +40,17 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
       return () => clearTimeout(timer);
     }
   }, [autoAction]);
+
+  const INTERNATIONAL_CODES = ['MAN', 'LAD', 'JUN', 'SEN', 'VET', 'MAS'];
+  const shouldShowInternational = event?.type === 'Internazionale';
+
+  const formatDisplayValue = (val: string | null | undefined) => {
+    if (!val) return '';
+    if (!shouldShowInternational && INTERNATIONAL_CODES.includes(val.toUpperCase())) {
+      return '';
+    }
+    return val;
+  };
 
   const handlePrint = () => {
     window.print();
@@ -184,7 +197,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             </div>
 
             {/* Info Bar (Requested by user) */}
-            <div className="grid grid-cols-3 gap-4 mb-4 px-2 text-[10px] font-black uppercase">
+            <div className="grid grid-cols-4 gap-4 mb-4 px-2 text-[10px] font-black uppercase">
               <div className="flex items-end gap-2">
                 <span className="text-slate-500">Gara:</span>
                 <span className="flex-1 border-b border-black pb-0.5 truncate">{event?.name || team.competition_name || 'N.D.'}</span>
@@ -192,6 +205,10 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
               <div className="flex items-end gap-2">
                 <span className="text-slate-500">Data:</span>
                 <span className="flex-1 border-b border-black pb-0.5 text-center">{team.date || (event?.start_date ? new Date(event.start_date).toLocaleDateString('it-IT') : '____/____/________')}</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-slate-500">Orario:</span>
+                <span className="flex-1 border-b border-black pb-0.5 text-center">{team.startTime || '--:--'}</span>
               </div>
               <div className="flex items-end gap-2">
                 <span className="text-slate-500">Campo:</span>
@@ -206,7 +223,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
               </div>
               <div className="flex items-end gap-2">
                 <span>Serie N°:</span>
-                <span className="flex-1 border-b border-black pb-0.5"></span>
+                <span className="flex-1 border-b border-black pb-0.5 font-black text-xs">{team.roundNumber || ''}</span>
               </div>
               <div className="flex items-end gap-2">
                 <span>Arbitro:</span>
@@ -234,9 +251,14 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
                       <tr key={rowIndex} className="h-14">
                         <td className="border border-black text-center font-black text-xs">{rowIndex + 1}</td>
                         <td className="border border-black px-2 font-black uppercase text-xs truncate">
-                          {member ? `${member.surname} ${member.name}` : ''}
+                          {member ? (
+                            <span className="flex items-center gap-2">
+                              {member.bib_number && <span className="text-orange-600 font-black">{member.bib_number}.</span>}
+                              {member.surname} {member.name}
+                            </span>
+                          ) : ''}
                         </td>
-                        <td className="border border-black text-center font-black uppercase text-[10px]">{member?.category || ''}</td>
+                        <td className="border border-black text-center font-black uppercase text-[10px]">{formatDisplayValue(member?.category)}</td>
                         
                         {/* Piattelli Blocks */}
                         {[0, 1, 2, 3, 4, 5].map((colIndex) => {

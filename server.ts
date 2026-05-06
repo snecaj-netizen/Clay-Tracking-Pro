@@ -91,6 +91,102 @@ const sendVerificationEmail = async (email: string, name: string, token: string,
   }
 };
 
+const sendRegistrationEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string) => {
+  if (!process.env.SMTP_HOST) {
+    console.warn('⚠️ SMTP configuration missing. Registration email not sent.');
+    return;
+  }
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    to: email,
+    subject: `Conferma Iscrizione: ${eventName} - Clay Performance`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
+        <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
+        <h2 style="color: #ffffff;">Conferma Iscrizione</h2>
+        <p>Ciao ${name},</p>
+        <p>La tua iscrizione alla gara è stata registrata con successo. Ecco i dettagli:</p>
+        
+        <div style="background-color: #1e293b; padding: 20px; border-radius: 16px; margin: 20px 0; border: 1px solid #334155;">
+          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Gara</strong> <span style="font-size: 16px;">${eventName}</span></p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Campo di Tiro</strong> ${societyName}</p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Date</strong> ${eventDate}</p>
+          
+          <table style="width: 100%; margin-top: 20px;" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Giorno Scelto</strong>
+                <div style="margin-top: 5px; font-size: 14px;">${day}</div>
+              </td>
+              <td style="width: 50%; vertical-align: top; padding-left: 15px;">
+                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Sessione</strong>
+                <div style="margin-top: 5px; font-size: 14px;">${session}</div>
+              </td>
+            </tr>
+          </table>
+          
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Recapito</strong> ${phone}</p>
+        </div>
+        
+        <p style="font-size: 14px; text-align: center; color: #94a3b8; margin-top: 30px;">
+          Puoi visualizzare e gestire le tue iscrizioni direttamente dall'app nella sezione "Iscrizioni".
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 30px 0;">
+        <p style="font-size: 11px; color: #64748b; text-align: center;">Questa è una comunicazione automatica, si prega di non rispondere a questa email.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Registration confirmation email sent to: ${email}`);
+  } catch (error: any) {
+    console.error('❌ Error sending registration email:', error.message);
+  }
+};
+
+const sendUnregistrationEmail = async (email: string, name: string, eventName: string, societyName: string) => {
+  if (!process.env.SMTP_HOST) {
+    console.warn('⚠️ SMTP configuration missing. Unregistration email not sent.');
+    return;
+  }
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    to: email,
+    subject: `Iscrizione Cancellata: ${eventName} - Clay Performance`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
+        <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
+        <h2 style="color: #ffffff;">Iscrizione Cancellata</h2>
+        <p>Ciao ${name},</p>
+        <p>Ti confermiamo che la tua iscrizione alla seguente gara è stata cancellata:</p>
+        
+        <div style="background-color: #1e293b; padding: 20px; border-radius: 16px; margin: 20px 0; border: 1px solid #334155;">
+          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Gara</strong> <span style="font-size: 16px;">${eventName}</span></p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Campo di Tiro</strong> ${societyName}</p>
+        </div>
+        
+        <p style="font-size: 14px; text-align: center; color: #94a3b8; margin-top: 30px;">
+          Se si è trattato di un errore, puoi iscriverti nuovamente tramite l'app.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 30px 0;">
+        <p style="font-size: 11px; color: #64748b; text-align: center;">Questa è una comunicazione automatica, si prega di non rispondere a questa email.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Unregistration email sent to: ${email}`);
+  } catch (error: any) {
+    console.error('❌ Error sending unregistration email:', error.message);
+  }
+};
+
 app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
@@ -469,6 +565,8 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_management_enabled BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS region TEXT`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS total_fields INTEGER DEFAULT 1`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS total_rounds INTEGER DEFAULT 1`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -626,15 +724,21 @@ const initDB = async () => {
 
     // Add is_locked column if it doesn't exist
     await pool.query("ALTER TABLE event_squads ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE").catch(() => {});
+    await pool.query("ALTER TABLE event_squads ADD COLUMN IF NOT EXISTS squad_day TEXT").catch(() => {});
+    await pool.query("ALTER TABLE event_squads ADD COLUMN IF NOT EXISTS round_number INTEGER DEFAULT 1").catch(() => {});
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS event_squad_members (
         squad_id INTEGER REFERENCES event_squads(id) ON DELETE CASCADE,
         registration_id INTEGER REFERENCES event_registrations(id) ON DELETE CASCADE,
         position INTEGER NOT NULL,
+        bib_number INTEGER,
         PRIMARY KEY (squad_id, registration_id)
       );
     `);
+
+    // Add bib_number column if it doesn't exist
+    await pool.query("ALTER TABLE event_squad_members ADD COLUMN IF NOT EXISTS bib_number INTEGER").catch(() => {});
 
     // Initialize VAPID keys
     try {
@@ -3829,10 +3933,12 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
         r.cartridge_model,
         r.shooting_session,
         r.notes as registration_notes,
-        r.phone as registration_phone
+        r.phone as registration_phone,
+        sm.bib_number
       FROM users u
       LEFT JOIN event_registrations r ON r.user_id = u.id AND r.event_id = $1
       LEFT JOIN competitions c ON c.user_id = u.id AND c.event_id = $1
+      LEFT JOIN event_squad_members sm ON sm.registration_id = r.id
       WHERE r.id IS NOT NULL OR c.id IS NOT NULL
       ORDER BY c.totalscore DESC NULLS LAST, c.shoot_off DESC NULLS LAST
     `, [eventId]);
@@ -3873,12 +3979,14 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
   } = req.body;
 
   try {
-    // Check if event exists and management is enabled
-    const eventResult = await pool.query('SELECT is_management_enabled FROM events WHERE id = $1', [id]);
+    // Check if event exists and details for email
+    const eventResult = await pool.query('SELECT name, start_date, end_date, location, is_management_enabled FROM events WHERE id = $1', [id]);
     if (eventResult.rows.length === 0) {
       return res.status(404).json({ error: 'Evento non trovato' });
     }
-    if (!eventResult.rows[0].is_management_enabled && req.user.role !== 'admin') {
+    const eventObj = eventResult.rows[0];
+
+    if (!eventObj.is_management_enabled && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Le iscrizioni per questa gara non sono ancora attive.' });
     }
 
@@ -3887,6 +3995,10 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
     if (user_id && (req.user.role === 'admin' || req.user.role === 'society')) {
       targetUserId = user_id;
     }
+
+    // Fetch user details for email
+    const userResult = await pool.query('SELECT name, surname, email, email_verified FROM users WHERE id = $1', [targetUserId]);
+    const targetUser = userResult.rows[0];
 
     // Check if user is already registered
     const existingReg = await pool.query(
@@ -3913,6 +4025,24 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
       await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, targetUserId]);
     }
 
+    // Send email if user is verified
+    if (targetUser && targetUser.email_verified && targetUser.email) {
+      const eventDateRange = eventObj.start_date === eventObj.end_date 
+        ? eventObj.start_date 
+        : `${eventObj.start_date} - ${eventObj.end_date}`;
+      
+      sendRegistrationEmail(
+        targetUser.email,
+        `${targetUser.name} ${targetUser.surname}`,
+        eventObj.name,
+        eventDateRange,
+        eventObj.location,
+        phone || '-',
+        registration_day || '-',
+        shooting_session || '-'
+      ).catch(err => console.error('Error in sendRegistrationEmail background call:', err));
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error registering for event:', {
@@ -3933,7 +4063,8 @@ app.get('/api/events/:id/registrations', authenticateToken, async (req: any, res
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT r.*, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email
+      `SELECT r.*, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email,
+        (SELECT bib_number FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE sm.registration_id = r.id AND s.event_id = r.event_id LIMIT 1) as bib_number
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
        WHERE r.event_id = $1`,
@@ -4019,7 +4150,28 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
       return res.status(400).json({ error: 'Impossibile eliminare l\'iscrizione: il tiratore è già assegnato a una batteria. Rimuovilo prima dalla batteria.' });
     }
 
+    // Fetch details for email BEFORE deletion
+    const detailsResult = await pool.query(`
+      SELECT u.name, u.surname, u.email, u.email_verified, e.name as event_name, e.location
+      FROM event_registrations r
+      JOIN users u ON r.user_id = u.id
+      JOIN events e ON r.event_id = e.id
+      WHERE r.id = $1
+    `, [registrationId]);
+    const details = detailsResult.rows[0];
+
     await pool.query('DELETE FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
+
+    // Send unregistration email if user is verified
+    if (details && details.email_verified && details.email) {
+      sendUnregistrationEmail(
+        details.email,
+        `${details.name} ${details.surname}`,
+        details.event_name,
+        details.location
+      ).catch(err => console.error('Error in sendUnregistrationEmail background call:', err));
+    }
+
     res.json({ message: 'Iscrizione eliminata con successo' });
   } catch (error) {
     console.error('Error deleting registration:', error);
@@ -4046,9 +4198,36 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Get all registrations
-    const regResult = await pool.query('SELECT id FROM event_registrations WHERE event_id = $1', [id]);
+    // Get registrations filtered by day if requested
+    let regQuery = 'SELECT id FROM event_registrations WHERE event_id = $1';
+    let regParams: any[] = [id];
+    const { registrationDay } = req.body;
+    
+    console.log('Generating squads for event:', id, 'Registration day filter:', registrationDay);
+    
+    if (registrationDay && registrationDay !== 'all') {
+      // Handle both YYYY-MM-DD and DD/MM/YYYY if they exist in DB
+      regQuery += ' AND (registration_day = $2 OR registration_day = $3)';
+      
+      let altDay = registrationDay;
+      if (registrationDay.includes('-')) {
+        const parts = registrationDay.split('-');
+        altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (registrationDay.includes('/')) {
+        const parts = registrationDay.split('/');
+        altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      
+      regParams.push(registrationDay, altDay);
+    }
+    const regResult = await pool.query(regQuery, regParams);
+    console.log('Query result count:', regResult.rows.length);
     let registrations = regResult.rows.map(r => r.id);
+
+    // Skip if no registrations found
+    if (registrations.length === 0) {
+      return res.status(400).json({ error: 'Nessun tiratore trovato per i criteri selezionati (controlla il giorno selezionato e le iscrizioni).' });
+    }
 
     // Shuffle registrations
     for (let i = registrations.length - 1; i > 0; i--) {
@@ -4056,44 +4235,208 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
       [registrations[i], registrations[j]] = [registrations[j], registrations[i]];
     }
 
-    // Clear existing squads
-    await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
+    const totalRounds = event.total_rounds || 1;
+    const fieldsCountValue = fieldsCount || event.total_fields || 1;
+
+    // Always clear squads for the selected day before regenerating them
+    if (registrationDay && registrationDay !== 'all') {
+      // Handle both YYYY-MM-DD and DD/MM/YYYY if they exist in DB
+      let altDay = registrationDay;
+      if (registrationDay.includes('-')) {
+        const parts = registrationDay.split('-');
+        altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (registrationDay.includes('/')) {
+        const parts = registrationDay.split('/');
+        altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      await pool.query('DELETE FROM event_squads WHERE event_id = $1 AND (squad_day = $2 OR squad_day = $3)', [id, registrationDay, altDay]);
+    } else {
+      await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
+    }
+
+    let startingSquadNumber = 1;
+    let bibCounter = 1;
+
+    // To preserve bib numbering consistency across days, we count existing members
+    const bibTotalRes = await pool.query('SELECT COUNT(*) as count FROM event_registrations WHERE event_id = $1', [id]);
+    // This is just a fallback, usually we'll assign bibs based on squad order
+    if (registrationDay && registrationDay !== 'all') {
+      const maxBibResult = await pool.query(`
+        SELECT MAX(sm.bib_number) as max_bib 
+        FROM event_squad_members sm 
+        JOIN event_squads s ON sm.squad_id = s.id 
+        WHERE s.event_id = $1
+      `, [id]);
+      bibCounter = (maxBibResult.rows[0].max_bib || 0) + 1;
+    }
 
     let currentRegIndex = 0;
-    let squadNumber = 1;
+    let baseSquadNumber = startingSquadNumber;
 
     const startHour = parseInt(startTime.split(':')[0]);
     const startMinute = parseInt(startTime.split(':')[1]);
 
+    const activeSquads: { num: number, members: number[] }[] = [];
+
+    // Group registrations into squads (base round)
     while (currentRegIndex < registrations.length) {
-      const fieldNumber = ((squadNumber - 1) % fieldsCount) + 1;
-      const roundNumber = Math.floor((squadNumber - 1) / fieldsCount);
-      
-      const totalMinutes = startHour * 60 + startMinute + roundNumber * 20;
-      const squadHour = Math.floor(totalMinutes / 60);
-      const squadMinute = totalMinutes % 60;
-      const squadStartTime = `${squadHour.toString().padStart(2, '0')}:${squadMinute.toString().padStart(2, '0')}`;
-
-      const squadInsert = await pool.query(
-        'INSERT INTO event_squads (event_id, squad_number, field_number, start_time) VALUES ($1, $2, $3, $4) RETURNING id',
-        [id, squadNumber, fieldNumber, squadStartTime]
-      );
-      const squadId = squadInsert.rows[0].id;
-
+      const squadMembers: number[] = [];
       for (let pos = 1; pos <= 6 && currentRegIndex < registrations.length; pos++) {
-        await pool.query(
-          'INSERT INTO event_squad_members (squad_id, registration_id, position) VALUES ($1, $2, $3)',
-          [squadId, registrations[currentRegIndex], pos]
-        );
+        squadMembers.push(registrations[currentRegIndex]);
         currentRegIndex++;
       }
-      squadNumber++;
+      activeSquads.push({ num: baseSquadNumber++, members: squadMembers });
     }
 
-    res.json({ message: 'Squads generated successfully' });
+    // Generate ROUND 1 ONLY
+    const r = 1;
+    for (let i = 0; i < activeSquads.length; i++) {
+        const squad = activeSquads[i];
+        
+        // Field calculation for Round 1
+        const fieldNumber = (i % fieldsCountValue) + 1;
+        
+        // Time calculation: 20 min per serie
+        const timeSlotIndex = Math.floor(i / fieldsCountValue);
+        const totalMinutes = startHour * 60 + startMinute + timeSlotIndex * 20;
+        const squadHour = Math.floor(totalMinutes / 60);
+        const squadMinute = totalMinutes % 60;
+        const squadStartTime = `${squadHour.toString().padStart(2, '0')}:${squadMinute.toString().padStart(2, '0')}`;
+
+        const squadInsert = await pool.query(
+          'INSERT INTO event_squads (event_id, squad_number, field_number, round_number, start_time, squad_day) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+          [id, squad.num, fieldNumber, r, squadStartTime, (registrationDay && registrationDay !== 'all') ? registrationDay : null]
+        );
+        const squadId = squadInsert.rows[0].id;
+
+        for (let pos = 0; pos < squad.members.length; pos++) {
+          const bibNum = (registrationDay && registrationDay !== 'all') 
+            ? bibCounter + i * 6 + pos 
+            : (startingSquadNumber - 1) * 6 + i * 6 + pos + 1;
+
+          await pool.query(
+            'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
+            [squadId, squad.members[pos], pos + 1, bibNum]
+          );
+        }
+    }
+
+    res.json({ message: `Generate ${activeSquads.length} batterie per la Serie 1. Duplica i giri successivi quando le batterie sono definitive.` });
   } catch (error) {
     console.error('Error generating squads:', error);
     res.status(500).json({ error: 'Failed to generate squads' });
+  }
+});
+
+// Duplicate rounds logic
+app.post('/api/events/:id/squads/duplicate-rounds', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const { registrationDay, startTime } = req.body;
+
+  try {
+    const eventResult = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+    if (eventResult.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    const event = eventResult.rows[0];
+
+    const totalRounds = event.total_rounds || 1;
+    const totalFields = event.total_fields || 1;
+
+    if (totalRounds <= 1) {
+      return res.status(400).json({ error: 'Numero di serie (giri) deve essere maggiore di 1 per duplicare.' });
+    }
+
+    // Get all squads for round 1 of the selected day
+    let round1Query = 'SELECT * FROM event_squads WHERE event_id = $1 AND round_number = 1';
+    let queryParams: any[] = [id];
+    if (registrationDay && registrationDay !== 'all') {
+      let altDay = registrationDay;
+      if (registrationDay.includes('-')) {
+        const parts = registrationDay.split('-');
+        altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (registrationDay.includes('/')) {
+        const parts = registrationDay.split('/');
+        altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      round1Query += ' AND (squad_day = $2 OR squad_day = $3)';
+      queryParams.push(registrationDay, altDay);
+    }
+    const round1SquadsResult = await pool.query(round1Query, queryParams);
+    const round1Squads = round1SquadsResult.rows;
+    
+    console.log('Round 1 squads found for duplication:', round1Squads.map(s => ({ id: s.id, num: s.squad_number, locked: s.is_locked, day: s.squad_day })));
+
+    if (round1Squads.length === 0) {
+      return res.status(400).json({ error: 'Nessuna batteria trovata per il giro 1.' });
+    }
+
+    // Check if all round 1 squads are locked
+    const unlockedSquads = round1Squads.filter(s => !s.is_locked);
+    if (unlockedSquads.length > 0) {
+      const unlockedDetails = unlockedSquads.map(s => `B${s.squad_number} (${s.squad_day || 'Senza data'})`).join(', ');
+      return res.status(400).json({ 
+        error: `Ci sono ancora ${unlockedSquads.length} batterie da confermare nella Serie 1: ${unlockedDetails}. Assicurati che siano tutte bloccate per questo giorno.` 
+      });
+    }
+
+    // Delete rounds > 1 for the selected day
+    let deleteQuery = 'DELETE FROM event_squads WHERE event_id = $1 AND round_number > 1';
+    let deleteParams: any[] = [id];
+    if (registrationDay && registrationDay !== 'all') {
+      let altDay = registrationDay;
+      if (registrationDay.includes('-')) {
+        const parts = registrationDay.split('-');
+        altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (registrationDay.includes('/')) {
+        const parts = registrationDay.split('/');
+        altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      deleteQuery += ' AND (squad_day = $2 OR squad_day = $3)';
+      deleteParams.push(registrationDay, altDay);
+    }
+    await pool.query(deleteQuery, deleteParams);
+
+    const startHour = parseInt((startTime || '09:00').split(':')[0]);
+    const startMinute = parseInt((startTime || '09:00').split(':')[1]);
+
+    // Sort squads by number to keep rotation consistent
+    round1Squads.sort((a, b) => a.squad_number - b.squad_number);
+
+    for (let r = 2; r <= totalRounds; r++) {
+      for (let i = 0; i < round1Squads.length; i++) {
+        const baseSquad = round1Squads[i];
+        
+        // Rotation logic: shift field by (r-1)
+        const fieldNumber = ((i + (r - 1)) % totalFields) + 1;
+        
+        // Time calculation: 20 min intervals
+        const squadsPerRound = round1Squads.length;
+        const timeSlotIndex = Math.floor(i / totalFields) + (r - 1) * Math.ceil(squadsPerRound / totalFields);
+        const totalMinutes = startHour * 60 + startMinute + timeSlotIndex * 20;
+        const squadHour = Math.floor(totalMinutes / 60);
+        const squadMinute = totalMinutes % 60;
+        const squadStartTime = `${squadHour.toString().padStart(2, '0')}:${squadMinute.toString().padStart(2, '0')}`;
+
+        const squadInsert = await pool.query(
+          'INSERT INTO event_squads (event_id, squad_number, field_number, round_number, start_time, squad_day, is_locked) VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id',
+          [id, baseSquad.squad_number, fieldNumber, r, squadStartTime, baseSquad.squad_day]
+        );
+        const newSquadId = squadInsert.rows[0].id;
+
+        // Get members of base squad to duplicate them
+        const membersResult = await pool.query('SELECT * FROM event_squad_members WHERE squad_id = $1', [baseSquad.id]);
+        for (const member of membersResult.rows) {
+          await pool.query(
+            'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
+            [newSquadId, member.registration_id, member.position, member.bib_number]
+          );
+        }
+      }
+    }
+
+    res.json({ message: `Serie duplicate con successo: Serie 1 copiata nelle Serie 2-${totalRounds}` });
+  } catch (err: any) {
+    console.error('Error duplicating rounds:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -4109,7 +4452,7 @@ app.get('/api/events/:id/squads', authenticateToken, async (req: any, res) => {
 
     for (const squad of squads) {
       const membersResult = await pool.query(
-        `SELECT m.position, r.id as registration_id, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification
+        `SELECT m.position, m.bib_number, r.id as registration_id, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification
          FROM event_squad_members m
          JOIN event_registrations r ON m.registration_id = r.id
          JOIN users u ON r.user_id = u.id
@@ -4169,20 +4512,26 @@ app.put('/api/events/:id/squads/update-members', authenticateToken, async (req: 
 
     await pool.query('BEGIN');
 
-    await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
+    const { squads, squad_day } = req.body;
+
+    if (squad_day && squad_day !== 'all') {
+      await pool.query('DELETE FROM event_squads WHERE event_id = $1 AND squad_day = $2', [id, squad_day]);
+    } else {
+      await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
+    }
 
     for (const squad of squads) {
       const squadInsert = await pool.query(
-        'INSERT INTO event_squads (event_id, squad_number, field_number, start_time) VALUES ($1, $2, $3, $4) RETURNING id',
-        [id, squad.squad_number, squad.field_number, squad.start_time]
+        'INSERT INTO event_squads (event_id, squad_number, field_number, round_number, start_time, squad_day, is_locked) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+        [id, squad.squad_number, squad.field_number, squad.round_number || 1, squad.start_time, squad.squad_day || (squad_day !== 'all' ? squad_day : null), squad.is_locked || false]
       );
       const newSquadId = squadInsert.rows[0].id;
 
       for (let i = 0; i < squad.members.length; i++) {
         const member = squad.members[i];
         await pool.query(
-          'INSERT INTO event_squad_members (squad_id, registration_id, position) VALUES ($1, $2, $3)',
-          [newSquadId, member.registration_id, i + 1]
+          'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
+          [newSquadId, member.registration_id, i + 1, member.bib_number]
         );
       }
     }
@@ -4205,7 +4554,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     id, name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region
+    is_public, region, total_fields, total_rounds
   } = req.body;
   
   let processedRegion = region;
@@ -4224,9 +4573,9 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, created_by, prize_settings, 
         ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
-        is_public, region
+        is_public, region, total_fields, total_rounds
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -4237,12 +4586,14 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
        has_society_ranking = EXCLUDED.has_society_ranking,
        has_team_ranking = EXCLUDED.has_team_ranking,
        is_public = EXCLUDED.is_public,
-       region = EXCLUDED.region`,
+       region = EXCLUDED.region,
+       total_fields = EXCLUDED.total_fields,
+       total_rounds = EXCLUDED.total_rounds`,
       [
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
         ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
-        has_team_ranking || false, is_public || false, processedRegion
+        has_team_ranking || false, is_public || false, processedRegion, total_fields || 1, total_rounds || 1
       ]
     );
 
@@ -4335,7 +4686,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region
+    is_public, region, total_fields, total_rounds
   } = req.body;
   
   let processedRegion = region;
@@ -4385,13 +4736,15 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         has_society_ranking = COALESCE($16, has_society_ranking),
         has_team_ranking = COALESCE($17, has_team_ranking),
         is_public = COALESCE($18, is_public),
-        region = COALESCE($19, region)
-      WHERE id = $20`,
+        region = COALESCE($19, region),
+        total_fields = COALESCE($20, total_fields),
+        total_rounds = COALESCE($21, total_rounds)
+      WHERE id = $22`,
       [
         name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
         ranking_preference_override, has_society_ranking, has_team_ranking, is_public, processedRegion, 
-        req.params.id
+        total_fields, total_rounds, req.params.id
       ]
     );
 

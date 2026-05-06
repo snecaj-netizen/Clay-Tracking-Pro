@@ -98,6 +98,17 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
     }
   };
 
+  const INTERNATIONAL_CODES = ['MAN', 'LAD', 'JUN', 'SEN', 'VET', 'MAS'];
+  const shouldShowInternational = event.type === 'Internazionale';
+
+  const formatDisplayValue = (val: string | null | undefined) => {
+    if (!val) return '';
+    if (!shouldShowInternational && INTERNATIONAL_CODES.includes(val.toUpperCase())) {
+      return '';
+    }
+    return val;
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
@@ -210,11 +221,25 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                             {member.position}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black text-white truncate uppercase tracking-tight">
-                              {member.first_name} {member.last_name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={member.bib_number || ''}
+                                onChange={(e) => {
+                                  const newVal = parseInt(e.target.value);
+                                  const newSquads = [...squads];
+                                  newSquads[sIdx].members[mIdx].bib_number = newVal;
+                                  setSquads(newSquads);
+                                }}
+                                className="w-10 h-6 bg-slate-900 border border-slate-800 rounded text-[10px] font-black text-orange-500 text-center focus:border-orange-600 outline-none"
+                                title="Pettorale"
+                              />
+                              <p className="text-xs font-black text-white truncate uppercase tracking-tight">
+                                {member.first_name} {member.last_name}
+                              </p>
+                            </div>
                             <p className="text-[9px] font-bold text-slate-500 truncate uppercase tracking-widest">
-                              {member.category} • {member.society}
+                              {formatDisplayValue(member.category)} {formatDisplayValue(member.category) && member.society ? '•' : ''} {member.society}
                             </p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
