@@ -706,9 +706,17 @@ const initDB = async () => {
         notes TEXT,
         phone TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(event_id, user_id)
       );
     `);
+
+    // Add updated_at if it's missing (for existing tables)
+    try {
+      await pool.query("ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    } catch (e) {
+      // column might already exist
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS event_squads (
@@ -4117,9 +4125,9 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
     );
 
     res.json(result.rows[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating registration:', error);
-    res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'iscrizione' });
+    res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'iscrizione: ' + error.message });
   }
 });
 
@@ -4290,14 +4298,17 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
 
     // Generate ROUND 1 ONLY
     const r = 1;
+    const squadsPerRound = activeSquads.length;
+    const timeSlotsPerRound = Math.ceil(squadsPerRound / fieldsCountValue);
+
     for (let i = 0; i < activeSquads.length; i++) {
         const squad = activeSquads[i];
         
         // Field calculation for Round 1
         const fieldNumber = (i % fieldsCountValue) + 1;
         
-        // Time calculation: 20 min per serie
-        const timeSlotIndex = Math.floor(i / fieldsCountValue);
+        // Time calculation: 20 min per squad
+        const timeSlotIndex = i;
         const totalMinutes = startHour * 60 + startMinute + timeSlotIndex * 20;
         const squadHour = Math.floor(totalMinutes / 60);
         const squadMinute = totalMinutes % 60;
@@ -4395,8 +4406,11 @@ app.post('/api/events/:id/squads/duplicate-rounds', authenticateToken, async (re
     }
     await pool.query(deleteQuery, deleteParams);
 
-    const startHour = parseInt((startTime || '09:00').split(':')[0]);
-    const startMinute = parseInt((startTime || '09:00').split(':')[1]);
+    // Use the earliest start time from Round 1 as base to ensure continuity
+    const round1Sorted = [...round1Squads].sort((a, b) => a.start_time.localeCompare(b.start_time));
+    const baseStartTime = round1Sorted[0].start_time;
+    const startHour = parseInt(baseStartTime.split(':')[0]);
+    const startMinute = parseInt(baseStartTime.split(':')[1]);
 
     // Sort squads by number to keep rotation consistent
     round1Squads.sort((a, b) => a.squad_number - b.squad_number);
@@ -4408,9 +4422,10 @@ app.post('/api/events/:id/squads/duplicate-rounds', authenticateToken, async (re
         // Rotation logic: shift field by (r-1)
         const fieldNumber = ((i + (r - 1)) % totalFields) + 1;
         
-        // Time calculation: 20 min intervals
+        // Time calculation: 20 min intervals, strictly sequential across all squads and rounds
         const squadsPerRound = round1Squads.length;
-        const timeSlotIndex = Math.floor(i / totalFields) + (r - 1) * Math.ceil(squadsPerRound / totalFields);
+        const timeSlotIndex = i + (r - 1) * squadsPerRound;
+        
         const totalMinutes = startHour * 60 + startMinute + timeSlotIndex * 20;
         const squadHour = Math.floor(totalMinutes / 60);
         const squadMinute = totalMinutes % 60;

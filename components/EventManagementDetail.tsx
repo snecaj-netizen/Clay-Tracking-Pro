@@ -458,6 +458,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     toSquadIndex: number;
   } | null>(null);
   const [selectedSquadsForSheet, setSelectedSquadsForSheet] = useState<any[] | null>(null);
+  const [showTimes, setShowTimes] = useState(true);
   const [editingRegistration, setEditingRegistration] = useState<EventRegistration | null>(null);
 
   const INTERNATIONAL_CODES = ['MAN', 'LAD', 'JUN', 'SEN', 'VET', 'MAS'];
@@ -639,13 +640,24 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     const daySquads = squads.filter(s => normalizeDate(s.squad_day) === (normalizedGenDay === 'all' ? normalizeDate(event.start_date) : normalizedGenDay));
     const nextSquadNumber = daySquads.length > 0 ? Math.max(...daySquads.map(s => s.squad_number)) + 1 : 1;
     
+    // Calculate incremental time: last squad's time + 20 minutes
+    let newStartTime = startTime || '09:00';
+    if (daySquads.length > 0) {
+      const sortedByTime = [...daySquads].sort((a, b) => a.start_time.localeCompare(b.start_time));
+      const lastTime = sortedByTime[sortedByTime.length - 1].start_time;
+      const [hours, minutes] = lastTime.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes + 20, 0);
+      newStartTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
     const newSquad: EventSquad = {
       id: Date.now(),
       event_id: event.id,
       squad_number: nextSquadNumber,
       field_number: 1,
       round_number: 1, // Explicitly set round 1
-      start_time: '09:00',
+      start_time: newStartTime,
       squad_day: genDay === 'all' ? (event.start_date || undefined) : genDay,
       members: []
     };
@@ -911,8 +923,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                               <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
                                 {formatDateDisplay(reg.registration_day)}
                                 <span className="ml-1 text-orange-500/80 text-[8px] font-bold">
-                                  - {reg.shooting_session === 'morning' ? t('morning_short') : 
-                                     reg.shooting_session === 'afternoon' ? t('afternoon_short') : 
+                                  - {(reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
+                                     (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
                                      t('none_short')}
                                 </span>
                               </p>
@@ -1070,6 +1082,17 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 justify-end pt-2 border-t border-slate-800/50">
+                  <button
+                    onClick={() => setShowTimes(!showTimes)}
+                    className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${
+                      showTimes 
+                        ? 'bg-orange-600/20 border-orange-500/30 text-orange-500 shadow-lg shadow-orange-600/5' 
+                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    {showTimes ? "Nascondi Orari" : "Mostra Orari"}
+                  </button>
                   <button
                     onClick={handleAddSquad}
                     disabled={genDay === 'all'}
@@ -1504,19 +1527,21 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                                 className="w-8 bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
                                               />
                                             </div>
-                                            <div className="flex items-center gap-1.5">
-                                              <Clock className="w-3 h-3 text-slate-600" />
-                                              <input 
-                                                type="time"
-                                                value={squad.start_time}
-                                                onChange={(e) => {
-                                                  setSquads(prev => prev.map(s => String(s.id) === String(squad.id) ? { ...s, start_time: e.target.value } : s));
-                                                  setHasUnsavedChanges(true);
-                                                }}
-                                                disabled={squad.is_locked}
-                                                className="bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                              />
-                                            </div>
+                                            {showTimes && (
+                                              <div className="flex items-center gap-1.5">
+                                                <Clock className="w-3 h-3 text-slate-600" />
+                                                <input 
+                                                  type="time"
+                                                  value={squad.start_time}
+                                                  onChange={(e) => {
+                                                    setSquads(prev => prev.map(s => String(s.id) === String(squad.id) ? { ...s, start_time: e.target.value } : s));
+                                                    setHasUnsavedChanges(true);
+                                                  }}
+                                                  disabled={squad.is_locked}
+                                                  className="bg-slate-950 border border-slate-800 rounded px-1 py-0.5 text-[10px] font-bold text-white focus:outline-none focus:ring-1 focus:ring-orange-500 [.light-theme_&]:bg-white [.light-theme_&]:border-slate-200 [.light-theme_&]:text-slate-900"
+                                                />
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
 
