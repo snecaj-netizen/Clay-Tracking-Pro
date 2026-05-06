@@ -1,8 +1,5 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
 import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, AppData } from '@/types';
-import Dashboard from '@/components/Dashboard';
-import CompetitionForm from '@/components/CompetitionForm';
-import HistoryList from '@/components/HistoryList';
 import Header from '@/components/Header';
 import Auth from '@/components/Auth';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -14,23 +11,27 @@ import UpdateNotification from '@/components/UpdateNotification';
 import ExpandingFAB from '@/components/ExpandingFAB';
 import { ConnectionStatus, handleNetworkError } from '@/components/ConnectionStatus';
 import { motion, AnimatePresence } from 'motion/react';
-
-import Warehouse from '@/components/Warehouse';
-import AdminPanel from '@/components/AdminPanel';
-import EventsManager from '@/components/EventsManager';
-import AICoachPage from '@/components/AICoachPage';
-import LeTueGarePage from '@/components/LeTueGarePage';
-import GarePage from '@/components/GarePage';
-import LaMiaSocietaPage from '@/components/LaMiaSocietaPage';
-import AdminPageView from '@/components/AdminPageView';
-import SocietyDetailModal from '@/components/SocietyDetailModal';
-import NotificationsPage from '@/components/NotificationsPage';
-import NotificationsManager from '@/components/NotificationsManager';
-import PublicPortal from '@/components/PublicPortal';
 import HomePage from '@/components/HomePage';
 
 import { useUI } from '@/contexts/UIContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+// Lazy load heavy components
+const Dashboard = lazy(() => import('@/components/Dashboard'));
+const CompetitionForm = lazy(() => import('@/components/CompetitionForm'));
+const HistoryList = lazy(() => import('@/components/HistoryList'));
+const Warehouse = lazy(() => import('@/components/Warehouse'));
+const AdminPanel = lazy(() => import('@/components/AdminPanel'));
+const EventsManager = lazy(() => import('@/components/EventsManager'));
+const AICoachPage = lazy(() => import('@/components/AICoachPage'));
+const LeTueGarePage = lazy(() => import('@/components/LeTueGarePage'));
+const GarePage = lazy(() => import('@/components/GarePage'));
+const LaMiaSocietaPage = lazy(() => import('@/components/LaMiaSocietaPage'));
+const AdminPageView = lazy(() => import('@/components/AdminPageView'));
+const SocietyDetailModal = lazy(() => import('@/components/SocietyDetailModal'));
+const NotificationsPage = lazy(() => import('@/components/NotificationsPage'));
+const NotificationsManager = lazy(() => import('@/components/NotificationsManager'));
+const PublicPortal = lazy(() => import('@/components/PublicPortal'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">
@@ -324,35 +325,55 @@ const App: React.FC = () => {
 
   // Fetch data from API
   const fetchData = useCallback(async (signal?: AbortSignal) => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    
     setError(null);
     try {
       // Refresh user profile asynchronously
       fetchUserProfile(signal);
 
-      const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes] = await Promise.all([
+      // Start fetching all data in parallel
+      const dataPromises = [
         fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/events', { headers: { 'Authorization': `Bearer ${token}` }, signal })
-      ]);
+      ];
 
-      if (compsRes.status === 401 || compsRes.status === 403) {
+      // If we are on home or public portal, we can stop "initial loading" state immediately
+      // to let the UI respond faster, while data loads in background
+      if (view === 'home' || view === 'public-portal') {
+        setLoading(false);
+      }
+
+      const results = await Promise.allSettled(dataPromises);
+      
+      const responses = results.map(r => r.status === 'fulfilled' ? r.value : null);
+      const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes] = responses;
+
+      if (compsRes?.status === 401 || compsRes?.status === 403) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
         setToken(null);
         setUser(null);
+        setLoading(false);
         return;
       }
 
-      const [comps, carts, socs, types, evts] = await Promise.all([
-        compsRes.ok ? compsRes.json() : Promise.resolve([]),
-        cartsRes.ok ? cartsRes.json() : Promise.resolve([]),
-        socsRes.ok ? socsRes.json() : Promise.resolve([]),
-        cartTypesRes.ok ? cartTypesRes.json() : Promise.resolve([]),
-        eventsRes.ok ? eventsRes.json() : Promise.resolve([])
-      ]);
+      // Process JSON responses
+      const jsonPromises = [
+        compsRes?.ok ? compsRes.json() : Promise.resolve([]),
+        cartsRes?.ok ? cartsRes.json() : Promise.resolve([]),
+        socsRes?.ok ? socsRes.json() : Promise.resolve([]),
+        cartTypesRes?.ok ? cartTypesRes.json() : Promise.resolve([]),
+        eventsRes?.ok ? eventsRes.json() : Promise.resolve([])
+      ];
+
+      const [comps, carts, socs, types, evts] = await Promise.all(jsonPromises);
 
       setCompetitions(comps);
       setCartridges(carts);
@@ -366,7 +387,7 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, view, t, triggerToast, fetchUserProfile]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -844,7 +865,7 @@ const App: React.FC = () => {
     return <Auth onLogin={handleLogin} onGoToPortal={() => setView('public-portal')} />;
   }
 
-  if (loading && view !== 'public-portal') {
+  if (loading && view !== 'public-portal' && view !== 'home') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
         {error ? (
