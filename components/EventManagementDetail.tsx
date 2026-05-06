@@ -1028,13 +1028,15 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                   
                   <div className="w-full">
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Orario Inizio</label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Clock className="w-3.5 h-3.5 text-orange-500 group-focus-within:scale-110 transition-transform" />
+                      </div>
                       <input 
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white [.light-theme_&]:bg-white [.light-theme_&]:border-slate-200 [.light-theme_&]:text-slate-900 appearance-none"
                       />
                     </div>
                   </div>
