@@ -30,6 +30,7 @@ const LaMiaSocietaPage = lazy(() => import('@/components/LaMiaSocietaPage'));
 const AdminPageView = lazy(() => import('@/components/AdminPageView'));
 const SocietyDetailModal = lazy(() => import('@/components/SocietyDetailModal'));
 const NotificationsPage = lazy(() => import('@/components/NotificationsPage'));
+const EventRegistrationModal = lazy(() => import('@/components/EventRegistrationModal').then(module => ({ default: module.EventRegistrationModal })));
 const NotificationsManager = lazy(() => import('@/components/NotificationsManager'));
 const PublicPortal = lazy(() => import('@/components/PublicPortal'));
 
@@ -119,6 +120,7 @@ const App: React.FC = () => {
   const [cartridgeTypes, setCartridgeTypes] = useState<CartridgeType[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [userRegistrations, setUserRegistrations] = useState<any[]>([]);
   
   const getInitialView = () => {
     const path = window.location.pathname.toLowerCase().replace(/\/$/, "");
@@ -145,6 +147,7 @@ const App: React.FC = () => {
   const [previousView, setPreviousView] = useState<'home' | 'le-tue-gare' | 'gare' | 'la-mia-societa' | 'warehouse' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [prefillCompetition, setPrefillCompetition] = useState<Partial<Competition> | null>(null);
+  const [editingRegistration, setEditingRegistration] = useState<any | null>(null);
   const [prefillTeamData, setPrefillTeamData] = useState<{ competition_name: string, discipline: string, society: string, date: string, location: string, targets?: number } | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
   const [initialAdminTab, setInitialAdminTab] = useState<string | null>(user?.role === 'society' ? 'results' : null);
@@ -341,7 +344,8 @@ const App: React.FC = () => {
         fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
         fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/events', { headers: { 'Authorization': `Bearer ${token}` }, signal })
+        fetch('/api/events', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
+        fetch('/api/user/registrations', { headers: { 'Authorization': `Bearer ${token}` }, signal })
       ];
 
       // If we are on home or public portal, we can stop "initial loading" state immediately
@@ -353,7 +357,7 @@ const App: React.FC = () => {
       const results = await Promise.allSettled(dataPromises);
       
       const responses = results.map(r => r.status === 'fulfilled' ? r.value : null);
-      const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes] = responses;
+      const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes, userRegsRes] = responses;
 
       if (compsRes?.status === 401 || compsRes?.status === 403) {
         localStorage.removeItem('auth_token');
@@ -370,16 +374,18 @@ const App: React.FC = () => {
         cartsRes?.ok ? cartsRes.json() : Promise.resolve([]),
         socsRes?.ok ? socsRes.json() : Promise.resolve([]),
         cartTypesRes?.ok ? cartTypesRes.json() : Promise.resolve([]),
-        eventsRes?.ok ? eventsRes.json() : Promise.resolve([])
+        eventsRes?.ok ? eventsRes.json() : Promise.resolve([]),
+        userRegsRes?.ok ? userRegsRes.json() : Promise.resolve([])
       ];
 
-      const [comps, carts, socs, types, evts] = await Promise.all(jsonPromises);
+      const [comps, carts, socs, types, evts, regs] = await Promise.all(jsonPromises);
 
       setCompetitions(comps);
       setCartridges(carts);
       setSocieties(socs);
       setCartridgeTypes(types);
       setEvents(evts);
+      setUserRegistrations(regs);
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       handleNetworkError(err, triggerToast);
@@ -587,6 +593,14 @@ const App: React.FC = () => {
     } finally {
       setIsSavingComp(false);
     }
+  };
+
+  const handleEditRegistration = (reg: any) => {
+    setEditingRegistration(reg);
+  };
+
+  const handleRegistrationSuccess = () => {
+    fetchData(); // Refresh all data including registrations
   };
 
   const deleteCompetition = async (id: string) => {
@@ -1024,8 +1038,10 @@ const App: React.FC = () => {
                 token={token || ''}
                 societies={societies}
                 events={events}
+                userRegistrations={userRegistrations}
                 onParticipate={handleParticipateInEvent}
                 onCreateTeam={handleCreateTeamFromEvent}
+                onEditRegistration={handleEditRegistration}
                 initialEventId={initialEventId}
                 onInitialEventHandled={() => setInitialEventId(null)}
                 initialViewMode={initialViewMode}
@@ -1201,11 +1217,13 @@ const App: React.FC = () => {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <Dashboard 
                 competitions={competitions} 
+                userRegistrations={userRegistrations}
                 societies={societies}
                 events={events}
                 onAddClick={() => setView('new')}
                 onCoachClick={() => setView('ai-coach')}
                 onNavigate={handleNavigate}
+                onEditRegistration={handleEditRegistration}
                 user={user}
               />
             </div>
@@ -1385,6 +1403,17 @@ const App: React.FC = () => {
       )}
       
       <UpdateNotification />
+      
+      {editingRegistration && (
+        <EventRegistrationModal 
+          key={`edit-${editingRegistration.id}`}
+          event={events.find(e => e.id === editingRegistration.event_id) || { id: editingRegistration.event_id, name: editingRegistration.event_name } as any}
+          user={user}
+          initialData={editingRegistration}
+          onClose={() => setEditingRegistration(null)}
+          onSuccess={handleRegistrationSuccess}
+        />
+      )}
     </div>
   );
 };

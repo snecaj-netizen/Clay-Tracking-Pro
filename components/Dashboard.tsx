@@ -8,21 +8,25 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
   competitions: Competition[];
+  userRegistrations?: any[];
   societies: any[];
   events: any[];
   onAddClick: () => void;
   onCoachClick: () => void;
   onNavigate: (view: any, tab?: string, eventId?: string) => void;
+  onEditRegistration?: (reg: any) => void;
   user?: any;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   competitions = [], 
+  userRegistrations = [],
   societies = [], 
   events = [], 
   onAddClick, 
   onCoachClick, 
   onNavigate, 
+  onEditRegistration,
   user 
 }) => {
   const { t, language } = useLanguage();
@@ -33,15 +37,36 @@ const Dashboard: React.FC<DashboardProps> = ({
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     
-    return competitions
+    const comps = competitions
       .filter(c => {
         const compDate = new Date(c.date);
         compDate.setHours(0, 0, 0, 0);
         // Upcoming if date is today or future AND totalScore is 0 (not yet completed)
         return compDate >= now && c.totalScore === 0;
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [competitions]);
+      .map(c => ({
+        ...c,
+        type: 'competition' as const
+      }));
+
+    const regs = userRegistrations
+      .filter(r => {
+        const regDate = new Date(r.registration_day);
+        regDate.setHours(0, 0, 0, 0);
+        return regDate >= now;
+      })
+      .map(r => ({
+        id: r.id,
+        name: r.event_name,
+        date: r.registration_day,
+        location: r.event_location,
+        discipline: r.event_discipline,
+        type: 'registration' as const,
+        originalData: r
+      }));
+    
+    return [...comps, ...regs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [competitions, userRegistrations]);
 
   const compStats = React.useMemo(() => {
     const gare = competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0);
@@ -297,30 +322,41 @@ const Dashboard: React.FC<DashboardProps> = ({
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingCompetitions.slice(0, 4).map(comp => {
-              const d = new Date(comp.date);
+            {upcomingCompetitions.slice(0, 4).map(item => {
+              const d = new Date(item.date);
               const isToday = d.toDateString() === new Date().toDateString();
+              const isReg = item.type === 'registration';
+
               return (
-                <div key={comp.id} className={`group relative bg-slate-900 p-5 rounded-2xl border ${isToday ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10'} shadow-xl overflow-hidden transition-all hover:border-emerald-500/30`}>
+                <div key={`${item.type}-${item.id}`} className={`group relative bg-slate-900 p-5 rounded-2xl border ${isToday ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10'} shadow-xl overflow-hidden transition-all hover:border-emerald-500/30`}>
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${comp.discipline === Discipline.TRAINING ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>
-                          {comp.discipline === Discipline.TRAINING ? t('training_training_short') : t('race_training_short')}
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                          !isReg && (item as any).discipline === Discipline.TRAINING 
+                            ? 'bg-blue-500/20 text-blue-400' 
+                            : 'bg-orange-500/20 text-orange-400'
+                        }`}>
+                          {isReg 
+                            ? t('registration_confirmed') 
+                            : (item as any).discipline === Discipline.TRAINING ? t('training_training_short') : t('race_training_short')
+                          }
                         </span>
                         {isToday && <span className="text-[9px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded uppercase">{t('today')}</span>}
                       </div>
-                      <h4 className="text-lg font-black text-white leading-tight group-hover:text-emerald-400 transition-colors">{comp.name}</h4>
-                      {user?.role === 'society' && comp.userName && (
+                      <h4 className="text-lg font-black text-white leading-tight group-hover:text-emerald-400 transition-colors line-clamp-1">
+                        {item.name}
+                      </h4>
+                      {user?.role === 'society' && (item as any).userName && (
                         <p className="text-[10px] font-black text-orange-500 uppercase tracking-tighter">
-                          {t('shooter')}: {comp.userSurname} {comp.userName}
+                          {t('shooter')}: {(item as any).userSurname} {(item as any).userName}
                         </p>
                       )}
                       <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                        <i className="fas fa-location-dot text-slate-500"></i>
-                        {comp.location}
-                        {societies.find(s => s.name === comp.location)?.code && (
-                          <span className="text-orange-500 ml-1">({societies.find(s => s.name === comp.location)?.code})</span>
+                        <i className={`fas ${isReg ? 'fa-building' : 'fa-location-dot'} text-slate-500`}></i>
+                        {item.location}
+                        {societies.find(s => s.name === item.location)?.code && (
+                          <span className="text-orange-500 ml-1">({societies.find(s => s.name === item.location)?.code})</span>
                         )}
                       </p>
                     </div>
@@ -329,9 +365,30 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <p className="text-[10px] font-bold text-slate-500 uppercase">{d.toLocaleString(language === 'it' ? 'it-IT' : 'en-US', { month: 'short' })}</p>
                     </div>
                   </div>
-                  {comp.notes && (
+                  
+                  {isReg && (
+                    <div className="mt-4 pt-3 border-t border-slate-800/50 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none mb-1">{t('session')}</span>
+                        <span className="text-[10px] font-bold text-orange-500 uppercase">
+                          {item.originalData.shooting_session?.toLowerCase() === 'morning' || item.originalData.shooting_session === 'Mattina' ? t('morning') : 
+                           item.originalData.shooting_session?.toLowerCase() === 'afternoon' || item.originalData.shooting_session === 'Pomeriggio' ? t('afternoon') : 
+                           t('none_choice')}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => onEditRegistration?.(item.originalData)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2"
+                      >
+                        <i className="fas fa-edit text-orange-500"></i>
+                        {t('edit')}
+                      </button>
+                    </div>
+                  )}
+
+                  {!isReg && (item as any).notes && (
                     <p className="mt-3 text-[10px] text-slate-500 italic line-clamp-1 border-t border-slate-800/50 pt-2">
-                      "{comp.notes}"
+                      "{ (item as any).notes }"
                     </p>
                   )}
                 </div>

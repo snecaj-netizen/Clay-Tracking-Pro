@@ -46,35 +46,45 @@ transporter.verify((error, success) => {
   }
 });
 
-const sendVerificationEmail = async (email: string, name: string, token: string, host?: string) => {
+const sendVerificationEmail = async (email: string, name: string, token: string, host?: string, lang: string = 'it') => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Verification email not sent.');
     return;
   }
 
+  const isEn = lang === 'en';
   const appUrl = process.env.APP_URL || (host ? `https://${host}` : 'https://clay-tracking-pro-production-3fe8.up.railway.app');
   const verificationUrl = `${appUrl}/verify-email?token=${token}`;
 
-  console.log('-----------------------------------------');
-  console.log('🧪 TEST: Verification Link for', email);
-  console.log(verificationUrl);
-  console.log('-----------------------------------------');
+  const subject = isEn ? 'Verify your account - Clay Performance' : 'Verifica il tuo account - Clay Performance';
+  const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
+  const welcomeMsg = isEn 
+    ? 'Welcome to Clay Performance! To activate your account and start tracking your results, confirm your email by clicking the button below.' 
+    : 'Benvenuto in Clay Performance! Per attivare il tuo account e iniziare a tracciare i tuoi risultati, conferma la tua email cliccando sul tasto qui sotto.';
+  
+  const btnText = isEn ? 'VERIFY EMAIL' : 'VERIFICA EMAIL';
+  const fallbackMsg = isEn 
+    ? 'If the button doesn\'t work, copy and paste this link into your browser:' 
+    : 'Se il tasto non funziona, copia e incolla questo link nel tuo browser:';
+  const ignoreMsg = isEn 
+    ? 'If you did not request this registration, you can ignore this email.' 
+    : 'Se non hai richiesto tu questa iscrizione, puoi ignorare questa email.';
 
   const mailOptions = {
     from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
     to: email,
-    subject: 'Verifica il tuo account - Clay Performance',
+    subject: subject,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
         <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
-        <p>Ciao ${name},</p>
-        <p>Benvenuto in Clay Performance! Per attivare il tuo account e iniziare a tracciare i tuoi risultati, conferma la tua email cliccando sul tasto qui sotto.</p>
+        <p>${greeting}</p>
+        <p>${welcomeMsg}</p>
         <div style="text-align: center;">
-          <a href="${verificationUrl}" style="display: inline-block; background-color: #ea580c; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; margin: 20px 0;">VERIFICA EMAIL</a>
+          <a href="${verificationUrl}" style="display: inline-block; background-color: #ea580c; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; margin: 20px 0;">${btnText}</a>
         </div>
-        <p style="font-size: 12px; color: #64748b;">Se il tasto non funziona, copia e incolla questo link nel tuo browser:<br>${verificationUrl}</p>
+        <p style="font-size: 12px; color: #64748b;">${fallbackMsg}<br>${verificationUrl}</p>
         <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;">
-        <p style="font-size: 12px; color: #64748b;">Se non hai richiesto tu questa iscrizione, puoi ignorare questa email.</p>
+        <p style="font-size: 12px; color: #64748b;">${ignoreMsg}</p>
       </div>
     `,
   };
@@ -85,56 +95,86 @@ const sendVerificationEmail = async (email: string, name: string, token: string,
   } catch (error: any) {
     console.error('❌ CRITICAL: SMTP Error sending verification email:');
     console.error(error.message);
-    if (error.message.includes('534-5.7.9')) {
-      console.error('👉 SOLUTION: You MUST use a Google "App Password", not your main account password.');
-    }
   }
 };
 
-const sendRegistrationEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string) => {
+const sendRegistrationEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string, lang: string = 'it') => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Registration email not sent.');
     return;
   }
 
+  const isEn = lang === 'en';
+  
+  // Translate session
+  let translatedSession = session;
+  if (session.toLowerCase() === 'morning') {
+    translatedSession = isEn ? 'Morning' : 'Mattina';
+  } else if (session.toLowerCase() === 'afternoon') {
+    translatedSession = isEn ? 'Afternoon' : 'Pomeriggio';
+  }
+
+  const subject = isEn 
+    ? `Registration Confirmation: ${eventName} - Clay Performance` 
+    : `Conferma Iscrizione: ${eventName} - Clay Performance`;
+  
+  const title = isEn ? 'Registration Confirmation' : 'Conferma Iscrizione';
+  const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
+  const successMsg = isEn 
+    ? 'Your registration for the event has been successfully recorded. Here are the details:' 
+    : 'La tua iscrizione alla gara è stata registrata con successo. Ecco i dettagli:';
+  
+  const labelEvent = isEn ? 'Event' : 'Gara';
+  const labelLocation = isEn ? 'Shooting Range' : 'Campo di Tiro';
+  const labelDates = isEn ? 'Dates' : 'Date';
+  const labelDay = isEn ? 'Chosen Day' : 'Giorno Scelto';
+  const labelSession = isEn ? 'Session' : 'Sessione';
+  const labelContact = isEn ? 'Contact' : 'Recapito';
+  const manageMsg = isEn 
+    ? 'You can view and manage your registrations directly from the app in the "Registrations" section.' 
+    : 'Puoi visualizzare e gestire le tue iscrizioni direttamente dall\'app nella sezione "Iscrizioni".';
+  const footerMsg = isEn 
+    ? 'This is an automated communication, please do not reply to this email.' 
+    : 'Questa è una comunicazione automatica, si prega di non rispondere a questa email.';
+
   const mailOptions = {
     from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
     to: email,
-    subject: `Conferma Iscrizione: ${eventName} - Clay Performance`,
+    subject: subject,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
         <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
-        <h2 style="color: #ffffff;">Conferma Iscrizione</h2>
-        <p>Ciao ${name},</p>
-        <p>La tua iscrizione alla gara è stata registrata con successo. Ecco i dettagli:</p>
+        <h2 style="color: #ffffff;">${title}</h2>
+        <p>${greeting}</p>
+        <p>${successMsg}</p>
         
         <div style="background-color: #1e293b; padding: 20px; border-radius: 16px; margin: 20px 0; border: 1px solid #334155;">
-          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Gara</strong> <span style="font-size: 16px;">${eventName}</span></p>
-          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Campo di Tiro</strong> ${societyName}</p>
-          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Date</strong> ${eventDate}</p>
+          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelEvent}</strong> <span style="font-size: 16px;">${eventName}</span></p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelLocation}</strong> ${societyName}</p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelDates}</strong> ${eventDate}</p>
           
           <table style="width: 100%; margin-top: 20px;" cellpadding="0" cellspacing="0">
             <tr>
               <td style="width: 50%; vertical-align: top; padding-right: 15px;">
-                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Giorno Scelto</strong>
+                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelDay}</strong>
                 <div style="margin-top: 5px; font-size: 14px;">${day}</div>
               </td>
               <td style="width: 50%; vertical-align: top; padding-left: 15px;">
-                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Sessione</strong>
-                <div style="margin-top: 5px; font-size: 14px;">${session}</div>
+                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelSession}</strong>
+                <div style="margin-top: 5px; font-size: 14px;">${translatedSession}</div>
               </td>
             </tr>
           </table>
           
-          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Recapito</strong> ${phone}</p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelContact}</strong> ${phone}</p>
         </div>
         
         <p style="font-size: 14px; text-align: center; color: #94a3b8; margin-top: 30px;">
-          Puoi visualizzare e gestire le tue iscrizioni direttamente dall'app nella sezione "Iscrizioni".
+          ${manageMsg}
         </p>
         
         <hr style="border: none; border-top: 1px solid #1e293b; margin: 30px 0;">
-        <p style="font-size: 11px; color: #64748b; text-align: center;">Questa è una comunicazione automatica, si prega di non rispondere a questa email.</p>
+        <p style="font-size: 11px; color: #64748b; text-align: center;">${footerMsg}</p>
       </div>
     `,
   };
@@ -147,34 +187,143 @@ const sendRegistrationEmail = async (email: string, name: string, eventName: str
   }
 };
 
-const sendUnregistrationEmail = async (email: string, name: string, eventName: string, societyName: string) => {
+const sendRegistrationModifiedEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string, lang: string = 'it') => {
+  if (!process.env.SMTP_HOST) {
+    console.warn('⚠️ SMTP configuration missing. Modification email not sent.');
+    return;
+  }
+
+  const isEn = lang === 'en';
+
+  // Translate session
+  let translatedSession = session;
+  if (session.toLowerCase() === 'morning') {
+    translatedSession = isEn ? 'Morning' : 'Mattina';
+  } else if (session.toLowerCase() === 'afternoon') {
+    translatedSession = isEn ? 'Afternoon' : 'Pomeriggio';
+  }
+
+  const subject = isEn 
+    ? `Registration Modified: ${eventName} - Clay Performance` 
+    : `Modifica Iscrizione: ${eventName} - Clay Performance`;
+  
+  const title = isEn ? 'Registration Modified' : 'Iscrizione Modificata';
+  const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
+  const successMsg = isEn 
+    ? 'Your registration for the event has been successfully modified. Here are the new details:' 
+    : 'La tua iscrizione alla gara è stata modificata con successo. Ecco i nuovi dettagli:';
+  
+  const labelEvent = isEn ? 'Event' : 'Gara';
+  const labelLocation = isEn ? 'Shooting Range' : 'Campo di Tiro';
+  const labelDates = isEn ? 'Dates' : 'Date';
+  const labelDay = isEn ? 'Chosen Day' : 'Giorno Scelto';
+  const labelSession = isEn ? 'Session' : 'Sessione';
+  const labelContact = isEn ? 'Contact' : 'Recapito';
+  const manageMsg = isEn 
+    ? 'You can view and manage your registrations directly from the app in the "Registrations" section.' 
+    : 'Puoi visualizzare e gestire le tue iscrizioni direttamente dall\'app nella sezione "Iscrizioni".';
+  const footerMsg = isEn 
+    ? 'This is an automated communication, please do not reply to this email.' 
+    : 'Questa è una comunicazione automatica, si prega di non rispondere a questa email.';
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    to: email,
+    subject: subject,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
+        <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
+        <h2 style="color: #ffffff;">${title}</h2>
+        <p>${greeting}</p>
+        <p>${successMsg}</p>
+        
+        <div style="background-color: #1e293b; padding: 20px; border-radius: 16px; margin: 20px 0; border: 1px solid #334155;">
+          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelEvent}</strong> <span style="font-size: 16px;">${eventName}</span></p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelLocation}</strong> ${societyName}</p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelDates}</strong> ${eventDate}</p>
+          
+          <table style="width: 100%; margin-top: 20px;" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelDay}</strong>
+                <div style="margin-top: 5px; font-size: 14px;">${day}</div>
+              </td>
+              <td style="width: 50%; vertical-align: top; padding-left: 15px;">
+                <strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelSession}</strong>
+                <div style="margin-top: 5px; font-size: 14px;">${translatedSession}</div>
+              </td>
+            </tr>
+          </table>
+          
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelContact}</strong> ${phone}</p>
+        </div>
+        
+        <p style="font-size: 14px; text-align: center; color: #94a3b8; margin-top: 30px;">
+          ${manageMsg}
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 30px 0;">
+        <p style="font-size: 11px; color: #64748b; text-align: center;">${footerMsg}</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Registration modification email sent to: ${email}`);
+  } catch (error: any) {
+    console.error('❌ Error sending registration modification email:', error.message);
+  }
+};
+
+const sendUnregistrationEmail = async (email: string, name: string, eventName: string, societyName: string, lang: string = 'it') => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Unregistration email not sent.');
     return;
   }
 
+  const isEn = lang === 'en';
+  const subject = isEn 
+    ? `Registration Canceled: ${eventName} - Clay Performance` 
+    : `Iscrizione Cancellata: ${eventName} - Clay Performance`;
+  
+  const title = isEn ? 'Registration Canceled' : 'Iscrizione Cancellata';
+  const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
+  const confirmMsg = isEn 
+    ? 'We confirm that your registration for the following event has been canceled:' 
+    : 'Ti confermiamo che la tua iscrizione alla seguente gara è stata cancellata:';
+  
+  const labelEvent = isEn ? 'Event' : 'Gara';
+  const labelLocation = isEn ? 'Shooting Range' : 'Campo di Tiro';
+  const errorMsg = isEn 
+    ? 'If this was an error, you can register again via the app.' 
+    : 'Se si è trattato di un errore, puoi iscriverti nuovamente tramite l\'app.';
+  const footerMsg = isEn 
+    ? 'This is an automated communication, please do not reply to this email.' 
+    : 'Questa è una comunicazione automatica, si prega di non rispondere a questa email.';
+
   const mailOptions = {
     from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
     to: email,
-    subject: `Iscrizione Cancellata: ${eventName} - Clay Performance`,
+    subject: subject,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
         <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
-        <h2 style="color: #ffffff;">Iscrizione Cancellata</h2>
-        <p>Ciao ${name},</p>
-        <p>Ti confermiamo che la tua iscrizione alla seguente gara è stata cancellata:</p>
+        <h2 style="color: #ffffff;">${title}</h2>
+        <p>${greeting}</p>
+        <p>${confirmMsg}</p>
         
         <div style="background-color: #1e293b; padding: 20px; border-radius: 16px; margin: 20px 0; border: 1px solid #334155;">
-          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Gara</strong> <span style="font-size: 16px;">${eventName}</span></p>
-          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Campo di Tiro</strong> ${societyName}</p>
+          <p style="margin: 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelEvent}</strong> <span style="font-size: 16px;">${eventName}</span></p>
+          <p style="margin: 15px 0 5px 0;"><strong style="color: #ea580c; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; display: block;">${labelLocation}</strong> ${societyName}</p>
         </div>
         
         <p style="font-size: 14px; text-align: center; color: #94a3b8; margin-top: 30px;">
-          Se si è trattato di un errore, puoi iscriverti nuovamente tramite l'app.
+          ${errorMsg}
         </p>
         
         <hr style="border: none; border-top: 1px solid #1e293b; margin: 30px 0;">
-        <p style="font-size: 11px; color: #64748b; text-align: center;">Questa è una comunicazione automatica, si prega di non rispondere a questa email.</p>
+        <p style="font-size: 11px; color: #64748b; text-align: center;">${footerMsg}</p>
       </div>
     `,
   };
@@ -199,7 +348,31 @@ app.use((req, res, next) => {
 // Initialize PostgreSQL Database (Supabase)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : undefined
+  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : undefined,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+pool.on('connect', (client) => {
+  client.on('error', (err) => {
+    console.error('Database client error', err);
+  });
+});
+
+// Global process error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+  // Optional: process.exit(1) if you want it to restart, 
+  // but in this env it might be better to keep it alive if possible
 });
 
 // Helper to calculate qualification based on age
@@ -1319,7 +1492,7 @@ app.post('/api/auth/register', async (req, res) => {
       ]
     );
 
-    await sendVerificationEmail(email, name || 'Tiratore', verificationToken, req.get('host'));
+    await sendVerificationEmail(email, name || 'Tiratore', verificationToken, req.get('host'), userLanguage);
 
     res.json({ success: true });
   } catch (err: any) {
@@ -4005,7 +4178,7 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
     }
 
     // Fetch user details for email
-    const userResult = await pool.query('SELECT name, surname, email, email_verified FROM users WHERE id = $1', [targetUserId]);
+    const userResult = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [targetUserId]);
     const targetUser = userResult.rows[0];
 
     // Check if user is already registered
@@ -4033,6 +4206,21 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
       await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, targetUserId]);
     }
 
+    const regId = result.rows[0].id;
+    
+    // Fetch the NEW record with JOINED details to ensure frontend has all fields
+    const finalResult = await pool.query(
+      `SELECT 
+        r.id, r.event_id, r.user_id, r.registration_day, r.registration_type, 
+        r.shotgun_brand, r.shotgun_model, r.cartridge_brand, r.cartridge_model, 
+        r.shooting_session, r.notes, r.phone, r.created_at,
+        u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email
+       FROM event_registrations r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.id = $1`,
+      [regId]
+    );
+
     // Send email if user is verified
     if (targetUser && targetUser.email_verified && targetUser.email) {
       const eventDateRange = eventObj.start_date === eventObj.end_date 
@@ -4047,11 +4235,12 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
         eventObj.location,
         phone || '-',
         registration_day || '-',
-        shooting_session || '-'
+        shooting_session || '-',
+        targetUser.language || 'it'
       ).catch(err => console.error('Error in sendRegistrationEmail background call:', err));
     }
 
-    res.json(result.rows[0]);
+    res.json(finalResult.rows[0]);
   } catch (error) {
     console.error('Error registering for event:', {
       eventId: id,
@@ -4066,12 +4255,40 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
   }
 });
 
+// Get user's own registrations
+app.get('/api/user/registrations', authenticateToken, async (req: any, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        r.id, r.event_id, r.user_id, r.registration_day, r.registration_type, 
+        r.shotgun_brand, r.shotgun_model, r.cartridge_brand, r.cartridge_model, 
+        r.shooting_session, r.notes, r.phone, r.created_at,
+        u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification,
+        e.name as event_name, e.start_date, e.end_date, e.location as event_location, e.discipline as event_discipline, e.poster_url as event_poster_url
+       FROM event_registrations r
+       JOIN events e ON r.event_id = e.id
+       JOIN users u ON r.user_id = u.id
+       WHERE r.user_id = $1
+       ORDER BY r.registration_day DESC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error: any) {
+    console.error('Error fetching user registrations:', error);
+    res.status(500).json({ error: 'Failed to fetch registrations: ' + error.message });
+  }
+});
+
 // Get registrations for an event
 app.get('/api/events/:id/registrations', authenticateToken, async (req: any, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT r.*, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email,
+      `SELECT 
+        r.id, r.event_id, r.user_id, r.registration_day, r.registration_type, 
+        r.shotgun_brand, r.shotgun_model, r.cartridge_brand, r.cartridge_model, 
+        r.shooting_session, r.notes, r.phone, r.created_at,
+        u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email,
         (SELECT bib_number FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE sm.registration_id = r.id AND s.event_id = r.event_id LIMIT 1) as bib_number
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
@@ -4102,19 +4319,32 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
 
   try {
     // Check authorization: only admin, society of the event, or the user themselves
-    const regCheck = await pool.query('SELECT user_id FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
+    const regCheck = await pool.query('SELECT user_id, event_id FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
     if (regCheck.rows.length === 0) return res.status(404).json({ error: 'Registrazione non trovata' });
 
-    const eventCheck = await pool.query('SELECT location FROM events WHERE id = $1', [eventId]);
+    const eventCheck = await pool.query('SELECT location, start_date, name, end_date FROM events WHERE id = $1', [eventId]);
+    const eventObj = eventCheck.rows[0];
     const isOwner = regCheck.rows[0].user_id === req.user.id;
     const isAdmin = req.user.role === 'admin';
-    const isSociety = req.user.role === 'society' && req.user.society === eventCheck.rows[0]?.location;
+    const isSociety = req.user.role === 'society' && req.user.society === eventObj?.location;
 
     if (!isOwner && !isAdmin && !isSociety) {
       return res.status(403).json({ error: 'Non hai i permessi per modificare questa iscrizione' });
     }
 
-    const result = await pool.query(
+    // Deadline check for self-service
+    if (isOwner && !isAdmin && !isSociety) {
+      const eventStartDate = new Date(eventObj.start_date);
+      const deadline = new Date(eventStartDate);
+      deadline.setDate(deadline.getDate() - 1);
+      deadline.setHours(16, 0, 0, 0);
+
+      if (new Date() > deadline) {
+        return res.status(403).json({ error: 'Termine ultimo per la modifica autonoma superato (ore 16:00 del giorno precedente l\'inizio gara).' });
+      }
+    }
+
+    const updateResult = await pool.query(
       `UPDATE event_registrations SET 
         registration_day = $1, registration_type = $2, shotgun_brand = $3, 
         shotgun_model = $4, cartridge_brand = $5, cartridge_model = $6, 
@@ -4124,7 +4354,45 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
       [registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone, registrationId, eventId]
     );
 
-    res.json(result.rows[0]);
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Registrazione non trovata' });
+    }
+
+    // Fetch the UPDATED record with JOINED details to ensure frontend has all fields
+    const finalResult = await pool.query(
+      `SELECT 
+        r.id, r.event_id, r.user_id, r.registration_day, r.registration_type, 
+        r.shotgun_brand, r.shotgun_model, r.cartridge_brand, r.cartridge_model, 
+        r.shooting_session, r.notes, r.phone, r.created_at,
+        u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email
+       FROM event_registrations r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.id = $1`,
+      [registrationId]
+    );
+
+    // Send email if user is verified
+    const userResult = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [regCheck.rows[0].user_id]);
+    const targetUser = userResult.rows[0];
+    if (targetUser && targetUser.email_verified && targetUser.email) {
+      const eventDateRange = eventObj.start_date === eventObj.end_date 
+        ? eventObj.start_date 
+        : `${eventObj.start_date} - ${eventObj.end_date}`;
+      
+      sendRegistrationModifiedEmail(
+        targetUser.email,
+        `${targetUser.name} ${targetUser.surname}`,
+        eventObj.name,
+        eventDateRange,
+        eventObj.location,
+        phone || '-',
+        registration_day || '-',
+        shooting_session || '-',
+        targetUser.language || 'it'
+      ).catch(err => console.error('Error in sendRegistrationModifiedEmail background call:', err));
+    }
+
+    res.json(finalResult.rows[0]);
   } catch (error: any) {
     console.error('Error updating registration:', error);
     res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'iscrizione: ' + error.message });
@@ -4140,13 +4408,26 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
     const regCheck = await pool.query('SELECT user_id FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
     if (regCheck.rows.length === 0) return res.status(404).json({ error: 'Registrazione non trovata' });
 
-    const eventCheck = await pool.query('SELECT location FROM events WHERE id = $1', [eventId]);
+    const eventCheck = await pool.query('SELECT location, start_date FROM events WHERE id = $1', [eventId]);
+    const eventObj = eventCheck.rows[0];
     const isOwner = regCheck.rows[0].user_id === req.user.id;
     const isAdmin = req.user.role === 'admin';
-    const isSociety = req.user.role === 'society' && req.user.society === eventCheck.rows[0]?.location;
+    const isSociety = req.user.role === 'society' && req.user.society === eventObj?.location;
 
     if (!isOwner && !isAdmin && !isSociety) {
       return res.status(403).json({ error: 'Non hai i permessi per eliminare questa iscrizione' });
+    }
+
+    // Deadline check for self-service
+    if (isOwner && !isAdmin && !isSociety) {
+      const eventStartDate = new Date(eventObj.start_date);
+      const deadline = new Date(eventStartDate);
+      deadline.setDate(deadline.getDate() - 1);
+      deadline.setHours(16, 0, 0, 0);
+
+      if (new Date() > deadline) {
+        return res.status(403).json({ error: 'Termine ultimo per la cancellazione autonoma superato (ore 16:00 del giorno precedente l\'inizio gara).' });
+      }
     }
 
     // Check if user is in any squad
@@ -4160,7 +4441,7 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
 
     // Fetch details for email BEFORE deletion
     const detailsResult = await pool.query(`
-      SELECT u.name, u.surname, u.email, u.email_verified, e.name as event_name, e.location
+      SELECT u.name, u.surname, u.email, u.email_verified, u.language, e.name as event_name, e.location
       FROM event_registrations r
       JOIN users u ON r.user_id = u.id
       JOIN events e ON r.event_id = e.id
@@ -4176,7 +4457,8 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
         details.email,
         `${details.name} ${details.surname}`,
         details.event_name,
-        details.location
+        details.location,
+        details.language || 'it'
       ).catch(err => console.error('Error in sendUnregistrationEmail background call:', err));
     }
 
@@ -5847,6 +6129,15 @@ app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res
   }
 });
 
+// Final catch-all for API routes to ensure they always return JSON
+app.all('/api/*all', (req, res) => {
+  res.status(404).json({ 
+    error: `API route not found: ${req.method} ${req.url}`,
+    path: req.url,
+    method: req.method
+  });
+});
+
 async function setupVite(app: any) {
   const isProd = process.env.NODE_ENV === "production";
   const buildPath = path.resolve(process.cwd(), 'dist');
@@ -5865,7 +6156,7 @@ async function setupVite(app: any) {
       if (fs.existsSync(buildPath)) {
         serveStatic(app);
       } else {
-        app.get('*', (req: any, res: any) => {
+        app.get('*all', (req: any, res: any) => {
           res.status(500).send('Vite failed to start and no build found. Please check server logs.');
         });
       }
@@ -5876,7 +6167,7 @@ async function setupVite(app: any) {
       serveStatic(app);
     } else {
       console.error('Production mode enabled but build directory not found');
-      app.get('*', (req: any, res: any) => {
+      app.get('*all', (req: any, res: any) => {
         res.status(500).send('Production build not found. Run npm run build.');
       });
     }
@@ -5892,17 +6183,26 @@ function serveStatic(app: any) {
 }
 
 async function startApp() {
-  // Initialize Database
-  await initDB();
+  try {
+    // Initialize Database
+    await initDB();
 
-  // API routes are already defined above
-  
-  // Setup Vite or Static serving
-  await setupVite(app);
+    // Setup Vite or Static serving (API routes are already defined)
+    await setupVite(app);
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error: any) {
+    console.error('CRITICAL ERROR DURING STARTUP:', error);
+    // Even if DB or Vite fails, try to start Express so it can serve health checks or 500 errors instead of being dead
+    if (!app.listenerCount('listen')) {
+      app.get('/api/health', (req, res) => res.status(500).json({ status: 'degraded', error: error.message }));
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running in DEGRADED MODE on port ${PORT}`);
+      });
+    }
+  }
 }
 
 startApp();

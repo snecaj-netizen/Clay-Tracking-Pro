@@ -14,8 +14,10 @@ interface EventsManagerProps {
   user: any;
   token: string;
   societies: any[];
+  userRegistrations?: any[];
   onParticipate?: (event: SocietyEvent) => void;
   onCreateTeam?: (event: SocietyEvent) => void;
+  onEditRegistration?: (reg: any) => void;
   restrictToSociety?: boolean;
   initialEventId?: string | null;
   onInitialEventHandled?: () => void;
@@ -56,7 +58,9 @@ const EventCard = React.memo(({
   setSelectedEvents, 
   onSocietyClick, 
   setSelectedEvent, 
-  setRegisteringEvent, 
+  setRegisteringEvent,
+  onEditRegistration,
+  registrationData,
   filterRegistrationOpen 
 }: { 
   ev: SocietyEvent, 
@@ -68,6 +72,8 @@ const EventCard = React.memo(({
   onSocietyClick?: (name: string) => void, 
   setSelectedEvent: (ev: SocietyEvent) => void, 
   setRegisteringEvent: (ev: SocietyEvent) => void, 
+  onEditRegistration?: (reg: any) => void,
+  registrationData?: any,
   filterRegistrationOpen: boolean 
 }) => {
   const { t, language } = useLanguage();
@@ -170,10 +176,17 @@ const EventCard = React.memo(({
       
       {filterRegistrationOpen && (user?.role === 'user' || user?.role === 'admin') && !past && (
         <div className="mt-2 pt-3 border-t border-slate-800/50">
-          {ev.is_registered ? (
-            <div className="w-full py-2.5 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[10px] font-black uppercase tracking-widest cursor-default">
-              <i className="fas fa-check-circle"></i> {t('already_registered')}
-            </div>
+          {registrationData ? (
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEditRegistration?.(registrationData);
+              }}
+              className="w-full py-2.5 rounded-xl bg-orange-600/20 text-orange-500 border border-orange-500/50 flex items-center justify-center gap-2 hover:bg-orange-600/30 transition-all text-[10px] font-black uppercase tracking-widest"
+            >
+              <i className="fas fa-edit"></i> {t('edit_registration')}
+            </button>
           ) : (
             <button 
               onClick={(e) => {
@@ -193,7 +206,7 @@ const EventCard = React.memo(({
 });
 
 const EventsManager: React.FC<EventsManagerProps> = ({ 
-  user, token, societies, onParticipate, onCreateTeam, 
+  user, token, societies, userRegistrations = [], onParticipate, onCreateTeam, onEditRegistration,
   restrictToSociety, initialEventId, onInitialEventHandled, initialViewMode = 'list', 
   onInitialViewModeHandled, hideViewSwitcher = false, filterRegistrationOpen = false, 
   appSettings, onToggleFAB, isSubPage = false, hideHeader = false,
@@ -1496,77 +1509,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
-                  {eventsByDate[selectedDay].map(ev => {
-                    const past = isPastEvent(ev);
-                    const ongoing = isOngoingEvent(ev);
-                    const isNext = ev.id === nextUpcomingEventId;
-                    
-                    return (
-                    <div 
-                      key={ev.id} 
-                      onClick={() => setSelectedEvent(ev)}
-                      className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${past ? 'bg-slate-950/30 border-slate-800/50 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-700 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900/50'}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            {ongoing && ev.is_management_enabled && (
-                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                                {t('live_label')}
-                              </span>
-                            )}
-                            {isNext && !ongoing && (
-                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
-                                {t('next_competition')}
-                              </span>
-                            )}
-                            <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
-                              {ev.discipline.split(' ')[0]}
-                            </span>
-                            {ev.start_date !== ev.end_date && (
-                              <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-purple-900/30 text-purple-400 border border-purple-900/50">
-                                {t('multiday_label')}
-                              </span>
-                            )}
-                            <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                              {ev.visibility === 'Pubblica' ? t('public_visibility') : t('private_visibility')}
-                            </span>
-                          </div>
-                          <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
-                          <p className="text-[10px] text-slate-400 mt-1 truncate">
-                            <i className="fas fa-map-marker-alt mr-1"></i>
-                            {ev.location}
-                            {societies.find(s => s.name === ev.location)?.code && (
-                              <span className="text-orange-500 ml-1">({societies.find(s => s.name === ev.location)?.code})</span>
-                            )}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-lg font-black text-white leading-none">{ev.targets}</div>
-                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{t('targets_count_label')}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
-                        <div className="flex items-center gap-2">
-                          <i className="fas fa-calendar-alt text-slate-600"></i>
-                          <span className="whitespace-nowrap">
-                            {new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
-                            {ev.end_date && ev.end_date !== ev.start_date && (
-                              <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <i className="fas fa-tag text-slate-600"></i>
-                          <span>{ev.type}</span>
-                        </div>
-                      </div>
-
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    </div>
-                    );
-                  })}
+                  {eventsByDate[selectedDay].map(ev => (
+                    <EventCard 
+                      key={ev.id}
+                      ev={ev}
+                      user={user}
+                      societies={societies}
+                      viewMode={viewMode}
+                      selectedEvents={selectedEvents}
+                      setSelectedEvents={setSelectedEvents}
+                      onSocietyClick={onSocietyClick}
+                      setSelectedEvent={setSelectedEvent}
+                      setRegisteringEvent={setRegisteringEvent}
+                      onEditRegistration={onEditRegistration}
+                      registrationData={userRegistrations.find(r => r.event_id === ev.id)}
+                      filterRegistrationOpen={filterRegistrationOpen}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -2190,132 +2149,23 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 {t('no_events_found')}
               </div>
             ) : (
-              filteredEvents.map(ev => {
-                const past = isPastEvent(ev);
-                const ongoing = isOngoingEvent(ev);
-                const isNext = ev.id === nextUpcomingEventId;
-                const isSelected = selectedEvents.includes(ev.id);
-                
-                return (
-                  <div 
-                    key={ev.id} 
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest('button')) return;
-                      setSelectedEvent(ev);
-                    }}
-                    className={`border rounded-2xl p-4 relative flex flex-col gap-4 cursor-pointer transition-all group shadow-sm hover:shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : ''} ${past ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : ongoing ? 'bg-orange-900/10 border-orange-500/30 hover:bg-orange-900/20' : isNext ? 'bg-slate-900/80 border-slate-600 hover:bg-slate-800' : 'bg-slate-950/50 border-slate-700 hover:bg-slate-900/50'}`}
-                  >
-                  {user?.role === 'admin' && (
-                    <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
-                      <label className="relative flex items-center justify-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          className="peer sr-only"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedEvents([...selectedEvents, ev.id]);
-                            } else {
-                              setSelectedEvents(selectedEvents.filter(id => id !== ev.id));
-                            }
-                          }}
-                        />
-                        <div className="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-900/80 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all flex items-center justify-center backdrop-blur-sm">
-                          <i className="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
-                        </div>
-                      </label>
-                    </div>
-                  )}
-
-                  <div className="flex items-start justify-between gap-3 pr-8">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        {ongoing && ev.is_management_enabled && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-orange-500 text-white animate-pulse shadow-lg shadow-orange-500/20">
-                            {t('live_label')}
-                          </span>
-                        )}
-                        {isNext && !ongoing && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-700 text-white shadow-lg">
-                            {t('next_competition')}
-                          </span>
-                        )}
-                        {past && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter bg-slate-800 text-slate-400 border border-slate-700">
-                            {t('past')}
-                          </span>
-                        )}
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
-                          {ev.discipline.split(' ')[0]}
-                        </span>
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${ev.visibility === 'Pubblica' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                          {ev.visibility === 'Pubblica' ? t('public_visibility') : t('private_visibility')}
-                        </span>
-                      </div>
-                      <h3 className="text-sm font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase italic tracking-tight">{ev.name}</h3>
-                      <p className="text-[10px] text-slate-400 mt-1 truncate">
-                        <i className="fas fa-map-marker-alt mr-1"></i>
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onSocietyClick?.(ev.location);
-                          }}
-                          className="hover:text-orange-500 transition-colors text-left"
-                        >
-                          {ev.location}
-                        </button>
-                        {societies.find(s => s.name === ev.location)?.code && (
-                          <span className="text-orange-500 ml-1">({societies.find(s => s.name === ev.location)?.code})</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-3 border-t border-slate-800/50">
-                    <div className="flex items-center gap-2">
-                      <i className="fas fa-calendar-alt text-slate-600"></i>
-                      <span className="whitespace-nowrap text-slate-300">
-                        {new Date(ev.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
-                        {ev.end_date && ev.end_date !== ev.start_date && (
-                          <> - {new Date(ev.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right shrink-0 flex items-center gap-1.5">
-                        <div className="text-sm font-black text-white leading-none">{ev.targets}</div>
-                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest pt-0.5">{t('targets_count_label')}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  
-                  {/* Registration Button for Shooters in Registration Tab */}
-                  {filterRegistrationOpen && (user?.role === 'user' || user?.role === 'admin') && !past && (
-                    <div className="mt-2 pt-3 border-t border-slate-800/50">
-                      {ev.is_registered ? (
-                        <div className="w-full py-2.5 rounded-xl bg-green-900/30 text-green-500 flex items-center justify-center gap-2 border border-green-900/50 text-[10px] font-black uppercase tracking-widest cursor-default">
-                          <i className="fas fa-check-circle"></i> {t('already_registered')}
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setRegisteringEvent(ev);
-                          }}
-                          className="w-full py-2.5 rounded-xl bg-green-600 text-white flex items-center justify-center gap-2 hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20 text-[10px] font-black uppercase tracking-widest"
-                        >
-                          <i className="fas fa-user-plus"></i> {t('register_now')}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                );
-              })
+              filteredEvents.map(ev => (
+                <EventCard 
+                  key={ev.id}
+                  ev={ev}
+                  user={user}
+                  societies={societies}
+                  viewMode={viewMode}
+                  selectedEvents={selectedEvents}
+                  setSelectedEvents={setSelectedEvents}
+                  onSocietyClick={onSocietyClick}
+                  setSelectedEvent={setSelectedEvent}
+                  setRegisteringEvent={setRegisteringEvent}
+                  onEditRegistration={onEditRegistration}
+                  registrationData={userRegistrations.find(r => r.event_id === ev.id)}
+                  filterRegistrationOpen={filterRegistrationOpen}
+                />
+              ))
             )}
           </div>
         </div>
@@ -2425,8 +2275,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         <i className="fas fa-external-link-alt"></i> {t('external_site')}
                       </a>
                     )}
-                    {(user?.role === 'user' || user?.role === 'admin') && (selectedEvent.is_management_enabled || user?.role === 'admin') && (
-                      selectedEvent.is_registered ? (
+                    {(user?.role === 'user' || user?.role === 'admin') && (selectedEvent.is_management_enabled || user?.role === 'admin') && (() => {
+                      const registrationData = userRegistrations.find(r => r.event_id === selectedEvent.id);
+                      return registrationData ? (
+                        <button 
+                          onClick={() => {
+                            onEditRegistration?.(registrationData);
+                            setSelectedEvent(null);
+                          }}
+                          className="h-10 px-4 rounded-xl bg-orange-600/20 text-orange-500 font-black text-[10px] uppercase tracking-widest hover:bg-orange-600/30 transition-all flex items-center justify-center gap-2 border border-orange-500/50 active:scale-95"
+                        >
+                          <i className="fas fa-edit"></i> {t('edit_registration')}
+                        </button>
+                      ) : selectedEvent.is_registered ? (
                         <div className="h-10 px-4 rounded-xl bg-green-900/30 text-green-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-green-900/50 cursor-default">
                           <i className="fas fa-check-circle"></i> {t('already_registered')}
                         </div>
@@ -2440,8 +2301,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         >
                           <i className="fas fa-user-plus"></i> {t('register_now')}
                         </button>
-                      )
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}

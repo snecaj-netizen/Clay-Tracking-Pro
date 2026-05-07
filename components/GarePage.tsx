@@ -12,8 +12,10 @@ interface GarePageProps {
   token: string;
   societies: any[];
   events: any[];
+  userRegistrations?: any[];
   onParticipate: (event: any) => void;
   onCreateTeam: (event: any) => void;
+  onEditRegistration?: (reg: any) => void;
   initialEventId?: string | null;
   onInitialEventHandled?: () => void;
   initialViewMode?: string | null;
@@ -28,7 +30,7 @@ interface GarePageProps {
 type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione';
 
 const GarePage: React.FC<GarePageProps> = ({
-  user, token, societies, events, onParticipate, onCreateTeam,
+  user, token, societies, events, userRegistrations = [], onParticipate, onCreateTeam, onEditRegistration,
   initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings,
   onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick
 }) => {
@@ -346,8 +348,10 @@ const GarePage: React.FC<GarePageProps> = ({
                 token={token} 
                 societies={societies} 
                 initialEvents={events}
+                userRegistrations={userRegistrations}
                 onParticipate={onParticipate}
                 onCreateTeam={onCreateTeam}
+                onEditRegistration={onEditRegistration}
                 initialEventId={initialEventId}
                 onInitialEventHandled={onInitialEventHandled}
                 viewMode={viewMode}
@@ -379,8 +383,10 @@ const GarePage: React.FC<GarePageProps> = ({
                   token={token} 
                   societies={societies} 
                   initialEvents={events}
+                  userRegistrations={userRegistrations}
                   onParticipate={onParticipate}
                   onCreateTeam={onCreateTeam}
+                  onEditRegistration={onEditRegistration}
                   restrictToSociety={true}
                   initialViewMode="list"
                   hideViewSwitcher={true}
@@ -410,8 +416,10 @@ const GarePage: React.FC<GarePageProps> = ({
                 token={token} 
                 societies={societies} 
                 initialEvents={events}
+                userRegistrations={userRegistrations}
                 onParticipate={onParticipate}
                 onCreateTeam={onCreateTeam}
+                onEditRegistration={onEditRegistration}
                 initialEventId={initialEventId}
                 onInitialEventHandled={onInitialEventHandled}
                 initialViewMode="list"

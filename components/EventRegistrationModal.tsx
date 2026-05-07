@@ -17,11 +17,11 @@ interface EventRegistrationModalProps {
 
 const SHOTGUN_BRANDS = [
   'Benelli', 'Beretta', 'Browning', 'Caesar Guerini', 'Fabarm', 'Franchi',
-  'Krieghof', 'Marocchi', 'Perazzi', 'Rizzini', 'Sabatti', 'Zoli', 'Altro'
+  'Krieghoff', 'Marocchi', 'Perazzi', 'Rizzini', 'Sabatti', 'Zoli', 'Altro'
 ];
 
 const CARTRIDGE_BRANDS = [
-  'Baschieri&Pellagri', 'Bornaghi', 'Cheddite', 'Clever', 'Fiocchi',
+  'Baschieri & Pellagri', 'Bornaghi', 'Cheddite', 'Clever', 'Fiocchi',
   'Nobel Sport', 'RC', 'Trust', 'Winchester', 'Altro'
 ];
 
@@ -34,36 +34,85 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   const { language, t } = useLanguage();
-  const SESSIONS = [t('morning'), t('afternoon')];
+  const SESSIONS = [
+    { value: 'morning', label: t('morning') },
+    { value: 'afternoon', label: t('afternoon') }
+  ];
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
   const [formData, setFormData] = useState({
     user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
     registration_day: initialData?.registration_day || '',
     registration_type: initialData?.registration_type || t('cat_reg'),
-    shotgun_brand: initialData?.shotgun_brand || 'Beretta',
+    shotgun_brand: initialData?.shotgun_brand ? initialData.shotgun_brand : 'Beretta',
     shotgun_model: initialData?.shotgun_model || '',
-    cartridge_brand: initialData?.cartridge_brand || 'Fiocchi',
+    cartridge_brand: initialData?.cartridge_brand ? initialData.cartridge_brand : 'Fiocchi',
     cartridge_model: initialData?.cartridge_model || '',
-    shooting_session: initialData?.shooting_session || t('morning'),
+    shooting_session: initialData?.shooting_session || 'morning',
     notes: initialData?.notes || '',
     phone: initialData?.phone || (isAdminOrSociety ? '' : (user.phone || ''))
   });
+
+  // Keep formData in sync with initialData if it changes
+  useEffect(() => {
+    if (initialData) {
+      console.log("EventRegistrationModal: Syncing initialData to formData", initialData);
+      setFormData({
+        user_id: initialData.user_id,
+        registration_day: initialData.registration_day || '',
+        registration_type: initialData.registration_type || t('cat_reg'),
+        shotgun_brand: initialData.shotgun_brand ? initialData.shotgun_brand : 'Beretta',
+        shotgun_model: initialData.shotgun_model || '',
+        cartridge_brand: initialData.cartridge_brand ? initialData.cartridge_brand : 'Fiocchi',
+        cartridge_model: initialData.cartridge_model || '',
+        shooting_session: initialData.shooting_session || 'morning',
+        notes: initialData.notes || '',
+        phone: initialData.phone || user.phone || ''
+      });
+    }
+  }, [initialData, user.phone, t]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessDetail, setShowSuccessDetail] = useState(false);
   const [shooters, setShooters] = useState<any[]>([]);
-  const [selectedShooter, setSelectedShooter] = useState<any>(
-    initialData ? { 
-      id: initialData.user_id, 
-      name: initialData.first_name, 
-      surname: initialData.last_name,
-      shooter_code: initialData.shooter_code,
-      society: initialData.society,
-      category: initialData.category,
-      qualification: initialData.qualification
-    } : (isAdminOrSociety ? null : user)
-  );
+  const [selectedShooter, setSelectedShooter] = useState<any>(() => {
+    if (initialData) {
+      console.log("EventRegistrationModal: Mapping initialData to selectedShooter", {
+        user_id: initialData.user_id,
+        first_name: initialData.first_name,
+        last_name: initialData.last_name,
+        shooter_code: initialData.shooter_code
+      });
+      return { 
+        id: initialData.user_id, 
+        name: initialData.first_name || (initialData.user_id === user.id ? user.name : ''), 
+        surname: initialData.last_name || (initialData.user_id === user.id ? user.surname : ''),
+        shooter_code: initialData.shooter_code || (initialData.user_id === user.id ? user.shooter_code : ''),
+        society: initialData.society || (initialData.user_id === user.id ? user.society : ''),
+        category: initialData.category || (initialData.user_id === user.id ? user.category : ''),
+        qualification: initialData.qualification || (initialData.user_id === user.id ? user.qualification : '')
+      };
+    }
+    return isAdminOrSociety ? null : user;
+  });
+
+  // UseEffect to update selectedShooter details if they are missing and we load the shooters list
+  useEffect(() => {
+    if (initialData && shooters.length > 0) {
+      const fullShooter = shooters.find(s => s.id === initialData.user_id);
+      if (fullShooter) {
+        setSelectedShooter(prev => ({
+          ...prev,
+          name: fullShooter.name || prev.name,
+          surname: fullShooter.surname || prev.surname,
+          shooter_code: fullShooter.shooter_code || prev.shooter_code,
+          society: fullShooter.society || prev.society,
+          category: fullShooter.category || prev.category,
+          qualification: fullShooter.qualification || prev.qualification
+        }));
+      }
+    }
+  }, [shooters, initialData]);
 
   useEffect(() => {
     if (user.role === 'admin' || user.role === 'society') {
@@ -425,22 +474,21 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 </div>
               </div>
 
-              {/* Session */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sessione di Tiro *</label>
                 <div className="flex flex-wrap gap-2">
                   {SESSIONS.map(session => (
                     <button
-                      key={session}
+                      key={session.value}
                       type="button"
-                      onClick={() => setFormData({ ...formData, shooting_session: session })}
+                      onClick={() => setFormData({ ...formData, shooting_session: session.value })}
                       className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                        formData.shooting_session === session
+                        formData.shooting_session === session.value
                           ? 'bg-orange-600 text-white border-orange-500 shadow-lg'
                           : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-orange-500/50'
                       }`}
                     >
-                      {session}
+                      {session.label}
                     </button>
                   ))}
                 </div>

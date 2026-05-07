@@ -1196,8 +1196,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             {formatDateDisplay(reg.registration_day)}
                           </span>
                           <span className="text-[8px] font-bold text-orange-500/60 uppercase">
-                            - {reg.shooting_session === 'morning' ? t('morning_short') : 
-                               reg.shooting_session === 'afternoon' ? t('afternoon_short') : 
+                            - {(reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
+                               (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
                                t('none_short')}
                           </span>
                         </div>
@@ -1879,6 +1879,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
       {editingRegistration && (
         <EventRegistrationModal
+          key={`edit-${editingRegistration.id}`}
           event={event}
           user={user}
           initialData={editingRegistration}
