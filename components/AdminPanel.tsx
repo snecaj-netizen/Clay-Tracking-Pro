@@ -61,6 +61,7 @@ interface AdminPanelProps {
   onSettingsUpdate?: () => void;
   initialEventViewMode?: 'list' | 'calendar' | 'results' | 'managed';
   onToggleFAB?: (hide: boolean) => void;
+  onRefresh?: () => void;
 }
 
 // Admin Panel Refinement
@@ -81,7 +82,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
   user: currentUser, token, competitions, cartridges, cartridgeTypes, clientId, onClientIdChange, onImport,
   syncStatus, lastSync, isDriveConnected, onConnectDrive, onDisconnectDrive, onSaveDrive, onLoadDrive,
   onEditCompetition, onDeleteCompetition, onNavigate, initialTab, initialSocietyName, onCloseSocietyDetail, onUserUpdate, prefillTeam, onPrefillTeamUsed, hideTabs, onReplayTour,
-  appSettings, onSettingsUpdate, initialEventViewMode, onToggleFAB
+  appSettings, onSettingsUpdate, initialEventViewMode, onToggleFAB, onRefresh
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   const { language, t, setLanguage } = useLanguage();
@@ -548,6 +549,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
             societies={societies}
             onToggleFAB={handleToggleFAB}
             isSubPage={true}
+            onRefresh={onRefresh}
           />
         </div>
       ) : activeTab === 'settings' ? (
@@ -939,6 +941,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
             societies={societies} 
             restrictToSociety={true}
             isSubPage={true}
+            onRefresh={onRefresh}
             onCreateTeam={(ev) => {
               setActiveTab('team');
               setShowTeamForm(true);

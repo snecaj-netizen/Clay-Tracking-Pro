@@ -12,10 +12,11 @@ interface UserEventsProps {
   initialEventId: string | null;
   onInitialEventHandled: () => void;
   appSettings: any;
+  onRefresh?: () => void;
 }
 
 export const UserEvents: React.FC<UserEventsProps> = ({
-  user, token, societies, onParticipate, onCreateTeam, initialEventId, onInitialEventHandled, appSettings
+  user, token, societies, onParticipate, onCreateTeam, initialEventId, onInitialEventHandled, appSettings, onRefresh
 }) => {
   const { t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
@@ -112,6 +113,7 @@ export const UserEvents: React.FC<UserEventsProps> = ({
           hideViewSwitcher={true}
           appSettings={appSettings}
           filterRegistrationOpen={activeTab === 'registration'}
+          onRefresh={onRefresh}
         />
       </div>
     </div>

@@ -1051,6 +1051,7 @@ const App: React.FC = () => {
                 onToggleFAB={setHideGlobalFAB}
                 onTabChange={setGareActiveTab}
                 onSocietyClick={handleSocietyClick}
+                onRefresh={fetchData}
               />
             </div>
           )}
@@ -1270,6 +1271,7 @@ const App: React.FC = () => {
                 title={t('your_profile')}
                 icon="fa-user-circle"
                 initialTab="profile"
+                onRefresh={fetchData}
               />
             </div>
           )}
@@ -1299,6 +1301,7 @@ const App: React.FC = () => {
                 title={t('settings')}
                 icon="fa-cog"
                 initialTab="settings"
+                onRefresh={fetchData}
               />
             </div>
           )}

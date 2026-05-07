@@ -25,6 +25,7 @@ interface GarePageProps {
   onToggleFAB?: (hide: boolean) => void;
   onTabChange?: (tab: string) => void;
   onSocietyClick?: (name: string) => void;
+  onRefresh?: () => void;
 }
 
 type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione';
@@ -32,7 +33,7 @@ type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione
 const GarePage: React.FC<GarePageProps> = ({
   user, token, societies, events, userRegistrations = [], onParticipate, onCreateTeam, onEditRegistration,
   initialEventId, onInitialEventHandled, initialViewMode, onInitialViewModeHandled, appSettings,
-  onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick
+  onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick, onRefresh
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   const { t } = useLanguage();
@@ -373,6 +374,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 newEventTrigger={newEventTrigger}
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
+                onRefresh={onRefresh}
               />
             )}
 
@@ -406,6 +408,7 @@ const GarePage: React.FC<GarePageProps> = ({
                   newEventTrigger={newEventTrigger}
                   isSubPage={true}
                   onSocietyClick={onSocietyClick}
+                  onRefresh={onRefresh}
                 />
               </div>
             )}
@@ -439,6 +442,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 appSettings={appSettings}
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
+                onRefresh={onRefresh}
               />
             )}
 
@@ -466,6 +470,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 appSettings={appSettings}
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
+                onRefresh={onRefresh}
               />
             )}
 
@@ -494,6 +499,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 appSettings={appSettings}
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
+                onRefresh={onRefresh}
               />
             )}
 

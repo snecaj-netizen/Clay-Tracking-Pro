@@ -25,6 +25,7 @@ interface AdminPageViewProps {
   hideHeader?: boolean;
   initialEventViewMode?: 'list' | 'calendar' | 'results' | 'managed';
   onToggleFAB?: (hide: boolean) => void;
+  onRefresh?: () => void;
 }
 
 const AdminPageView: React.FC<AdminPageViewProps> = ({
@@ -32,7 +33,7 @@ const AdminPageView: React.FC<AdminPageViewProps> = ({
   onEditCompetition, onDeleteCompetition,
   handleImport, handleCloseSocietyDetail, handleUserUpdate, setShowTour,
   appSettings, fetchSettings, title, icon, initialTab, kpi1, kpi2, hideHeader,
-  initialEventViewMode, onToggleFAB
+  initialEventViewMode, onToggleFAB, onRefresh
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   return (
@@ -92,6 +93,7 @@ const AdminPageView: React.FC<AdminPageViewProps> = ({
           onSettingsUpdate={fetchSettings}
           initialEventViewMode={initialEventViewMode}
           onToggleFAB={onToggleFAB}
+          onRefresh={onRefresh}
         />
       </div>
     </div>

@@ -47,6 +47,7 @@ interface EventsManagerProps {
   filterMonth?: string;
   onFilterMonthChange?: (val: string) => void;
   onSocietyClick?: (name: string) => void;
+  onRefresh?: () => void;
 }
 
 const EventCard = React.memo(({ 
@@ -60,6 +61,7 @@ const EventCard = React.memo(({
   setSelectedEvent, 
   setRegisteringEvent,
   onEditRegistration,
+  onCancelRegistration,
   registrationData,
   filterRegistrationOpen 
 }: { 
@@ -73,6 +75,7 @@ const EventCard = React.memo(({
   setSelectedEvent: (ev: SocietyEvent) => void, 
   setRegisteringEvent: (ev: SocietyEvent) => void, 
   onEditRegistration?: (reg: any) => void,
+  onCancelRegistration?: (ev: SocietyEvent, reg: any) => void,
   registrationData?: any,
   filterRegistrationOpen: boolean 
 }) => {
@@ -175,18 +178,30 @@ const EventCard = React.memo(({
       <div className="absolute top-0 right-0 w-16 h-16 bg-orange-600/5 rounded-full blur-2xl -mr-8 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity"></div>
       
       {filterRegistrationOpen && (user?.role === 'user' || user?.role === 'admin') && !past && (
-        <div className="mt-2 pt-3 border-t border-slate-800/50">
+        <div className="mt-2 pt-3 border-t border-slate-800/50 space-y-2">
           {registrationData ? (
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onEditRegistration?.(registrationData);
-              }}
-              className="w-full py-2.5 rounded-xl bg-orange-600/20 text-orange-500 border border-orange-500/50 flex items-center justify-center gap-2 hover:bg-orange-600/30 transition-all text-[10px] font-black uppercase tracking-widest"
-            >
-              <i className="fas fa-edit"></i> {t('edit_registration')}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEditRegistration?.(registrationData);
+                }}
+                className="w-full py-2.5 rounded-xl bg-orange-600/20 text-orange-500 border border-orange-500/50 flex items-center justify-center gap-2 hover:bg-orange-600/30 transition-all text-[10px] font-black uppercase tracking-widest"
+              >
+                <i className="fas fa-edit"></i> {t('edit_registration')}
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onCancelRegistration?.(ev, registrationData);
+                }}
+                className="w-full py-2.5 rounded-xl bg-red-600/20 text-red-500 border border-red-500/50 flex items-center justify-center gap-2 hover:bg-red-600/30 transition-all text-[10px] font-black uppercase tracking-widest"
+              >
+                <i className="fas fa-user-minus"></i> {t('cancel_registration')}
+              </button>
+            </div>
           ) : (
             <button 
               onClick={(e) => {
@@ -217,7 +232,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   filterSociety: externalFilterSociety, onFilterSocietyChange,
   filterDiscipline: externalFilterDiscipline, onFilterDisciplineChange,
   filterMonth: externalFilterMonth, onFilterMonthChange,
-  onSocietyClick
+  onSocietyClick,
+  onRefresh
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   const { t, language } = useLanguage();
@@ -375,6 +391,36 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     futureEvents.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
     return futureEvents[0].id;
   }, [events]);
+
+  const handleCancelRegistration = async (event: SocietyEvent, registration: any) => {
+    triggerConfirm(
+      t('cancel_registration'),
+      t('confirm_cancel_reg'),
+      async () => {
+        try {
+          const response = await fetch(`/api/events/${event.id}/registrations/${registration.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            triggerToast?.(t('cancel_reg_success'), 'success');
+            onRefresh?.();
+            fetchEvents();
+          } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || t('delete_error'));
+          }
+        } catch (err: any) {
+          triggerToast?.(err.message, 'error');
+        }
+      },
+      t('confirm_delete'),
+      'danger'
+    );
+  };
 
   const filteredEvents = React.useMemo(() => {
     const filtered = events.filter(ev => {
@@ -2162,6 +2208,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                   setSelectedEvent={setSelectedEvent}
                   setRegisteringEvent={setRegisteringEvent}
                   onEditRegistration={onEditRegistration}
+                  onCancelRegistration={handleCancelRegistration}
                   registrationData={userRegistrations.find(r => r.event_id === ev.id)}
                   filterRegistrationOpen={filterRegistrationOpen}
                 />
@@ -2485,6 +2532,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           onClose={() => setRegisteringEvent(null)}
           onSuccess={() => {
             if (triggerToast) triggerToast(t('registration_success'), 'success');
+            onRefresh?.();
             fetchEvents();
             setRefreshDetailVersion(v => v + 1);
           }}
