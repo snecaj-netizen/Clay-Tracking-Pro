@@ -498,7 +498,10 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
               <div className="space-y-4 p-4 bg-slate-950/30 rounded-2xl border border-slate-800">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('session_label') || 'Sessione di Tiro'} *</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Target className="w-3 h-3 text-orange-500" />
+                    {t('session_label') || 'Sessione di Tiro'} *
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     {SESSIONS.map(session => (
                       <button
@@ -517,22 +520,24 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-slate-800/50">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <Target className="w-3 h-3 text-orange-500" />
-                    {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
-                  </label>
-                  <select
-                    value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
-                    onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
-                  >
-                    <option value="">-- {t('select_time_placeholder')} --</option>
-                    {TIME_SLOTS.map(time => (
-                      <option key={time} value={time}>{time}</option>
-                    ))}
-                  </select>
-                </div>
+                {isAdminOrSociety && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800/50">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      <Target className="w-3 h-3 text-orange-500" />
+                      {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
+                    </label>
+                    <select
+                      value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
+                      onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">-- {t('select_time_placeholder')} --</option>
+                      {TIME_SLOTS.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -565,7 +570,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               {isAdminOrSociety && !initialData && (
                 <button
                   type="button"
-                  disabled={isSubmitting || !formData.user_id}
+                  disabled={isSubmitting || !formData.user_id || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.shooting_session)}
                   onClick={(e) => {
                     const originalHandleSubmit = handleSubmit;
                     // We need a way to tell the submit handler to also add to squad
@@ -573,6 +578,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                     handleSubmit(e as any);
                   }}
                   className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  title={!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.shooting_session) ? "Seleziona un orario preciso per questa funzione" : ""}
                 >
                   {isSubmitting ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

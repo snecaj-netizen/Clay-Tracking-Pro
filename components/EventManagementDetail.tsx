@@ -667,19 +667,31 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
   const handleAddSquad = () => {
     const normalizedGenDay = normalizeDate(genDay);
-    const daySquads = squads.filter(s => normalizeDate(s.squad_day) === (normalizedGenDay === 'all' ? normalizeDate(event.start_date) : normalizedGenDay));
-    const nextSquadNumber = daySquads.length > 0 ? Math.max(...daySquads.map(s => s.squad_number)) + 1 : 1;
+    const dayToUse = normalizedGenDay === 'all' ? normalizeDate(event.start_date) : normalizedGenDay;
+    const daySquads = squads.filter(s => normalizeDate(s.squad_day) === dayToUse && (s.round_number === 1));
     
-    // Calculate incremental time: last squad's time + 20 minutes
+    // Find first available time slot starting from startTime with 20 min intervals
     let newStartTime = startTime || '09:00';
-    if (daySquads.length > 0) {
-      const sortedByTime = [...daySquads].sort((a, b) => a.start_time.localeCompare(b.start_time));
-      const lastTime = sortedByTime[sortedByTime.length - 1].start_time;
-      const [hours, minutes] = lastTime.split(':').map(Number);
-      const date = new Date();
-      date.setHours(hours, minutes + 20, 0);
-      newStartTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const existingTimes = new Set(daySquads.map(s => s.start_time));
+    
+    // Search for the first available 20-minute slot
+    let foundTime = false;
+    const [startH, startM] = newStartTime.split(':').map(Number);
+    const baseDate = new Date();
+    baseDate.setHours(startH, startM, 0, 0);
+    
+    // Max 10 hours of searching (30 slots)
+    for (let i = 0; i < 30; i++) {
+      const searchDate = new Date(baseDate.getTime() + i * 20 * 60000);
+      const searchTimeStr = `${String(searchDate.getHours()).padStart(2, '0')}:${String(searchDate.getMinutes()).padStart(2, '0')}`;
+      if (!existingTimes.has(searchTimeStr)) {
+        newStartTime = searchTimeStr;
+        foundTime = true;
+        break;
+      }
     }
+    
+    const nextSquadNumber = daySquads.length > 0 ? Math.max(...daySquads.map(s => s.squad_number)) + 1 : 1;
 
     const newSquad: EventSquad = {
       id: Date.now(),
@@ -953,9 +965,12 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                               <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
                                 {formatDateDisplay(reg.registration_day)}
                                 <span className="ml-1 text-orange-500/80 text-[8px] font-bold">
-                                  - {(reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
-                                     (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
-                                     t('none_short')}
+                                  - {(() => {
+                                      if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(reg.shooting_session)) return reg.shooting_session;
+                                      return (reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
+                                             (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
+                                             t('none_short');
+                                    })()}
                                 </span>
                               </p>
                             </div>
@@ -1515,7 +1530,9 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
                     <div className="space-y-10">
                       {rounds.map(roundNum => {
-                        const squadsInRound = daySquads.filter(s => (s.round_number || 1) === roundNum);
+                        const squadsInRound = daySquads
+                          .filter(s => (s.round_number || 1) === roundNum)
+                          .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
                         if (squadsInRound.length === 0) return null;
 
                         return (
