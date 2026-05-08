@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
@@ -39,6 +39,19 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     { value: 'afternoon', label: t('afternoon') }
   ];
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
+
+  // Generate time slots 08:00 to 18:00 with 20 min intervals
+  const TIME_SLOTS = useMemo(() => {
+    const slots = [];
+    for (let hour = 8; hour <= 18; hour++) {
+      for (let min = 0; min < 60; min += 20) {
+        if (hour === 18 && min > 0) break;
+        slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+      }
+    }
+    return slots;
+  }, []);
+
   const [formData, setFormData] = useState({
     user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
     registration_day: initialData?.registration_day || '',
@@ -188,6 +201,8 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
         setIsSubmitting(true);
         setError(null);
 
+        const addToSquad = (e.currentTarget as any)?._addToSquad || false;
+
         try {
           const url = initialData 
             ? `/api/events/${event.id}/registrations/${initialData.id}`
@@ -201,7 +216,10 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify({
+              ...formData,
+              addToSquad: addToSquad
+            })
           });
 
           if (!response.ok) {
@@ -264,7 +282,11 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">{t('session_label') || 'Sessione'}</label>
-                <p className="text-white font-bold">{formData.shooting_session}</p>
+                <p className="text-white font-bold">
+                  {formData.shooting_session === 'morning' ? t('morning') : 
+                   formData.shooting_session === 'afternoon' ? t('afternoon') : 
+                   `alle ${formData.shooting_session}`}
+                </p>
               </div>
             </div>
           </div>
@@ -474,23 +496,42 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sessione di Tiro *</label>
-                <div className="flex flex-wrap gap-2">
-                  {SESSIONS.map(session => (
-                    <button
-                      key={session.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, shooting_session: session.value })}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                        formData.shooting_session === session.value
-                          ? 'bg-orange-600 text-white border-orange-500 shadow-lg'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-orange-500/50'
-                      }`}
-                    >
-                      {session.label}
-                    </button>
-                  ))}
+              <div className="space-y-4 p-4 bg-slate-950/30 rounded-2xl border border-slate-800">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('session_label') || 'Sessione di Tiro'} *</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SESSIONS.map(session => (
+                      <button
+                        key={session.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, shooting_session: session.value })}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                          (formData.shooting_session === session.value)
+                            ? 'bg-orange-600 text-white border-orange-500 shadow-lg'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-orange-500/50'
+                        }`}
+                      >
+                        {session.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-800/50">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Target className="w-3 h-3 text-orange-500" />
+                    {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
+                  </label>
+                  <select
+                    value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
+                    onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">-- {t('select_time_placeholder')} --</option>
+                    {TIME_SLOTS.map(time => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -512,7 +553,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               </div>
             )}
 
-            <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0">
+            <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex flex-wrap justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={onClose}
@@ -520,6 +561,30 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
               >
                 {t('close')}
               </button>
+              
+              {isAdminOrSociety && !initialData && (
+                <button
+                  type="button"
+                  disabled={isSubmitting || !formData.user_id}
+                  onClick={(e) => {
+                    const originalHandleSubmit = handleSubmit;
+                    // We need a way to tell the submit handler to also add to squad
+                    (e.currentTarget as any)._addToSquad = true;
+                    handleSubmit(e as any);
+                  }}
+                  className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Target className="w-4 h-4" />
+                      {t('enroll_and_squad') || 'Iscrivi e Inserisci in batteria'}
+                    </>
+                  )}
+                </button>
+              )}
+
               <button
                 type="submit"
                 form="registration-form"

@@ -71,7 +71,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const canExportPDF = user?.role === 'admin' || user?.role === 'society';
 
   const shootersWithoutResults = useMemo(() => {
-    const resultUserIds = new Set(results.map(r => r.user_id));
+    // Only exclude those who have an actual competition record (not just a registration)
+    const resultUserIds = new Set(results.filter(r => !r.is_registered_only).map(r => r.user_id));
     
     // If we are editing, we want to keep the current shooter in the list
     const currentEditingUserId = editingResultId ? results.find(r => r.id === editingResultId)?.user_id : null;
@@ -81,6 +82,19 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       return !resultUserIds.has(u.id);
     });
   }, [users, results, editingResultId]);
+
+  useEffect(() => {
+    if (selectedUserId && !editingResultId) {
+      const registration = results.find(r => r.user_id.toString() === selectedUserId && r.is_registered_only);
+      if (registration) {
+        if (registration.registration_type === 'Qualifica' || registration.registration_type === 'Per Qualifica') {
+          setRankingPreference('qualifica');
+        } else {
+          setRankingPreference('categoria');
+        }
+      }
+    }
+  }, [selectedUserId, results, editingResultId]);
 
   // Removed useEffect that was overwriting series/detailedScores on totalTargets change
   // Now handled in onChange and handleEditResult
@@ -243,6 +257,29 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       
       return newDetailed;
     });
+  };
+
+  const handleSeriesValueChange = (idx: number, val: string) => {
+    setIsDirty(true);
+    const score = parseInt(val);
+    if (isNaN(score)) {
+      const newScores = [...series];
+      newScores[idx] = '';
+      setSeries(newScores);
+      return;
+    }
+
+    const clampedScore = Math.min(25, Math.max(0, score));
+    
+    // Update series numeric value
+    const newScores = [...series];
+    newScores[idx] = clampedScore.toString();
+    setSeries(newScores);
+
+    // Update detailed scores: first 'clampedScore' are hits, rest are misses (zeros)
+    const newDetailed = [...detailedScores];
+    newDetailed[idx] = Array(25).fill(false).map((_, i) => i < clampedScore);
+    setDetailedScores(newDetailed);
   };
 
   const calculateTotal = () => {
@@ -1162,10 +1199,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           min="0" 
                           max="25"
                           value={s}
-                          readOnly
-                          onClick={() => toggleExpandSeries(i)}
+                          onChange={(e) => handleSeriesValueChange(i, e.target.value)}
+                          onFocus={() => {
+                            if (expandedSeries !== i) setExpandedSeries(i);
+                          }}
                           placeholder={`S${i+1}`}
-                          className={`w-full bg-slate-950 border ${expandedSeries === i ? 'border-orange-500' : 'border-slate-800'} rounded-lg px-2 py-2 text-center text-white focus:border-orange-600 outline-none cursor-pointer text-sm font-bold`}
+                          className={`w-full bg-slate-950 border ${expandedSeries === i ? 'border-orange-500' : 'border-slate-800'} rounded-lg px-2 py-2 text-center text-white focus:border-orange-600 outline-none text-sm font-bold`}
                           required
                         />
                         <button
@@ -1627,6 +1666,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                         setDetailedScores(Array.from({ length: numSeries }, () => []));
                                         setShootOff('');
                                         setExpandedSeries(null);
+                                        
+                                        // Auto-fill ranking preference from registration
+                                        if (r.registration_type === 'Per Qualifica') {
+                                          setRankingPreference('qualifica');
+                                        } else {
+                                          setRankingPreference('categoria');
+                                        }
+                                        
                                         setIsDirty(true);
                                         // Scroll to form on mobile
                                         const form = document.getElementById('result-form');

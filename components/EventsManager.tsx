@@ -1568,6 +1568,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       setSelectedEvent={setSelectedEvent}
                       setRegisteringEvent={setRegisteringEvent}
                       onEditRegistration={onEditRegistration}
+                      onCancelRegistration={handleCancelRegistration}
                       registrationData={userRegistrations.find(r => r.event_id === ev.id)}
                       filterRegistrationOpen={filterRegistrationOpen}
                     />
@@ -2325,15 +2326,26 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     {(user?.role === 'user' || user?.role === 'admin') && (selectedEvent.is_management_enabled || user?.role === 'admin') && (() => {
                       const registrationData = userRegistrations.find(r => r.event_id === selectedEvent.id);
                       return registrationData ? (
-                        <button 
-                          onClick={() => {
-                            onEditRegistration?.(registrationData);
-                            setSelectedEvent(null);
-                          }}
-                          className="h-10 px-4 rounded-xl bg-orange-600/20 text-orange-500 font-black text-[10px] uppercase tracking-widest hover:bg-orange-600/30 transition-all flex items-center justify-center gap-2 border border-orange-500/50 active:scale-95"
-                        >
-                          <i className="fas fa-edit"></i> {t('edit_registration')}
-                        </button>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button 
+                            onClick={() => {
+                              onEditRegistration?.(registrationData);
+                              setSelectedEvent(null);
+                            }}
+                            className="h-10 px-4 rounded-xl bg-orange-600/20 text-orange-500 font-black text-[10px] uppercase tracking-widest hover:bg-orange-600/30 transition-all flex items-center justify-center gap-2 border border-orange-500/50 active:scale-95 flex-1"
+                          >
+                            <i className="fas fa-edit"></i> {t('edit_registration')}
+                          </button>
+                          <button 
+                            onClick={() => {
+                              handleCancelRegistration(selectedEvent, registrationData);
+                              setSelectedEvent(null);
+                            }}
+                            className="h-10 px-4 rounded-xl bg-red-600/10 text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-600/20 transition-all flex items-center justify-center gap-2 border border-red-500/30 active:scale-95 flex-1"
+                          >
+                            <i className="fas fa-trash-alt"></i> {t('cancel_registration')}
+                          </button>
+                        </div>
                       ) : selectedEvent.is_registered ? (
                         <div className="h-10 px-4 rounded-xl bg-green-900/30 text-green-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-green-900/50 cursor-default">
                           <i className="fas fa-check-circle"></i> {t('already_registered')}

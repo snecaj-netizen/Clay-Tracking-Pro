@@ -23,6 +23,15 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
       roles: ['user', 'society', 'admin']
     },
     {
+      id: 'gare',
+      tab: 'gestione',
+      label: t('competition_management') || 'Gestione gare',
+      icon: 'fa-tasks',
+      color: 'bg-indigo-600',
+      description: t('management_panel_desc') || 'Pannello di controllo gare',
+      roles: ['society', 'admin']
+    },
+    {
       id: 'le-tue-gare',
       tab: 'history',
       label: t('register_your_race') || 'Registra la tua gara',

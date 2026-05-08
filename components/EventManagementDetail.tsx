@@ -331,6 +331,36 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     }
   };
 
+  const handleToggleRoundLock = async (day: string, roundNumber: number, lock: boolean) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/events/${event.id}/squads/bulk-lock`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          squadDay: day,
+          roundNumber,
+          lock
+        })
+      });
+
+      if (res.ok) {
+        triggerToast?.(lock ? 'Serie 1 aggiornata' : 'Serie 1 aggiornata', 'success');
+        fetchData();
+      } else {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore durante l\'aggiornamento delle batterie');
+      }
+    } catch (err: any) {
+      triggerToast?.(err.message, 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDuplicateRounds = async (targetDay?: string) => {
     if (!triggerConfirm) return;
 
@@ -1449,21 +1479,36 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                           <div className="h-px flex-1 bg-slate-800"></div>
                           <div className="flex items-center gap-4">
                             <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.3em]">{formatDateDisplay(day)}</h3>
-                            {roundsCount > 1 && (
+                            <div className="flex items-center gap-2">
+                              {roundsCount > 1 && (
+                                <button
+                                  onClick={() => handleDuplicateRounds(day)}
+                                  disabled={isGenerating || isSaving || !isDayR1Locked}
+                                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 ${
+                                    isDayR1Locked 
+                                      ? 'bg-orange-600/10 text-orange-500 border-orange-500/30 hover:bg-orange-600/20' 
+                                      : 'bg-slate-900 border-slate-800 text-slate-600 opacity-50 cursor-not-allowed'
+                                  }`}
+                                  title={!isDayR1Locked ? "Blocca tutte le batterie della Serie 1 per questo giorno prima di duplicare" : "Duplica Serie 1 per questo giorno"}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  <span className="hidden sm:inline">{isDayR1Locked ? "Duplica Serie 1" : t('lock_squads_duplicate')}</span>
+                                  <span className="sm:hidden">Serie 1</span>
+                                </button>
+                              )}
                               <button
-                                onClick={() => handleDuplicateRounds(day)}
-                                disabled={isGenerating || isSaving || !isDayR1Locked}
+                                onClick={() => handleToggleRoundLock(day, 1, !isDayR1Locked)}
+                                disabled={isGenerating || isSaving || dayR1.length === 0}
                                 className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 ${
                                   isDayR1Locked 
-                                    ? 'bg-orange-600/10 text-orange-500 border-orange-500/30 hover:bg-orange-600/20' 
-                                    : 'bg-slate-900 border-slate-800 text-slate-600 opacity-50 cursor-not-allowed'
+                                    ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' 
+                                    : 'bg-green-600/10 text-green-500 border-green-500/30 hover:bg-green-600/20'
                                 }`}
-                                title={!isDayR1Locked ? "Blocca tutte le batterie della Serie 1 per questo giorno prima di duplicare" : "Duplica Serie 1 per questo giorno"}
                               >
-                                <Copy className="w-3 h-3" />
-                                {isDayR1Locked ? "Duplica Giri" : "Sblocca r1 per duplicare"}
+                                {isDayR1Locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                <span>{isDayR1Locked ? "Sblocca Serie 1" : "Blocca Serie 1"}</span>
                               </button>
-                            )}
+                            </div>
                           </div>
                           <div className="h-px flex-1 bg-slate-800"></div>
                         </div>

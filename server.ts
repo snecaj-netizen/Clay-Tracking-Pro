@@ -4096,7 +4096,7 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
     const eventId = req.params.id;
     // Include all registered shooters, even if they don't have a result yet
     const results = await pool.query(`
-      SELECT 
+      SELECT DISTINCT ON (u.id)
         c.*, 
         u.id as user_id,
         u.name as user_name, 
@@ -4115,13 +4115,17 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
         r.shooting_session,
         r.notes as registration_notes,
         r.phone as registration_phone,
-        sm.bib_number
+        sm.bib_number,
+        (c.id IS NULL) as is_registered_only
       FROM users u
       LEFT JOIN event_registrations r ON r.user_id = u.id AND r.event_id = $1
       LEFT JOIN competitions c ON c.user_id = u.id AND c.event_id = $1
-      LEFT JOIN event_squad_members sm ON sm.registration_id = r.id
+      LEFT JOIN (
+        SELECT DISTINCT ON (registration_id) registration_id, bib_number 
+        FROM event_squad_members
+      ) sm ON sm.registration_id = r.id
       WHERE r.id IS NOT NULL OR c.id IS NOT NULL
-      ORDER BY c.totalscore DESC NULLS LAST, c.shoot_off DESC NULLS LAST
+      ORDER BY u.id, c.id DESC NULLS LAST, c.totalscore DESC NULLS LAST, c.shoot_off DESC NULLS LAST
     `, [eventId]);
     
     // Parse JSON fields
@@ -4201,12 +4205,67 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
       [id, targetUserId, registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone]
     );
 
+    const regId = result.rows[0].id;
+
     // Also update user phone if provided and not already set
     if (phone) {
       await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, targetUserId]);
     }
 
-    const regId = result.rows[0].id;
+    // Handle automatic squad assignment if time is specified OR if explicitly requested
+    const { addToSquad } = req.body;
+    const isTimeFormat = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(shooting_session);
+    
+    if (isTimeFormat || (addToSquad && (req.user.role === 'admin' || req.user.role === 'society'))) {
+      if (isTimeFormat) {
+        // Find existing squad for this time and day (handle date format normalization)
+        let altDay = registration_day;
+        if (registration_day && registration_day.includes('-')) {
+          const parts = registration_day.split('-');
+          altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else if (registration_day && registration_day.includes('/')) {
+          const parts = registration_day.split('/');
+          altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        let squadRes = await pool.query(
+          'SELECT id FROM event_squads WHERE event_id = $1 AND (squad_day = $2 OR squad_day = $3) AND start_time = $4 AND round_number = 1 ORDER BY id ASC',
+          [id, registration_day, altDay, shooting_session]
+        );
+        
+        let squadId = null;
+        for (const s of squadRes.rows) {
+          const membersCount = await pool.query('SELECT COUNT(*) FROM event_squad_members WHERE squad_id = $1', [s.id]);
+          if (parseInt(membersCount.rows[0].count) < 6) {
+            squadId = s.id;
+            break;
+          }
+        }
+
+        if (!squadId) {
+          // Create new squad
+          const maxSquadNumRes = await pool.query('SELECT MAX(squad_number) as max_num FROM event_squads WHERE event_id = $1 AND squad_day = $2', [id, registration_day]);
+          const nextSquadNum = (maxSquadNumRes.rows[0].max_num || 0) + 1;
+          
+          const newSquad = await pool.query(
+            'INSERT INTO event_squads (event_id, squad_number, field_number, round_number, squad_day, start_time) VALUES ($1, $2, 1, 1, $3, $4) RETURNING id',
+            [id, nextSquadNum, registration_day, shooting_session]
+          );
+          squadId = newSquad.rows[0].id;
+        }
+
+        // Add to squad
+        const maxBibResult = await pool.query('SELECT MAX(bib_number) as max_bib FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE s.event_id = $1', [id]);
+        const nextBib = (maxBibResult.rows[0].max_bib || 0) + 1;
+        const nextPosRes = await pool.query('SELECT MAX(position) as max_pos FROM event_squad_members WHERE squad_id = $1', [squadId]);
+        const nextPos = (nextPosRes.rows[0].max_pos || 0) + 1;
+
+        await pool.query(
+          'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
+          [squadId, regId, nextPos, nextBib]
+        );
+      }
+    }
     
     // Fetch the NEW record with JOINED details to ensure frontend has all fields
     const finalResult = await pool.query(
@@ -4358,6 +4417,10 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
       return res.status(404).json({ error: 'Registrazione non trovata' });
     }
 
+    // Fetch user details for email
+    const userResult = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [regCheck.rows[0].user_id]);
+    const targetUser = userResult.rows[0];
+    
     // Fetch the UPDATED record with JOINED details to ensure frontend has all fields
     const finalResult = await pool.query(
       `SELECT 
@@ -4372,8 +4435,6 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
     );
 
     // Send email if user is verified
-    const userResult = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [regCheck.rows[0].user_id]);
-    const targetUser = userResult.rows[0];
     if (targetUser && targetUser.email_verified && targetUser.email) {
       const eventDateRange = eventObj.start_date === eventObj.end_date 
         ? eventObj.start_date 
@@ -4393,6 +4454,74 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
     }
 
     res.json(finalResult.rows[0]);
+
+    // Handle automatic squad assignment if time is specified OR if explicitly requested
+    const { addToSquad } = req.body;
+    const isTimeFormat = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(shooting_session);
+    
+    if (isTimeFormat || (addToSquad && (isAdmin || isSociety))) {
+      try {
+        if (isTimeFormat) {
+          // Remove from ANY existing squad for this event first to avoid duplicates
+          await pool.query(
+            `DELETE FROM event_squad_members 
+             WHERE registration_id = $1 
+             AND squad_id IN (SELECT id FROM event_squads WHERE event_id = $2)`,
+            [registrationId, eventId]
+          );
+
+          // Find existing squad for this time and day (handle date format normalization)
+          let altDay = registration_day;
+          if (registration_day && registration_day.includes('-')) {
+            const parts = registration_day.split('-');
+            altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          } else if (registration_day && registration_day.includes('/')) {
+            const parts = registration_day.split('/');
+            altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+
+          let squadRes = await pool.query(
+            'SELECT id FROM event_squads WHERE event_id = $1 AND (squad_day = $2 OR squad_day = $3) AND start_time = $4 AND round_number = 1 ORDER BY id ASC',
+            [eventId, registration_day, altDay, shooting_session]
+          );
+          
+          let squadId = null;
+          for (const s of squadRes.rows) {
+            const membersCount = await pool.query('SELECT COUNT(*) FROM event_squad_members WHERE squad_id = $1', [s.id]);
+            if (parseInt(membersCount.rows[0].count) < 6) {
+              squadId = s.id;
+              break;
+            }
+          }
+
+          if (!squadId) {
+            // Create new squad
+            const maxSquadNumRes = await pool.query('SELECT MAX(squad_number) as max_num FROM event_squads WHERE event_id = $1 AND squad_day = $2', [eventId, registration_day]);
+            const nextSquadNum = (maxSquadNumRes.rows[0].max_num || 0) + 1;
+            
+            const newSquad = await pool.query(
+              'INSERT INTO event_squads (event_id, squad_number, field_number, round_number, squad_day, start_time) VALUES ($1, $2, 1, 1, $3, $4) RETURNING id',
+              [eventId, nextSquadNum, registration_day, shooting_session]
+            );
+            squadId = newSquad.rows[0].id;
+          }
+
+          // Add to squad
+          const maxBibResult = await pool.query('SELECT MAX(bib_number) as max_bib FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE s.event_id = $1', [eventId]);
+          const nextBib = (maxBibResult.rows[0].max_bib || 0) + 1;
+          const nextPosRes = await pool.query('SELECT MAX(position) as max_pos FROM event_squad_members WHERE squad_id = $1', [squadId]);
+          const nextPos = (nextPosRes.rows[0].max_pos || 0) + 1;
+
+          await pool.query(
+            'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
+            [squadId, registrationId, nextPos, nextBib]
+          );
+        }
+      } catch (squadErr) {
+        console.error('Error auto-assigning squad during update:', squadErr);
+        // We don't fail the whole request if squad assignment fails during update
+      }
+    }
   } catch (error: any) {
     console.error('Error updating registration:', error);
     res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'iscrizione: ' + error.message });
@@ -4618,6 +4747,50 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
   } catch (error) {
     console.error('Error generating squads:', error);
     res.status(500).json({ error: 'Failed to generate squads' });
+  }
+});
+
+app.post('/api/events/:id/squads/bulk-lock', authenticateToken, async (req: any, res) => {
+  const { id } = req.params;
+  const { roundNumber, squadDay, lock } = req.body;
+  
+  try {
+    const eventResult = await pool.query('SELECT location FROM events WHERE id = $1', [id]);
+    if (eventResult.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    const event = eventResult.rows[0];
+
+    const isAdmin = req.user.role === 'admin';
+    const isSociety = req.user.role === 'society' && req.user.society === event.location;
+
+    if (!isAdmin && !isSociety) {
+      return res.status(403).json({ error: 'Permesso negato' });
+    }
+
+    let query = 'UPDATE event_squads SET is_locked = $1 WHERE event_id = $2';
+    let params: any[] = [lock, id];
+    
+    if (roundNumber) {
+      query += ' AND round_number = $3';
+      params.push(roundNumber);
+    }
+    
+    if (squadDay && squadDay !== 'all') {
+      let altDay = squadDay;
+      if (squadDay.includes('-')) {
+        const parts = squadDay.split('-');
+        altDay = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (squadDay.includes('/')) {
+        const parts = squadDay.split('/');
+        altDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      query += ` AND (squad_day = $${params.length + 1} OR squad_day = $${params.length + 2})`;
+      params.push(squadDay, altDay);
+    }
+    
+    await pool.query(query, params);
+    res.json({ message: 'Batterie aggiornate con successo' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
