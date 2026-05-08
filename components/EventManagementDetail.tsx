@@ -1241,9 +1241,12 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             {formatDateDisplay(reg.registration_day)}
                           </span>
                           <span className="text-[8px] font-bold text-orange-500/60 uppercase">
-                            - {(reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
-                               (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
-                               t('none_short')}
+                            - {(() => {
+                                if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(reg.shooting_session)) return reg.shooting_session;
+                                return (reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
+                                       (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
+                                       t('none_short');
+                              })()}
                           </span>
                         </div>
                         {displayedSquads.length > 0 && (
@@ -1262,7 +1265,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             {displayedSquads.map((s) => (
                               s.members.length < 6 && !s.is_locked && (
                                 <option key={s.id} value={s.id}>
-                                  B{s.squad_number} {s.squad_day ? `(${formatDateDisplay(s.squad_day)})` : '(ALL)'}
+                                  B{s.squad_number} {s.squad_day ? `(${formatDateDisplay(s.squad_day)})` : '(ALL)'} - {s.start_time}
                                 </option>
                               )
                             ))}
@@ -1734,7 +1737,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                                       !s.is_locked && 
                                                       s.members.length < 6 && (
                                                         <option key={s.id} value={s.id}>
-                                                          B{s.squad_number} - R{s.round_number || 1}
+                                                          B{s.squad_number} - {s.start_time}
                                                         </option>
                                                       )
                                                     ))}
