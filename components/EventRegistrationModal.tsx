@@ -434,6 +434,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                   >
                     <option value={t('cat_reg')}>{t('cat_reg')}</option>
+                    <option value="Iscrizione per qualifica">Iscrizione per qualifica</option>
                   </select>
                 </div>
               </div>

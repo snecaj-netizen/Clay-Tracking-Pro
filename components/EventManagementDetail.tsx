@@ -69,6 +69,30 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     return s;
   };
 
+  const squadNumberMap = useMemo(() => {
+    const map = new Map<number | string, number>();
+    
+    // Group squads by day and round
+    const grouped: Record<string, EventSquad[]> = {};
+    squads.forEach(s => {
+      const day = normalizeDate(s.squad_day);
+      const round = s.round_number || 1;
+      const key = `${day}_${round}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    });
+
+    // For each group, sort by start_time and assign numbers
+    Object.values(grouped).forEach(group => {
+      group.sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+      group.forEach((s, index) => {
+        map.set(s.id, index + 1);
+      });
+    });
+
+    return map;
+  }, [squads]);
+
   const displayedSquads = useMemo(() => {
     const normalizedGenDay = normalizeDate(genDay);
     if (normalizedGenDay === 'all') return squads;
@@ -203,7 +227,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       
       const lines: string[] = [];
       fieldSquads.forEach(squad => {
-        lines.push(`BATTERIA ${squad.squad_number} - ${squad.start_time}`);
+        const sqNum = squadNumberMap.get(squad.id) || squad.squad_number;
+        lines.push(`BATTERIA ${sqNum} - ${squad.start_time}`);
         for (let i = 1; i <= 6; i++) {
           const member = squad.members.find(m => m.position === i);
           if (member) {
@@ -745,7 +770,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           'primary'
         );
       } else {
-        triggerToast?.(`Attenzione: La batteria B${squadToRemove.squad_number} contiene dei tiratori.`, 'error');
+        triggerToast?.(`Attenzione: La batteria B${squadNumberMap.get(squadToRemove.id) || squadToRemove.squad_number} contiene dei tiratori.`, 'error');
       }
       return;
     }
@@ -753,11 +778,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     if (triggerConfirm) {
       triggerConfirm(
         'Elimina Batteria',
-        `Sei sicuro di voler eliminare la batteria B${squadToRemove.squad_number}?`,
+        `Sei sicuro di voler eliminare la batteria B${squadNumberMap.get(squadToRemove.id) || squadToRemove.squad_number}?`,
         () => {
           const updated = squads.filter(s => String(s.id) !== String(squadId));
           updateSquadsAndSave(updated);
-          triggerToast?.(`Batteria B${squadToRemove.squad_number} rimossa`, 'success');
+          triggerToast?.(`Batteria B${squadNumberMap.get(squadToRemove.id) || squadToRemove.squad_number} rimossa`, 'success');
         },
         'Elimina',
         'danger'
@@ -1265,7 +1290,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                             {displayedSquads.map((s) => (
                               s.members.length < 6 && !s.is_locked && (
                                 <option key={s.id} value={s.id}>
-                                  B{s.squad_number} {s.squad_day ? `(${formatDateDisplay(s.squad_day)})` : '(ALL)'} - {s.start_time}
+                                  B{squadNumberMap.get(s.id) || s.squad_number} {s.squad_day ? `(${formatDateDisplay(s.squad_day)})` : '(ALL)'} - {s.start_time}
                                 </option>
                               )
                             ))}
@@ -1464,7 +1489,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       {orphanSquads.map(squad => (
                         <div key={squad.id} className="bg-slate-900/50 border border-red-900/20 p-3 rounded-xl flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] font-black text-white">B{squad.squad_number} - R{squad.round_number || 1}</p>
+                            <p className="text-[10px] font-black text-white">B{squadNumberMap.get(squad.id) || squad.squad_number} - R{squad.round_number || 1}</p>
                             <p className="text-[9px] text-red-400 font-bold">{squad.squad_day || 'Senza Data'}</p>
                           </div>
                           <button 
@@ -1737,7 +1762,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                                       !s.is_locked && 
                                                       s.members.length < 6 && (
                                                         <option key={s.id} value={s.id}>
-                                                          B{s.squad_number} - {s.start_time}
+                                                          B{squadNumberMap.get(s.id) || s.squad_number} - {s.start_time}
                                                         </option>
                                                       )
                                                     ))}

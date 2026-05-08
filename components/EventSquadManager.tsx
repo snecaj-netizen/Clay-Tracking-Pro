@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Users, RefreshCw, Save, Clock, Target, ArrowRight } from 'lucide-react';
@@ -21,6 +21,39 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
   const [fieldsCount, setFieldsCount] = useState(2);
   const [startTime, setStartTime] = useState('09:00');
   const [error, setError] = useState<string | null>(null);
+
+  const normalizeDate = (d: any) => {
+    if (!d || d === 'all') return 'all';
+    const s = String(d);
+    const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) return isoMatch[0];
+    const itMatch = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (itMatch) return `${itMatch[3]}-${itMatch[2]}-${itMatch[1]}`;
+    try {
+      const date = new Date(s);
+      if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+    } catch {}
+    return s;
+  };
+
+  const squadNumberMap = useMemo(() => {
+    const map = new Map<number | string, number>();
+    const grouped: Record<string, EventSquad[]> = {};
+    squads.forEach(s => {
+      const day = normalizeDate(s.squad_day);
+      const round = s.round_number || 1;
+      const key = `${day}_${round}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    });
+    Object.values(grouped).forEach(group => {
+      group.sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+      group.forEach((s, index) => {
+        map.set(s.id, index + 1);
+      });
+    });
+    return map;
+  }, [squads]);
 
   const fetchSquads = async () => {
     setIsLoading(true);
@@ -200,7 +233,7 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                   <div key={squad.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-orange-500/30 transition-all group/squad">
                     <div className="p-4 bg-slate-950/50 border-b border-slate-800 flex justify-between items-center">
                       <div>
-                        <h4 className="font-black text-white uppercase tracking-tight text-sm">{t('squad_label')} {squad.squad_number}</h4>
+                        <h4 className="font-black text-white uppercase tracking-tight text-sm">{t('squad_label')} {squadNumberMap.get(squad.id) || squad.squad_number}</h4>
                         <div className="flex items-center gap-3 mt-1 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                           <span className="flex items-center gap-1">
                             <Target className="w-3 h-3 text-orange-500" /> {t('field_label_short')} {squad.field_number}
