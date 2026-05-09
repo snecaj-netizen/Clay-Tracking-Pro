@@ -61,25 +61,33 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
     if (!containerRef.current) return;
     
     const element = containerRef.current;
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
+    const pages = Array.from(element.children).filter(child => child.tagName === 'DIV');
     
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
       format: 'a4'
     });
     
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i] as HTMLElement;
+      const canvas = await html2canvas(page, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1123,
+        windowHeight: 794
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    }
     
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     pdf.save(`statino_${event?.name || 'gara'}.pdf`);
   };
 
@@ -105,32 +113,41 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
 
   return createPortal(
     <div 
-      onClick={onClose}
-      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto cursor-pointer fitav-print-overlay"
+      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto fitav-print-overlay"
     >
+      {/* Controls (Hidden on Print, outside ref) */}
+      <div className="fixed top-6 right-6 flex gap-4 z-[2100] print:hidden">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDownloadPDF();
+          }}
+          className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2 shadow-2xl"
+        >
+          <i className="fas fa-download text-sm"></i> Scarica PDF
+        </button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrint();
+          }}
+          className="px-6 py-3 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center gap-2 shadow-2xl"
+        >
+          <i className="fas fa-print text-sm"></i> Stampa {teams.length > 1 ? 'Tutti' : 'Statino'}
+        </button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="w-12 h-12 rounded-2xl bg-white text-slate-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-2xl group border border-slate-200"
+          title="Chiudi anteprima"
+        >
+          <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform"></i>
+        </button>
+      </div>
+
       <div ref={containerRef} className="flex flex-col gap-8 w-full max-w-[297mm] print:gap-0 print:max-w-none">
-        {/* Controls (Hidden on Print) */}
-        <div className="fixed top-6 right-6 flex gap-4 z-[2100] print:hidden">
-          <button 
-            onClick={handleDownloadPDF}
-            className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2 shadow-2xl"
-          >
-            <i className="fas fa-download text-sm"></i> Scarica PDF
-          </button>
-          <button 
-            onClick={handlePrint}
-            className="px-6 py-3 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center gap-2 shadow-2xl"
-          >
-            <i className="fas fa-print text-sm"></i> Stampa {teams.length > 1 ? 'Tutti' : 'Statino'}
-          </button>
-          <button 
-            onClick={onClose}
-            className="w-12 h-12 rounded-2xl bg-white text-slate-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-2xl group border border-slate-200"
-            title="Chiudi anteprima"
-          >
-            <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform"></i>
-          </button>
-        </div>
 
         {teams.map((team, tIdx) => (
           <div 

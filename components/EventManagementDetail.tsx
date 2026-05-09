@@ -8,7 +8,9 @@ import {
 import { SocietyEvent, EventSquad, EventRegistration } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import FitavScoreSheet from './FitavScoreSheet';
+import ShootingOrderPreview from './ShootingOrderPreview';
 import ExpandingFAB from './ExpandingFAB';
 import { EventRegistrationModal } from './EventRegistrationModal';
 import { useUI } from '../contexts/UIContext';
@@ -188,100 +190,6 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       'Elimina',
       'danger'
     );
-  };
-
-  const generateSquadsPDF = () => {
-    const fields = Array.from(new Set(displayedSquads.map(s => s.field_number))).sort((a, b) => a - b);
-    if (fields.length === 0) return;
-
-    const orientation = fields.length > 4 ? 'l' : 'p';
-    const doc = new jsPDF({
-      orientation: orientation,
-      unit: 'mm',
-      format: 'a4'
-    });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Header
-    doc.setFillColor(15, 23, 42); // slate-900
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CLAY TRACKER PRO', pageWidth / 2, 15, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Ordine di Tiro', pageWidth / 2, 22, { align: 'center' });
-    
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(event.name.toUpperCase(), pageWidth / 2, 32, { align: 'center' });
-
-    const fieldLines = fields.map(fieldNum => {
-      const fieldSquads = displayedSquads.filter(s => s.field_number === fieldNum).sort((a,b) => {
-        if (a.start_time !== b.start_time) return a.start_time.localeCompare(b.start_time);
-        return a.squad_number - b.squad_number;
-      });
-      
-      const lines: string[] = [];
-      fieldSquads.forEach(squad => {
-        const sqNum = squadNumberMap.get(squad.id) || squad.squad_number;
-        lines.push(`BATTERIA ${sqNum} - ${squad.start_time}`);
-        for (let i = 1; i <= 6; i++) {
-          const member = squad.members.find(m => m.position === i);
-          if (member) {
-            const formattedCat = formatDisplayValue(member.category);
-            const formattedQual = formatDisplayValue(member.qualification);
-            const catQual = [formattedCat, formattedQual].filter(Boolean).join(' - ');
-            lines.push(`${i}. ${member.last_name} ${member.first_name}${catQual ? ` (${catQual})` : ''}`);
-          } else {
-            lines.push(`${i}. ---`);
-          }
-        }
-        lines.push(''); // Empty line between squads
-      });
-      return lines;
-    });
-
-    const maxLines = Math.max(...fieldLines.map(lines => lines.length), 0);
-    const rows: string[][] = [];
-    for (let i = 0; i < maxLines; i++) {
-      const row: string[] = [];
-      for (let j = 0; j < fields.length; j++) {
-        row.push(fieldLines[j][i] || '');
-      }
-      rows.push(row);
-    }
-
-    autoTable(doc, {
-      head: [fields.map(f => `CAMPO ${f}`)],
-      body: rows,
-      startY: 50,
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        valign: 'middle',
-        halign: 'left'
-      },
-      headStyles: {
-        fillColor: [234, 88, 12], // orange-600
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      didParseCell: function(data) {
-        if (data.section === 'body' && data.cell.raw && typeof data.cell.raw === 'string' && data.cell.raw.startsWith('BATTERIA')) {
-          data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fillColor = [241, 245, 249]; // slate-100
-          data.cell.styles.textColor = [15, 23, 42]; // slate-900
-        }
-      }
-    });
-
-    doc.save(`batterie_${event.name.replace(/\s+/g, '_')}.pdf`);
   };
 
   const handleSaveSettings = async () => {
@@ -513,6 +421,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     toSquadIndex: number;
   } | null>(null);
   const [selectedSquadsForSheet, setSelectedSquadsForSheet] = useState<any[] | null>(null);
+  const [showOrderPreview, setShowOrderPreview] = useState(false);
+  const [orderPreviewSquads, setOrderPreviewSquads] = useState<EventSquad[]>([]);
   const [showTimes, setShowTimes] = useState(true);
   const [editingRegistration, setEditingRegistration] = useState<EventRegistration | null>(null);
 
@@ -525,6 +435,74 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       return '';
     }
     return val;
+  };
+
+  const handleExportExcel = () => {
+    // Preparazione dati Batterie
+    const squadRows = squads.flatMap(squad => {
+      const sqNum = squadNumberMap.get(squad.id) || squad.squad_number;
+      return squad.members.map(m => ({
+        'Giorno': formatDateDisplay(squad.squad_day) || 'ALL',
+        'Batteria': `B${sqNum}`,
+        'Orario': squad.start_time || '--:--',
+        'Serie': squad.round_number || 1,
+        'Campo': squad.field_number,
+        'Posizione': m.position,
+        'Pettorale': m.bib_number || '',
+        'Nome': m.first_name,
+        'Cognome': m.last_name,
+        'Codice FITAV': m.shooter_code || '',
+        'Società': m.society || '',
+        'Categoria': formatDisplayValue(m.category),
+        'Qualifica': formatDisplayValue(m.qualification)
+      }));
+    });
+
+    // Ordinamento: Giorno, Serie, Batteria, Posizione
+    squadRows.sort((a, b) => {
+      const dayA = a.Giorno === 'ALL' ? '0' : String(a.Giorno);
+      const dayB = b.Giorno === 'ALL' ? '0' : String(b.Giorno);
+      if (dayA !== dayB) return dayA.localeCompare(dayB);
+      if (a.Serie !== b.Serie) return (a.Serie as number) - (b.Serie as number);
+      const aNum = parseInt(a.Batteria.replace('B', '')) || 0;
+      const bNum = parseInt(b.Batteria.replace('B', '')) || 0;
+      if (aNum !== bNum) return aNum - bNum;
+      return (a.Posizione as number) - (b.Posizione as number);
+    });
+
+    // Preparazione dati Iscritti
+    const regRows = registrations.map(r => ({
+      'Pettorale': r.bib_number || '',
+      'Cognome': r.last_name,
+      'Nome': r.first_name,
+      'Codice FITAV': r.shooter_code || '',
+      'Società': r.society || '',
+      'Categoria': formatDisplayValue(r.category) || '',
+      'Qualifica': formatDisplayValue(r.qualification) || '',
+      'Email': r.email || '',
+      'Telefono': r.phone || '',
+      'Note': r.notes || ''
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    
+    // Se siamo nella tab iscritti, esportiamo solo iscritti o entrambi? 
+    // Per ora teniamo entrambi se disponibili, ma diamo priorità a iscritti se richiesto
+    if (activeTab === 'registrations') {
+      const regSheet = XLSX.utils.json_to_sheet(regRows);
+      XLSX.utils.book_append_sheet(workbook, regSheet, "Elenco Iscritti");
+    } else {
+      if (squadRows.length > 0) {
+        const squadSheet = XLSX.utils.json_to_sheet(squadRows);
+        XLSX.utils.book_append_sheet(workbook, squadSheet, "Batterie");
+      }
+      if (regRows.length > 0) {
+        const regSheet = XLSX.utils.json_to_sheet(regRows);
+        XLSX.utils.book_append_sheet(workbook, regSheet, "Iscritti");
+      }
+    }
+
+    XLSX.writeFile(workbook, `${activeTab === 'registrations' ? 'iscritti' : 'gara'}_${event.name.replace(/\s+/g, '_')}.xlsx`);
   };
 
   const reassignBibNumbers = (currentSquads: EventSquad[]) => {
@@ -934,21 +912,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-widest">{t('refresh')}</span>
                 </button>
                 <button 
-                  onClick={() => {
-                    const csvContent = "data:text/csv;charset=utf-8," 
-                      + "Nome,Cognome,Codice,Societa,Categoria,Qualifica,Email,Telefono\n"
-                      + registrations.map(r => `${r.first_name},${r.last_name},${r.shooter_code},${r.society},${r.category},${r.qualification},${r.email},${r.phone}`).join("\n");
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", `iscritti_${event.name.replace(/\s+/g, '_')}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                  }}
+                  onClick={handleExportExcel}
                   className="flex-1 md:flex-none px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200 [.light-theme_&]:bg-slate-100 [.light-theme_&]:border-slate-200 [.light-theme_&]:text-slate-600 [.light-theme_&]:hover:bg-slate-200 [.light-theme_&]:hover:text-black transition-colors flex items-center justify-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Export CSV</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">Scarica in Excel</span>
                 </button>
               </div>
             </div>
@@ -1182,27 +1150,25 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                     {isSaving ? 'Salvataggio...' : 'Genera'}
                   </button>
                   <button
-                    onClick={() => handleDuplicateRounds()}
-                    disabled={isGenerating || isSaving || displayedSquads.filter(s => s.round_number === 1).length === 0 || genDay === 'all' || roundsCount <= 1 || !isRound1Definitive}
-                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-orange-600/20 text-orange-500 border border-orange-500/30 font-black text-[10px] uppercase tracking-widest hover:bg-orange-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={roundsCount <= 1 ? "Imposta almeno 2 Giri (Serie) per duplicare" : (genDay === 'all' ? "Seleziona un giorno specifico" : (!isRound1Definitive ? "Blocca (conferma) tutte le batterie della Serie 1 prima di duplicare" : "Duplica batterie Serie 1 per i giri successivi"))}
-                  >
-                    <Copy className={`w-3.5 h-3.5 ${isGenerating ? 'animate-pulse' : ''}`} />
-                    Duplica Giri
-                  </button>
-                  <button
-                    onClick={generateSquadsPDF}
+                    onClick={() => {
+                      const normalizedGenDay = normalizeDate(genDay);
+                      const targetSquads = normalizedGenDay === 'all' ? squads : squads.filter(s => normalizeDate(s.squad_day) === normalizedGenDay);
+                      setOrderPreviewSquads(targetSquads);
+                      setShowOrderPreview(true);
+                    }}
                     disabled={displayedSquads.length === 0 || isSaving}
                     className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Stampa
+                    Ordine di tiro (PDF)
                   </button>
                   <button 
                     onClick={() => {
-                      const allTeamsData = displayedSquads.map(s => ({
+                      const allTeamsData = displayedSquads
+                        .filter(s => s.members && s.members.length > 0)
+                        .map(s => ({
                         id: String(s.id),
-                        name: `${s.squad_number}`,
+                        name: `${squadNumberMap.get(s.id) || s.squad_number}`,
                         members: s.members.map(m => ({
                           id: String(m.registration_id),
                           name: m.first_name,
@@ -1216,6 +1182,12 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                         startTime: s.start_time,
                         roundNumber: s.round_number
                       }));
+                      
+                      if (allTeamsData.length === 0) {
+                        triggerToast?.('Nessuna batteria con tiratori da stampare', 'error');
+                        return;
+                      }
+                      
                       setSelectedSquadsForSheet(allTeamsData);
                     }}
                     disabled={displayedSquads.length === 0}
@@ -1650,7 +1622,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                             onClick={() => {
                                               const teamData = {
                                                 id: String(squad.id),
-                                                name: `${squad.squad_number}`,
+                                                name: `${squadNumberMap.get(squad.id) || squad.squad_number}`,
                                                 members: squad.members.map(m => ({
                                                   id: String(m.registration_id),
                                                   name: m.first_name,
@@ -1964,6 +1936,15 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
           onClose={() => setSelectedSquadsForSheet(null)}
           hostingSociety={societies.find(s => s.name === event.location)}
           hideTimes={!showTimes}
+        />
+      )}
+
+      {showOrderPreview && (
+        <ShootingOrderPreview
+          event={event}
+          squads={orderPreviewSquads}
+          onClose={() => setShowOrderPreview(false)}
+          squadNumberMap={squadNumberMap}
         />
       )}
 
