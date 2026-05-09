@@ -741,6 +741,8 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS total_fields INTEGER DEFAULT 1`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS total_rounds INTEGER DEFAULT 1`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS use_fields_capacity BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS start_time TEXT DEFAULT '08:00'`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS end_time TEXT DEFAULT '18:00'`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -5109,7 +5111,8 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     id, name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region, total_fields, total_rounds, use_fields_capacity
+    is_public, region, total_fields, total_rounds, use_fields_capacity,
+    start_time, end_time
   } = req.body;
   
   let processedRegion = region;
@@ -5128,9 +5131,10 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, created_by, prize_settings, 
         ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
-        is_public, region, total_fields, total_rounds, use_fields_capacity
+        is_public, region, total_fields, total_rounds, use_fields_capacity,
+        start_time, end_time
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -5144,13 +5148,15 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
        region = EXCLUDED.region,
        total_fields = EXCLUDED.total_fields,
        total_rounds = EXCLUDED.total_rounds,
-       use_fields_capacity = EXCLUDED.use_fields_capacity`,
+       use_fields_capacity = EXCLUDED.use_fields_capacity,
+       start_time = EXCLUDED.start_time,
+       end_time = EXCLUDED.end_time`,
       [
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
         ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
         has_team_ranking || false, is_public || false, processedRegion, total_fields || 1, total_rounds || 1,
-        use_fields_capacity || false
+        use_fields_capacity || false, start_time || '08:00', end_time || '18:00'
       ]
     );
 
@@ -5243,7 +5249,8 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region, total_fields, total_rounds, use_fields_capacity
+    is_public, region, total_fields, total_rounds, use_fields_capacity,
+    start_time, end_time
   } = req.body;
   
   let processedRegion = region;
@@ -5296,13 +5303,16 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         region = COALESCE($19, region),
         total_fields = COALESCE($20, total_fields),
         total_rounds = COALESCE($21, total_rounds),
-        use_fields_capacity = COALESCE($22, use_fields_capacity)
-      WHERE id = $23`,
+        use_fields_capacity = COALESCE($22, use_fields_capacity),
+        start_time = COALESCE($23, start_time),
+        end_time = COALESCE($24, end_time)
+      WHERE id = $25`,
       [
         name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
         ranking_preference_override, has_society_ranking, has_team_ranking, is_public, processedRegion, 
-        total_fields, total_rounds, use_fields_capacity, req.params.id
+        total_fields, total_rounds, use_fields_capacity, start_time, end_time,
+        req.params.id
       ]
     );
 

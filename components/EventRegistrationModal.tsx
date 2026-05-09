@@ -40,17 +40,26 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   ];
   const isAdminOrSociety = user.role === 'admin' || user.role === 'society';
 
-  // Generate time slots 08:00 to 18:00 with 20 min intervals
+  // Generate time slots based on event start/end time with 20 min intervals
   const TIME_SLOTS = useMemo(() => {
     const slots = [];
-    for (let hour = 8; hour <= 18; hour++) {
-      for (let min = 0; min < 60; min += 20) {
-        if (hour === 18 && min > 0) break;
-        slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
-      }
+    const startStr = event.start_time || '08:00';
+    const endStr = event.end_time || '18:00';
+    
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+    
+    let currentMins = startH * 60 + startM;
+    const endTotalMins = endH * 60 + endM;
+    
+    while (currentMins <= endTotalMins) {
+      const h = Math.floor(currentMins / 60);
+      const m = currentMins % 60;
+      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+      currentMins += 20;
     }
     return slots;
-  }, []);
+  }, [event.start_time, event.end_time]);
 
   const [formData, setFormData] = useState({
     user_id: initialData?.user_id || (isAdminOrSociety ? '' : user.id),
@@ -201,6 +210,32 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     const fieldsCount = Number(event.total_fields) || 1;
     const isFieldsOn = event.use_fields_capacity === true;
     const maxPerSlot = isFieldsOn ? fieldsCount * 6 : 6;
+
+    // Helper to calculate capacity for sessions
+    const getSessionCapacity = (type: 'morning' | 'afternoon') => {
+      const startStr = event.start_time || '08:00';
+      const endStr = event.end_time || '18:00';
+      const [startH, startM] = startStr.split(':').map(Number);
+      const [endH, endM] = endStr.split(':').map(Number);
+      const startMins = startH * 60 + startM;
+      const endMins = endH * 60 + endM;
+
+      if (type === 'morning') {
+        // Morning is from start_time to 13:00 (exclusive of 13:00 start)
+        const mornEndMins = 13 * 60;
+        const totalMins = mornEndMins - startMins;
+        if (totalMins <= 0) return 0;
+        const slotsCount = Math.ceil(totalMins / 20);
+        return slotsCount * maxPerSlot;
+      } else {
+        // Afternoon is from 13:20 to end_time
+        const aftStartMins = 13 * 60 + 20;
+        const totalMins = endMins - aftStartMins;
+        if (totalMins < 0) return 0;
+        const slotsCount = Math.floor(totalMins / 20) + 1; // +1 to include the end_time slot
+        return slotsCount * maxPerSlot;
+      }
+    };
     
     return (day: string, time: string) => {
       if (!day) return true;
@@ -208,10 +243,8 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
       const normalizedTime = normalizeTime(time);
       const dayOccupancy = occupancy[normalizedTargetDay] || {};
       
-      const morningCapacity = 12 * maxPerSlot;
-      const afternoonCapacity = 14 * maxPerSlot;
-
       if (normalizedTime === 'morning') {
+        const morningCapacity = getSessionCapacity('morning');
         const morningCount = (dayOccupancy['morning'] || 0) + 
           Object.entries(dayOccupancy).reduce((sum, [slot, count]) => {
             if (/^\d{2}:\d{2}$/.test(slot)) {
@@ -225,6 +258,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
       }
       
       if (normalizedTime === 'afternoon') {
+        const afternoonCapacity = getSessionCapacity('afternoon');
         const afternoonCount = (dayOccupancy['afternoon'] || 0) + 
           Object.entries(dayOccupancy).reduce((sum, [slot, count]) => {
             if (/^\d{2}:\d{2}$/.test(slot)) {
@@ -683,36 +717,34 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                   </div>
                 </div>
 
-                {isAdminOrSociety && (
-                  <div className="space-y-2 pt-2 border-t border-slate-800/50">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                      <Target className="w-3 h-3 text-orange-500" />
-                      {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
-                    </label>
-                    <select
-                      value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
-                      onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
-                    >
-                      <option value="">-- {t('select_time_placeholder')} --</option>
-                      {TIME_SLOTS.map(time => {
-                        const result = availableSlotsAtTime(formData.registration_day, time);
-                        const isAvailable = typeof result === 'boolean' ? result : result.isAvailable;
-                        const count = typeof result === 'object' ? result.count : 0;
-                        const max = typeof result === 'object' ? result.max : 6;
-                        
-                        // Hide full slots unless it's the currently selected one
-                        if (!isAvailable && formData.shooting_session !== time) return null;
-                        
-                        return (
-                          <option key={time} value={time}>
-                            {time} {count > 0 && `(${count}/${max})`} {!isAvailable && '(Pieno)'}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                )}
+                <div className="space-y-2 pt-2 border-t border-slate-800/50">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Target className="w-3 h-3 text-orange-500" />
+                    {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
+                  </label>
+                  <select
+                    value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
+                    onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                  >
+                    <option value="">-- {t('select_time_placeholder')} --</option>
+                    {TIME_SLOTS.map(time => {
+                      const result = availableSlotsAtTime(formData.registration_day, time);
+                      const isAvailable = typeof result === 'boolean' ? result : result.isAvailable;
+                      const count = typeof result === 'object' ? result.count : 0;
+                      const max = typeof result === 'object' ? result.max : 6;
+                      
+                      // Hide full slots unless it's the currently selected one
+                      if (!isAvailable && formData.shooting_session !== time) return null;
+                      
+                      return (
+                        <option key={time} value={time}>
+                          {time} {count > 0 && `(${count}/${max})`} {!isAvailable && '(Pieno)'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
               </div>
 
               {/* Notes */}

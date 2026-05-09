@@ -53,7 +53,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldsCount, setFieldsCount] = useState(event.total_fields || 1);
-  const [roundsCount, setRoundsCount] = useState(event.total_rounds || 1);
+  const [roundsCount, setRoundsCount] = useState(event.total_fields || 1);
   const [useFieldsCapacity, setUseFieldsCapacity] = useState(event.use_fields_capacity || false);
   const [genDay, setGenDay] = useState<'all' | string>('all');
 
@@ -204,7 +204,9 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         body: JSON.stringify({ 
           total_fields: fieldsCount,
           total_rounds: roundsCount,
-          use_fields_capacity: useFieldsCapacity
+          use_fields_capacity: useFieldsCapacity,
+          start_time: startTime,
+          end_time: endTime
         })
       });
       if (!response.ok) throw new Error('Errore nel salvataggio delle impostazioni');
@@ -230,7 +232,9 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         body: JSON.stringify({ 
           total_fields: fieldsCount,
           total_rounds: roundsCount,
-          use_fields_capacity: useFieldsCapacity
+          use_fields_capacity: useFieldsCapacity,
+          start_time: startTime,
+          end_time: endTime
         })
       });
       
@@ -398,31 +402,26 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   };
 
   useEffect(() => {
-    // If targets are set, calculate rounds (25 targets = 1 round)
+    // Numero di serie (roundsCount) deve essere uguale al numero di campi (fieldsCount)
+    // Se targets sono impostati, calcoliamo i campi (25 bersagli = 1 campo)
+    let fc = event.total_fields || 1;
     if (event.targets && event.targets > 0) {
-      const calculatedRounds = Math.ceil(event.targets / 25);
-      
-      // Prioritize calculated rounds unless we have a specific saved value > 1
-      const rc = (event.total_rounds && event.total_rounds > 1) ? event.total_rounds : (calculatedRounds || 1);
-      setRoundsCount(rc);
-      
-      // For fields, user suggested 1:1 with rounds for this specific logic
-      const fc = (event.total_fields && event.total_fields > 1) ? event.total_fields : rc;
-      setFieldsCount(fc);
-      setUseFieldsCapacity(event.use_fields_capacity || false);
-    } else {
-      setFieldsCount(event.total_fields || 1);
-      setRoundsCount(event.total_rounds || 1);
-      setUseFieldsCapacity(event.use_fields_capacity || false);
+      const calculated = Math.max(1, Math.ceil(event.targets / 25));
+      fc = (event.total_fields && event.total_fields > 1) ? event.total_fields : calculated;
     }
-  }, [event.id, event.total_fields, event.total_rounds, event.targets, event.use_fields_capacity]);
+    
+    setFieldsCount(fc);
+    setRoundsCount(fc);
+    setUseFieldsCapacity(event.use_fields_capacity || false);
+  }, [event.id, event.total_fields, event.targets, event.use_fields_capacity]);
 
   const maxPossibleFields = useMemo(() => {
     if (!event.targets) return 8;
     return Math.max(1, Math.floor(event.targets / 25));
   }, [event.targets]);
 
-  const [startTime, setStartTime] = useState('09:00');
+  const [startTime, setStartTime] = useState(event.start_time || '08:00');
+  const [endTime, setEndTime] = useState(event.end_time || '18:00');
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -1076,7 +1075,9 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       <select
                         value={fieldsCount}
                         onChange={(e) => {
-                          setFieldsCount(parseInt(e.target.value));
+                          const val = parseInt(e.target.value);
+                          setFieldsCount(val);
+                          setRoundsCount(val);
                           setHasUnsavedChanges(true);
                         }}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white appearance-none"
@@ -1093,7 +1094,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                     </p>
                   </div>
 
-                  <div className="w-full">
+                  {/* Hidden Rounds setting - synchronized with fieldsCount */}
+                  <div className="hidden">
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Numero Serie (Giri)</label>
                     <div className="relative">
                       <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
@@ -1119,6 +1121,21 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white [.light-theme_&]:bg-white [.light-theme_&]:border-slate-200 [.light-theme_&]:text-slate-900 appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="w-full">
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Orario Fine</label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Clock className="w-3.5 h-3.5 text-orange-500 group-focus-within:scale-110 transition-transform" />
+                      </div>
+                      <input 
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white [.light-theme_&]:bg-white [.light-theme_&]:border-slate-200 [.light-theme_&]:text-slate-900 appearance-none"
                       />
                     </div>

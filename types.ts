@@ -192,6 +192,8 @@ export interface SocietyEvent {
   total_fields?: number;
   total_rounds?: number;
   use_fields_capacity?: boolean;
+  start_time?: string;
+  end_time?: string;
 }
 
 export interface PrizeSetting {

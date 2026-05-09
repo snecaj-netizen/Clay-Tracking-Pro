@@ -1013,6 +1013,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [hasTeamRanking, setHasTeamRanking] = useState(false);
   const [totalFields, setTotalFields] = useState<number>(1);
   const [useFieldsCapacity, setUseFieldsCapacity] = useState<boolean>(false);
+  const [startTime, setStartTime] = useState<string>('08:00');
+  const [endTime, setEndTime] = useState<string>('18:00');
   const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
@@ -1106,6 +1108,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     const calculated = Math.max(1, Math.ceil((ev.targets || 0) / 25));
     setTotalFields(calculated);
     setUseFieldsCapacity(ev.use_fields_capacity || false);
+    setStartTime(ev.start_time || '08:00');
+    setEndTime(ev.end_time || '18:00');
     
     setIsPublic(ev.is_public || false);
     setShowForm(true);
@@ -1161,6 +1165,8 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     setHasTeamRanking(false);
     setTotalFields(1);
     setUseFieldsCapacity(false);
+    setStartTime('08:00');
+    setEndTime('18:00');
     setIsPublic(false);
     setShowForm(false);
   };
@@ -1188,7 +1194,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       has_society_ranking: hasSocietyRanking,
       has_team_ranking: hasTeamRanking,
       total_fields: totalFields,
+      total_rounds: totalFields,
       use_fields_capacity: useFieldsCapacity,
+      start_time: startTime,
+      end_time: endTime,
       is_public: isPublic
     };
 
@@ -1909,6 +1918,16 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('end_date')} *</label>
                       <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Orario Inizio Gara *</label>
+                      <input type="time" required value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Orario Fine Gara *</label>
+                      <input type="time" required value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
                     </div>
 
                     <div className="space-y-2">
