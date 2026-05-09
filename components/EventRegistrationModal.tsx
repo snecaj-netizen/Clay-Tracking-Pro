@@ -89,50 +89,129 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   const [showSuccessDetail, setShowSuccessDetail] = useState(false);
   const [shooters, setShooters] = useState<any[]>([]);
   const [eventRegistrations, setEventRegistrations] = useState<any[]>([]);
+  const [eventSquads, setEventSquads] = useState<any[]>([]);
 
-  // Fetch registrations to calculate occupancy
+  // Fetch registrations and squads to calculate occupancy
   useEffect(() => {
-    const fetchRegistrations = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/events/${event.id}/registrations`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const [regRes, squadRes] = await Promise.all([
+          fetch(`/api/events/${event.id}/registrations`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+          }),
+          fetch(`/api/events/${event.id}/squads`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+          })
+        ]);
+        
+        if (regRes.ok) {
+          const data = await regRes.json();
           setEventRegistrations(data);
         }
+        
+        if (squadRes.ok) {
+          const data = await squadRes.json();
+          setEventSquads(data);
+        }
       } catch (err) {
-        console.error("Failed to fetch event registrations", err);
+        console.error("Failed to fetch event data", err);
       }
     };
-    fetchRegistrations();
+    fetchData();
   }, [event.id]);
 
   // Calculate availability
   const availableSlotsAtTime = useMemo(() => {
+    const normalizeDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      // Support ISO strings, DD/MM/YYYY and YYYY-MM-DD
+      const baseDate = dateStr.split('T')[0].trim();
+      if (baseDate.includes('/')) {
+        const parts = baseDate.split('/');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+      } else if (baseDate.includes('-')) {
+        const parts = baseDate.split('-');
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            const year = parts[0];
+            const month = parts[1].padStart(2, '0');
+            const day = parts[2].padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          } else {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}`;
+          }
+        }
+      }
+      return baseDate;
+    };
+
+    const normalizeTime = (timeStr: string) => {
+      if (!timeStr) return '';
+      const trimmed = timeStr.trim().toLowerCase();
+      if (trimmed === 'morning' || trimmed === 'afternoon') return trimmed;
+      // Normalize 10:0 to 10:00
+      if (/^\d{1,2}:\d{1,2}$/.test(trimmed)) {
+        const [h, m] = trimmed.split(':');
+        return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+      }
+      return trimmed;
+    };
+
     const occupancy: Record<string, Record<string, number>> = {};
-    eventRegistrations.forEach(reg => {
-      const day = reg.registration_day;
-      const time = reg.shooting_session;
-      if (!day || !time) return;
+    
+    // 1. Count people assigned to squads (Round 1 is the primary session)
+    eventSquads.forEach(squad => {
+      const day = normalizeDate(squad.squad_day);
+      const time = normalizeTime(squad.start_time);
+      if (!day || !time || (squad.round_number || 1) !== 1) return;
       
       if (!occupancy[day]) occupancy[day] = {};
-      occupancy[day][time] = (occupancy[day][time] || 0) + 1;
+      occupancy[day][time] = (occupancy[day][time] || 0) + (squad.members?.length || 0);
     });
 
-    const maxPerSlot = (event.total_fields || 1) * 6;
-    
-    // Total estimated capacities for morning/afternoon pools
-    // Morning: 09:00 to 13:00 = 12 slots * fields * 6
-    const morningCapacity = 12 * (event.total_fields || 1) * 6;
-    // Afternoon: 13:20 to 18:00 (est) = 14 slots * fields * 6
-    const afternoonCapacity = 14 * (event.total_fields || 1) * 6;
+    // 2. Track which registrations are already in squads to avoid double counting
+    const assignedRegIds = new Set();
+    eventSquads.forEach(squad => {
+      if ((squad.round_number || 1) === 1) {
+        squad.members?.forEach((m: any) => assignedRegIds.add(m.registration_id));
+      }
+    });
 
+    // 3. Add registrations NOT in squads that have a session preference
+    eventRegistrations.forEach(reg => {
+      if (assignedRegIds.has(reg.id)) return;
+      
+      const day = normalizeDate(reg.registration_day);
+      const time = normalizeTime(reg.shooting_session);
+      if (!day || !time) return;
+      
+      const normDay = day.trim();
+      if (!occupancy[normDay]) occupancy[normDay] = {};
+      occupancy[normDay][time] = (occupancy[normDay][time] || 0) + 1;
+    });
+
+    const fieldsCount = Number(event.total_fields) || 1;
+    const isFieldsOn = event.use_fields_capacity === true;
+    const maxPerSlot = isFieldsOn ? fieldsCount * 6 : 6;
+    
     return (day: string, time: string) => {
       if (!day) return true;
-      const dayOccupancy = occupancy[day] || {};
+      const normalizedTargetDay = normalizeDate(day).trim();
+      const normalizedTime = normalizeTime(time);
+      const dayOccupancy = occupancy[normalizedTargetDay] || {};
       
-      if (time === 'morning') {
+      const morningCapacity = 12 * maxPerSlot;
+      const afternoonCapacity = 14 * maxPerSlot;
+
+      if (normalizedTime === 'morning') {
         const morningCount = (dayOccupancy['morning'] || 0) + 
           Object.entries(dayOccupancy).reduce((sum, [slot, count]) => {
             if (/^\d{2}:\d{2}$/.test(slot)) {
@@ -142,10 +221,10 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             }
             return sum;
           }, 0);
-        return morningCount < morningCapacity;
+        return { isAvailable: morningCount < morningCapacity, count: morningCount, max: morningCapacity };
       }
       
-      if (time === 'afternoon') {
+      if (normalizedTime === 'afternoon') {
         const afternoonCount = (dayOccupancy['afternoon'] || 0) + 
           Object.entries(dayOccupancy).reduce((sum, [slot, count]) => {
             if (/^\d{2}:\d{2}$/.test(slot)) {
@@ -155,13 +234,13 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             }
             return sum;
           }, 0);
-        return afternoonCount < afternoonCapacity;
+        return { isAvailable: afternoonCount < afternoonCapacity, count: afternoonCount, max: afternoonCapacity };
       }
       
-      const count = dayOccupancy[time] || 0;
-      return count < maxPerSlot;
+      const count = dayOccupancy[normalizedTime] || 0;
+      return { isAvailable: count < maxPerSlot, count, max: maxPerSlot };
     };
-  }, [eventRegistrations, event.total_fields]);
+  }, [eventRegistrations, eventSquads, event.total_fields, event.use_fields_capacity]);
 
   const [selectedShooter, setSelectedShooter] = useState<any>(() => {
     if (initialData) {
@@ -225,13 +304,21 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
 
   const getEventDays = () => {
     if (!event.start_date || !event.end_date) return [];
-    const start = new Date(event.start_date);
-    const end = new Date(event.end_date);
+    
+    // Parse manually to avoid timezone issues
+    const [startY, startM, startD] = event.start_date.split('-').map(Number);
+    const [endY, endM, endD] = event.end_date.split('-').map(Number);
+    
+    const start = new Date(startY, startM - 1, startD);
+    const end = new Date(endY, endM - 1, endD);
     const days = [];
     let current = new Date(start);
     
     while (current <= end) {
-      days.push(current.toISOString().split('T')[0]);
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      days.push(`${y}-${m}-${d}`);
       current.setDate(current.getDate() + 1);
     }
     return days;
@@ -609,12 +696,17 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                     >
                       <option value="">-- {t('select_time_placeholder')} --</option>
                       {TIME_SLOTS.map(time => {
-                        const isAvailable = availableSlotsAtTime(formData.registration_day, time);
+                        const result = availableSlotsAtTime(formData.registration_day, time);
+                        const isAvailable = typeof result === 'boolean' ? result : result.isAvailable;
+                        const count = typeof result === 'object' ? result.count : 0;
+                        const max = typeof result === 'object' ? result.max : 6;
+                        
+                        // Hide full slots unless it's the currently selected one
                         if (!isAvailable && formData.shooting_session !== time) return null;
                         
                         return (
                           <option key={time} value={time}>
-                            {time} {!isAvailable && '(Pieno)'}
+                            {time} {count > 0 && `(${count}/${max})`} {!isAvailable && '(Pieno)'}
                           </option>
                         );
                       })}

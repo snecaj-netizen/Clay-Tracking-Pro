@@ -740,6 +740,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS region TEXT`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS total_fields INTEGER DEFAULT 1`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS total_rounds INTEGER DEFAULT 1`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS use_fields_capacity BOOLEAN DEFAULT FALSE`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -4646,7 +4647,8 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
       return res.status(400).json({ error: 'Nessun tiratore trovato per i criteri selezionati.' });
     }
 
-    const fieldsCountValue = fieldsCount || event.total_fields || 1;
+    const eventUseFields = event.use_fields_capacity === true;
+    const fieldsCountValue = eventUseFields ? (fieldsCount || event.total_fields || 1) : 1;
     // Always clear squads for the selected day before regenerating them
     if (registrationDay && registrationDay !== 'all') {
       let altDay = registrationDay;
@@ -5078,6 +5080,14 @@ app.put('/api/events/:id/squads/update-members', authenticateToken, async (req: 
           'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
           [newSquadId, member.registration_id, i + 1, member.bib_number]
         );
+
+        // Sync shooting_session and day for Round 1 members to ensure occupancy limits are accurate
+        if ((squad.round_number || 1) === 1 && squad.start_time) {
+          await pool.query(
+            'UPDATE event_registrations SET shooting_session = $1, registration_day = $2 WHERE id = $3 AND (shooting_session IS NULL OR shooting_session IN (\'morning\', \'afternoon\') OR shooting_session != $1)',
+            [squad.start_time, squad.squad_day, member.registration_id]
+          );
+        }
       }
     }
 
@@ -5099,7 +5109,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     id, name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region, total_fields, total_rounds
+    is_public, region, total_fields, total_rounds, use_fields_capacity
   } = req.body;
   
   let processedRegion = region;
@@ -5118,9 +5128,9 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, created_by, prize_settings, 
         ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
-        is_public, region, total_fields, total_rounds
+        is_public, region, total_fields, total_rounds, use_fields_capacity
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
        ON CONFLICT (id) DO UPDATE SET 
        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -5133,12 +5143,14 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
        is_public = EXCLUDED.is_public,
        region = EXCLUDED.region,
        total_fields = EXCLUDED.total_fields,
-       total_rounds = EXCLUDED.total_rounds`,
+       total_rounds = EXCLUDED.total_rounds,
+       use_fields_capacity = EXCLUDED.use_fields_capacity`,
       [
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
         ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
-        has_team_ranking || false, is_public || false, processedRegion, total_fields || 1, total_rounds || 1
+        has_team_ranking || false, is_public || false, processedRegion, total_fields || 1, total_rounds || 1,
+        use_fields_capacity || false
       ]
     );
 
@@ -5231,7 +5243,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region, total_fields, total_rounds
+    is_public, region, total_fields, total_rounds, use_fields_capacity
   } = req.body;
   
   let processedRegion = region;
@@ -5283,13 +5295,14 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         is_public = COALESCE($18, is_public),
         region = COALESCE($19, region),
         total_fields = COALESCE($20, total_fields),
-        total_rounds = COALESCE($21, total_rounds)
-      WHERE id = $22`,
+        total_rounds = COALESCE($21, total_rounds),
+        use_fields_capacity = COALESCE($22, use_fields_capacity)
+      WHERE id = $23`,
       [
         name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
         ranking_preference_override, has_society_ranking, has_team_ranking, is_public, processedRegion, 
-        total_fields, total_rounds, req.params.id
+        total_fields, total_rounds, use_fields_capacity, req.params.id
       ]
     );
 

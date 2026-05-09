@@ -54,6 +54,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [fieldsCount, setFieldsCount] = useState(event.total_fields || 1);
   const [roundsCount, setRoundsCount] = useState(event.total_rounds || 1);
+  const [useFieldsCapacity, setUseFieldsCapacity] = useState(event.use_fields_capacity || false);
   const [genDay, setGenDay] = useState<'all' | string>('all');
 
   const normalizeDate = (d: any) => {
@@ -202,7 +203,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         },
         body: JSON.stringify({ 
           total_fields: fieldsCount,
-          total_rounds: roundsCount
+          total_rounds: roundsCount,
+          use_fields_capacity: useFieldsCapacity
         })
       });
       if (!response.ok) throw new Error('Errore nel salvataggio delle impostazioni');
@@ -227,7 +229,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         },
         body: JSON.stringify({ 
           total_fields: fieldsCount,
-          total_rounds: roundsCount
+          total_rounds: roundsCount,
+          use_fields_capacity: useFieldsCapacity
         })
       });
       
@@ -316,7 +319,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
             },
             body: JSON.stringify({ 
               total_fields: fieldsCount,
-              total_rounds: roundsCount
+              total_rounds: roundsCount,
+              use_fields_capacity: useFieldsCapacity
             })
           });
           if (!saveResponse.ok) throw new Error('Errore nel salvataggio preliminare delle impostazioni');
@@ -405,11 +409,18 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       // For fields, user suggested 1:1 with rounds for this specific logic
       const fc = (event.total_fields && event.total_fields > 1) ? event.total_fields : rc;
       setFieldsCount(fc);
+      setUseFieldsCapacity(event.use_fields_capacity || false);
     } else {
       setFieldsCount(event.total_fields || 1);
       setRoundsCount(event.total_rounds || 1);
+      setUseFieldsCapacity(event.use_fields_capacity || false);
     }
-  }, [event.id, event.total_fields, event.total_rounds, event.targets]);
+  }, [event.id, event.total_fields, event.total_rounds, event.targets, event.use_fields_capacity]);
+
+  const maxPossibleFields = useMemo(() => {
+    if (!event.targets) return 8;
+    return Math.max(1, Math.floor(event.targets / 25));
+  }, [event.targets]);
 
   const [startTime, setStartTime] = useState('09:00');
   const [error, setError] = useState<string | null>(null);
@@ -1045,19 +1056,41 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                   <div className="w-full">
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Numero Campi</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Numero Campi</label>
+                      <button 
+                        onClick={() => {
+                          setUseFieldsCapacity(!useFieldsCapacity);
+                          setHasUnsavedChanges(true);
+                        }}
+                        className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all ${useFieldsCapacity ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-800 text-slate-500'}`}
+                      >
+                        <span className="text-[9px] font-bold uppercase">{useFieldsCapacity ? 'ON' : 'OFF'}</span>
+                        <div className={`w-6 h-3 rounded-full relative transition-colors ${useFieldsCapacity ? 'bg-orange-500' : 'bg-slate-700'}`}>
+                          <div className={`absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all ${useFieldsCapacity ? 'left-3.5' : 'left-0.5'}`} />
+                        </div>
+                      </button>
+                    </div>
                     <div className="relative">
                       <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
                       <select
                         value={fieldsCount}
-                        onChange={(e) => setFieldsCount(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          setFieldsCount(parseInt(e.target.value));
+                          setHasUnsavedChanges(true);
+                        }}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-orange-500/50 text-white appearance-none"
                       >
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                        {Array.from({ length: maxPossibleFields }, (_, i) => i + 1).map(n => (
                           <option key={n} value={n}>{n} {n === 1 ? 'Campo' : 'Campi'}</option>
                         ))}
                       </select>
                     </div>
+                    <p className="mt-1.5 text-[9px] text-slate-500 leading-tight">
+                      {useFieldsCapacity 
+                        ? `Capacità: ${fieldsCount * 6} posti per orario (${maxPossibleFields} campi max)` 
+                        : "Capacità: default 6 posti per orario (fissa)"}
+                    </p>
                   </div>
 
                   <div className="w-full">
