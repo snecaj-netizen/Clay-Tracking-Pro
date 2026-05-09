@@ -88,6 +88,81 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showSuccessDetail, setShowSuccessDetail] = useState(false);
   const [shooters, setShooters] = useState<any[]>([]);
+  const [eventRegistrations, setEventRegistrations] = useState<any[]>([]);
+
+  // Fetch registrations to calculate occupancy
+  useEffect(() => {
+    const fetchRegistrations = async () => {
+      try {
+        const res = await fetch(`/api/events/${event.id}/registrations`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEventRegistrations(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch event registrations", err);
+      }
+    };
+    fetchRegistrations();
+  }, [event.id]);
+
+  // Calculate availability
+  const availableSlotsAtTime = useMemo(() => {
+    const occupancy: Record<string, Record<string, number>> = {};
+    eventRegistrations.forEach(reg => {
+      const day = reg.registration_day;
+      const time = reg.shooting_session;
+      if (!day || !time) return;
+      
+      if (!occupancy[day]) occupancy[day] = {};
+      occupancy[day][time] = (occupancy[day][time] || 0) + 1;
+    });
+
+    const maxPerSlot = (event.total_fields || 1) * 6;
+    
+    // Total estimated capacities for morning/afternoon pools
+    // Morning: 09:00 to 13:00 = 12 slots * fields * 6
+    const morningCapacity = 12 * (event.total_fields || 1) * 6;
+    // Afternoon: 13:20 to 18:00 (est) = 14 slots * fields * 6
+    const afternoonCapacity = 14 * (event.total_fields || 1) * 6;
+
+    return (day: string, time: string) => {
+      if (!day) return true;
+      const dayOccupancy = occupancy[day] || {};
+      
+      if (time === 'morning') {
+        const morningCount = (dayOccupancy['morning'] || 0) + 
+          Object.entries(dayOccupancy).reduce((sum, [slot, count]) => {
+            if (/^\d{2}:\d{2}$/.test(slot)) {
+              const [h, m] = slot.split(':').map(Number);
+              const mins = h * 60 + m;
+              if (mins < 13 * 60) return sum + count;
+            }
+            return sum;
+          }, 0);
+        return morningCount < morningCapacity;
+      }
+      
+      if (time === 'afternoon') {
+        const afternoonCount = (dayOccupancy['afternoon'] || 0) + 
+          Object.entries(dayOccupancy).reduce((sum, [slot, count]) => {
+            if (/^\d{2}:\d{2}$/.test(slot)) {
+              const [h, m] = slot.split(':').map(Number);
+              const mins = h * 60 + m;
+              if (mins >= 13 * 60 + 20) return sum + count;
+            }
+            return sum;
+          }, 0);
+        return afternoonCount < afternoonCapacity;
+      }
+      
+      const count = dayOccupancy[time] || 0;
+      return count < maxPerSlot;
+    };
+  }, [eventRegistrations, event.total_fields]);
+
   const [selectedShooter, setSelectedShooter] = useState<any>(() => {
     if (initialData) {
       console.log("EventRegistrationModal: Mapping initialData to selectedShooter", {
@@ -533,9 +608,16 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                       className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
                     >
                       <option value="">-- {t('select_time_placeholder')} --</option>
-                      {TIME_SLOTS.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
+                      {TIME_SLOTS.map(time => {
+                        const isAvailable = availableSlotsAtTime(formData.registration_day, time);
+                        if (!isAvailable && formData.shooting_session !== time) return null;
+                        
+                        return (
+                          <option key={time} value={time}>
+                            {time} {!isAvailable && '(Pieno)'}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}

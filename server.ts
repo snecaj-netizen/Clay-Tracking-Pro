@@ -4618,7 +4618,7 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
     }
 
     // Get registrations filtered by day if requested
-    let regQuery = 'SELECT id FROM event_registrations WHERE event_id = $1';
+    let regQuery = 'SELECT id, shooting_session FROM event_registrations WHERE event_id = $1';
     let regParams: any[] = [id];
     const { registrationDay } = req.body;
     
@@ -4641,25 +4641,14 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
     }
     const regResult = await pool.query(regQuery, regParams);
     console.log('Query result count:', regResult.rows.length);
-    let registrations = regResult.rows.map(r => r.id);
-
-    // Skip if no registrations found
-    if (registrations.length === 0) {
-      return res.status(400).json({ error: 'Nessun tiratore trovato per i criteri selezionati (controlla il giorno selezionato e le iscrizioni).' });
+    
+    if (regResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Nessun tiratore trovato per i criteri selezionati.' });
     }
 
-    // Shuffle registrations
-    for (let i = registrations.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [registrations[i], registrations[j]] = [registrations[j], registrations[i]];
-    }
-
-    const totalRounds = event.total_rounds || 1;
     const fieldsCountValue = fieldsCount || event.total_fields || 1;
-
     // Always clear squads for the selected day before regenerating them
     if (registrationDay && registrationDay !== 'all') {
-      // Handle both YYYY-MM-DD and DD/MM/YYYY if they exist in DB
       let altDay = registrationDay;
       if (registrationDay.includes('-')) {
         const parts = registrationDay.split('-');
@@ -4673,77 +4662,163 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
       await pool.query('DELETE FROM event_squads WHERE event_id = $1', [id]);
     }
 
-    let startingSquadNumber = 1;
+    const isTimeFormat = (val: string) => /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val);
+
+    // Filter registrations
+    const specificTime = regResult.rows.filter(r => isTimeFormat(r.shooting_session));
+    const morningPool = regResult.rows.filter(r => r.shooting_session === 'morning');
+    const afternoonPool = regResult.rows.filter(r => r.shooting_session === 'afternoon');
+    const randomPool = regResult.rows.filter(r => 
+      !isTimeFormat(r.shooting_session) && 
+      r.shooting_session !== 'morning' && 
+      r.shooting_session !== 'afternoon'
+    );
+
+    // Shuffle pools
+    const shuffle = (array: any[]) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    };
+    shuffle(morningPool);
+    shuffle(afternoonPool);
+    shuffle(randomPool);
+
+    // Structure to hold squads in memory: Map<time, Array<squad>>
+    const finalSquads: Map<string, Array<{ field: number, members: number[] }>> = new Map();
+
+    // Pass 1: Assign preferred specific HH:MM times
+    for (const reg of specificTime) {
+      const time = reg.shooting_session;
+      if (!finalSquads.has(time)) {
+        finalSquads.set(time, []);
+      }
+
+      const squadsAtTime = finalSquads.get(time)!;
+      let placed = false;
+
+      for (const squad of squadsAtTime) {
+        if (squad.members.length < 6) {
+          squad.members.push(reg.id);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed && squadsAtTime.length < fieldsCountValue) {
+        const field = squadsAtTime.length + 1;
+        squadsAtTime.push({ field, members: [reg.id] });
+        placed = true;
+      }
+
+      if (!placed) randomPool.push(reg);
+    }
+
+    // Helper to check time constraints
+    const timeToMinutes = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const MORNING_END = timeToMinutes('13:00');
+    const AFTERNOON_START = timeToMinutes('13:20');
+
+    // Pass 2: Fill remaining with combined pool logic
+    const [startH, startM] = startTime.split(':').map(Number);
+    let currentH = startH;
+    let currentM = startM;
+
+    let morningIdx = 0;
+    let afternoonIdx = 0;
+    let randomIdx = 0;
+
+    const hasMore = () => morningIdx < morningPool.length || afternoonIdx < afternoonPool.length || randomIdx < randomPool.length;
+
+    while (hasMore()) {
+      const timeStr = `${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}`;
+      const currentMinutes = timeToMinutes(timeStr);
+      
+      if (!finalSquads.has(timeStr)) {
+        finalSquads.set(timeStr, []);
+      }
+
+      const squadsAtTime = finalSquads.get(timeStr)!;
+
+      // Ensure fields are available at this slot
+      while (squadsAtTime.length < fieldsCountValue && hasMore()) {
+        squadsAtTime.push({ field: squadsAtTime.length + 1, members: [] });
+      }
+
+      // Fill existing squads at this time
+      for (const squad of squadsAtTime) {
+        while (squad.members.length < 6) {
+          let selected = null;
+          if (currentMinutes < MORNING_END && morningIdx < morningPool.length) {
+            selected = morningPool[morningIdx++];
+          } else if (currentMinutes >= AFTERNOON_START && afternoonIdx < afternoonPool.length) {
+            selected = afternoonPool[afternoonIdx++];
+          } else if (randomIdx < randomPool.length) {
+            selected = randomPool[randomIdx++];
+          } else {
+            break;
+          }
+          if (selected) squad.members.push(selected.id);
+        }
+      }
+
+      // Move to next 20-min slot
+      currentM += 20;
+      if (currentM >= 60) {
+        currentH += Math.floor(currentM / 60);
+        currentM = currentM % 60;
+      }
+      if (currentH > 22) break;
+    }
+
+    // Remove empty squads
+    for (const [time, squads] of finalSquads.entries()) {
+      const filtered = squads.filter(s => s.members.length > 0);
+      if (filtered.length === 0) finalSquads.delete(time);
+      else finalSquads.set(time, filtered);
+    }
+
+    // Insert into DB
+    let squadCounter = 1;
     let bibCounter = 1;
 
-    // To preserve bib numbering consistency across days, we count existing members
-    const bibTotalRes = await pool.query('SELECT COUNT(*) as count FROM event_registrations WHERE event_id = $1', [id]);
-    // This is just a fallback, usually we'll assign bibs based on squad order
+    // Get max bib for continuing numbering if needed
     if (registrationDay && registrationDay !== 'all') {
-      const maxBibResult = await pool.query(`
+      const maxBibRes = await pool.query(`
         SELECT MAX(sm.bib_number) as max_bib 
         FROM event_squad_members sm 
         JOIN event_squads s ON sm.squad_id = s.id 
         WHERE s.event_id = $1
       `, [id]);
-      bibCounter = (maxBibResult.rows[0].max_bib || 0) + 1;
+      bibCounter = (maxBibRes.rows[0].max_bib || 0) + 1;
     }
 
-    let currentRegIndex = 0;
-    let baseSquadNumber = startingSquadNumber;
+    // Sort times for insertion
+    const sortedTimes = Array.from(finalSquads.keys()).sort();
 
-    const startHour = parseInt(startTime.split(':')[0]);
-    const startMinute = parseInt(startTime.split(':')[1]);
-
-    const activeSquads: { num: number, members: number[] }[] = [];
-
-    // Group registrations into squads (base round)
-    while (currentRegIndex < registrations.length) {
-      const squadMembers: number[] = [];
-      for (let pos = 1; pos <= 6 && currentRegIndex < registrations.length; pos++) {
-        squadMembers.push(registrations[currentRegIndex]);
-        currentRegIndex++;
-      }
-      activeSquads.push({ num: baseSquadNumber++, members: squadMembers });
-    }
-
-    // Generate ROUND 1 ONLY
-    const r = 1;
-    const squadsPerRound = activeSquads.length;
-    const timeSlotsPerRound = Math.ceil(squadsPerRound / fieldsCountValue);
-
-    for (let i = 0; i < activeSquads.length; i++) {
-        const squad = activeSquads[i];
-        
-        // Field calculation for Round 1
-        const fieldNumber = (i % fieldsCountValue) + 1;
-        
-        // Time calculation: 20 min per squad
-        const timeSlotIndex = i;
-        const totalMinutes = startHour * 60 + startMinute + timeSlotIndex * 20;
-        const squadHour = Math.floor(totalMinutes / 60);
-        const squadMinute = totalMinutes % 60;
-        const squadStartTime = `${squadHour.toString().padStart(2, '0')}:${squadMinute.toString().padStart(2, '0')}`;
-
+    for (const time of sortedTimes) {
+      const squads = finalSquads.get(time)!;
+      for (const squad of squads) {
         const squadInsert = await pool.query(
           'INSERT INTO event_squads (event_id, squad_number, field_number, round_number, start_time, squad_day) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-          [id, squad.num, fieldNumber, r, squadStartTime, (registrationDay && registrationDay !== 'all') ? registrationDay : null]
+          [id, squadCounter++, squad.field, 1, time, (registrationDay && registrationDay !== 'all') ? registrationDay : null]
         );
         const squadId = squadInsert.rows[0].id;
 
         for (let pos = 0; pos < squad.members.length; pos++) {
-          const bibNum = (registrationDay && registrationDay !== 'all') 
-            ? bibCounter + i * 6 + pos 
-            : (startingSquadNumber - 1) * 6 + i * 6 + pos + 1;
-
           await pool.query(
             'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
-            [squadId, squad.members[pos], pos + 1, bibNum]
+            [squadId, squad.members[pos], pos + 1, bibCounter++]
           );
         }
+      }
     }
 
-    res.json({ message: `Generate ${activeSquads.length} batterie per la Serie 1. Duplica i giri successivi quando le batterie sono definitive.` });
+    res.json({ message: `Generate ${squadCounter - 1} batterie per la Serie 1. Duplica i giri successivi quando le batterie sono definitive.` });
   } catch (error) {
     console.error('Error generating squads:', error);
     res.status(500).json({ error: 'Failed to generate squads' });
