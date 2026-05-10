@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { SocietyEvent, PrizeSetting, User, Discipline } from '../types';
+import { calculateRTE, shortenCategoryName, getDisplayCategory, INTERNATIONAL_CODES, INTL_TO_DOMESTIC } from '../ratingUtils';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
 import QuickAddShooterModal from './QuickAddShooterModal';
@@ -57,15 +58,35 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const categories = useMemo(() => Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean))).sort(), [results]);
   const qualifications = useMemo(() => Array.from(new Set(results.map(r => r.qualification_at_time || r.qualification).filter(Boolean))).sort(), [results]);
 
-  const INTERNATIONAL_CODES = ['MAN', 'LAD', 'JUN', 'SEN', 'VET', 'MAS'];
   const shouldShowInternational = event.type === 'Internazionale';
 
-  const formatDisplayValue = (val: string | null | undefined) => {
-    if (!val) return '-';
-    if (!shouldShowInternational && INTERNATIONAL_CODES.includes(val.toUpperCase())) {
-      return '';
+  const formatDisplayValue = (val: string | null | undefined, type: 'category' | 'qualification') => {
+    if (!val || val === '-') return '';
+    const upper = val.toUpperCase();
+    const isIntCode = INTERNATIONAL_CODES.includes(upper);
+    
+    if (shouldShowInternational) {
+      // Per eventi internazionali mostriamo solo i codici internazionali se disponibili
+      return isIntCode ? upper : '';
+    } else {
+      // Per eventi normali (locali):
+      if (type === 'category') {
+        // ESCLUDIAMO i codici internazionali se usati come categoria (MAN, SEN, VET, etc.)
+        if (isIntCode) return '';
+        // Abbreviamo le categorie domestiche (Prima -> 1*, etc.)
+        return shortenCategoryName(val);
+      } else {
+        // Per le Qualifiche: se è un codice internazionale, lo convertiamo in codice domestico short
+        // se esiste una mappatura (es. SEN -> SE, VET -> VE). 
+        // Se non esiste mappatura ma è un codice internazionale (es. MAN), lo nascondiamo.
+        if (INTL_TO_DOMESTIC[upper]) {
+          return INTL_TO_DOMESTIC[upper];
+        }
+        if (isIntCode) return '';
+        // Abbreviamo le qualifiche domestiche
+        return shortenCategoryName(val);
+      }
     }
-    return val;
   };
 
   const canExportPDF = user?.role === 'admin' || user?.role === 'society';
@@ -412,15 +433,19 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             r.scores && r.scores[i] !== undefined ? r.scores[i] : '-'
           );
           
-          return [
-            `${index + 1}${isPrize ? ' (P)' : ''}`,
-            r.bib_number || '-',
-            `${r.user_surname || ''} ${r.user_name || ''}${r.shooter_code ? `\n(${r.shooter_code})` : ''}`,
-            `${formatDisplayValue(r.category_at_time || r.category)}/${formatDisplayValue(r.qualification_at_time || r.qualification)}`,
-            ...seriesData,
-            r.totalscore || 0,
-            r.shoot_off || '-'
-          ];
+            const catDisp = formatDisplayValue(r.category_at_time || r.category, 'category');
+            const qualDisp = formatDisplayValue(r.qualification_at_time || r.qualification, 'qualification');
+            const displayStr = [catDisp, qualDisp].filter(Boolean).join('/');
+            
+            return [
+              `${index + 1}${isPrize ? ' (P)' : ''}`,
+              r.bib_number || '-',
+              `${r.user_surname || ''} ${r.user_name || ''}${r.shooter_code ? `\n(${r.shooter_code})` : ''}`,
+              displayStr || '-',
+              ...seriesData,
+              r.totalscore || 0,
+              r.shoot_off || '-'
+            ];
         }),
         theme: 'striped',
         headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
@@ -1579,9 +1604,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               <div className="flex items-center gap-3">
                                 <span className="text-slate-500 font-black text-xs">{sIdx + 1}.</span>
                                 <span className="text-sm font-bold text-white">{shooter.user_surname} {shooter.user_name}</span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                                  {shooter.category_at_time || shooter.category} / {shooter.qualification_at_time || shooter.qualification}
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  {formatDisplayValue(shooter.category_at_time || shooter.category, 'category') && (
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black border ${ (event.ranking_preference_override || shooter.ranking_preference_override || shooter.ranking_preference || 'categoria') === 'categoria' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
+                                      {formatDisplayValue(shooter.category_at_time || shooter.category, 'category')}
+                                    </span>
+                                  )}
+                                  {formatDisplayValue(shooter.category_at_time || shooter.category, 'category') && formatDisplayValue(shooter.qualification_at_time || shooter.qualification, 'qualification') && (
+                                    <span className="text-slate-700 text-[10px]">/</span>
+                                  )}
+                                  {formatDisplayValue(shooter.qualification_at_time || shooter.qualification, 'qualification') && (
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black border ${ (event.ranking_preference_override || shooter.ranking_preference_override || shooter.ranking_preference || 'categoria') === 'qualifica' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
+                                      {formatDisplayValue(shooter.qualification_at_time || shooter.qualification, 'qualification')}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <div className="font-black text-white">
                                 {shooter.totalscore}
@@ -1640,12 +1677,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 )}
                               </div>
                             </td>
-                            <td className="p-2 sm:p-3 text-slate-500 text-[10px] sm:text-xs">
+                            <td className="p-2 sm:p-3 text-slate-500 text-[9px] sm:text-[10px]">
                               <div className="flex items-center gap-1">
-                                {formatDisplayValue(r.category)}
-                                {formatDisplayValue(r.category) && formatDisplayValue(r.qualification) && <span>/</span>}
-                                {formatDisplayValue(r.qualification)}
-                                {!formatDisplayValue(r.category) && !formatDisplayValue(r.qualification) && <span>-</span>}
+                                {formatDisplayValue(r.category, 'category') && (
+                                  <span className={`px-1.5 py-0.5 rounded ${r.registration_type !== 'Qualifica' && r.registration_type !== 'Per Qualifica' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'bg-slate-800 text-slate-500'}`}>
+                                    {formatDisplayValue(r.category, 'category')}
+                                  </span>
+                                )}
+                                {formatDisplayValue(r.category, 'category') && formatDisplayValue(r.qualification, 'qualification') && (
+                                  <span className="text-slate-800">/</span>
+                                )}
+                                {formatDisplayValue(r.qualification, 'qualification') && (
+                                  <span className={`px-1.5 py-0.5 rounded ${r.registration_type === 'Qualifica' || r.registration_type === 'Per Qualifica' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'bg-slate-800 text-slate-500'}`}>
+                                    {formatDisplayValue(r.qualification, 'qualification')}
+                                  </span>
+                                )}
+                                {!formatDisplayValue(r.category, 'category') && !formatDisplayValue(r.qualification, 'qualification') && <span>-</span>}
                               </div>
                             </td>
                             {Array.from({ length: maxSeriesCount }).map((_, i) => (
@@ -1713,22 +1760,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 )}
                               </div>
                             </td>
-                            <td className="p-2 sm:p-3 text-slate-400 text-[10px] sm:text-xs">
+                            <td className="p-2 sm:p-3 text-slate-400 text-[9px] sm:text-[10px]">
                               <div className="flex items-center gap-1">
-                                {formatDisplayValue(rCat) && (
-                                  <span className={(effectivePref === 'categoria') ? 'text-white font-bold' : ''}>
-                                    {formatDisplayValue(rCat)}
+                                {formatDisplayValue(rCat, 'category') && (
+                                  <span className={`px-1.5 py-0.5 rounded ${effectivePref === 'categoria' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'bg-slate-800 text-slate-500'}`}>
+                                    {formatDisplayValue(rCat, 'category')}
                                   </span>
                                 )}
-                                {formatDisplayValue(rCat) && formatDisplayValue(rQual) && (
-                                  <span className="text-slate-600">/</span>
+                                {formatDisplayValue(rCat, 'category') && formatDisplayValue(rQual, 'qualification') && (
+                                  <span className="text-slate-700">/</span>
                                 )}
-                                {formatDisplayValue(rQual) && (
-                                  <span className={(effectivePref === 'qualifica') ? 'text-white font-bold' : ''}>
-                                    {formatDisplayValue(rQual)}
+                                {formatDisplayValue(rQual, 'qualification') && (
+                                  <span className={`px-1.5 py-0.5 rounded ${effectivePref === 'qualifica' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'bg-slate-800 text-slate-500'}`}>
+                                    {formatDisplayValue(rQual, 'qualification')}
                                   </span>
                                 )}
-                                {!formatDisplayValue(rCat) && !formatDisplayValue(rQual) && <span>-</span>}
+                                {!formatDisplayValue(rCat, 'category') && !formatDisplayValue(rQual, 'qualification') && <span>-</span>}
                               </div>
                             </td>
                           {Array.from({ length: maxSeriesCount }).map((_, i) => (

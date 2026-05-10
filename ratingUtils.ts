@@ -56,3 +56,77 @@ export const calculateRTE = (competitions: Competition[]): RTERating[] => {
 
   return ratings.sort((a, b) => b.rating - a.rating);
 };
+
+export const INTERNATIONAL_CODES = ['MAN', 'SEN', 'VET', 'MAS', 'JUN', 'LADY', 'SNR', 'JUM', 'JUW', 'LAD'];
+
+export const INTL_TO_DOMESTIC: Record<string, string> = {
+  'SEN': 'SE',
+  'VET': 'VE',
+  'MAS': 'MA',
+  'JUN': 'JU',
+  'LADY': 'LA',
+  'LAD': 'LA',
+  'SNR': 'SE',
+  'JUM': 'JU',
+  'JUW': 'JU'
+};
+
+export const shortenCategoryName = (name: string): string => {
+  if (!name) return name;
+  const upper = name.toUpperCase();
+  
+  // Mapping of domestic labels to short codes
+  const domesticMapping: Record<string, string> = {
+    'ECCELLENZA': 'E',
+    'PRIMA': '1*',
+    'SECONDA': '2*',
+    'TERZA': '3*',
+    'VETERANI': 'VE',
+    'MASTER': 'MA',
+    'SENIOR': 'SE',
+    'JUNIOR': 'JU',
+    'LADY': 'LA',
+    'MANTENIMENTO': 'M'
+  };
+  
+  if (domesticMapping[upper]) return domesticMapping[upper];
+  
+  // If it's an international code, we might want to return it as is or map it
+  // But shortenCategoryName is used generally. 
+  // Let's return the mapping if exists, else return original.
+  return upper; // Default to upper case for codes
+};
+
+export const getDisplayCategory = (cat: string, qual: string, eventType: string): string => {
+  const isInternational = eventType === 'Internazionale';
+  
+  const c = (cat || "").toUpperCase();
+  const q = (qual || "").toUpperCase();
+
+  if (isInternational) {
+    // In international events, we only show international codes
+    const parts = [c, q].filter(p => INTERNATIONAL_CODES.includes(p));
+    return parts.join('/');
+  }
+  
+  // In local events:
+  // 1. Category: Hide if it's an international code (MAN, SEN, etc.)
+  let displayCat = "";
+  if (c && !INTERNATIONAL_CODES.includes(c)) {
+    displayCat = shortenCategoryName(c);
+  }
+
+  // 2. Qualification: If it's an international code, convert to domestic short code. 
+  // If it's domestic, shorten it.
+  let displayQual = "";
+  if (q) {
+    if (INTL_TO_DOMESTIC[q]) {
+      displayQual = INTL_TO_DOMESTIC[q];
+    } else if (!INTERNATIONAL_CODES.includes(q)) {
+      displayQual = shortenCategoryName(q);
+    }
+  }
+  
+  const parts = [displayCat, displayQual].filter(p => Boolean(p) && p !== '-');
+  return parts.join('/');
+};

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { shortenCategoryName } from '../ratingUtils';
 
 interface ShooterSearchProps {
   value: any; // Can be string, number, or array of them
@@ -105,7 +106,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
             {value.map((v, idx) => {
               const shooter = useId ? shooters.find(s => s.id === v) : null;
               const label = shooter 
-                ? `${shooter.surname} ${shooter.name}${shooter.category || shooter.qualification ? ` (${shooter.category || shooter.qualification})` : ''}` 
+                ? `${shooter.surname} ${shooter.name}${shooter.category || shooter.qualification ? ` (${shortenCategoryName(shooter.category || shooter.qualification)})` : ''}` 
                 : v;
               return (
                 <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-600/20 text-orange-500 text-[10px] font-black uppercase tracking-widest border border-orange-500/30">
@@ -173,7 +174,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
                       {s.surname} {s.name}
                       {(s.category || s.qualification) && (
                         <span className="ml-2 text-[10px] font-black text-orange-500 uppercase tracking-tighter bg-orange-600/10 px-1.5 py-0.5 rounded">
-                          {s.category || s.qualification}
+                          {shortenCategoryName(s.category || s.qualification)}
                         </span>
                       )}
                     </span>

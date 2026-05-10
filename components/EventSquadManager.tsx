@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Users, RefreshCw, Save, Clock, Target, ArrowRight } from 'lucide-react';
 import { SocietyEvent, EventSquad } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { shortenCategoryName, INTERNATIONAL_CODES } from '../ratingUtils';
 
 interface EventSquadManagerProps {
   event: SocietyEvent;
@@ -131,15 +132,16 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
     }
   };
 
-  const INTERNATIONAL_CODES = ['MAN', 'LAD', 'JUN', 'SEN', 'VET', 'MAS'];
   const shouldShowInternational = event.type === 'Internazionale';
 
   const formatDisplayValue = (val: string | null | undefined) => {
     if (!val) return '';
-    if (!shouldShowInternational && INTERNATIONAL_CODES.includes(val.toUpperCase())) {
-      return '';
+    const isIntCode = INTERNATIONAL_CODES.includes(val.toUpperCase());
+    if (shouldShowInternational) {
+      return isIntCode ? val : '';
+    } else {
+      return isIntCode ? '' : shortenCategoryName(val);
     }
-    return val;
   };
 
   return createPortal(

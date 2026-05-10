@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import ShooterSearch from '../ShooterSearch';
 import SocietySearch from '../SocietySearch';
 import { Competition, User, UserRole, Discipline, getSeriesLayout } from '../../types';
-import { calculateRTE } from '../../ratingUtils';
+import { calculateRTE, shortenCategoryName } from '../../ratingUtils';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -49,7 +49,7 @@ const ResultRow = React.memo(({
       </td>
       <td className="px-4 py-4">
         <div className="text-[10px] font-bold text-slate-400 uppercase">
-          {result.category || '-'} / {result.qualification || '-'}
+          {shortenCategoryName(result.category || '-')} / {shortenCategoryName(result.qualification || '-')}
         </div>
       </td>
       <td className="px-4 py-4 text-center">

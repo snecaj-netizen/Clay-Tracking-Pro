@@ -1,6 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { SocietyEvent, EventSquad } from '../types';
+import { getDisplayCategory } from '../ratingUtils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { X, Download, Printer } from 'lucide-react';
@@ -205,9 +206,10 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
                                 <div className="space-y-[1px] mt-1">
                                   {[1, 2, 3, 4, 5, 6].map(pos => {
                                     const member = squad.members.find(m => m.position === pos);
+                                    
                                     const cat = member?.category || "";
                                     const qual = member?.qualification || "";
-                                    const catQual = [cat, qual].filter(Boolean).join(' - ');
+                                    const catQual = getDisplayCategory(cat, qual, event.type || "");
 
                                     return (
                                       <div key={pos} className="flex items-center text-[9px] h-5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors px-1">
