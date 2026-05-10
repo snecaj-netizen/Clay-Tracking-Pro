@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { SocietyEvent, Discipline } from '../types';
-import { Target } from 'lucide-react';
+import { Target, Clock } from 'lucide-react';
 import SocietySearch from './SocietySearch';
 import EventResultsManager from './EventResultsManager';
 import { EventRegistrationModal } from './EventRegistrationModal';
@@ -1013,6 +1013,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [hasTeamRanking, setHasTeamRanking] = useState(false);
   const [totalFields, setTotalFields] = useState<number>(1);
   const [useFieldsCapacity, setUseFieldsCapacity] = useState<boolean>(false);
+  const [showTimeSlotToShooters, setShowTimeSlotToShooters] = useState<boolean>(true);
   const [startTime, setStartTime] = useState<string>('08:00');
   const [endTime, setEndTime] = useState<string>('18:00');
   const [isPublic, setIsPublic] = useState(false);
@@ -1108,6 +1109,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     const calculated = Math.max(1, Math.ceil((ev.targets || 0) / 25));
     setTotalFields(calculated);
     setUseFieldsCapacity(ev.use_fields_capacity || false);
+    setShowTimeSlotToShooters(ev.show_time_slot_to_shooters !== false);
     setStartTime(ev.start_time || '08:00');
     setEndTime(ev.end_time || '18:00');
     
@@ -1165,6 +1167,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     setHasTeamRanking(false);
     setTotalFields(1);
     setUseFieldsCapacity(false);
+    setShowTimeSlotToShooters(true);
     setStartTime('08:00');
     setEndTime('18:00');
     setIsPublic(false);
@@ -1196,6 +1199,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       total_fields: totalFields,
       total_rounds: totalFields,
       use_fields_capacity: useFieldsCapacity,
+      show_time_slot_to_shooters: showTimeSlotToShooters,
       start_time: startTime,
       end_time: endTime,
       is_public: isPublic
@@ -1857,41 +1861,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       )}
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('total_fields_label')} *</label>
-                        <select 
-                          required 
-                          value={totalFields} 
-                          onChange={(e) => setTotalFields(parseInt(e.target.value))} 
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none transition-all appearance-none"
-                        >
-                          {Array.from({ length: Math.max(1, Math.ceil(targets / 25)) }, (_, i) => i + 1).map(num => (
-                            <option key={num} value={num}>{num} {num === 1 ? 'Campo' : 'Campi'}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-2xl p-4 flex items-center justify-between group hover:border-orange-500/30 transition-all">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-xl transition-colors ${useFieldsCapacity ? 'bg-orange-500/20 text-orange-500' : 'bg-slate-800 text-slate-500'}`}>
-                            <Target className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-white uppercase tracking-wider">Capacità basata sui campi</p>
-                            <p className="text-[9px] text-slate-500 font-medium">{useFieldsCapacity ? `Max ${totalFields * 6} iscritti per orario (${totalFields} campi x 6)` : 'Max 6 iscritti per orario (Default)'}</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setUseFieldsCapacity(!useFieldsCapacity)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${useFieldsCapacity ? 'bg-orange-600' : 'bg-slate-700'}`}
-                        >
-                          <span className={`${useFieldsCapacity ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
-                        </button>
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('targets_count_label')} *</label>
                       <input 
@@ -1903,7 +1872,6 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         onChange={(e) => {
                           const val = parseInt(e.target.value);
                           setTargets(val);
-                          // Auto-calculate fields: 1 field per 25 targets
                           setTotalFields(Math.max(1, Math.ceil(val / 25)));
                         }} 
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" 
@@ -1933,6 +1901,60 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Orario Fine Gara *</label>
                       <input type="time" required value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" style={{ colorScheme: 'dark' }} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campi</label>
+                      <select 
+                        required 
+                        value={totalFields} 
+                        onChange={(e) => setTotalFields(parseInt(e.target.value))} 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none transition-all appearance-none"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                          <option key={num} value={num}>{num} {num === 1 ? 'Campo' : 'Campi'}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-2xl p-4 flex items-center justify-between group hover:border-orange-500/30 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl transition-colors ${useFieldsCapacity ? 'bg-orange-500/20 text-orange-500' : 'bg-slate-800 text-slate-500'}`}>
+                            <Target className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-white uppercase tracking-wider">Capacità basata sui campi</p>
+                            <p className="text-[9px] text-slate-500 font-medium">{useFieldsCapacity ? `Max ${totalFields * 6} iscritti per orario (${totalFields} campi x 6)` : 'Max 6 iscritti per orario (Default)'}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUseFieldsCapacity(!useFieldsCapacity)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${useFieldsCapacity ? 'bg-orange-600' : 'bg-slate-700'}`}
+                        >
+                          <span className={`${useFieldsCapacity ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                        </button>
+                      </div>
+
+                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-2xl p-4 flex items-center justify-between group hover:border-orange-500/30 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl transition-colors ${showTimeSlotToShooters ? 'bg-orange-500/20 text-orange-500' : 'bg-slate-800 text-slate-500'}`}>
+                            <Clock className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-white uppercase tracking-wider">Mostra Orario ai tiratori</p>
+                            <p className="text-[9px] text-slate-500 font-medium">Visibilità campo Orario nel form iscrizione</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowTimeSlotToShooters(!showTimeSlotToShooters)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showTimeSlotToShooters ? 'bg-orange-600' : 'bg-slate-700'}`}
+                        >
+                          <span className={`${showTimeSlotToShooters ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">

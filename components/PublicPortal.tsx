@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { SocietyEvent, Discipline } from '../types';
+import { SocietyEvent, Discipline, EventSquad } from '../types';
 import EventResultsManager from './EventResultsManager';
+import ShootingOrderPreview from './ShootingOrderPreview';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface PublicPortalProps {
@@ -26,6 +27,11 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
   const [selectedSociety, setSelectedSociety] = useState<{name: string, type: 'ongoing' | 'past'} | null>(null);
   const [viewMode, setViewMode] = useState<'ongoing' | 'past'>('ongoing');
   const [showFilters, setShowFilters] = useState(false);
+  const [showOrderPreview, setShowOrderPreview] = useState(false);
+  const [orderPreviewSquads, setOrderPreviewSquads] = useState<EventSquad[]>([]);
+  const [isFetchingSquads, setIsFetchingSquads] = useState<string | null>(null);
+  const [previewEvent, setPreviewEvent] = useState<SocietyEvent | null>(null);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -117,6 +123,27 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
     }
   };
 
+  const handleViewShootingOrder = async (e: React.MouseEvent, event: SocietyEvent) => {
+    e.stopPropagation();
+    setIsFetchingSquads(event.id);
+    try {
+      const res = await fetch(`/api/public/events/${event.id}/squads`);
+      if (res.ok) {
+        const data = await res.json();
+        setOrderPreviewSquads(data);
+        setPreviewEvent(event);
+        setShowOrderPreview(true);
+      } else {
+        alert(t('error_fetching_squads') || (language === 'it' ? 'Errore nel caricamento dell\'ordine di tiro' : 'Error loading shooting order'));
+      }
+    } catch (err) {
+      console.error('Error fetching squads:', err);
+      alert(t('error_fetching_squads') || (language === 'it' ? 'Errore nel caricamento dell\'ordine di tiro' : 'Error loading shooting order'));
+    } finally {
+      setIsFetchingSquads(null);
+    }
+  };
+
   const fetchPublicEvents = async () => {
     setLoading(true);
     setError(null);
@@ -198,149 +225,171 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
     }
   };
 
-  if (viewingEvent) {
-    return (
-      <motion.div 
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.1}
-        onDragEnd={handleDragEnd}
-        className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
-      >
-        <div className="p-4 md:p-8">
-          <div className="flex items-center gap-4 mb-6">
+  const renderMainContent = () => {
+    if (viewingEvent) {
+      return (
+        <motion.div 
+          key="event-view"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.1}
+          onDragEnd={handleDragEnd}
+          className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
+        >
+          <div className="p-4 md:p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <button 
+                onClick={handleBackFromEvent}
+                className="flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors bg-slate-900/40 [.light-theme_&]:bg-slate-200 px-4 py-2 rounded-xl"
+              >
+                <i className="fas fa-arrow-left"></i>
+                <span className="text-sm font-bold uppercase tracking-widest">{t('back_to_results')}</span>
+              </button>
+            </div>
+            
+            <div className={`bg-slate-900/50 [.light-theme_&]:bg-white border rounded-3xl overflow-hidden shadow-2xl transition-colors ${viewMode === 'ongoing' ? 'border-green-500/30' : 'border-slate-700'}`}>
+              <EventResultsManager 
+                event={viewingEvent} 
+                token={token || ''} 
+                readOnly={true} 
+                user={null}
+                onClose={handleBackFromEvent}
+              />
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (selectedSociety) {
+      const list = selectedSociety.type === 'ongoing' ? ongoingEvents : pastEvents;
+      const filteredList = filterEvents(list.filter(e => e.location === selectedSociety.name));
+      
+      return (
+        <motion.div 
+          key="society-view"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.1}
+          onDragEnd={handleDragEnd}
+          className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
+        >
+          <div className="p-4 md:p-8">
+          <div className="max-w-7xl mx-auto">
             <button 
-              onClick={handleBackFromEvent}
-              className="flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors bg-slate-900/40 [.light-theme_&]:bg-slate-200 px-4 py-2 rounded-xl"
+              onClick={handleBackFromSociety}
+              className="mb-8 flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors bg-slate-900/40 [.light-theme_&]:bg-slate-100 px-4 py-2 rounded-xl"
             >
               <i className="fas fa-arrow-left"></i>
-              <span className="text-sm font-bold uppercase tracking-widest">{t('back_to_results')}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{t('back_to_societies')}</span>
             </button>
-          </div>
-          
-          <div className={`bg-slate-900/50 [.light-theme_&]:bg-white border rounded-3xl overflow-hidden shadow-2xl transition-colors ${viewMode === 'ongoing' ? 'border-green-500/30' : 'border-slate-700'}`}>
-            <EventResultsManager 
-              event={viewingEvent} 
-              token={token || ''} 
-              readOnly={true} 
-              user={null}
-              onClose={handleBackFromEvent}
-            />
+  
+            <div className="mb-12">
+               <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic mb-2">
+                 {t('events_at_society')} <span className="text-orange-500">{(selectedSociety as any).code ? `${(selectedSociety as any).code} - ` : ''}{selectedSociety.name}</span>
+               </h2>
+               <span className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em]">
+                 {selectedSociety.type === 'ongoing' ? t('ongoing_events') : t('past_events')}
+               </span>
+            </div>
+  
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredList.map((event, idx) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -5 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => handleSelectEvent(event)}
+                  className="group bg-white/70 backdrop-blur-sm [.dark-theme_&]:bg-slate-900 border border-slate-200/60 [.dark-theme_&]:border-slate-800 rounded-2xl p-5 hover:shadow-2xl transition-all cursor-pointer relative flex flex-col shadow-sm"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    {(event.status === 'validated' || event.is_management_enabled) && (
+                      <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                        event.status === 'validated' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 animate-bounce'
+                      }`}>
+                        {event.status === 'validated' ? t('finished_label') : t('live_label')}
+                      </div>
+                    )}
+                    {event.society_code && (
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        TAV: {event.society_code}
+                      </span>
+                    )}
+                  </div>
+  
+                  <h3 className="text-lg md:text-xl font-black uppercase leading-tight mb-3 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
+                    {event.name}
+                  </h3>
+  
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 flex-grow text-[10px] text-slate-500 [.dark-theme_&]:text-slate-400 font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 min-w-max">
+                      <i className="far fa-calendar text-[9px]"></i>
+                      <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">
+                        {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
+                        {event.end_date && event.end_date !== event.start_date && (
+                          <> - {new Date(event.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-max border-l border-slate-200 [.dark-theme_&]:border-slate-800 pl-4">
+                      <i className="fas fa-crosshairs text-[9px]"></i>
+                      <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">{t(event.discipline)}</span>
+                    </div>
+                  </div>
+  
+                  <div className="flex items-center justify-between border-t border-slate-100 [.dark-theme_&]:border-slate-800/50 pt-4">
+                    <div className="flex items-center gap-4 text-slate-400">
+                      <div className="flex items-center gap-1.5">
+                        <i className="fas fa-bullseye text-[9px]"></i>
+                        <span className="text-[9px] font-black">{event.targets}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <i className="fas fa-users text-[9px]"></i>
+                        <span className="text-[9px] font-black">{event.result_count || 0}</span>
+                      </div>
+                    </div>
+  
+                    <div className="flex gap-2 text-white">
+                      <button 
+                        onClick={(e) => handleViewShootingOrder(e, event)}
+                        disabled={isFetchingSquads === event.id}
+                        className="bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-700 transition-colors shadow-lg active:scale-95 disabled:opacity-50"
+                      >
+                        <i className={`fas ${isFetchingSquads === event.id ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[10px]`}></i>
+                        <span className="text-[10px] font-black uppercase tracking-widest">ODT</span>
+                      </button>
+                      <button className="bg-orange-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 group-hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/20 active:scale-95">
+                        <i className="fas fa-eye text-[10px]"></i>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('view_button')}</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
-      </motion.div>
-    );
-  }
+        </motion.div>
+      );
+    }
 
-  if (selectedSociety) {
-    const list = selectedSociety.type === 'ongoing' ? ongoingEvents : pastEvents;
-    const filteredList = filterEvents(list.filter(e => e.location === selectedSociety.name));
-    const borderColor = selectedSociety.type === 'ongoing' ? 'border-green-500/30' : 'border-slate-700';
+    const ongoingSocieties = groupEventsBySociety(filterEvents(ongoingEvents));
+    const pastSocieties = groupEventsBySociety(filterEvents(pastEvents));
 
     return (
       <motion.div 
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.1}
-        onDragEnd={handleDragEnd}
-        className="min-h-screen bg-slate-950 [.light-theme_&]:bg-slate-50 text-white [.light-theme_&]:text-slate-900 transition-colors overflow-x-hidden"
-      >
-        <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <button 
-            onClick={handleBackFromSociety}
-            className="mb-8 flex items-center gap-2 text-slate-400 [.light-theme_&]:text-slate-600 hover:text-white [.light-theme_&]:hover:text-slate-900 transition-colors bg-slate-900/40 [.light-theme_&]:bg-slate-100 px-4 py-2 rounded-xl"
-          >
-            <i className="fas fa-arrow-left"></i>
-            <span className="text-[10px] font-black uppercase tracking-widest">{t('back_to_societies')}</span>
-          </button>
-
-          <div className="mb-12">
-             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic mb-2">
-               {t('events_at_society')} <span className="text-orange-500">{(selectedSociety as any).code ? `${(selectedSociety as any).code} - ` : ''}{selectedSociety.name}</span>
-             </h2>
-             <span className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em]">
-               {selectedSociety.type === 'ongoing' ? t('ongoing_events') : t('past_events')}
-             </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredList.map((event, idx) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -5 }}
-                transition={{ delay: idx * 0.05 }}
-                onClick={() => handleSelectEvent(event)}
-                className="group bg-white/70 backdrop-blur-sm [.dark-theme_&]:bg-slate-900 border border-slate-200/60 [.dark-theme_&]:border-slate-800 rounded-2xl p-5 hover:shadow-2xl transition-all cursor-pointer relative flex flex-col shadow-sm"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  {(event.status === 'validated' || event.is_management_enabled) && (
-                    <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                      event.status === 'validated' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 animate-bounce'
-                    }`}>
-                      {event.status === 'validated' ? t('finished_label') : t('live_label')}
-                    </div>
-                  )}
-                  {event.society_code && (
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                      TAV: {event.society_code}
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="text-lg md:text-xl font-black uppercase leading-tight mb-3 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
-                  {event.name}
-                </h3>
-
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 flex-grow text-[10px] text-slate-500 [.dark-theme_&]:text-slate-400 font-bold uppercase tracking-wider">
-                  <div className="flex items-center gap-1.5 min-w-max">
-                    <i className="far fa-calendar text-[9px]"></i>
-                    <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">
-                      {new Date(event.start_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
-                      {event.end_date && event.end_date !== event.start_date && (
-                        <> - {new Date(event.end_date).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}</>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 min-w-max border-l border-slate-200 [.dark-theme_&]:border-slate-800 pl-4">
-                    <i className="fas fa-crosshairs text-[9px]"></i>
-                    <span className="font-medium text-slate-900 [.dark-theme_&]:text-slate-200">{t(event.discipline)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between border-t border-slate-100 [.dark-theme_&]:border-slate-800/50 pt-4">
-                  <div className="flex items-center gap-4 text-slate-400">
-                    <div className="flex items-center gap-1.5">
-                      <i className="fas fa-bullseye text-[9px]"></i>
-                      <span className="text-[9px] font-black">{event.targets}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <i className="fas fa-users text-[9px]"></i>
-                      <span className="text-[9px] font-black">{event.result_count || 0}</span>
-                    </div>
-                  </div>
-
-                  <button className="bg-orange-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 group-hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/20 active:scale-95">
-                    <i className="fas fa-eye text-[10px]"></i>
-                    <span className="text-[10px] font-black uppercase tracking-widest">{t('view_button')}</span>
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-  const ongoingSocieties = groupEventsBySociety(filterEvents(ongoingEvents));
-  const pastSocieties = groupEventsBySociety(filterEvents(pastEvents));
-
-  return (
-      <motion.div 
+        key="main-view"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 20 }}
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.1}
@@ -371,7 +420,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
       </div>
 
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Toggle View Tabs */}
         <div className="flex bg-slate-900/50 [.light-theme_&]:bg-slate-200/50 p-1 rounded-2xl border border-slate-800/50 [.light-theme_&]:border-slate-200">
           <button
             onClick={() => setViewMode('ongoing')}
@@ -397,7 +445,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
           </button>
         </div>
 
-        {/* Filter Toggle */}
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-2xl border transition-all ${
@@ -499,7 +546,6 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
           </div>
         ) : (
           <>
-            {/* Conditional Section based on viewMode */}
             {viewMode === 'ongoing' ? (
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {ongoingSocieties.length > 0 ? (
@@ -583,7 +629,27 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
         )}
       </div>
     </div>
-  </motion.div>
+    </motion.div>
+    );
+  };
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {renderMainContent()}
+      </AnimatePresence>
+      
+      <AnimatePresence>
+        {showOrderPreview && previewEvent && (
+          <ShootingOrderPreview
+            event={previewEvent}
+            squads={orderPreviewSquads}
+            onClose={() => setShowOrderPreview(false)}
+            squadNumberMap={new Map(orderPreviewSquads.map(sq => [sq.id, sq.squad_number]))}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

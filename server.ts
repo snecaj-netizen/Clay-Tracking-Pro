@@ -743,6 +743,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS use_fields_capacity BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS start_time TEXT DEFAULT '08:00'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS end_time TEXT DEFAULT '18:00'`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS show_time_slot_to_shooters BOOLEAN DEFAULT TRUE`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -5112,7 +5113,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
     is_public, region, total_fields, total_rounds, use_fields_capacity,
-    start_time, end_time
+    start_time, end_time, show_time_slot_to_shooters
   } = req.body;
   
   let processedRegion = region;
@@ -5132,31 +5133,33 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         cost, notes, poster_url, registration_link, created_by, prize_settings, 
         ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
         is_public, region, total_fields, total_rounds, use_fields_capacity,
-        start_time, end_time
+        start_time, end_time, show_time_slot_to_shooters
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
        ON CONFLICT (id) DO UPDATE SET 
-       name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
-       discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
-       start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, cost = EXCLUDED.cost, 
-       notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link,
-       prize_settings = EXCLUDED.prize_settings, ranking_logic = EXCLUDED.ranking_logic,
-       ranking_preference_override = EXCLUDED.ranking_preference_override,
-       has_society_ranking = EXCLUDED.has_society_ranking,
-       has_team_ranking = EXCLUDED.has_team_ranking,
-       is_public = EXCLUDED.is_public,
-       region = EXCLUDED.region,
-       total_fields = EXCLUDED.total_fields,
-       total_rounds = EXCLUDED.total_rounds,
-       use_fields_capacity = EXCLUDED.use_fields_capacity,
-       start_time = EXCLUDED.start_time,
-       end_time = EXCLUDED.end_time`,
+        name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
+        discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
+        start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, cost = EXCLUDED.cost, 
+        notes = EXCLUDED.notes, poster_url = EXCLUDED.poster_url, registration_link = EXCLUDED.registration_link,
+        prize_settings = EXCLUDED.prize_settings, ranking_logic = EXCLUDED.ranking_logic,
+        ranking_preference_override = EXCLUDED.ranking_preference_override,
+        has_society_ranking = EXCLUDED.has_society_ranking,
+        has_team_ranking = EXCLUDED.has_team_ranking,
+        is_public = EXCLUDED.is_public,
+        region = EXCLUDED.region,
+        total_fields = EXCLUDED.total_fields,
+        total_rounds = EXCLUDED.total_rounds,
+        use_fields_capacity = EXCLUDED.use_fields_capacity,
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
+        show_time_slot_to_shooters = EXCLUDED.show_time_slot_to_shooters`,
       [
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
         ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
         has_team_ranking || false, is_public || false, processedRegion, total_fields || 1, total_rounds || 1,
-        use_fields_capacity || false, start_time || '08:00', end_time || '18:00'
+        use_fields_capacity || false, start_time || '08:00', end_time || '18:00',
+        show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters
       ]
     );
 
@@ -5250,7 +5253,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
     is_public, region, total_fields, total_rounds, use_fields_capacity,
-    start_time, end_time
+    start_time, end_time, show_time_slot_to_shooters
   } = req.body;
   
   let processedRegion = region;
@@ -5305,14 +5308,15 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         total_rounds = COALESCE($21, total_rounds),
         use_fields_capacity = COALESCE($22, use_fields_capacity),
         start_time = COALESCE($23, start_time),
-        end_time = COALESCE($24, end_time)
+        end_time = COALESCE($24, end_time),
+        show_time_slot_to_shooters = COALESCE($26, show_time_slot_to_shooters)
       WHERE id = $25`,
       [
         name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
         ranking_preference_override, has_society_ranking, has_team_ranking, is_public, processedRegion, 
         total_fields, total_rounds, use_fields_capacity, start_time, end_time,
-        req.params.id
+        req.params.id, show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters
       ]
     );
 
@@ -5626,6 +5630,36 @@ app.get('/api/public/events/:id/results', async (req, res) => {
     res.json(parsedResults);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET public squads for an event
+app.get('/api/public/events/:id/squads', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const squadsResult = await pool.query(
+      'SELECT * FROM event_squads WHERE event_id = $1 ORDER BY squad_number',
+      [id]
+    );
+    const squads = squadsResult.rows;
+
+    for (const squad of squads) {
+      const membersResult = await pool.query(
+        `SELECT m.position, m.bib_number, r.id as registration_id, u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification
+         FROM event_squad_members m
+         JOIN event_registrations r ON m.registration_id = r.id
+         JOIN users u ON r.user_id = u.id
+         WHERE m.squad_id = $1
+         ORDER BY m.position`,
+        [squad.id]
+      );
+      squad.members = membersResult.rows;
+    }
+
+    res.json(squads);
+  } catch (error) {
+    console.error('Error fetching public squads:', error);
+    res.status(500).json({ error: 'Failed to fetch public squads' });
   }
 });
 

@@ -401,7 +401,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       currentY += 5;
 
       const seriesHeaders = Array.from({ length: pdfMaxSeriesCount }).map((_, i) => `S${i + 1}`);
-      const headers = [[t('pdf_pos'), 'BIB', t('pdf_shooter'), t('pdf_cat_qual'), ...seriesHeaders, t('pdf_total'), t('pdf_shoot_off')]];
+      const headers = [[t('pdf_pos'), 'PETT', t('pdf_shooter'), t('pdf_cat_qual'), ...seriesHeaders, t('pdf_total'), t('pdf_shoot_off')]];
 
       autoTable(doc, {
         startY: currentY,
@@ -427,7 +427,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         bodyStyles: { fontSize: 7 },
         columnStyles: {
           0: { cellWidth: 15 }, // Pos
-          1: { cellWidth: 10, halign: 'center' }, // BIB
+          1: { cellWidth: 10, halign: 'center' }, // PETT
           2: { cellWidth: 'auto' }, // Tiratore
         },
         margin: { left: 15, right: 15 },
@@ -1605,7 +1605,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <thead>
                     <tr className="border-b border-slate-800 text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-500">
                       <th className="p-2 sm:p-3 font-black">{t('pos_short')}</th>
-                      <th className="p-2 sm:p-3 font-black text-center">BIB</th>
+                      <th className="p-2 sm:p-3 font-black text-center">PETT</th>
                       <th className="p-2 sm:p-3 font-black">{t('shooter')}</th>
                       <th className="p-2 sm:p-3 font-black">{t('cat_qua')}</th>
                       {Array.from({ length: maxSeriesCount }).map((_, i) => (

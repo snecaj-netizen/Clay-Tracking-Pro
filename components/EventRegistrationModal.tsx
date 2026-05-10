@@ -717,34 +717,36 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-slate-800/50">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <Target className="w-3 h-3 text-orange-500" />
-                    {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
-                  </label>
-                  <select
-                    value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
-                    onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
-                  >
-                    <option value="">-- {t('select_time_placeholder')} --</option>
-                    {TIME_SLOTS.map(time => {
-                      const result = availableSlotsAtTime(formData.registration_day, time);
-                      const isAvailable = typeof result === 'boolean' ? result : result.isAvailable;
-                      const count = typeof result === 'object' ? result.count : 0;
-                      const max = typeof result === 'object' ? result.max : 6;
-                      
-                      // Hide full slots unless it's the currently selected one
-                      if (!isAvailable && formData.shooting_session !== time) return null;
-                      
-                      return (
-                        <option key={time} value={time}>
-                          {time} {count > 0 && `(${count}/${max})`} {!isAvailable && '(Pieno)'}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+                {(event.show_time_slot_to_shooters !== false || (user?.role === 'admin' || user?.role === 'society')) && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800/50">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      <Target className="w-3 h-3 text-orange-500" />
+                      {t('time_slot') || (language === 'it' ? 'Oppure scegli orario specifico' : 'Or choose specific time')}
+                    </label>
+                    <select
+                      value={TIME_SLOTS.includes(formData.shooting_session) ? formData.shooting_session : ""}
+                      onChange={e => setFormData({ ...formData, shooting_session: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">-- {t('select_time_placeholder')} --</option>
+                      {TIME_SLOTS.map(time => {
+                        const result = availableSlotsAtTime(formData.registration_day, time);
+                        const isAvailable = typeof result === 'boolean' ? result : result.isAvailable;
+                        const count = typeof result === 'object' ? result.count : 0;
+                        const max = typeof result === 'object' ? result.max : 6;
+                        
+                        // Hide full slots unless it's the currently selected one
+                        if (!isAvailable && formData.shooting_session !== time) return null;
+                        
+                        return (
+                          <option key={time} value={time}>
+                            {time} {count > 0 && `(${count}/${max})`} {!isAvailable && '(Pieno)'}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}

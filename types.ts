@@ -194,6 +194,7 @@ export interface SocietyEvent {
   use_fields_capacity?: boolean;
   start_time?: string;
   end_time?: string;
+  show_time_slot_to_shooters?: boolean;
 }
 
 export interface PrizeSetting {

@@ -100,10 +100,10 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
 
   return createPortal(
     <div 
-      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto order-preview-overlay"
+      className="fixed inset-0 bg-black/90 backdrop-blur-md z-[9999] flex items-start justify-center p-4 md:p-10 md:py-20 overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto order-preview-overlay"
     >
       {/* Controls Container */}
-      <div className="fixed top-6 right-6 flex gap-4 z-[2100] print:hidden">
+      <div className="fixed top-6 right-6 flex gap-4 z-[10000] print:hidden">
         <button 
           onClick={(e) => {
             e.stopPropagation();
