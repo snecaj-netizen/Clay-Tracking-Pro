@@ -740,7 +740,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                         
                         return (
                           <option key={time} value={time}>
-                            {time} {count > 0 && `(${count}/${max})`} {!isAvailable && '(Pieno)'}
+                            {time} ({count}/{max}) {!isAvailable && '(Pieno)'}
                           </option>
                         );
                       })}
