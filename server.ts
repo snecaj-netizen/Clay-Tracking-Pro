@@ -744,6 +744,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS start_time TEXT DEFAULT '08:00'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS end_time TEXT DEFAULT '18:00'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS show_time_slot_to_shooters BOOLEAN DEFAULT TRUE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_odt_public BOOLEAN DEFAULT FALSE`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -5112,7 +5113,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
     id, name, type, visibility, discipline, location, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
-    is_public, region, total_fields, total_rounds, use_fields_capacity,
+    is_public, is_odt_public, region, total_fields, total_rounds, use_fields_capacity,
     start_time, end_time, show_time_slot_to_shooters
   } = req.body;
   
@@ -5132,10 +5133,10 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, created_by, prize_settings, 
         ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
-        is_public, region, total_fields, total_rounds, use_fields_capacity,
+        is_public, is_odt_public, region, total_fields, total_rounds, use_fields_capacity,
         start_time, end_time, show_time_slot_to_shooters
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
        ON CONFLICT (id) DO UPDATE SET 
         name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
         discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -5146,6 +5147,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         has_society_ranking = EXCLUDED.has_society_ranking,
         has_team_ranking = EXCLUDED.has_team_ranking,
         is_public = EXCLUDED.is_public,
+        is_odt_public = EXCLUDED.is_odt_public,
         region = EXCLUDED.region,
         total_fields = EXCLUDED.total_fields,
         total_rounds = EXCLUDED.total_rounds,
@@ -5157,7 +5159,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
         ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
-        has_team_ranking || false, is_public || false, processedRegion, total_fields || 1, total_rounds || 1,
+        has_team_ranking || false, is_public || false, is_odt_public || false, processedRegion, total_fields || 1, total_rounds || 1,
         use_fields_capacity || false, start_time || '08:00', end_time || '18:00',
         show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters
       ]
@@ -5240,6 +5242,31 @@ app.patch('/api/events/:id/toggle-public', authenticateToken, async (req: any, r
   } catch (err) {
     console.error('Error toggling public status:', err);
     res.status(500).json({ error: 'Errore interno' });
+  }
+});
+
+app.patch('/api/events/:id/toggle-odt', authenticateToken, async (req: any, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'society') {
+    return res.status(403).json({ error: 'Non autorizzato' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const { rows: events } = await pool.query("SELECT is_odt_public FROM events WHERE id = $1", [id]);
+    if (events.length === 0) return res.status(404).json({ error: 'Gara non trovata' });
+
+    const currentOdtPublic = events[0].is_odt_public || false;
+
+    await pool.query(
+      `UPDATE events SET is_odt_public = $1 WHERE id = $2`,
+      [!currentOdtPublic, id]
+    );
+
+    res.json({ success: true, is_odt_public: !currentOdtPublic });
+  } catch (err) {
+    console.error('Error toggling ODT public status:', err);
+    res.status(500).json({ error: 'Errore durante la modifica ODT' });
   }
 });
 

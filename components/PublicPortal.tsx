@@ -358,14 +358,16 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
                     </div>
   
                     <div className="flex gap-2 text-white">
-                      <button 
-                        onClick={(e) => handleViewShootingOrder(e, event)}
-                        disabled={isFetchingSquads === event.id}
-                        className="bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-700 transition-colors shadow-lg active:scale-95 disabled:opacity-50"
-                      >
-                        <i className={`fas ${isFetchingSquads === event.id ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[10px]`}></i>
-                        <span className="text-[10px] font-black uppercase tracking-widest">ODT</span>
-                      </button>
+                      {event.is_odt_public && (
+                        <button 
+                          onClick={(e) => handleViewShootingOrder(e, event)}
+                          disabled={isFetchingSquads === event.id}
+                          className="bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-700 transition-colors shadow-lg active:scale-95 disabled:opacity-50"
+                        >
+                          <i className={`fas ${isFetchingSquads === event.id ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[10px]`}></i>
+                          <span className="text-[10px] font-black uppercase tracking-widest">ODT</span>
+                        </button>
+                      )}
                       <button className="bg-orange-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 group-hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/20 active:scale-95">
                         <i className="fas fa-eye text-[10px]"></i>
                         <span className="text-[10px] font-black uppercase tracking-widest">{t('view_button')}</span>

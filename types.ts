@@ -187,6 +187,7 @@ export interface SocietyEvent {
   is_ongoing?: boolean;
   is_next?: boolean;
   is_public?: boolean;
+  is_odt_public?: boolean;
   region?: string;
   society_code?: string;
   total_fields?: number;

@@ -758,28 +758,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                           </p>
                         </div>
                       )}
-                      <button 
-                        onClick={() => {
-                          if (!ev.is_management_enabled && user?.role !== 'admin') {
-                            triggerToast?.(t('competition_not_activated_desc'), 'info');
-                            return;
-                          }
-                          setInitialManagementTab('registrations');
-                          setManagingEventDetail(ev);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                        className={`w-full py-2.5 rounded-xl text-white text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2.5 ${
-                          !ev.is_management_enabled && user?.role !== 'admin'
-                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
-                            : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
-                        }`}
-                      >
-                        <i className="fas fa-users-cog text-xs"></i>
-                        {t('manage_competition')}
-                      </button>
                       
-                    <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => {
+                            if (!ev.is_management_enabled && user?.role !== 'admin') {
+                              triggerToast?.(t('competition_not_activated_desc'), 'info');
+                              return;
+                            }
+                            setInitialManagementTab('registrations');
+                            setManagingEventDetail(ev);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          disabled={!ev.is_management_enabled && user?.role !== 'admin'}
+                          className={`py-2 rounded-xl text-white text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-1.5 ${
+                            !ev.is_management_enabled && user?.role !== 'admin'
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
+                              : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+                          }`}
+                        >
+                          <i className="fas fa-users-cog text-xs"></i>
+                          {t('manage_competition')}
+                        </button>
                         <button 
                           onClick={() => {
                             if (!ev.is_management_enabled && user?.role !== 'admin') {
@@ -799,6 +799,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         >
                           <i className="fas fa-trophy"></i>
                           {t('rankings')}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => handleToggleOdt(ev)}
+                          className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                            ev.is_odt_public 
+                              ? 'bg-indigo-900/30 text-indigo-500 border-indigo-900/50 hover:bg-indigo-900/50' 
+                              : 'bg-indigo-900/10 text-indigo-400 border-indigo-900/30 hover:bg-indigo-900/20'
+                          }`}
+                        >
+                          <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'}`}></i>
+                          {ev.is_odt_public ? t('remove_odt') : t('publish_odt')}
                         </button>
                         <button 
                           onClick={() => handleTogglePublic(ev)}
@@ -934,13 +948,30 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
                     
                     <div className="mt-auto space-y-2 pt-4 border-t border-white/5">
-                      <button 
-                        onClick={() => handleTogglePublic(ev)}
-                        className="w-full py-2.5 rounded-xl bg-rose-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all active:scale-95 shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2.5"
-                      >
-                        <i className="fas fa-eye-slash text-xs"></i>
-                        {t('remove_from_portal')}
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => handleToggleOdt(ev)}
+                          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2.5 ${
+                            ev.is_odt_public 
+                              ? 'bg-indigo-600 text-white shadow-indigo-600/20' 
+                              : 'bg-indigo-900/10 text-indigo-400 border border-indigo-500/20'
+                          }`}
+                        >
+                          <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'} text-xs`}></i>
+                          {ev.is_odt_public ? t('remove_odt') : t('publish_odt')}
+                        </button>
+                        <button 
+                          onClick={() => handleTogglePublic(ev)}
+                          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2.5 ${
+                            ev.is_public 
+                              ? 'bg-rose-600 text-white shadow-rose-600/20' 
+                              : 'bg-emerald-600 text-white shadow-emerald-600/20'
+                          }`}
+                        >
+                          <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'} text-xs`}></i>
+                          {ev.is_public ? t('remove_from_portal') : t('publish_to_portal')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1261,6 +1292,25 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         }
       }
     );
+  };
+
+  const handleToggleOdt = async (ev: SocietyEvent) => {
+    try {
+      const res = await fetch(`/api/events/${ev.id}/toggle-odt`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, is_odt_public: data.is_odt_public } : e));
+        triggerToast?.(data.is_odt_public ? t('odt_published_success') : t('odt_removed_success'), 'success');
+      } else {
+        const err = await res.json();
+        triggerToast?.(err.error || t('error_label'), 'error');
+      }
+    } catch (err) {
+      triggerToast?.(t('error_label'), 'error');
+    }
   };
 
   const handleDelete = (id: string) => {
