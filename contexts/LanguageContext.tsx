@@ -818,6 +818,7 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   'save_error_msg': { it: 'Errore durante il salvataggio', en: 'Error during saving' },
   'import_error_msg': { it: 'Errore durante l\'importazione.', en: 'Error during import.' },
   'excel_read_error': { it: 'Errore nella lettura del file Excel.', en: 'Error reading Excel file.' },
+  'squad_locked_contact_society': { it: 'La tua batteria è stata bloccata dall\'organizzazione. Contatta la società organizzatrice per gestire la tua cancellazione.', en: 'Your squad has been locked by the organization. Please contact the organizing club to manage your cancellation.' },
   'import_users_confirm': { it: 'Sei sicuro di voler importare {{count}} utenti?', en: 'Are you sure you want to import {{count}} users?' },
   'import_completed': { it: 'Importazione completata! Creati: {{created}}, Aggiornati: {{updated}}, Errori: {{errors}}', en: 'Import completed! Created: {{created}}, Updated: {{updated}}, Errors: {{errors}}' },
   'faq_support_title': { it: 'FAQ & Supporto', en: 'FAQ & Support' },

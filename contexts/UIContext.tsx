@@ -7,6 +7,7 @@ interface ConfirmConfig {
   onConfirm: () => void;
   confirmText?: string;
   variant?: 'danger' | 'primary';
+  showCancel?: boolean;
 }
 
 interface ToastConfig {
@@ -17,6 +18,7 @@ interface ToastConfig {
 
 interface UIContextType {
   triggerConfirm: (title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => void;
+  triggerAlert: (title: string, message: string, onConfirm?: () => void, confirmText?: string) => void;
   triggerToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   confirmConfig: ConfirmConfig;
   setConfirmConfig: React.Dispatch<React.SetStateAction<ConfirmConfig>>;
@@ -35,6 +37,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     title: '',
     message: '',
     onConfirm: () => {},
+    showCancel: true,
   });
 
   const [toastConfig, setToastConfig] = useState<ToastConfig>({
@@ -44,7 +47,11 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   });
 
   const triggerConfirm = useCallback((title: string, message: string, onConfirm: () => void, confirmText?: string, variant?: 'danger' | 'primary') => {
-    setConfirmConfig({ isOpen: true, title, message, onConfirm, confirmText, variant });
+    setConfirmConfig({ isOpen: true, title, message, onConfirm, confirmText, variant, showCancel: true });
+  }, []);
+
+  const triggerAlert = useCallback((title: string, message: string, onConfirm: () => void = () => {}, confirmText?: string) => {
+    setConfirmConfig({ isOpen: true, title, message, onConfirm, confirmText, variant: 'primary', showCancel: false });
   }, []);
 
   const triggerToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -54,6 +61,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   return (
     <UIContext.Provider value={{
       triggerConfirm,
+      triggerAlert,
       triggerToast,
       confirmConfig,
       setConfirmConfig,

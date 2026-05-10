@@ -236,7 +236,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   onSocietyClick,
   onRefresh
 }) => {
-  const { triggerConfirm, triggerToast } = useUI();
+  const { triggerConfirm, triggerToast, triggerAlert } = useUI();
   const { t, language } = useLanguage();
   const [events, setEvents] = useState<SocietyEvent[]>(initialEvents || []);
   const [loading, setLoading] = useState(!initialEvents || initialEvents.length === 0);
@@ -412,10 +412,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             fetchEvents();
           } else {
             const errorData = await response.json();
-            throw new Error(errorData.error || t('delete_error'));
+            throw new Error(errorData.error || 'delete_error');
           }
         } catch (err: any) {
-          triggerToast?.(err.message, 'error');
+          if (err.message === 'squad_locked_contact_society') {
+            triggerAlert?.(t('attention'), t('squad_locked_contact_society'), () => {}, t('ok_btn'));
+          } else {
+            triggerToast?.(t(err.message), 'error');
+          }
         }
       },
       t('confirm_delete'),

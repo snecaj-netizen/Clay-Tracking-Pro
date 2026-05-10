@@ -42,7 +42,7 @@ const LoadingFallback = () => (
 
 const App: React.FC = () => {
   const { 
-    triggerConfirm, triggerToast, 
+    triggerConfirm, triggerToast, triggerAlert,
     confirmConfig, setConfirmConfig, 
     toastConfig, setToastConfig,
     isHeaderVisible, setIsHeaderVisible
@@ -616,12 +616,16 @@ const App: React.FC = () => {
         return true;
       } else {
         const errorData = await res.json();
-        alert(`${t('delete_error')}: ${errorData.error || res.statusText}`);
+        if (errorData.error === 'squad_locked_contact_society') {
+          triggerAlert?.(t('attention'), t('squad_locked_contact_society'), () => {}, t('ok_btn'));
+        } else {
+          triggerToast?.(`${t('delete_error')}: ${t(errorData.error) || res.statusText}`, 'error');
+        }
         return false;
       }
     } catch (err) {
       console.error('Error deleting competition:', err);
-      alert(t('delete_network_error'));
+      triggerToast?.(t('delete_network_error'), 'error');
       return false;
     }
   };
@@ -1373,6 +1377,7 @@ const App: React.FC = () => {
         onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
         confirmText={confirmConfig.confirmText}
         variant={confirmConfig.variant}
+        showCancel={confirmConfig.showCancel}
       />
 
       <Toast 

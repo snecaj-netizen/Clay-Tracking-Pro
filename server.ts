@@ -4170,7 +4170,7 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
 
   try {
     // Check if event exists and details for email
-    const eventResult = await pool.query('SELECT name, start_date, end_date, location, is_management_enabled FROM events WHERE id = $1', [id]);
+    const eventResult = await pool.query('SELECT name, start_date, end_date, location, is_management_enabled, discipline, targets, type FROM events WHERE id = $1', [id]);
     if (eventResult.rows.length === 0) {
       return res.status(404).json({ error: 'Evento non trovato' });
     }
@@ -4211,6 +4211,40 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
     );
 
     const regId = result.rows[0].id;
+
+    // Create a competition record for the shooter (Le Tue Gare)
+    try {
+      const compId = `evt_${id}_${targetUserId}`;
+      const userDetails = await pool.query('SELECT category, qualification, society FROM users WHERE id = $1', [targetUserId]);
+      const cat = userDetails.rows[0]?.category || null;
+      const qual = userDetails.rows[0]?.qualification || null;
+      const soc = userDetails.rows[0]?.society || null;
+      
+      const numSeries = Math.ceil((eventObj.targets || 100) / 25);
+      const emptyScores = Array(numSeries).fill(0);
+
+      await pool.query(
+        `INSERT INTO competitions (
+          id, user_id, name, date, enddate, location, discipline, level, 
+          totalscore, totaltargets, averageperseries, scores, event_id,
+          category_at_time, qualification_at_time, society_at_time, hidden_from_user
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, FALSE)
+        ON CONFLICT (id) DO UPDATE SET 
+          name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, 
+          location = EXCLUDED.location, discipline = EXCLUDED.discipline, level = EXCLUDED.level,
+          totaltargets = EXCLUDED.totaltargets, event_id = EXCLUDED.event_id,
+          hidden_from_user = FALSE`,
+        [
+          compId, targetUserId, eventObj.name, eventObj.start_date, eventObj.end_date || null, 
+          eventObj.location, eventObj.discipline, eventObj.type || 'Regionale',
+          0, eventObj.targets || 100, 0, JSON.stringify(emptyScores), id,
+          cat, qual, soc
+        ]
+      );
+    } catch (compErr) {
+      console.error('Error creating linked competition record:', compErr);
+      // Don't fail the whole registration if this fails
+    }
 
     // Also update user phone if provided and not already set
     if (phone) {
@@ -4564,12 +4598,23 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
       }
     }
 
-    // Check if user is in any squad
+    // Check if user is in any squad and if it's locked
     const squadCheck = await pool.query(
-      'SELECT squad_id FROM event_squad_members WHERE registration_id = $1',
+      `SELECT sm.squad_id, s.is_locked 
+       FROM event_squad_members sm 
+       JOIN event_squads s ON sm.squad_id = s.id 
+       WHERE sm.registration_id = $1`,
       [registrationId]
     );
-    if (squadCheck.rows.length > 0) {
+
+    const isAnySquadLocked = squadCheck.rows.some(s => s.is_locked);
+
+    // If shooter (owner) tries to delete but the squad is locked
+    if (isOwner && isAnySquadLocked && !isAdmin && !isSociety) {
+      return res.status(400).json({ error: 'squad_locked_contact_society' });
+    }
+
+    if (squadCheck.rows.length > 0 && !isOwner) {
       return res.status(400).json({ error: 'Impossibile eliminare l\'iscrizione: il tiratore è già assegnato a una batteria. Rimuovilo prima dalla batteria.' });
     }
 
@@ -4582,6 +4627,12 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
       WHERE r.id = $1
     `, [registrationId]);
     const details = detailsResult.rows[0];
+
+    // Remove from competition records if totalscore is 0 (hasn't started yet)
+    await pool.query(
+      'DELETE FROM competitions WHERE id = $1 AND totalscore = 0',
+      [`evt_${eventId}_${regCheck.rows[0].user_id}`]
+    );
 
     await pool.query('DELETE FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
 
@@ -6098,12 +6149,31 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
 app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => {
   console.log(`DELETE competition request: id=${req.params.id}, user_id=${req.user.id}, role=${req.user.role}`);
   try {
-    // Check if competition is linked to a validated event
-    const compCheck = await pool.query('SELECT event_id FROM competitions WHERE id = $1', [req.params.id]);
+    // Check if competition is linked to a validated event or locked squad
+    const compCheck = await pool.query('SELECT event_id, user_id FROM competitions WHERE id = $1', [req.params.id]);
     if (compCheck.rows.length > 0 && compCheck.rows[0].event_id) {
-      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [compCheck.rows[0].event_id]);
+      const eventId = compCheck.rows[0].event_id;
+      const targetUserId = compCheck.rows[0].user_id;
+
+      // validated event check
+      const eventCheck = await pool.query('SELECT status FROM events WHERE id = $1', [eventId]);
       if (eventCheck.rows.length > 0 && eventCheck.rows[0].status === 'validated' && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Questa gara è stata convalidata e non può più essere modificata.' });
+      }
+
+      // locked squad check for shooter
+      if (req.user.role === 'user' && req.user.id === targetUserId) {
+        const squadCheck = await pool.query(
+          `SELECT s.is_locked 
+           FROM event_squad_members sm 
+           JOIN event_squads s ON sm.squad_id = s.id 
+           JOIN event_registrations er ON sm.registration_id = er.id
+           WHERE er.event_id = $1 AND er.user_id = $2`,
+          [eventId, targetUserId]
+        );
+        if (squadCheck.rows.some(s => s.is_locked)) {
+          return res.status(400).json({ error: 'squad_locked_contact_society' });
+        }
       }
     }
 
