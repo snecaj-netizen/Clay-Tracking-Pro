@@ -835,6 +835,8 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   'squads_b': { it: 'Squadre B', en: 'Teams B' },
   'all_teams': { it: 'Tutte', en: 'All' },
   'send_team_btn': { it: 'Conferma e Invia squadra', en: 'Confirm and Send team' },
+  'confirm_send_team_message': { it: 'Sei sicuro di voler inviare la squadra? Saranno create le iscrizioni per i partecipanti.', en: 'Are you sure you want to send the team? Registrations will be created for the participants.' },
+  'confirm_withdraw_team_message': { it: 'Sei sicuro di voler ritirare la squadra? Verranno rimosse anche le iscrizioni dei partecipanti.', en: 'Are you sure you want to withdraw the team? The participants\' registrations will also be removed.' },
   'view_teams': { it: 'Squadre', en: 'Teams' },
   'filter_by_club': { it: 'Filtra per Club', en: 'Filter by Club' },
   'all_societies': { it: 'Tutte le Società', en: 'All Clubs' },

@@ -22,9 +22,7 @@ const TeamCard = React.memo(({
   onDeleteTeam,
   onSendTeam,
   onWithdrawTeam,
-  onRegisterTeam,
-  isSociety,
-  isOrganizer
+  isSociety
 }: { 
   team: any, 
   editingScore: any, 
@@ -35,9 +33,7 @@ const TeamCard = React.memo(({
   onDeleteTeam: (id: number) => void,
   onSendTeam?: (id: number) => void,
   onWithdrawTeam?: (id: number) => void,
-  onRegisterTeam?: (id: number) => void,
-  isSociety?: boolean,
-  isOrganizer?: boolean
+  isSociety?: boolean
 }) => {
   const { t } = useLanguage();
   return (
@@ -90,16 +86,6 @@ const TeamCard = React.memo(({
                 <i className="fas fa-file-download text-[10px]"></i>
               </button>
             </>
-          )}
-          {isOrganizer && onRegisterTeam && team.is_sent && (
-            <button 
-              onClick={() => onRegisterTeam(team.id)}
-              className="px-3 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-500 transition-all shadow-lg text-[9px] font-black uppercase tracking-widest"
-              title="Aggiungi in classifica"
-            >
-              <i className="fas fa-plus mr-2 text-[9px]"></i>
-              Classifica
-            </button>
           )}
           {isSociety && onWithdrawTeam && team.is_sent && (
               <button 
@@ -391,8 +377,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
     }
 
     triggerConfirm(
-      'Invia Squadra',
-      'Sei sicuro di voler inviare la squadra? Inviandola, la squadra sarà visibile nella lista, ma non aggiunta automaticamente alla classifica.',
+      t('send_team_btn'),
+      t('confirm_send_team_message'),
       async () => {
         try {
           const res = await fetch(`/api/events/${team.event_id}/teams/${teamId}/send`, {
@@ -413,8 +399,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
           triggerToast?.('Errore di rete', 'error');
         }
       },
-      'Invia',
-      'info'
+      t('confirm_btn'),
+      'primary'
     );
   };
 
@@ -426,8 +412,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
     }
 
     triggerConfirm(
-      'Ritira Squadra',
-      'Sei sicuro di voler ritirare la squadra? Questa azione rimuoverà anche le iscrizioni dei tiratori associati.',
+      t('withdraw_team_btn'),
+      t('confirm_withdraw_team_message'),
       async () => {
         try {
           const res = await fetch(`/api/events/${team.event_id}/teams/${teamId}/withdraw`, {
@@ -448,43 +434,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
           triggerToast?.('Errore di rete', 'error');
         }
       },
-      'Ritira',
+      t('confirm_btn'),
       'danger'
-    );
-  };
-
-  const handleRegisterTeam = async (teamId: number) => {
-    const team = teams.find(t => t.id === teamId);
-    if (!team || !team.event_id) {
-       triggerToast?.('Squadra non iscrivibile', 'error');
-       return;
-    }
-
-    triggerConfirm(
-      'Aggiungi in Classifica',
-      'Sei sicuro di voler aggiungere questa squadra alla classifica?',
-      async () => {
-        try {
-          const res = await fetch(`/api/events/${team.event_id}/teams/${teamId}/register`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          if (res.ok) {
-            triggerToast?.('Squadra aggiunta alla classifica con successo', 'success');
-            fetchTeams();
-          } else {
-            const data = await res.json();
-            triggerToast?.(data.error || 'Errore nell\'iscrizione', 'error');
-          }
-        } catch (err) {
-          console.error(err);
-          triggerToast?.('Errore di rete', 'error');
-        }
-      },
-      'Aggiungi',
-      'success'
     );
   };
 
@@ -740,9 +691,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                   onDeleteTeam={handleDeleteTeam} 
                   onSendTeam={handleSendTeam}
                   onWithdrawTeam={handleWithdrawTeam}
-                  onRegisterTeam={handleRegisterTeam}
                   isSociety={currentUser?.role === 'society'}
-                  isOrganizer={currentUser?.role === 'organizer'}
                 />
               ))}
               {teams.length === 0 && (

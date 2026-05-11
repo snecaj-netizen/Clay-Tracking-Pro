@@ -4065,11 +4065,13 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
   }
 });
 
-app.post('/api/events/:id/teams/:teamId/register', authenticateToken, async (req: any, res) => {
+app.post('/api/events/:id/teams/:teamId/send', authenticateToken, async (req: any, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { id: eventId, teamId } = req.params;
+    
+    await client.query('UPDATE teams SET is_sent = TRUE WHERE id = $1', [teamId]);
     
     const teamRes = await client.query('SELECT date FROM teams WHERE id = $1', [teamId]);
     const teamDate = teamRes.rows[0]?.date || '-';
@@ -4091,22 +4093,12 @@ app.post('/api/events/:id/teams/:teamId/register', authenticateToken, async (req
     }
     
     await client.query('COMMIT');
-    res.json({ message: 'Squadra aggiunta alla classifica con successo' });
+    res.json({ message: 'Squadra inviata con successo' });
   } catch (err: any) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
-  }
-});
-
-app.post('/api/events/:id/teams/:teamId/send', authenticateToken, async (req: any, res) => {
-  try {
-    const { teamId } = req.params;
-    await pool.query('UPDATE teams SET is_sent = TRUE WHERE id = $1', [teamId]);
-    res.json({ message: 'Squadra inviata con successo' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
   }
 });
 
@@ -4116,17 +4108,25 @@ app.post('/api/events/:id/teams/:teamId/withdraw', authenticateToken, async (req
     await client.query('BEGIN');
     const { id: eventId, teamId } = req.params;
     
-    // Get members
-    const members = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
-    const memberIds = members.rows.map(m => m.user_id);
-
-    if (memberIds.length > 0) {
-      await client.query('DELETE FROM event_registrations WHERE event_id = $1 AND user_id = ANY($2)', [eventId, memberIds]);
-    }
-
+    // 1. Update team status
     await client.query('UPDATE teams SET is_sent = FALSE WHERE id = $1', [teamId]);
+
+    // 2. Delete registrations
+    const membersRes = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
+    const memberIds = membersRes.rows.map(r => r.user_id);
+    
+    const teamRes = await client.query('SELECT date FROM teams WHERE id = $1', [teamId]);
+    const teamDate = teamRes.rows[0]?.date || '-';
+
+    for (const userId of memberIds) {
+      await client.query(`
+        DELETE FROM event_registrations 
+        WHERE event_id = $1 AND user_id = $2 AND registration_day = $3 AND registration_type = 'Iscrizione da Squadra'
+      `, [eventId, userId, teamDate]);
+    }
+    
     await client.query('COMMIT');
-    res.json({ message: 'Squadra ritirata con successo e iscrizioni cancellate' });
+    res.json({ message: 'Squadra ritirata con successo' });
   } catch (err: any) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
