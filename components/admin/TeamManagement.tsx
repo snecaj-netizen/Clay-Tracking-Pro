@@ -232,7 +232,23 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
     setSelectedShooterIds(team.members.map((m: any) => m.id));
     setShowTeamForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [setEditingTeam, setNewTeamName, setNewTeamSize, setNewTeamEventId, setNewTeamCompetitionName, setNewTeamDiscipline, setNewTeamSociety, setNewTeamLocation, setNewTeamDate, setNewTeamTargets, setSelectedShooterIds, setShowTeamForm]);
+  }, [setEditingTeam, setNewTeamName, setNewTeamSize, setNewTeamEventId, setNewTeamCompetitionName, setNewTeamDiscipline, setNewTeamSociety, setNewTeamLocation, setNewTeamDate, setNewTeamTargets, setSelectedShooterIds, setShowTeamForm, setNewTeamType]);
+
+  const handleOpenNewTeamForm = useCallback(() => {
+    setEditingTeam(null);
+    setNewTeamName('');
+    setNewTeamSize(3);
+    setNewTeamEventId(null);
+    setNewTeamCompetitionName('');
+    setNewTeamDiscipline('');
+    setNewTeamSociety(currentUser?.role === 'society' ? currentUser?.society || '' : '');
+    setNewTeamLocation('');
+    setNewTeamDate(new Date().toISOString().split('T')[0]);
+    setNewTeamTargets(100);
+    setNewTeamType('A');
+    setSelectedShooterIds([]);
+    setShowTeamForm(true);
+  }, [setEditingTeam, setNewTeamName, setNewTeamSize, setNewTeamEventId, setNewTeamCompetitionName, setNewTeamDiscipline, setNewTeamSociety, setNewTeamLocation, setNewTeamDate, setNewTeamTargets, setSelectedShooterIds, setShowTeamForm, currentUser, setNewTeamType]);
 
   const [teamSubTab, setTeamSubTab] = useState<'list' | 'stats'>('list');
   const [shooterSearch, setShooterSearch] = useState('');
@@ -264,14 +280,25 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
   }, [events, pickerDiscipline]);
 
   const filteredShooters = useMemo(() => {
-    if (!shooterSearch) return shooters;
+    let list = shooters;
+    
+    // Filter by selected society if present (crucial for Admin choosing a specific club)
+    if (newTeamSociety) {
+      list = list.filter(s => {
+        const sSoc = (s.society || '').toString().trim().toLowerCase();
+        const tSoc = newTeamSociety.toString().trim().toLowerCase();
+        return sSoc === tSoc;
+      });
+    }
+    
+    if (!shooterSearch) return list;
     const term = shooterSearch.toLowerCase();
-    return shooters.filter(s => 
+    return list.filter(s => 
       s.name.toLowerCase().includes(term) || 
       s.surname.toLowerCase().includes(term) ||
       (s.shooter_code && s.shooter_code.toLowerCase().includes(term))
     );
-  }, [shooters, shooterSearch]);
+  }, [shooters, shooterSearch, newTeamSociety]);
 
   const handleSetSelectedTeamForSheet = (team: any, action?: 'print' | 'download') => {
     setSelectedTeamSheetAction(action || null);
@@ -691,14 +718,14 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                   onDeleteTeam={handleDeleteTeam} 
                   onSendTeam={handleSendTeam}
                   onWithdrawTeam={handleWithdrawTeam}
-                  isSociety={currentUser?.role === 'society'}
+                  isSociety={currentUser?.role === 'society' || currentUser?.role === 'admin'}
                 />
               ))}
               {teams.length === 0 && (
                 <div className="col-span-full py-20 text-center bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
                   <i className="fas fa-users text-4xl text-slate-800 mb-4"></i>
                   <p className="text-slate-500 font-bold">{t('no_teams_created')}</p>
-                  <button onClick={() => setShowTeamForm(true)} className="mt-4 text-orange-500 font-black uppercase text-xs hover:underline">{t('create_first_team')}</button>
+                  <button onClick={handleOpenNewTeamForm} className="mt-4 text-orange-500 font-black uppercase text-xs hover:underline">{t('create_first_team')}</button>
                 </div>
               )}
             </div>
