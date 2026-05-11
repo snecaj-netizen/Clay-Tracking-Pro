@@ -416,7 +416,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           }
         } catch (err: any) {
           if (err.message === 'squad_locked_contact_society') {
-            triggerAlert?.(t('attention'), t('squad_locked_contact_society'), () => {}, t('ok_btn'));
+            triggerAlert?.(t('attention'), t('squad_locked_contact_society').replace('{{society}}', event.location || ''), () => {}, t('ok_btn'));
           } else {
             triggerToast?.(t(err.message), 'error');
           }
@@ -753,94 +753,94 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       </div>
                     </div>
 
-                    <div className="mt-auto space-y-2">
-                      {!ev.is_management_enabled && user?.role !== 'admin' && (
-                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-1.5 mb-1">
-                          <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                            <i className="fas fa-exclamation-triangle"></i>
-                            {t('management_pending_activation')}
-                          </p>
+                      <div className="mt-auto space-y-2">
+                        {!ev.is_management_enabled && user?.role !== 'admin' && (
+                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-1.5 mb-1">
+                            <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                              <i className="fas fa-exclamation-triangle"></i>
+                              {t('management_pending_activation')}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            onClick={() => {
+                              if (!ev.is_management_enabled && user?.role !== 'admin') {
+                                triggerToast?.(t('competition_not_activated_desc'), 'info');
+                                return;
+                              }
+                              setInitialManagementTab('registrations');
+                              setManagingEventDetail(ev);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={!ev.is_management_enabled && user?.role !== 'admin'}
+                            className={`py-2 rounded-xl text-white text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-1.5 ${
+                              !ev.is_management_enabled && user?.role !== 'admin'
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
+                                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+                            }`}
+                          >
+                            <i className="fas fa-users-cog text-xs"></i>
+                            {t('manage_competition')}
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (!ev.is_management_enabled && user?.role !== 'admin') {
+                                triggerToast?.(t('competition_not_activated_desc'), 'info');
+                                return;
+                              }
+                              setInitialManagementTab('results');
+                              setManagingEventDetail(ev);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={!ev.is_management_enabled && user?.role !== 'admin'}
+                            className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                              !ev.is_management_enabled && user?.role !== 'admin'
+                                ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                                : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
+                            }`}
+                          >
+                            <i className="fas fa-trophy"></i>
+                            {t('rankings')}
+                          </button>
                         </div>
-                      )}
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => {
-                            if (!ev.is_management_enabled && user?.role !== 'admin') {
-                              triggerToast?.(t('competition_not_activated_desc'), 'info');
-                              return;
-                            }
-                            setInitialManagementTab('registrations');
-                            setManagingEventDetail(ev);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                          className={`py-2 rounded-xl text-white text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-1.5 ${
-                            !ev.is_management_enabled && user?.role !== 'admin'
-                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
-                              : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
-                          }`}
-                        >
-                          <i className="fas fa-users-cog text-xs"></i>
-                          {t('manage_competition')}
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (!ev.is_management_enabled && user?.role !== 'admin') {
-                              triggerToast?.(t('competition_not_activated_desc'), 'info');
-                              return;
-                            }
-                            setInitialManagementTab('results');
-                            setManagingEventDetail(ev);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                          className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
-                            !ev.is_management_enabled && user?.role !== 'admin'
-                              ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                              : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
-                          }`}
-                        >
-                          <i className="fas fa-trophy"></i>
-                          {t('rankings')}
-                        </button>
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => handleToggleOdt(ev)}
-                          className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
-                            ev.is_odt_public 
-                              ? 'bg-indigo-900/30 text-indigo-500 border-indigo-900/50 hover:bg-indigo-900/50' 
-                              : 'bg-indigo-900/10 text-indigo-400 border-indigo-900/30 hover:bg-indigo-900/20'
-                          }`}
-                        >
-                          <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'}`}></i>
-                          {ev.is_odt_public ? t('remove_odt') : t('publish_odt')}
-                        </button>
-                        <button 
-                          onClick={() => handleTogglePublic(ev)}
-                          className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
-                            ev.is_public 
-                              ? 'bg-rose-900/30 text-rose-500 border-rose-900/50 hover:bg-rose-900/50' 
-                              : 'bg-emerald-900/30 text-emerald-500 border-emerald-900/50 hover:bg-emerald-900/50'
-                          }`}
-                        >
-                          <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'}`}></i>
-                          {ev.is_public ? t('remove_from_portal') : t('publish_to_portal')}
-                        </button>
-                      </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            onClick={() => handleToggleOdt(ev)}
+                            className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                              ev.is_odt_public 
+                                ? 'bg-indigo-900/30 text-indigo-500 border-indigo-900/50 hover:bg-indigo-900/50' 
+                                : 'bg-indigo-900/10 text-indigo-400 border-indigo-900/30 hover:bg-indigo-900/20'
+                            }`}
+                          >
+                            <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'}`}></i>
+                            {ev.is_odt_public ? t('remove_odt') : t('publish_odt')}
+                          </button>
+                          <button 
+                            onClick={() => handleTogglePublic(ev)}
+                            className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                              ev.is_public 
+                                ? 'bg-rose-900/30 text-rose-500 border-rose-900/50 hover:bg-rose-900/50' 
+                                : 'bg-emerald-900/30 text-emerald-500 border-emerald-900/50 hover:bg-emerald-900/50'
+                            }`}
+                          >
+                            <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'}`}></i>
+                            {ev.is_public ? t('remove_from_portal') : t('publish_to_portal')}
+                          </button>
+                        </div>
 
-                      {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user?.society)) && (
-                        <button 
-                          onClick={() => handleEdit(ev)}
-                          className="w-full mt-2 py-2 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
-                        >
-                          <i className="fas fa-edit"></i>
-                          {t('edit_competition')}
-                        </button>
-                      )}
-                    </div>
+                        {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user?.society)) && (
+                          <button 
+                            onClick={() => handleEdit(ev)}
+                            className="w-full mt-2 py-2 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
+                          >
+                            <i className="fas fa-edit"></i>
+                            {t('edit_competition')}
+                          </button>
+                        )}
+                      </div>
                   </div>
                 </div>
               );

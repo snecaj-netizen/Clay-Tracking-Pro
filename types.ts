@@ -60,6 +60,7 @@ export interface Competition {
   totalScore: number;
   averagePerSeries: number;
   position?: number;
+  society?: string;
   cost: number;
   win: number;
   notes?: string;

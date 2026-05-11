@@ -19,7 +19,12 @@ const TeamCard = React.memo(({
   onUpdateScore, 
   onSetSelectedTeamForSheet, 
   onEditTeam, 
-  onDeleteTeam 
+  onDeleteTeam,
+  onSendTeam,
+  onWithdrawTeam,
+  onRegisterTeam,
+  isSociety,
+  isOrganizer
 }: { 
   team: any, 
   editingScore: any, 
@@ -27,14 +32,22 @@ const TeamCard = React.memo(({
   onUpdateScore: (teamId: number, userId: number, score: number) => void, 
   onSetSelectedTeamForSheet: (team: any, action?: 'print' | 'download') => void, 
   onEditTeam: (team: any) => void, 
-  onDeleteTeam: (id: number) => void 
+  onDeleteTeam: (id: number) => void,
+  onSendTeam?: (id: number) => void,
+  onWithdrawTeam?: (id: number) => void,
+  onRegisterTeam?: (id: number) => void,
+  isSociety?: boolean,
+  isOrganizer?: boolean
 }) => {
   const { t } = useLanguage();
   return (
     <div className="bg-slate-950/50 border border-slate-800 rounded-3xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col">
       <div className="p-4 border-b border-slate-800/50 bg-slate-900/30 flex items-center justify-between">
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors truncate">{team.name}</h3>
+          <h3 className="text-base font-black text-white uppercase tracking-tight group-hover:text-orange-500 transition-colors truncate">
+            {team.name}
+            {team.type && <span className="ml-2 text-xs text-orange-500 bg-orange-600/10 px-2 py-0.5 rounded-full">{team.type === 'A' || team.type.includes('(A)') || team.type.includes('_A') ? 'A' : team.type === 'B' || team.type.includes('(B)') || team.type.includes('_B') ? 'B' : team.type}</span>}
+          </h3>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
               <i className="fas fa-calendar-alt text-orange-500/50"></i> {team.date}
@@ -52,23 +65,61 @@ const TeamCard = React.memo(({
                 <i className="fas fa-map-marker-alt text-orange-500/50"></i> {team.location}
               </span>
             )}
+            {team.is_sent && (
+              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1">
+                <i className="fas fa-check-circle"></i> {t('team_confirmed_sent')}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-1.5 ml-2">
-          <button 
-            onClick={() => onSetSelectedTeamForSheet(team, 'print')}
-            className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg"
-            title={t('print_score_sheet')}
-          >
-            <i className="fas fa-print text-[10px]"></i>
-          </button>
-          <button 
-            onClick={() => onSetSelectedTeamForSheet(team, 'download')}
-            className="w-8 h-8 rounded-lg bg-green-600/10 text-green-500 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-lg"
-            title={t('download_score_sheet')}
-          >
-            <i className="fas fa-file-download text-[10px]"></i>
-          </button>
+          {!isSociety && (
+            <>
+              <button 
+                onClick={() => onSetSelectedTeamForSheet(team, 'print')}
+                className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg"
+                title={t('print_score_sheet')}
+              >
+                <i className="fas fa-print text-[10px]"></i>
+              </button>
+              <button 
+                onClick={() => onSetSelectedTeamForSheet(team, 'download')}
+                className="w-8 h-8 rounded-lg bg-green-600/10 text-green-500 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-lg"
+                title={t('download_score_sheet')}
+              >
+                <i className="fas fa-file-download text-[10px]"></i>
+              </button>
+            </>
+          )}
+          {isOrganizer && onRegisterTeam && team.is_sent && (
+            <button 
+              onClick={() => onRegisterTeam(team.id)}
+              className="px-3 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-500 transition-all shadow-lg text-[9px] font-black uppercase tracking-widest"
+              title="Aggiungi in classifica"
+            >
+              <i className="fas fa-plus mr-2 text-[9px]"></i>
+              Classifica
+            </button>
+          )}
+          {isSociety && onWithdrawTeam && team.is_sent && (
+              <button 
+                onClick={() => onWithdrawTeam(team.id)}
+                className="px-3 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-500 transition-all shadow-lg text-[9px] font-black uppercase tracking-widest"
+                title={t('withdraw_team_btn')}
+              >
+                {t('withdraw_team_btn')}
+              </button>
+          )}
+          {isSociety && onSendTeam && !team.is_sent && team.event_id && (
+            <button 
+              onClick={() => onSendTeam(team.id)}
+              className="px-3 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg text-[9px] font-black uppercase tracking-widest"
+              title={t('send_team_btn')}
+            >
+              <i className="fas fa-paper-plane mr-2 text-[9px]"></i>
+              {t('send_team_btn')}
+            </button>
+          )}
           <button 
             onClick={() => onEditTeam(team)}
             className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-lg"
@@ -159,6 +210,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
     showTeamForm, setShowTeamForm, newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId,
     newTeamCompetitionName, setNewTeamCompetitionName, newTeamDiscipline, setNewTeamDiscipline, newTeamSociety, setNewTeamSociety,
     newTeamLocation, setNewTeamLocation, newTeamDate, setNewTeamDate, newTeamTargets, setNewTeamTargets,
+    newTeamType, setNewTeamType,
     selectedShooterIds, setSelectedShooterIds, editingTeam, setEditingTeam, editingScore, setEditingScore,
     allUsers: shooters, setSelectedTeamForSheet, setSelectedTeamSheetAction, filterDiscipline: statsFilterDiscipline, setFilterDiscipline: setStatsFilterDiscipline, fetchTeams, fetchTeamStats
   } = useAdmin();
@@ -190,6 +242,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
     setNewTeamLocation(team.location);
     setNewTeamDate(team.date);
     setNewTeamTargets(team.targets);
+    setNewTeamType(team.type || '');
     setSelectedShooterIds(team.members.map((m: any) => m.id));
     setShowTeamForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -197,6 +250,32 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
 
   const [teamSubTab, setTeamSubTab] = useState<'list' | 'stats'>('list');
   const [shooterSearch, setShooterSearch] = useState('');
+  const [pickerDiscipline, setPickerDiscipline] = useState('');
+
+  const pickerDisciplines = useMemo(() => {
+    return Array.from(new Set(events.map((e: any) => e.discipline))).sort();
+  }, [events]);
+
+  const filteredEvents = useMemo(() => {
+    let sorted = [...events].sort((a, b) => {
+      const dateA = new Date(a.start_date || a.date);
+      const dateB = new Date(b.start_date || b.date);
+      const now = new Date();
+      
+      const isPastA = dateA < now;
+      const isPastB = dateB < now;
+      
+      if (isPastA && !isPastB) return 1;
+      if (!isPastA && isPastB) return -1;
+      
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    if (pickerDiscipline) {
+      sorted = sorted.filter(e => e.discipline === pickerDiscipline);
+    }
+    return sorted;
+  }, [events, pickerDiscipline]);
 
   const filteredShooters = useMemo(() => {
     if (!shooterSearch) return shooters;
@@ -232,7 +311,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
         },
         body: JSON.stringify({
           name: newTeamName,
-          size: newTeamSize,
+          size: newTeamSize || 6,
           event_id: newTeamEventId,
           competition_name: newTeamCompetitionName,
           discipline: newTeamDiscipline,
@@ -240,6 +319,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
           location: newTeamLocation,
           date: newTeamDate,
           targets: newTeamTargets,
+          type: newTeamType || 'A',
           memberIds: selectedShooterIds
         }),
       });
@@ -302,6 +382,113 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
       triggerToast?.(err.message, 'error');
     }
   };
+
+  const handleSendTeam = async (teamId: number) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team || !team.event_id) {
+       triggerToast?.('Squadra non inviabile (manca associazione a gara)', 'error');
+       return;
+    }
+
+    triggerConfirm(
+      'Invia Squadra',
+      'Sei sicuro di voler inviare la squadra? Inviandola, la squadra sarà visibile nella lista, ma non aggiunta automaticamente alla classifica.',
+      async () => {
+        try {
+          const res = await fetch(`/api/events/${team.event_id}/teams/${teamId}/send`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            triggerToast?.(t('team_sent_success'), 'success');
+            fetchTeams();
+          } else {
+            const data = await res.json();
+            triggerToast?.(data.error || 'Errore nell\'invio', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          triggerToast?.('Errore di rete', 'error');
+        }
+      },
+      'Invia',
+      'info'
+    );
+  };
+
+  const handleWithdrawTeam = async (teamId: number) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team || !team.event_id) {
+       triggerToast?.('Squadra non ritirabile', 'error');
+       return;
+    }
+
+    triggerConfirm(
+      'Ritira Squadra',
+      'Sei sicuro di voler ritirare la squadra? Questa azione rimuoverà anche le iscrizioni dei tiratori associati.',
+      async () => {
+        try {
+          const res = await fetch(`/api/events/${team.event_id}/teams/${teamId}/withdraw`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            triggerToast?.(t('team_withdrawn_success'), 'success');
+            fetchTeams();
+          } else {
+            const data = await res.json();
+            triggerToast?.(data.error || 'Errore nel ritiro', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          triggerToast?.('Errore di rete', 'error');
+        }
+      },
+      'Ritira',
+      'danger'
+    );
+  };
+
+  const handleRegisterTeam = async (teamId: number) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team || !team.event_id) {
+       triggerToast?.('Squadra non iscrivibile', 'error');
+       return;
+    }
+
+    triggerConfirm(
+      'Aggiungi in Classifica',
+      'Sei sicuro di voler aggiungere questa squadra alla classifica?',
+      async () => {
+        try {
+          const res = await fetch(`/api/events/${team.event_id}/teams/${teamId}/register`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            triggerToast?.('Squadra aggiunta alla classifica con successo', 'success');
+            fetchTeams();
+          } else {
+            const data = await res.json();
+            triggerToast?.(data.error || 'Errore nell\'iscrizione', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          triggerToast?.('Errore di rete', 'error');
+        }
+      },
+      'Aggiungi',
+      'success'
+    );
+  };
+
+  const [showEventPicker, setShowEventPicker] = useState(false);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -421,37 +608,35 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('team_name_label')}</label>
                     <input type="text" required value={newTeamName} onChange={e => setNewTeamName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" placeholder={t('team_name_placeholder')} />
                   </div>
-                  <div>
+                  <div className="lg:col-span-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('team_size_label')}</label>
-                    <select value={newTeamSize} onChange={e => setNewTeamSize(Number(e.target.value) as 3 | 6)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                      <option value={3}>{t('shooters_count_option').replace('{{count}}', '3')}</option>
-                      <option value={6}>{t('shooters_count_option').replace('{{count}}', '6')}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('specific_competition_optional')}</label>
                     <select 
-                      value={newTeamEventId || ''} 
+                      value={(newTeamType || 'A') + '_' + (newTeamSize || 6)} 
                       onChange={e => {
-                        const id = e.target.value;
-                        setNewTeamEventId(id || null);
-                        if (id) {
-                          const ev = events.find(ev => String(ev.id) === id);
-                          if (ev) {
-                            setNewTeamCompetitionName(ev.name);
-                            setNewTeamDiscipline(ev.discipline);
-                            setNewTeamLocation(ev.location);
-                            setNewTeamDate(ev.start_date ? ev.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
-                          }
-                        }
+                        const [type, size] = e.target.value.split('_');
+                        setNewTeamType(type);
+                        setNewTeamSize(Number(size) as any);
                       }} 
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
                     >
-                      <option value="">{t('no_specific_competition')}</option>
-                      {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name} ({ev.discipline})</option>)}
+                      <option value={"A_6"}>{t('team_cat_a_name')}</option>
+                      <option value={"B_3"}>{t('team_qual_b_name')}</option>
                     </select>
                   </div>
-                  {!newTeamEventId && (
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('specific_competition')}</label>
+                    <button 
+                      type="button"
+                      onClick={() => setShowEventPicker(true)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm text-left hover:border-orange-600 transition-all flex justify-between items-center"
+                    >
+                      <span className="truncate">
+                        {newTeamEventId ? events.find(ev => String(ev.id) === String(newTeamEventId))?.name || newTeamCompetitionName : 'Seleziona Gara'}
+                      </span>
+                      <i className="fas fa-chevron-right text-[10px] text-slate-500"></i>
+                    </button>
+                  </div>
+                  {newTeamEventId && (
                     <>
                       <div>
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('competition_name_label')}</label>
@@ -485,16 +670,27 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('select_shooters_label').replace('{{current}}', String(selectedShooterIds.length)).replace('{{total}}', String(newTeamSize))}</label>
-                    <div className="relative">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      {t('select_shooters_label').replace('{{current}}', String(selectedShooterIds.length)).replace('{{total}}', String(newTeamSize))}
+                    </label>
+                    <div className="relative flex items-center">
                       <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-[10px]"></i>
                       <input 
                         type="text" 
                         placeholder={t('search_shooter_placeholder')} 
                         value={shooterSearch}
                         onChange={e => setShooterSearch(e.target.value)}
-                        className="bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-[10px] text-white focus:border-orange-600 outline-none transition-all w-40"
+                        className="bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-8 py-1 text-[10px] text-white focus:border-orange-600 outline-none transition-all w-48"
                       />
+                      {shooterSearch && (
+                        <button 
+                          type="button" 
+                          onClick={() => setShooterSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                        >
+                          <i className="fas fa-times text-[10px]"></i>
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-900 rounded-2xl border border-slate-800 custom-scrollbar">
@@ -542,6 +738,11 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                   onSetSelectedTeamForSheet={handleSetSelectedTeamForSheet} 
                   onEditTeam={handleEditTeam} 
                   onDeleteTeam={handleDeleteTeam} 
+                  onSendTeam={handleSendTeam}
+                  onWithdrawTeam={handleWithdrawTeam}
+                  onRegisterTeam={handleRegisterTeam}
+                  isSociety={currentUser?.role === 'society'}
+                  isOrganizer={currentUser?.role === 'organizer'}
                 />
               ))}
               {teams.length === 0 && (
@@ -553,6 +754,61 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
               )}
             </div>
           )}
+        </div>
+      )}
+      {/* Event Picker Modal */}
+      {showEventPicker && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-lg font-black text-white uppercase tracking-tight">Seleziona Gara</h3>
+              <button 
+                onClick={() => setShowEventPicker(false)}
+                className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-all flex items-center justify-center"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="p-4 border-b border-slate-800">
+              <select 
+                value={pickerDiscipline}
+                onChange={(e) => setPickerDiscipline(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-[11px] font-black text-white uppercase outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">{t('all_disciplines')}</option>
+                {pickerDisciplines.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
+              {filteredEvents.map((ev: any) => (
+                <button
+                  key={ev.id}
+                  type="button"
+                  onClick={() => {
+                    setNewTeamEventId(ev.id);
+                    setNewTeamCompetitionName(ev.name);
+                    setNewTeamDiscipline(ev.discipline);
+                    setNewTeamLocation(ev.location);
+                    setNewTeamDate(ev.start_date ? ev.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
+                    setShowEventPicker(false);
+                  }}
+                  className={`w-full p-4 rounded-2xl border text-left transition-all ${String(newTeamEventId) === String(ev.id) ? 'bg-orange-600/20 border-orange-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                >
+                  <div className="font-black text-sm uppercase tracking-tight mb-1">{ev.name}</div>
+                  <div className="flex items-center flex-wrap gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span>{ev.discipline}</span>
+                    <span>|</span>
+                    <span>{ev.location}</span>
+                    <span>|</span>
+                    <span>
+                      {new Date(ev.start_date).toLocaleDateString('it-IT')}
+                      {ev.end_date && ev.end_date !== ev.start_date && ` - ${new Date(ev.end_date).toLocaleDateString('it-IT')}`}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

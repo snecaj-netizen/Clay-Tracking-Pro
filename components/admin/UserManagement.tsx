@@ -945,7 +945,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
               {t('cancel')}
             </button>
             <button type="submit" form="admin-user-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-              {editingUser ? t('save') : t('create')}
+              {editingUser ? t('save') : t('create_label')}
             </button>
           </div>
         </div>

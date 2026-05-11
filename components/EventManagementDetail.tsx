@@ -45,10 +45,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'registrations' | 'squads' | 'results'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'registrations' | 'squads' | 'teams' | 'results'>(initialTab as any || 'registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [squads, setSquads] = useState<EventSquad[]>([]);
   const [results, setResults] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -125,7 +126,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const [regRes, squadRes, resultsRes] = await Promise.all([
+      const [regRes, squadRes, resultsRes, teamsRes] = await Promise.all([
         fetch(`/api/events/${event.id}/registrations`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
         }),
@@ -134,19 +135,24 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         }),
         fetch(`/api/events/${event.id}/results`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        }),
+        fetch(`/api/events/${event.id}/teams`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
         })
       ]);
 
-      if (!regRes.ok || !squadRes.ok || !resultsRes.ok) throw new Error('Errore nel caricamento dei dati');
+      if (!regRes.ok || !squadRes.ok || !resultsRes.ok || !teamsRes.ok) throw new Error('Errore nel caricamento dei dati');
 
-      const [regData, squadData, resultsData] = await Promise.all([
+      const [regData, squadData, resultsData, teamsData] = await Promise.all([
         regRes.json(), 
         squadRes.json(),
-        resultsRes.json()
+        resultsRes.json(),
+        teamsRes.json()
       ]);
       setRegistrations(regData);
       setSquads(squadData);
       setResults(resultsData);
+      setTeams(teamsData.filter((t: any) => t.is_sent));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -882,6 +888,16 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
               }`}
             >
               Batterie ({displayedSquads.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab('teams'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
+                activeTab === 'teams' 
+                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+              }`}
+            >
+              {t('teams_label')}
             </button>
             <button
               onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -1829,6 +1845,95 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       ? "Non ci sono batterie divise per giorno. Seleziona un giorno per iniziarle."
                       : "Utilizza il pannello sopra per generare le batterie o aggiungerne una manualmente."}
                   </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'teams' && (
+          <div className="space-y-8">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 md:p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tight">{t('teams_managed_title')}</h2>
+                  <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Riepilogo squadre inviate dalle società</p>
+                </div>
+              </div>
+
+              {teams.length === 0 ? (
+                <div className="text-center py-20 bg-slate-950/50 rounded-2xl border border-slate-800/50 border-dashed">
+                  <Users className="w-12 h-12 text-slate-700 mx-auto mb-4 opacity-50" />
+                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Nessuna squadra inviata per questa gara</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-8">
+                  {Array.from(new Set(teams.map(t => t.society))).sort().map(socName => {
+                    const socTeams = teams.filter(t => t.society === socName);
+                    return (
+                      <div key={socName} className="space-y-4">
+                        <div className="flex items-center gap-3 px-2">
+                          <div className="h-px flex-1 bg-slate-800"></div>
+                          <h3 className="text-xs font-black text-orange-500 uppercase tracking-[0.25em] bg-slate-900 px-4 py-1.5 rounded-full border border-slate-800 shadow-sm">{socName}</h3>
+                          <div className="h-px flex-1 bg-slate-800"></div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {socTeams.map(team => {
+                            const typeDef = (event.discipline === 'Club Cup (PC)' ? [
+                              { id: 'PC_A', name: 'SQUADRA A', size: 3 },
+                              { id: 'PC_B', name: 'SQUADRA B', size: 3 }
+                            ] : [
+                              { id: 'SP_A', name: 'SQUADRA A', size: 6 },
+                              { id: 'SP_B', name: 'SQUADRA B', size: 3 }
+                            ]).find(td => td.id === team.type);
+
+                            return (
+                              <div key={team.id} className="bg-slate-950/50 border border-slate-800 rounded-2xl overflow-hidden group hover:border-orange-500/30 transition-all flex flex-col shadow-xl">
+                                <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
+                                      {team.name}
+                                      {team.type && <span className="text-[9px] text-orange-500 bg-orange-600/10 px-1.5 py-0.5 rounded-full">{team.type === 'A' || team.type.includes('(A)') || team.type.includes('_A') ? 'A' : team.type === 'B' || team.type.includes('(B)') || team.type.includes('_B') ? 'B' : team.type}</span>}
+                                    </h4>
+                                  </div>
+                                  {team.is_sent && (
+                                    <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 uppercase tracking-widest flex items-center gap-1">
+                                      <i className="fas fa-check"></i> Inviata
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="p-4 space-y-2 flex-1">
+                                  {(team.member_ids || []).map((mId: string, mIdx: number) => {
+                                    const u = registrations.find(r => String(r.user_id) === String(mId)) || registrations.find(r => String(r.id) === String(mId));
+                                    const teamMember = (team.members || []).find((m: any) => String(m.id) === String(mId));
+                                    
+                                    const displayName = u ? `${u.last_name} ${u.first_name}` : (teamMember ? `${teamMember.last_name || ''} ${teamMember.first_name || ''}`.trim() : 'Tiratore non trovato');
+                                    const displayCat = u?.category || teamMember?.category;
+                                    const displayQual = u?.qualification || teamMember?.qualification;
+
+                                    return (
+                                      <div key={mId} className="flex items-center gap-3 py-1.5 border-b border-slate-800/30 last:border-0">
+                                        <span className="text-[9px] font-black text-slate-600">{mIdx + 1}.</span>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-[11px] font-black text-slate-200 uppercase truncate">
+                                            {displayName}
+                                          </p>
+                                          <div className="flex gap-2">
+                                            {displayCat && <span className="text-[8px] font-bold text-slate-500 uppercase">{displayCat}</span>}
+                                            {displayQual && <span className="text-[8px] font-bold text-slate-500 uppercase">{displayQual}</span>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

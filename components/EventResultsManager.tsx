@@ -160,7 +160,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
       if (resTeams.ok) {
         const data = await resTeams.json();
-        setTeams(data);
+        setTeams(data.filter((t: any) => t.is_sent));
       }
     } catch (err) {
       if (err instanceof Error && err.message !== 'Failed to fetch') {
@@ -1571,7 +1571,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 teams={teams} 
                 token={token} 
                 onTeamsUpdate={fetchData}
-                readOnly={readOnly || event.status === 'validated'}
+                readOnly={readOnly}
                 currentUser={user}
                 allSocieties={societies}
               />

@@ -643,6 +643,11 @@ const initDB = async () => {
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location TEXT");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS targets INTEGER DEFAULT 100");
       await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS event_id TEXT");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_sent BOOLEAN DEFAULT FALSE");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS team_type TEXT");
+      await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS type TEXT");
+      await pool.query("UPDATE teams SET type = 'A' WHERE type IS NULL AND size = 6");
+      await pool.query("UPDATE teams SET type = 'B' WHERE type IS NULL AND size = 3");
       try {
         await pool.query("ALTER TABLE teams ALTER COLUMN event_id TYPE TEXT");
       } catch (e) {
@@ -3454,14 +3459,14 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
 });
 
 app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
-  const { name, size, memberIds, competition_name, event_id, discipline, society: bodySociety, date, targets } = req.body;
+  const { name, size, memberIds, competition_name, event_id, discipline, society: bodySociety, date, targets, type } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const society = req.user.role === 'society' ? req.user.society : bodySociety;
     const { rows } = await client.query(
-      "INSERT INTO teams (name, size, society, competition_name, event_id, discipline, date, location, targets, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
-      [name, size, society, competition_name, event_id, discipline, date, req.body.location, targets || 100, req.user.id]
+      "INSERT INTO teams (name, size, society, competition_name, event_id, discipline, date, location, targets, created_by, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+      [name, size, society, competition_name, event_id, discipline, date, req.body.location, targets || 100, req.user.id, type]
     );
     const teamId = rows[0].id;
 
@@ -3496,7 +3501,7 @@ app.post('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any
 
 app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { id } = req.params;
-  const { name, size, memberIds, competition_name, event_id, discipline, society: bodySociety, date, targets } = req.body;
+  const { name, size, memberIds, competition_name, event_id, discipline, society: bodySociety, date, targets, type } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -3523,8 +3528,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
     console.log(`Syncing team ${teamId}: oldMembers=${oldMemberIds}, newMembers=${numericMemberIds}`);
 
     await client.query(
-      "UPDATE teams SET name = $1, size = $2, competition_name = $3, event_id = $4, discipline = $5, society = $6, date = $7, location = $8, targets = $9 WHERE id = $10",
-      [name, size, competition_name, event_id, discipline, society, date, req.body.location, targets || 100, teamId]
+      "UPDATE teams SET name = $1, size = $2, competition_name = $3, event_id = $4, discipline = $5, society = $6, date = $7, location = $8, targets = $9, type = $11 WHERE id = $10",
+      [name, size, competition_name, event_id, discipline, society, date, req.body.location, targets || 100, teamId, type]
     );
 
     // Update members
@@ -3858,9 +3863,19 @@ app.get('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
     // Fetch teams from `teams` table where competition_name matches eventName
     const teams = await pool.query(`
       SELECT t.*, 
+             COALESCE(json_agg(
+               json_build_object(
+                 'id', tm.user_id,
+                 'first_name', u.name,
+                 'last_name', u.surname,
+                 'category', u.category,
+                 'qualification', u.qualification
+               )
+             ) FILTER (WHERE tm.user_id IS NOT NULL), '[]') as members,
              COALESCE(json_agg(tm.user_id) FILTER (WHERE tm.user_id IS NOT NULL), '[]') as member_ids
       FROM teams t
       LEFT JOIN team_members tm ON t.id = tm.team_id
+      LEFT JOIN users u ON tm.user_id = u.id
       WHERE t.competition_name = $1
       GROUP BY t.id
       ORDER BY t.created_at ASC
@@ -3876,7 +3891,7 @@ app.post('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
   const client = await pool.connect();
   try {
     const eventId = req.params.id;
-    const { name, society, type, memberIds } = req.body; // memberIds are user IDs
+    const { name, society, type, team_type, memberIds } = req.body; // memberIds are user IDs
     
     // Check if event exists and user has permission
     const eventCheck = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
@@ -3906,13 +3921,15 @@ app.post('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
     // Determine size from type (e.g., "3_shooters" -> 3)
     let size = 3;
     if (type && type.includes('6')) size = 6;
+    else if (type === 'A') size = 6;
+    else if (type === 'B') size = 3;
 
     // Create team in `teams` table
     const newTeam = await client.query(`
-      INSERT INTO teams (name, size, society, competition_name, discipline, date, location, targets, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO teams (name, size, society, competition_name, discipline, date, location, targets, team_type, type, event_id, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [name, size, society, event.name, event.discipline, event.start_date, event.location, event.targets, req.user.id]);
+    `, [name, size, society, event.name, event.discipline, event.start_date, event.location, event.targets, team_type, type, eventId, req.user.id]);
 
     const teamId = newTeam.rows[0].id;
 
@@ -3959,7 +3976,7 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
   const client = await pool.connect();
   try {
     const { id: eventId, teamId } = req.params;
-    const { name, society, type, memberIds } = req.body;
+    const { name, society, type, team_type, memberIds } = req.body;
     
     const eventCheck = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
     if (eventCheck.rows.length === 0) {
@@ -3982,12 +3999,14 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
 
     let size = 3;
     if (type && type.includes('6')) size = 6;
+    else if (type === 'A') size = 6;
+    else if (type === 'B') size = 3;
 
     const updatedTeam = await client.query(`
-      UPDATE teams SET name = $1, society = $2, size = $3
-      WHERE id = $4 AND competition_name = $5
+      UPDATE teams SET name = $1, society = $2, size = $3, team_type = $4, type = $7
+      WHERE id = $5 AND competition_name = $6
       RETURNING *
-    `, [name, society, size, teamId, event.name]);
+    `, [name, society, size, team_type, teamId, event.name, type]);
 
     if (updatedTeam.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -4041,6 +4060,76 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
     await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ error: 'Errore nell\'aggiornamento della squadra' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/events/:id/teams/:teamId/register', authenticateToken, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id: eventId, teamId } = req.params;
+    
+    const teamRes = await client.query('SELECT date FROM teams WHERE id = $1', [teamId]);
+    const teamDate = teamRes.rows[0]?.date || '-';
+
+    const members = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
+    for (const m of members.rows) {
+      if (!m.user_id) continue;
+      const regRes = await client.query('SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2', [eventId, m.user_id]);
+      if (regRes.rows.length === 0) {
+        await client.query(`
+          INSERT INTO event_registrations (
+            event_id, user_id, registration_day, registration_type,
+            shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
+            shooting_session, notes, phone
+          )
+          VALUES ($1, $2, $3, 'Iscrizione da Squadra', 'Beretta', '', 'Fiocchi', '', 'morning', '', '')
+        `, [eventId, m.user_id, teamDate]);
+      }
+    }
+    
+    await client.query('COMMIT');
+    res.json({ message: 'Squadra aggiunta alla classifica con successo' });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/events/:id/teams/:teamId/send', authenticateToken, async (req: any, res) => {
+  try {
+    const { teamId } = req.params;
+    await pool.query('UPDATE teams SET is_sent = TRUE WHERE id = $1', [teamId]);
+    res.json({ message: 'Squadra inviata con successo' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/events/:id/teams/:teamId/withdraw', authenticateToken, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id: eventId, teamId } = req.params;
+    
+    // Get members
+    const members = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
+    const memberIds = members.rows.map(m => m.user_id);
+
+    if (memberIds.length > 0) {
+      await client.query('DELETE FROM event_registrations WHERE event_id = $1 AND user_id = ANY($2)', [eventId, memberIds]);
+    }
+
+    await client.query('UPDATE teams SET is_sent = FALSE WHERE id = $1', [teamId]);
+    await client.query('COMMIT');
+    res.json({ message: 'Squadra ritirata con successo e iscrizioni cancellate' });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
   } finally {
     client.release();
   }
@@ -5757,12 +5846,15 @@ app.get('/api/public/events/:id/teams', async (req, res) => {
                 json_agg(
                   json_build_object(
                     'id', u.id,
-                    'name', u.name,
-                    'surname', u.surname
+                    'first_name', u.name,
+                    'last_name', u.surname,
+                    'category', u.category,
+                    'qualification', u.qualification
                   )
                 ) FILTER (WHERE u.id IS NOT NULL), 
                 '[]'
-              ) as members
+              ) as members,
+              COALESCE(json_agg(tm.user_id) FILTER (WHERE tm.user_id IS NOT NULL), '[]') as member_ids
        FROM teams t
        JOIN events e ON e.name = t.competition_name
        LEFT JOIN team_members tm ON t.id = tm.team_id

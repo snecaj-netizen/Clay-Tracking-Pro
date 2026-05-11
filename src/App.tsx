@@ -617,7 +617,9 @@ const App: React.FC = () => {
       } else {
         const errorData = await res.json();
         if (errorData.error === 'squad_locked_contact_society') {
-          triggerAlert?.(t('attention'), t('squad_locked_contact_society'), () => {}, t('ok_btn'));
+          const comp = competitions.find(c => String(c.id) === String(id));
+          const societyName = comp?.location || comp?.society || 'la società';
+          triggerAlert?.(t('attention'), t('squad_locked_contact_society').replace('{{society}}', societyName), () => {}, t('ok_btn'));
         } else {
           triggerToast?.(`${t('delete_error')}: ${t(errorData.error) || res.statusText}`, 'error');
         }

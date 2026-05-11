@@ -153,6 +153,7 @@ interface AdminContextType {
   newTeamLocation: string; setNewTeamLocation: React.Dispatch<React.SetStateAction<string>>;
   newTeamDate: string; setNewTeamDate: React.Dispatch<React.SetStateAction<string>>;
   newTeamTargets: number; setNewTeamTargets: React.Dispatch<React.SetStateAction<number>>;
+  newTeamType: string; setNewTeamType: React.Dispatch<React.SetStateAction<string>>;
   selectedShooterIds: number[]; setSelectedShooterIds: React.Dispatch<React.SetStateAction<number[]>>;
 
   // Filter Options
@@ -330,6 +331,7 @@ export const AdminProvider: React.FC<{
   const [newTeamLocation, setNewTeamLocation] = useState('');
   const [newTeamDate, setNewTeamDate] = useState(new Date().toISOString().split('T')[0]);
   const [newTeamTargets, setNewTeamTargets] = useState(100);
+  const [newTeamType, setNewTeamType] = useState('');
   const [selectedShooterIds, setSelectedShooterIds] = useState<number[]>([]);
 
   // Filter Options
@@ -740,7 +742,7 @@ export const AdminProvider: React.FC<{
     name, setName, surname, setSurname, email, setEmail, password, setPassword, role, setRole, category, setCategory, qualification, setQualification, society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar, birthDate, setBirthDate, phone, setPhone,
     nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
     socName, setSocName, socCode, setSocCode, socEmail, setSocEmail, socAddress, setSocAddress, socCity, setSocCity, socRegion, setSocRegion, socZip, setSocZip, socPhone, setSocPhone, socMobile, setSocMobile, socWebsite, setSocWebsite, socContactName, setSocContactName, socLogo, setSocLogo, socOpeningHours, setSocOpeningHours, socGoogleMapsLink, setSocGoogleMapsLink, socLat, setSocLat, socLng, setSocLng, socDisciplines, setSocDisciplines,
-    newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId, newTeamCompetitionName, setNewTeamCompetitionName, newTeamDiscipline, setNewTeamDiscipline, newTeamSociety, setNewTeamSociety, newTeamLocation, setNewTeamLocation, newTeamDate, setNewTeamDate, newTeamTargets, setNewTeamTargets, selectedShooterIds, setSelectedShooterIds,
+    newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId, newTeamCompetitionName, setNewTeamCompetitionName, newTeamDiscipline, setNewTeamDiscipline, newTeamSociety, setNewTeamSociety, newTeamLocation, setNewTeamLocation, newTeamDate, setNewTeamDate, newTeamTargets, setNewTeamTargets, newTeamType, setNewTeamType, selectedShooterIds, setSelectedShooterIds,
     filterOptions, setFilterOptions, fetchFilterOptions,
     showDashboard, setShowDashboard, kpiFilter, setKpiFilter, fetchedDashboardStats, dashboardStats
   };

@@ -1,5 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import { SocietyEvent, EventSquad } from '../types';
 import { getDisplayCategory } from '../ratingUtils';
 import jsPDF from 'jspdf';
@@ -14,6 +15,7 @@ interface ShootingOrderPreviewProps {
 }
 
 const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squads, onClose, squadNumberMap }) => {
+  const { t, language } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const normalizeDate = (d: any) => {
@@ -112,7 +114,7 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
           }}
           className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2 shadow-2xl"
         >
-          <Download className="w-4 h-4" /> Scarica PDF
+          <Download className="w-4 h-4" /> {t('download_pdf')}
         </button>
         <button 
           onClick={(e) => {
@@ -121,7 +123,7 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
           }}
           className="px-6 py-3 rounded-2xl bg-orange-600 text-white font-black uppercase text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center gap-2 shadow-2xl"
         >
-          <Printer className="w-4 h-4" /> Stampa
+          <Printer className="w-4 h-4" /> {t('print')}
         </button>
         <button 
           onClick={(e) => {
@@ -212,21 +214,21 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
                                     const catQual = getDisplayCategory(cat, qual, event.type || "");
 
                                     return (
-                                      <div key={pos} className="flex items-center text-[9px] h-5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors px-1">
+                                      <div key={pos} className="flex items-center text-[9px] h-10 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors px-1">
                                         <span className="w-5 font-bold text-slate-300">{pos}</span>
-                                        <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
+                                        <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden py-0.5">
                                           {member ? (
                                             <>
                                               {member.bib_number && (
-                                                <span className="font-black text-orange-600 mr-0.5 text-[9px]">
+                                                <span className="font-black text-orange-600 mr-0.5 text-[9px] leading-relaxed">
                                                   ({member.bib_number})
                                                 </span>
                                               )}
-                                              <span className="font-black text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis text-[9px]">
+                                              <span className="font-black text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis text-[9px] leading-relaxed">
                                                 {member.last_name} {member.first_name}
                                               </span>
                                               {catQual && (
-                                                <span className="text-[7px] font-black text-slate-400 bg-slate-100 px-1 py-0.5 rounded uppercase flex-shrink-0">
+                                                <span className="text-[7px] font-black text-slate-400 bg-slate-100 px-1 py-0.5 rounded uppercase flex-shrink-0 leading-none">
                                                   {catQual}
                                                 </span>
                                               )}

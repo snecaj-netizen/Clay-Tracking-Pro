@@ -22,6 +22,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   const { triggerConfirm, triggerToast } = useUI();
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'A' | 'B' | 'ALL'>('A');
   const [formData, setFormData] = useState({
     name: '',
     society: '',
@@ -29,11 +30,59 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     memberIds: [] as string[]
   });
 
+  const [filterSociety, setFilterSociety] = useState<string>('');
+
   React.useEffect(() => {
     if (isCreating && !editingTeamId && currentUser?.role === 'society' && currentUser?.society) {
       setFormData(prev => ({ ...prev, society: currentUser.society }));
     }
   }, [isCreating, editingTeamId, currentUser]);
+
+  const sortedAndGroupedTeams = useMemo(() => {
+    const teamsWithTotals = teams.map(team => {
+      const teamMembers = (team.member_ids || []).map((id: string) => {
+        const result = results.find(r => r.user_id === id);
+        return { totalscore: result?.totalscore || 0 };
+      });
+      const totalScore = teamMembers.reduce((sum: number, m: any) => sum + (m.totalscore || 0), 0);
+      return { ...team, totalScore };
+    });
+
+    const isGroupA = (type: string) => {
+      if (!type) return false;
+      if (type === 'SP_A' || type === 'PC_A') return true;
+      const t = type.toUpperCase();
+      return t.includes('(A)') || t.includes('_A') || t === 'A' || t.endsWith(' A');
+    };
+    const isGroupB = (type: string) => {
+      if (!type) return false;
+      if (type === 'SP_B' || type === 'PC_B') return true;
+      const t = type.toUpperCase();
+      return t.includes('(B)') || t.includes('_B') || t === 'B' || t.endsWith(' B');
+    };
+
+    const groupA = teamsWithTotals.filter(t => isGroupA(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const groupB = teamsWithTotals.filter(t => isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const others = teamsWithTotals.filter(t => !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+
+    // Filter by society if selected
+    let filteredA = groupA;
+    let filteredB = groupB;
+    let filteredOthers = others;
+
+    if (filterSociety) {
+      filteredA = groupA.filter(t => t.society === filterSociety);
+      filteredB = groupB.filter(t => t.society === filterSociety);
+      filteredOthers = others.filter(t => t.society === filterSociety);
+    }
+
+    let result = [];
+    if (selectedTypeFilter === 'A') result = filteredA;
+    else if (selectedTypeFilter === 'B') result = filteredB;
+    else result = [...filteredA, ...filteredB, ...filteredOthers];
+
+    return { groupA: filteredA, groupB: filteredB, others: filteredOthers, filtered: result };
+  }, [teams, results, filterSociety, selectedTypeFilter]);
 
   const societies = useMemo(() => {
     const socs = new Set<string>();
@@ -204,6 +253,27 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     }
   };
 
+  const handleSendTeam = async (teamId: number) => {
+    try {
+      const res = await fetch(`/api/events/${event.id}/teams/${teamId}/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        if (triggerToast) triggerToast(t('team_sent_success'), 'success');
+        onTeamsUpdate();
+      } else {
+        const data = await res.json();
+        if (triggerToast) triggerToast(data.error || 'Errore nell\'invio', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      if (triggerToast) triggerToast('Errore di rete', 'error');
+    }
+  };
+
   const toggleMember = (id: string) => {
     setFormData(prev => {
       if (prev.memberIds.includes(id)) {
@@ -230,14 +300,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
 
   return (
     <div className="space-y-6">
-      {!isCreating && !editingTeamId && !readOnly && (
+      {!isCreating && !editingTeamId && (
         <div className="flex justify-end">
           <button
             onClick={() => setIsCreating(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm transition-all shadow-lg shadow-orange-600/20"
           >
             <i className="fas fa-plus"></i>
-            Nuova Squadra
+            {t('new_team_label')}
           </button>
         </div>
       )}
@@ -245,22 +315,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       {(isCreating || editingTeamId) && !readOnly && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-white mb-4">
-            {editingTeamId ? 'Modifica Squadra' : 'Nuova Squadra'}
+            {editingTeamId ? t('edit_team_title') : t('new_team_title')}
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nome Squadra</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t('team_name_label')}</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
-                placeholder="Es. TAV Roma A"
+                placeholder={t('team_name_placeholder')}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Società</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t('society')}</label>
               {currentUser?.role === 'society' ? (
                 <input 
                   type="text" 
@@ -280,15 +350,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               )}
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tipo Squadra</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t('team_type_label')}</label>
               <select
                 value={formData.type}
                 onChange={e => setFormData({...formData, type: e.target.value, memberIds: []})}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
               >
-                <option value="">Seleziona Tipo</option>
+                <option value="">{t('select_type')}</option>
                 {teamTypes.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.size} tiratori)</option>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </div>
@@ -305,7 +375,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                 </div>
               )}
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                {t('select_shooters_label').replace('{{count}}', String(formData.memberIds.length)).replace('{{total}}', String(teamTypes.find(t => t.id === formData.type)?.size || 0))}
+                {t('select_shooters_label')
+                  .replace(/\{\{current\}\}/g, String(formData.memberIds.length))
+                  .replace(/\{\{total\}\}/g, String(teamTypes.find(t => t.id === formData.type)?.size || 0))}
               </label>
               <ShooterSearch 
                 value={formData.memberIds}
@@ -342,7 +414,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               }}
               className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all"
             >
-              Annulla
+              {t('cancel')}
             </button>
             <button
               onClick={handleSave}
@@ -354,108 +426,199 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {teams.map(team => {
-          const typeDef = teamTypes.find(t => t.id === team.type);
-          const teamMembers = (team.member_ids || []).map((id: string) => {
-            const result = results.find(r => r.user_id === id);
-            const user = users.find(u => u.id === id);
-            return {
-              id: id,
-              user_id: id,
-              user_name: result?.user_name || user?.name || t('unknown_label'),
-              user_surname: result?.user_surname || user?.surname || '',
-              category: result?.category_at_time || user?.category || '',
-              qualification: result?.qualification_at_time || user?.qualification || '',
-              totalscore: result?.totalscore || 0
-            };
-          });
-          const totalScore = teamMembers.reduce((sum: number, m: any) => sum + (m.totalscore || 0), 0);
+      {!isCreating && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => setSelectedTypeFilter('A')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'A' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+          >
+            {t('squads_a')}
+          </button>
+          <button
+            onClick={() => setSelectedTypeFilter('B')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'B' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+          >
+            {t('squads_b')}
+          </button>
+          <button
+            onClick={() => setSelectedTypeFilter('ALL')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'ALL' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+          >
+            {t('all_teams')}
+          </button>
+        </div>
+      )}
 
-          return (
-            <div key={team.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-slate-800 flex justify-between items-start bg-slate-800/30">
-                <div 
-                  onClick={() => {
-                    if (!readOnly) {
-                      setFormData({
-                        name: team.name,
-                        society: team.society,
-                        type: team.type || '',
-                        memberIds: teamMembers.map((m: any) => m.user_id)
-                      });
-                      setEditingTeamId(team.id);
-                      setIsCreating(true);
-                    }
-                  }}
-                  className={`cursor-pointer group/title ${!readOnly ? 'hover:text-orange-500' : ''} transition-colors`}
-                >
-                  <h4 className="text-lg font-black text-white uppercase tracking-widest group-hover/title:text-orange-500 transition-colors">{team.name}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-bold text-slate-400 bg-slate-950 px-2 py-1 rounded-md border border-slate-800">
-                      {team.society}
-                    </span>
-                    <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md border border-orange-500/20">
-                      {typeDef?.name || team.type || `${team.discipline || ''} (${team.size} tiratori)`}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-orange-500">{totalScore} <span className="text-xs text-slate-500 font-normal">pt</span></div>
-                  {!readOnly && (
-                    <div className="flex gap-2 mt-2 justify-end">
-                      <button
-                        onClick={() => {
-                          setFormData({
-                            name: team.name,
-                            society: team.society,
-                            type: team.type || '',
-                            memberIds: teamMembers.map(m => m.user_id)
-                          });
-                          setEditingTeamId(team.id);
-                          setIsCreating(true);
-                        }}
-                        className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all"
-                      >
-                        <i className="fas fa-edit text-xs"></i>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(team.id)}
-                        className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all"
-                      >
-                        <i className="fas fa-trash text-xs"></i>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="p-4 flex-1">
-                <div className="space-y-2">
-                  {teamMembers.map(m => (
-                    <div key={m.id} className="flex justify-between items-center text-sm">
-                      <div className="text-slate-300 font-medium">
-                        {m.user_surname} {m.user_name}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500">
-                          {m.category} {m.qualification ? `- ${m.qualification}` : ''}
-                        </span>
-                        <span className="font-bold text-white w-8 text-right">{m.totalscore}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {teamMembers.length === 0 && (
-                    <div className="text-sm text-slate-500 italic">{t('no_shooters_assigned')}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="space-y-8">
+        {!isCreating && sortedAndGroupedTeams.filtered.length > 0 && (
+          <div className="overflow-x-auto bg-slate-900/30 rounded-2xl border border-slate-800">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-950 border-b border-slate-800 text-[10px] uppercase font-black tracking-widest text-slate-500">
+                  <th className="p-4 w-12">Pos</th>
+                  <th className="p-4 w-32">Sq</th>
+                  <th className="p-4">Nominativo</th>
+                  <th className="p-4">Tessera</th>
+                  <th className="p-4">Cat</th>
+                  <th className="p-4">Qual</th>
+                  <th className="p-4 text-center">S. 1</th>
+                  <th className="p-4 text-center">S. 2</th>
+                  <th className="p-4 text-center">S. 3</th>
+                  <th className="p-4 text-center">S. 4</th>
+                  <th className="p-4 text-center">S. Fin.</th>
+                  <th className="p-4 text-right">Tot</th>
+                  <th className="p-4 text-right">Sp.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/30">
+                {sortedAndGroupedTeams.filtered.map((team, tIdx) => {
+                  const teamMembers = (team.member_ids || []).map((id: string | number) => {
+                    const result = results.find(r => String(r.user_id) === String(id));
+                    const user = users.find(u => String(u.id) === String(id));
+                    const teamMember = (team.members || []).find((m: any) => String(m.id) === String(id));
+                    return {
+                      id: id,
+                      user_id: id,
+                      user_name: result?.user_name || user?.name || teamMember?.first_name || 'Sconosciuto',
+                      user_surname: result?.user_surname || user?.surname || teamMember?.last_name || '',
+                      category: result?.category_at_time || user?.category || teamMember?.category || '',
+                      qualification: result?.qualification_at_time || user?.qualification || teamMember?.qualification || '',
+                      shooter_code: result?.shooter_code || user?.shooter_code || '',
+                      totalscore: result?.totalscore || 0,
+                      scores: result?.scores || [],
+                      shoot_off: result?.shoot_off || ''
+                    };
+                  });
+
+                  return (
+                    <React.Fragment key={team.id}>
+                      {teamMembers.map((m, mIdx) => (
+                        <tr key={`${team.id}-m-${m.id}`} className="group hover:bg-slate-800/30 transition-colors">
+                          <td className="p-4 border-r border-slate-800/30">
+                            {mIdx === 0 && (
+                              <div className="flex flex-col items-center">
+                                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black transition-all ${tIdx < 3 ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400'}`}>
+                                  {tIdx + 1}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4 font-black text-xs text-blue-400 uppercase tracking-widest border-r border-slate-800/30">
+                            {mIdx === 0 && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">{team.name}</span>
+                                  {(team.type || team.team_type) && (() => {
+                                    const typeVal = team.type || team.team_type || '';
+                                    let displayType = typeVal;
+                                    if (typeVal === 'A' || typeVal.includes('(A)') || typeVal.includes('_A')) displayType = 'A';
+                                    else if (typeVal === 'B' || typeVal.includes('(B)') || typeVal.includes('_B')) displayType = 'B';
+                                    return <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">{displayType}</span>;
+                                  })()}
+                                </div>
+                              </>
+                            )}
+                          </td>
+                          <td className="p-4 font-bold text-slate-200 uppercase text-xs">
+                            {m.user_surname} {m.user_name}
+                          </td>
+                          <td className="p-4 text-[10px] font-mono text-slate-500 uppercase">
+                            {m.shooter_code}
+                          </td>
+                          <td className="p-4 text-[10px] font-black text-slate-400 uppercase">
+                            {m.category}
+                          </td>
+                          <td className="p-4 text-[10px] font-black text-slate-400 uppercase">
+                            {m.qualification}
+                          </td>
+                          {[0, 1, 2, 3, 4].map(sIdx => (
+                            <td key={sIdx} className={`p-4 text-center tabular-nums text-sm ${m.scores[sIdx] === 25 ? 'text-red-500 font-black' : 'text-slate-400'}`}>
+                              {m.scores[sIdx] !== undefined ? m.scores[sIdx] : '--'}
+                            </td>
+                          ))}
+                          <td className="p-4 text-right font-black text-white tabular-nums">
+                            {m.totalscore}
+                          </td>
+                          <td className="p-4 text-right tabular-nums text-slate-500 text-xs">
+                            {m.shoot_off}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="bg-emerald-600/20 border-b-2 border-emerald-500/30">
+                        <td className="p-3 border-r border-emerald-500/20"></td>
+                        <td className="p-3 border-r border-emerald-500/20"></td>
+                        <td colSpan={4} className="p-3 text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">{team.name} - TOTAL</td>
+                        {[0, 1, 2, 3].map(sIdx => {
+                          const seriesSum = teamMembers.reduce((sum, m) => sum + (m.scores[sIdx] || 0), 0);
+                          return (
+                            <td key={sIdx} className="p-3 text-center font-black text-emerald-400 tabular-nums">
+                              {seriesSum || '--'}
+                            </td>
+                          )
+                        })}
+                        <td className="p-3 text-center font-black text-emerald-400 tabular-nums">
+                          {teamMembers.reduce((sum, m) => sum + (m.scores[4] || 0), 0) || '0'}
+                        </td>
+                        <td className="p-3 text-right font-black text-white text-lg tabular-nums bg-emerald-600/40">
+                          {team.totalScore}
+                        </td>
+                        <td className="p-3 text-right bg-emerald-600/40 font-black text-white">0</td>
+                      </tr>
+                      {!readOnly && (
+                         <tr className="bg-slate-900/50">
+                           <td colSpan={13} className="p-4 text-right border-b border-slate-800">
+                              <div className="flex justify-end gap-3 items-center">
+                                {team.is_sent ? (
+                                  <span className="text-[10px] font-black uppercase text-emerald-500 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 rounded-lg">
+                                    <i className="fas fa-check-circle"></i> {t('team_confirmed_sent')}
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleSendTeam(team.id)}
+                                    className="px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20"
+                                  >
+                                    {t('send_team_btn')}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setFormData({
+                                      name: team.name,
+                                      society: team.society,
+                                      type: team.type || '',
+                                      memberIds: teamMembers.map(m => m.user_id)
+                                    });
+                                    setEditingTeamId(team.id);
+                                    setIsCreating(true);
+                                  }}
+                                  className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all"
+                                >
+                                  <i className="fas fa-edit text-xs"></i>
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(team.id)}
+                                  className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all"
+                                >
+                                  <i className="fas fa-trash text-xs"></i>
+                                </button>
+                              </div>
+                           </td>
+                         </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
         {teams.length === 0 && !isCreating && (
-          <div className="col-span-full text-center py-12 text-slate-500">
-            <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
-            <p>{t('no_teams_registered')}</p>
+          <div className="col-span-full text-center py-16 bg-slate-900/50 rounded-[2rem] border border-slate-800/50 border-dashed">
+            <div className="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+              <i className="fas fa-users text-3xl text-slate-600"></i>
+            </div>
+            <h4 className="text-lg font-black text-slate-400 uppercase tracking-widest">{t('no_teams_registered')}</h4>
+            <p className="text-xs text-slate-500 mt-2">{t('add_first_team_desc')}</p>
           </div>
         )}
       </div>
