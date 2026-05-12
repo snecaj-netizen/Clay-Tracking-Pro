@@ -850,7 +850,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 relative">
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 relative overflow-x-hidden">
       {/* Global Saving/Generating Overlay */}
       {(isSaving || isGenerating) && (
         <div className="fixed inset-0 z-[100] bg-slate-950/20 backdrop-blur-[2px] cursor-wait pointer-events-auto" />
