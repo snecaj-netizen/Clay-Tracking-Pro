@@ -852,7 +852,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 relative overflow-x-hidden">
       {/* Global Saving/Generating Overlay */}
-      {(isSaving || isGenerating) && (
+      {(isSaving || isGenerating || isLoading) && (
         <div className="fixed inset-0 z-[100] bg-slate-950/20 backdrop-blur-[2px] cursor-wait pointer-events-auto" />
       )}
       
@@ -1006,12 +1006,22 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                               <p className="font-bold text-white uppercase tracking-tight">{reg.last_name} {reg.first_name}</p>
                               <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
                                 {formatDateDisplay(reg.registration_day)}
+                                {reg.original_registration_day && reg.original_registration_day !== reg.registration_day && (
+                                  <span className="text-slate-600 font-normal"> ({formatDateDisplay(reg.original_registration_day)})</span>
+                                )}
                                 <span className="ml-1 text-orange-500/80 text-[8px] font-bold">
                                   - {(() => {
-                                      if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(reg.shooting_session)) return reg.shooting_session;
-                                      return (reg.shooting_session?.toLowerCase() === 'morning' || reg.shooting_session === 'Mattina' || reg.shooting_session === t('morning')) ? t('morning_short') : 
-                                             (reg.shooting_session?.toLowerCase() === 'afternoon' || reg.shooting_session === 'Pomeriggio' || reg.shooting_session === t('afternoon')) ? t('afternoon_short') : 
-                                             t('none_short');
+                                      const formatS = (s: string) => {
+                                        if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(s)) return s;
+                                        return (s?.toLowerCase() === 'morning' || s === 'Mattina' || s === t('morning')) ? t('morning_short') : 
+                                               (s?.toLowerCase() === 'afternoon' || s === 'Pomeriggio' || s === t('afternoon')) ? t('afternoon_short') : 
+                                               t('none_short');
+                                      };
+                                      const current = formatS(reg.shooting_session);
+                                      if (reg.original_shooting_session && reg.original_shooting_session !== reg.shooting_session) {
+                                        return <>{current} <span className="text-slate-600 font-normal">({formatS(reg.original_shooting_session)})</span></>;
+                                      }
+                                      return current;
                                     })()}
                                 </span>
                               </p>

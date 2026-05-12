@@ -232,6 +232,8 @@ export interface EventRegistration {
   qualification?: string;
   email?: string;
   bib_number?: number;
+  original_registration_day?: string;
+  original_shooting_session?: string;
 }
 
 export interface EventSquadMember {

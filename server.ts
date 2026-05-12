@@ -955,6 +955,10 @@ const initDB = async () => {
 
     // Add bib_number column if it doesn't exist
     await pool.query("ALTER TABLE event_squad_members ADD COLUMN IF NOT EXISTS bib_number INTEGER").catch(() => {});
+    
+    // Add columns for original registration tracking
+    await pool.query("ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS original_registration_day TEXT").catch(() => {});
+    await pool.query("ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS original_shooting_session TEXT").catch(() => {});
 
     // Initialize VAPID keys
     try {
@@ -4743,6 +4747,7 @@ app.get('/api/events/:id/registrations', authenticateToken, async (req: any, res
         r.shotgun_brand, r.shotgun_model, r.cartridge_brand, r.cartridge_model, 
         r.shooting_session, r.notes, r.phone, r.created_at,
         u.name as first_name, u.surname as last_name, u.shooter_code, u.society, u.category, u.qualification, u.email,
+        r.original_registration_day, r.original_shooting_session,
         (SELECT bib_number FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE sm.registration_id = r.id AND s.event_id = r.event_id LIMIT 1) as bib_number
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
@@ -4798,19 +4803,46 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
       }
     }
 
+    // Check existing registration to track history and detect changes
+    const oldReg = await pool.query('SELECT registration_day, shooting_session, original_registration_day, original_shooting_session FROM event_registrations WHERE id = $1', [registrationId]);
+    const { registration_day: oldDay, shooting_session: oldSession, original_registration_day: oldOrigDay, original_shooting_session: oldOrigSession } = oldReg.rows[0];
+
+    // Check if was already in a squad
+    const inSquadRes = await pool.query('SELECT squad_id FROM event_squad_members WHERE registration_id = $1', [registrationId]);
+    const wasInSquad = inSquadRes.rows.length > 0;
+
+    const updateFields = [];
+    const updateValues = [];
+    let fieldCount = 1;
+
+    // Track original if not set yet (first modification)
+    let newOrigRegDay = oldOrigDay;
+    let newOrigShootingSession = oldOrigSession;
+    
+    if (!oldOrigDay && oldDay !== registration_day) {
+        newOrigRegDay = oldDay;
+    }
+    if (!oldOrigSession && oldSession !== shooting_session) {
+        newOrigShootingSession = oldSession;
+    }
+
     const updateResult = await pool.query(
       `UPDATE event_registrations SET 
         registration_day = $1, registration_type = $2, shotgun_brand = $3, 
         shotgun_model = $4, cartridge_brand = $5, cartridge_model = $6, 
-        shooting_session = $7, notes = $8, phone = $9, updated_at = CURRENT_TIMESTAMP
+        shooting_session = $7, notes = $8, phone = $9, updated_at = CURRENT_TIMESTAMP,
+        original_registration_day = $12, original_shooting_session = $13
       WHERE id = $10 AND event_id = $11
       RETURNING *`,
-      [registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone, registrationId, eventId]
+      [registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone, registrationId, eventId, newOrigRegDay, newOrigShootingSession]
     );
 
     if (updateResult.rows.length === 0) {
       return res.status(404).json({ error: 'Registrazione non trovata' });
     }
+
+    // Check if squad reassignment logic is needed
+    const changed = oldDay !== registration_day || oldSession !== shooting_session;
 
     // Fetch user details for email
     const userResult = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [regCheck.rows[0].user_id]);
@@ -4853,11 +4885,11 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
 
     res.json(finalResult.rows[0]);
 
-    // Handle automatic squad assignment if time is specified OR if explicitly requested
+    // Handle automatic squad assignment if time is specified OR if explicitly requested OR if moved from a squad
     const { addToSquad } = req.body;
     const isTimeFormat = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(shooting_session);
     
-    if (isTimeFormat || (addToSquad && (isAdmin || isSociety))) {
+    if (isTimeFormat || (addToSquad && (isAdmin || isSociety)) || (changed && wasInSquad)) {
       try {
         if (isTimeFormat) {
           // Remove from ANY existing squad for this event first to avoid duplicates
