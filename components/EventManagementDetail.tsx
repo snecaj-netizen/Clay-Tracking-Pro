@@ -849,6 +849,12 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     reg.shooter_code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleTabChange = async (tab: 'registrations' | 'squads' | 'teams' | 'results') => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await fetchData();
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 relative overflow-x-hidden">
       {/* Global Saving/Generating Overlay */}
@@ -893,42 +899,46 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
 
           <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar w-full md:w-fit">
             <button
-              onClick={() => { setActiveTab('registrations'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => handleTabChange('registrations')}
+              disabled={isLoading || isSaving || isGenerating}
               className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'registrations' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-              }`}
+              } disabled:opacity-50`}
             >
               Iscritti ({registrations.length})
             </button>
             <button
-              onClick={() => { setActiveTab('squads'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => handleTabChange('squads')}
+              disabled={isLoading || isSaving || isGenerating}
               className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'squads' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-              }`}
+              } disabled:opacity-50`}
             >
               Batterie ({displayedSquads.length})
             </button>
             <button
-              onClick={() => { setActiveTab('teams'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => handleTabChange('teams')}
+              disabled={isLoading || isSaving || isGenerating}
               className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'teams' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-              }`}
+              } disabled:opacity-50`}
             >
               {t('teams_label')} ({teams.length})
             </button>
             <button
-              onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => handleTabChange('results')}
+              disabled={isLoading || isSaving || isGenerating}
               className={`px-4 sm:px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === 'results' 
                   ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-              }`}
+              } disabled:opacity-50`}
             >
               Classifiche
             </button>
