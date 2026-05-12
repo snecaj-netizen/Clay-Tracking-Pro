@@ -906,7 +906,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`h-dvh bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50 flex flex-col ${view === 'ai-coach' || view === 'home' ? 'pb-0' : 'pb-24 sm:pb-8'}`}>
+    <div className={`min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50 flex flex-col ${view === 'ai-coach' || view === 'home' ? 'pb-0' : 'pb-24 sm:pb-8'}`}>
       <ConnectionStatus />
       {view !== 'home' && (
         <Header 
@@ -960,7 +960,7 @@ const App: React.FC = () => {
           }}
         />
       )}
-           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${view === 'home' ? 'pt-0 pb-0' : 'pt-16 pb-24 sm:pb-8'} flex-1 w-full overflow-y-auto overflow-x-hidden`}>
+           <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${view === 'home' ? 'pt-0 pb-0' : 'pt-16 pb-24 sm:pb-8'} flex-1 w-full`}>
         <Suspense fallback={<LoadingFallback />}>
           <AnimatePresence mode="wait">
             <motion.div
