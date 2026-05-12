@@ -66,9 +66,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
     registration_day: initialData?.registration_day || '',
     registration_type: initialData?.registration_type || t('cat_reg'),
     shotgun_brand: initialData?.shotgun_brand || (initialData ? '' : (isAdminOrSociety ? 'Beretta' : (user.shotgun_brand || 'Beretta'))),
-    shotgun_model: initialData?.shotgun_model || (initialData ? '' : (isAdminOrSociety ? '' : (user.shotgun_model || ''))),
     cartridge_brand: initialData?.cartridge_brand || (initialData ? '' : (isAdminOrSociety ? 'Fiocchi' : (user.cartridge_brand || 'Fiocchi'))),
-    cartridge_model: initialData?.cartridge_model || (initialData ? '' : (isAdminOrSociety ? '' : (user.cartridge_model || ''))),
     shooting_session: initialData?.shooting_session || 'morning',
     notes: initialData?.notes || '',
     phone: initialData?.phone || (isAdminOrSociety ? '' : (user.phone || ''))
@@ -83,9 +81,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
         registration_day: initialData.registration_day || '',
         registration_type: initialData.registration_type || t('cat_reg'),
         shotgun_brand: initialData.shotgun_brand || user.shotgun_brand || 'Beretta',
-        shotgun_model: initialData.shotgun_model || user.shotgun_model || '',
         cartridge_brand: initialData.cartridge_brand || user.cartridge_brand || 'Fiocchi',
-        cartridge_model: initialData.cartridge_model || user.cartridge_model || '',
         shooting_session: initialData.shooting_session || 'morning',
         notes: initialData.notes || '',
         phone: initialData.phone || user.phone || ''
@@ -380,9 +376,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
         user_id: shooter.id,
         phone: shooter.phone || '',
         shotgun_brand: shooter.shotgun_brand || prev.shotgun_brand,
-        shotgun_model: shooter.shotgun_model || prev.shotgun_model,
-        cartridge_brand: shooter.cartridge_brand || prev.cartridge_brand,
-        cartridge_model: shooter.cartridge_model || prev.cartridge_model
+        cartridge_brand: shooter.cartridge_brand || prev.cartridge_brand
       }));
     }
   };
@@ -659,22 +653,6 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                   </select>
                 </div>
 
-                {/* Shotgun Model */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-orange-500" />
-                    {t('shotgun_model')} *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={t('shotgun_model_placeholder')}
-                    value={formData.shotgun_model}
-                    onChange={e => setFormData({ ...formData, shotgun_model: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
-                  />
-                </div>
-
                 {/* Cartridge */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
@@ -692,22 +670,6 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                       <option key={brand} value={brand}>{brand === 'Altro' ? (language === 'it' ? 'Altro' : 'Other') : brand}</option>
                     ))}
                   </select>
-                </div>
-
-                {/* Cartridge Model */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <Info className="w-3 h-3 text-orange-500" />
-                    {t('cartridge_model')} *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={t('cartridge_model_placeholder')}
-                    value={formData.cartridge_model}
-                    onChange={e => setFormData({ ...formData, cartridge_model: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 text-white rounded-xl focus:border-orange-600 outline-none transition-all"
-                  />
                 </div>
               </div>
 

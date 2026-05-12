@@ -1039,7 +1039,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                               )}
                             </div>
                             <p className="text-[10px] text-slate-500 italic truncate max-w-[150px]">
-                              {reg.shotgun_brand} {reg.shotgun_model}
+                              {reg.shotgun_brand}
                             </p>
                           </div>
                         </td>
