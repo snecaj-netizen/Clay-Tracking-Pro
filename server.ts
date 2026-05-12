@@ -4205,6 +4205,13 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
           'team'
         );
       }
+
+      // Cleanup any empty squads for this event
+      await client.query(`
+        DELETE FROM event_squads 
+        WHERE event_id = $1 
+        AND id NOT IN (SELECT squad_id FROM event_squad_members)
+      `, [eventId]);
     }
 
     await client.query('COMMIT');
@@ -4362,6 +4369,13 @@ app.post('/api/events/:id/teams/:teamId/withdraw', authenticateToken, async (req
         WHERE event_id = $1 AND user_id = $2 AND registration_day = $3 AND registration_type = 'Iscrizione da Squadra'
       `, [eventId, m.user_id, teamDate]);
     }
+    
+    // Cleanup any empty squads for this event
+    await client.query(`
+      DELETE FROM event_squads 
+      WHERE event_id = $1 
+      AND id NOT IN (SELECT squad_id FROM event_squad_members)
+    `, [eventId]);
     
     await client.query('COMMIT');
     res.json({ message: 'Squadra ritirata con successo' });
@@ -4658,12 +4672,14 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
       [regId]
     );
 
-    // Send email if user is verified
-    if (targetUser && targetUser.email_verified && targetUser.email) {
+    // Send email if email exists and verified
+    if (targetUser && targetUser.email && targetUser.email_verified) {
       const eventDateRange = eventObj.start_date === eventObj.end_date 
         ? eventObj.start_date 
         : `${eventObj.start_date} - ${eventObj.end_date}`;
       
+      const isSocietyAction = (req.user.role === 'admin' || req.user.role === 'society') && req.user.id !== targetUserId;
+
       sendRegistrationEmail(
         targetUser.email,
         `${targetUser.name} ${targetUser.surname}`,
@@ -4673,7 +4689,8 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
         phone || '-',
         registration_day || '-',
         shooting_session || '-',
-        targetUser.language || 'it'
+        targetUser.language || 'it',
+        isSocietyAction
       ).catch(err => console.error('Error in sendRegistrationEmail background call:', err));
     }
 
@@ -4812,12 +4829,14 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
       [registrationId]
     );
 
-    // Send email if user is verified
-    if (targetUser && targetUser.email_verified && targetUser.email) {
+    // Send email if email exists and verified
+    if (targetUser && targetUser.email && targetUser.email_verified) {
       const eventDateRange = eventObj.start_date === eventObj.end_date 
         ? eventObj.start_date 
         : `${eventObj.start_date} - ${eventObj.end_date}`;
       
+      const isSocietyAction = (req.user.role === 'admin' || req.user.role === 'society') && req.user.id !== targetUser.id;
+
       sendRegistrationModifiedEmail(
         targetUser.email,
         `${targetUser.name} ${targetUser.surname}`,
@@ -4827,7 +4846,8 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
         phone || '-',
         registration_day || '-',
         shooting_session || '-',
-        targetUser.language || 'it'
+        targetUser.language || 'it',
+        isSocietyAction
       ).catch(err => console.error('Error in sendRegistrationModifiedEmail background call:', err));
     }
 
@@ -4894,6 +4914,13 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
             'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
             [squadId, registrationId, nextPos, nextBib]
           );
+
+          // Cleanup any empty squads for this event (the one we might have just left)
+          await pool.query(`
+            DELETE FROM event_squads 
+            WHERE event_id = $1 
+            AND id NOT IN (SELECT squad_id FROM event_squad_members)
+          `, [eventId]);
         }
       } catch (squadErr) {
         console.error('Error auto-assigning squad during update:', squadErr);
@@ -4967,6 +4994,13 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
     `, [registrationId]);
     const details = detailsResult.rows[0];
 
+    // Find the squad ID before deletion
+    const squadInfo = await pool.query(
+      'SELECT squad_id FROM event_squad_members WHERE registration_id = $1',
+      [registrationId]
+    );
+    const affectedSquadId = squadInfo.rows[0]?.squad_id;
+
     // Remove from competition records if totalscore is 0 (hasn't started yet)
     await pool.query(
       'DELETE FROM competitions WHERE id = $1 AND totalscore = 0',
@@ -4975,14 +5009,22 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
 
     await pool.query('DELETE FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
 
-    // Send unregistration email if user is verified
-    if (details && details.email_verified && details.email) {
+    // Cleanup any empty squads for this event
+    await pool.query(`
+      DELETE FROM event_squads 
+      WHERE event_id = $1 
+      AND id NOT IN (SELECT squad_id FROM event_squad_members)
+    `, [eventId]);
+
+    // Send unregistration email if email exists and verified
+    if (details && details.email && details.email_verified) {
       sendUnregistrationEmail(
         details.email,
         `${details.name} ${details.surname}`,
         details.event_name,
         details.location,
-        details.language || 'it'
+        details.language || 'it',
+        (isAdmin || isSociety) && !isOwner
       ).catch(err => console.error('Error in sendUnregistrationEmail background call:', err));
     }
 

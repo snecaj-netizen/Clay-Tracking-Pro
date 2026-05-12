@@ -920,7 +920,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
               }`}
             >
-              {t('teams_label')}
+              {t('teams_label')} ({teams.length})
             </button>
             <button
               onClick={() => { setActiveTab('results'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
