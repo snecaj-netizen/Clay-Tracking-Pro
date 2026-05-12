@@ -260,8 +260,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
 
   const filteredEvents = useMemo(() => {
     let sorted = [...events].sort((a, b) => {
-      const dateA = new Date(a.start_date || a.date);
-      const dateB = new Date(b.start_date || b.date);
+      const dateA = new Date(a.start_date || (a as any).date || 0);
+      const dateB = new Date(b.start_date || (b as any).date || 0);
       const now = new Date();
       
       const isPastA = dateA < now;

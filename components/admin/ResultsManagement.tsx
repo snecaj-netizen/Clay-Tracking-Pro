@@ -614,6 +614,20 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                             >
                               {r.name}
                             </h4>
+                            {r.detailedScores && r.detailedScores.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {r.detailedScores.map((series: boolean[], sIdx: number) => (
+                                  <div key={sIdx} className="flex gap-0.5 p-1.5 bg-slate-900/50 rounded-lg border border-slate-800/50">
+                                    {series.map((isHit: boolean, tIdx: number) => (
+                                      <div 
+                                        key={tIdx} 
+                                        className={`w-1.5 h-1.5 rounded-full ${isHit ? 'bg-[#a3e635]' : 'bg-[#ef4444]'}`}
+                                      />
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             <div className="flex items-center gap-1 mt-1">
                               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('society_tav_label')}:</span>
                               <span className="text-[9px] font-bold text-orange-500/80 uppercase tracking-widest truncate">{r.location || t('field_nd')}</span>

@@ -13,6 +13,7 @@ import FitavScoreSheet from './FitavScoreSheet';
 import ShootingOrderPreview from './ShootingOrderPreview';
 import ExpandingFAB from './ExpandingFAB';
 import { EventRegistrationModal } from './EventRegistrationModal';
+import { BibPrintModal } from './BibPrintModal';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -437,6 +438,8 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
     toSquadIndex: number;
   } | null>(null);
   const [selectedSquadsForSheet, setSelectedSquadsForSheet] = useState<any[] | null>(null);
+  const [selectedShootersForBibsSheet, setSelectedShootersForBibsSheet] = useState<any[] | null>(null);
+  const [autoAction, setAutoAction] = useState<'print' | 'download' | null>(null);
   const [showOrderPreview, setShowOrderPreview] = useState(false);
   const [orderPreviewSquads, setOrderPreviewSquads] = useState<EventSquad[]>([]);
   const [showTimes, setShowTimes] = useState(true);
@@ -604,7 +607,27 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       });
     });
 
-    const reassigned = reassignBibNumbers(finalSquads);
+    // Dynamic squad numbering based on start time
+    const renumberedSquads = JSON.parse(JSON.stringify(finalSquads));
+    
+    // Group, Sort and Update squad_number within renumberedSquads
+    const grouped: Record<string, EventSquad[]> = {};
+    renumberedSquads.forEach((s: any) => {
+      const day = normalizeDate(s.squad_day);
+      const round = s.round_number || 1;
+      const key = `${day}_${round}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    });
+
+    Object.values(grouped).forEach((group: any) => {
+      group.sort((a: any, b: any) => (a.start_time || '').localeCompare(b.start_time || ''));
+      group.forEach((s: any, index: number) => {
+        s.squad_number = index + 1; // UPDATE SQUAD NUMBER
+      });
+    });
+
+    const reassigned = reassignBibNumbers(renumberedSquads);
     setSquads(reassigned);
     setHasUnsavedChanges(true);
     handleSaveSquadsAction(reassigned);
@@ -1228,40 +1251,53 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                     <Download className="w-3.5 h-3.5" />
                     Ordine di tiro (PDF)
                   </button>
-                  <button 
-                    onClick={() => {
-                      const allTeamsData = displayedSquads
-                        .filter(s => s.members && s.members.length > 0)
-                        .map(s => ({
-                        id: String(s.id),
-                        name: `${squadNumberMap.get(s.id) || s.squad_number}`,
-                        members: s.members.map(m => ({
-                          id: String(m.registration_id),
-                          name: m.first_name,
-                          surname: m.last_name,
-                          category: [formatDisplayValue(m.category), formatDisplayValue(m.qualification)].filter(Boolean).join(' - '),
-                          bib_number: m.bib_number
-                        })),
-                        competition_name: event.name,
-                        society: event.location,
-                        date: s.squad_day || event.start_date,
-                        startTime: s.start_time,
-                        roundNumber: s.round_number
-                      }));
-                      
-                      if (allTeamsData.length === 0) {
-                        triggerToast?.('Nessuna batteria con tiratori da stampare', 'error');
-                        return;
-                      }
-                      
-                      setSelectedSquadsForSheet(allTeamsData);
-                    }}
-                    disabled={displayedSquads.length === 0}
-                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    Stampa Tutti Statini
-                  </button>
+                    <button 
+                      onClick={() => {
+                        const allTeamsData = displayedSquads
+                          .filter(s => s.members && s.members.length > 0)
+                          .map(s => ({
+                          id: String(s.id),
+                          name: `${squadNumberMap.get(s.id) || s.squad_number}`,
+                          members: s.members.map(m => ({
+                            id: String(m.registration_id),
+                            name: m.first_name,
+                            surname: m.last_name,
+                            category: [formatDisplayValue(m.category), formatDisplayValue(m.qualification)].filter(Boolean).join(' - '),
+                            bib_number: m.bib_number
+                          })),
+                          competition_name: event.name,
+                          society: event.location,
+                          date: s.squad_day || event.start_date,
+                          startTime: s.start_time,
+                          roundNumber: s.round_number
+                        }));
+                        
+                        if (allTeamsData.length === 0) {
+                          triggerToast?.('Nessuna batteria con tiratori da stampare', 'error');
+                          return;
+                        }
+                        
+                        setAutoAction('print');
+                        setSelectedSquadsForSheet(allTeamsData);
+                      }}
+                      disabled={displayedSquads.length === 0}
+                      className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Stampa Tutti Statini
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        const shootersList = squads.flatMap(s => s.members);
+                        setAutoAction('print');
+                        setSelectedShootersForBibsSheet(shootersList);
+                      }}
+                      className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Stampa Tutti Pettorali
+                    </button>
                 </div>
               </div>
               
@@ -1778,7 +1814,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                                   </select>
                                                   <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-950 text-[8px] font-bold text-slate-500 px-1.5 py-0.5 rounded border border-slate-800 opacity-0 group-hover/tool:opacity-100 pointer-events-none transition-opacity uppercase tracking-widest">Pos</div>
                                                 </div>
-                                                
+
                                                 <div className="relative group/tool">
                                                   <select 
                                                     onChange={(e) => {
@@ -2088,9 +2124,25 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         <FitavScoreSheet 
           teams={selectedSquadsForSheet}
           event={event}
-          onClose={() => setSelectedSquadsForSheet(null)}
+          onClose={() => {
+            setSelectedSquadsForSheet(null);
+            setAutoAction(null);
+          }}
           hostingSociety={societies.find(s => s.name === event.location)}
           hideTimes={!showTimes}
+          autoAction={autoAction}
+        />
+      )}
+      {selectedShootersForBibsSheet && (
+        <BibPrintModal
+          shooters={selectedShootersForBibsSheet}
+          event={event}
+          onClose={() => {
+            setSelectedShootersForBibsSheet(null);
+            setAutoAction(null);
+          }}
+          hostingSocietyName={event.location || 'SOCIETÀ'}
+          autoAction={autoAction}
         />
       )}
 

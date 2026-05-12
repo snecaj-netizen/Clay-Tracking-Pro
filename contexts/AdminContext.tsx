@@ -183,6 +183,10 @@ interface AdminContextType {
   originalClub: string; setOriginalClub: React.Dispatch<React.SetStateAction<string>>;
   isInternational: boolean; setIsInternational: React.Dispatch<React.SetStateAction<boolean>>;
   isEmailVerified: boolean; setIsEmailVerified: React.Dispatch<React.SetStateAction<boolean>>;
+  shotgunBrand: string; setShotgunBrand: React.Dispatch<React.SetStateAction<string>>;
+  shotgunModel: string; setShotgunModel: React.Dispatch<React.SetStateAction<string>>;
+  cartridgeBrand: string; setCartridgeBrand: React.Dispatch<React.SetStateAction<string>>;
+  cartridgeModel: string; setCartridgeModel: React.Dispatch<React.SetStateAction<string>>;
 
   // Dashboard
   showDashboard: boolean;
@@ -301,6 +305,10 @@ export const AdminProvider: React.FC<{
   const [originalClub, setOriginalClub] = useState('');
   const [isInternational, setIsInternational] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [shotgunBrand, setShotgunBrand] = useState('');
+  const [shotgunModel, setShotgunModel] = useState('');
+  const [cartridgeBrand, setCartridgeBrand] = useState('');
+  const [cartridgeModel, setCartridgeModel] = useState('');
 
   // Form Fields - Society
   const [socName, setSocName] = useState('');
@@ -741,6 +749,7 @@ export const AdminProvider: React.FC<{
     activeTab, setActiveTab, hideInternalFAB, setHideInternalFAB, showUserForm, setShowUserForm, editingUser, setEditingUser, selectedUser, setSelectedUser, showProfilePassword, setShowProfilePassword, profileSubTab, setProfileSubTab, showSocietyForm, setShowSocietyForm, editingSociety, setEditingSociety, selectedTeamForSheet, setSelectedTeamForSheet, selectedTeamSheetAction, setSelectedTeamSheetAction, showTeamForm, setShowTeamForm, editingTeam, setEditingTeam, editingScore, setEditingScore, showFilters, setShowFilters, selectedShooterResults, setSelectedShooterResults, shareData, setShareData,
     name, setName, surname, setSurname, email, setEmail, password, setPassword, role, setRole, category, setCategory, qualification, setQualification, society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar, birthDate, setBirthDate, phone, setPhone,
     nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
+    shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel,
     socName, setSocName, socCode, setSocCode, socEmail, setSocEmail, socAddress, setSocAddress, socCity, setSocCity, socRegion, setSocRegion, socZip, setSocZip, socPhone, setSocPhone, socMobile, setSocMobile, socWebsite, setSocWebsite, socContactName, setSocContactName, socLogo, setSocLogo, socOpeningHours, setSocOpeningHours, socGoogleMapsLink, setSocGoogleMapsLink, socLat, setSocLat, socLng, setSocLng, socDisciplines, setSocDisciplines,
     newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId, newTeamCompetitionName, setNewTeamCompetitionName, newTeamDiscipline, setNewTeamDiscipline, newTeamSociety, setNewTeamSociety, newTeamLocation, setNewTeamLocation, newTeamDate, setNewTeamDate, newTeamTargets, setNewTeamTargets, newTeamType, setNewTeamType, selectedShooterIds, setSelectedShooterIds,
     filterOptions, setFilterOptions, fetchFilterOptions,

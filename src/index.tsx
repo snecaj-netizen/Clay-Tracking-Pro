@@ -2,8 +2,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { UIProvider } from '@/contexts/UIContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { UIProvider } from '../contexts/UIContext';
+import { LanguageProvider } from '../contexts/LanguageContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -168,6 +168,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar,
     birthDate, setBirthDate, phone, setPhone,
     nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
+    shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel,
     hideInternalFAB
   } = useAdmin();
 
@@ -224,7 +225,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
       name, surname, email, role, category, qualification, society, shooter_code: shooterCode, 
       password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, 
       phone: phone || undefined,
-      nationality, international_id: internationalId, original_club: originalClub, is_international: isInternational, email_verified: isEmailVerified
+      nationality, international_id: internationalId, original_club: originalClub, is_international: isInternational, email_verified: isEmailVerified,
+      shotgun_brand: shotgunBrand, shotgun_model: shotgunModel, cartridge_brand: cartridgeBrand, cartridge_model: cartridgeModel
     };
 
     try {
@@ -331,6 +333,10 @@ const UserManagement: React.FC<UserManagementProps> = ({
     setOriginalClub(user.original_club || '');
     setIsInternational(!!user.is_international);
     setIsEmailVerified(!!user.email_verified);
+    setShotgunBrand(user.shotgun_brand || '');
+    setShotgunModel(user.shotgun_model || '');
+    setCartridgeBrand(user.cartridge_brand || '');
+    setCartridgeModel(user.cartridge_model || '');
     setPassword('');
     setShowUserForm(true);
   };
@@ -495,6 +501,16 @@ const UserManagement: React.FC<UserManagementProps> = ({
     else if (age > 72) setter('MAS');
     else if (['JUN', 'SEN', 'VET', 'MAS', 'MAN'].includes(currentQual)) setter('');
   };
+
+  const SHOTGUN_BRANDS = [
+    'Benelli', 'Beretta', 'Browning', 'Caesar Guerini', 'Fabarm', 'Franchi',
+    'Krieghoff', 'Marocchi', 'Perazzi', 'Rizzini', 'Sabatti', 'Zoli', 'Altro'
+  ];
+
+  const CARTRIDGE_BRANDS = [
+    'Baschieri & Pellagri', 'Bornaghi', 'Cheddite', 'Clever', 'Fiocchi',
+    'Nobel Sport', 'RC', 'Trust', 'Winchester', 'Altro'
+  ];
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl animate-in fade-in slide-in-from-left-4 duration-500">
@@ -789,7 +805,64 @@ const UserManagement: React.FC<UserManagementProps> = ({
               )}
             </div>
 
-            {/* Row 3: Data di Nascita, Telefono */}
+            {/* Equipment Row */}
+            {role !== 'society' && (
+              <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800 space-y-4">
+                <h4 className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center gap-2 mb-2">
+                  <i className="fas fa-crosshairs"></i> {t('equipment_label')}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shotgun_brand')}</label>
+                    <select 
+                      value={shotgunBrand} 
+                      onChange={e => setShotgunBrand(e.target.value)} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">{t('select_dot')}</option>
+                      {SHOTGUN_BRANDS.map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shotgun_model')}</label>
+                    <input 
+                      type="text" 
+                      value={shotgunModel} 
+                      onChange={e => setShotgunModel(e.target.value)} 
+                      placeholder={t('shotgun_model_placeholder')}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cartridge_brand')}</label>
+                    <select 
+                      value={cartridgeBrand} 
+                      onChange={e => setCartridgeBrand(e.target.value)} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">{t('select_dot')}</option>
+                      {CARTRIDGE_BRANDS.map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cartridge_model')}</label>
+                    <input 
+                      type="text" 
+                      value={cartridgeModel} 
+                      onChange={e => setCartridgeModel(e.target.value)} 
+                      placeholder={t('cartridge_model_placeholder')}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('birth_date')}</label>

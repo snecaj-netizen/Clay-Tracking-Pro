@@ -54,6 +54,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
   };
 
   const handlePrint = () => {
+    window.focus();
     window.print();
   };
 
@@ -84,7 +85,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      if (i > 0) pdf.addPage();
+      if (i > 0) pdf.addPage('a4', 'landscape');
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     }
     

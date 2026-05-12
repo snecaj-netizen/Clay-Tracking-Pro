@@ -42,13 +42,14 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
     const element = containerRef.current;
     const pages = Array.from(element.children).filter(child => child.tagName === 'DIV');
     
-    const totalFields = Math.max(...squads.map(s => s.field_number), 0);
-    const orientation = totalFields <= 3 ? 'portrait' : 'landscape';
+    const maxField = event.total_fields || Math.max(...squads.map(s => s.field_number), 0);
+    const orientation = maxField <= 3 ? 'portrait' : 'landscape';
 
     const pdf = new jsPDF({
       orientation: orientation,
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
+      compress: true
     });
     
     for (let i = 0; i < pages.length; i++) {
@@ -58,23 +59,25 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        // Force the capture size to match A4 proportions in pixels at 96dpi
+        width: orientation === 'portrait' ? 794 : 1123,
+        height: orientation === 'portrait' ? 1123 : 794,
         windowWidth: orientation === 'portrait' ? 794 : 1123,
         windowHeight: orientation === 'portrait' ? 1123 : 794
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgData = canvas.toDataURL('image/jpeg', 0.8);
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      if (i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      if (i > 0) pdf.addPage('a4', orientation);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
     }
     
     pdf.save(`ordine_di_tiro_${event.name.replace(/\s+/g, '_')}.pdf`);
   };
 
   const handlePrint = () => {
+    window.focus();
     window.print();
   };
 

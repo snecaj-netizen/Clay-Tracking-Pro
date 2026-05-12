@@ -205,6 +205,10 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
   const [profileOriginalClub, setProfileOriginalClub] = useState(currentUser?.original_club || '');
   const [profileEmailVerified, setProfileEmailVerified] = useState(!!currentUser?.email_verified);
   const [profileLanguage, setProfileLanguage] = useState(currentUser?.language || 'it');
+  const [profileShotgunBrand, setProfileShotgunBrand] = useState(currentUser?.shotgun_brand || '');
+  const [profileShotgunModel, setProfileShotgunModel] = useState(currentUser?.shotgun_model || '');
+  const [profileCartridgeBrand, setProfileCartridgeBrand] = useState(currentUser?.cartridge_brand || '');
+  const [profileCartridgeModel, setProfileCartridgeModel] = useState(currentUser?.cartridge_model || '');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -225,6 +229,10 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
       setProfileOriginalClub(currentUser.original_club || '');
       setProfileEmailVerified(!!currentUser.email_verified);
       setProfileLanguage(currentUser.language || 'it');
+      setProfileShotgunBrand(currentUser.shotgun_brand || '');
+      setProfileShotgunModel(currentUser.shotgun_model || '');
+      setProfileCartridgeBrand(currentUser.cartridge_brand || '');
+      setProfileCartridgeModel(currentUser.cartridge_model || '');
     }
   }, [currentUser]);
 
@@ -275,7 +283,11 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           original_club: profileOriginalClub || undefined,
           email_verified: profileEmailVerified,
           language: profileLanguage,
-          password: profilePassword || undefined
+          password: profilePassword || undefined,
+          shotgun_brand: profileShotgunBrand,
+          shotgun_model: profileShotgunModel,
+          cartridge_brand: profileCartridgeBrand,
+          cartridge_model: profileCartridgeModel
         }),
       });
 
@@ -303,7 +315,11 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           international_id: profileInternationalId,
           original_club: profileOriginalClub,
           email_verified: profileEmailVerified,
-          language: profileLanguage
+          language: profileLanguage,
+          shotgun_brand: profileShotgunBrand,
+          shotgun_model: profileShotgunModel,
+          cartridge_brand: profileCartridgeBrand,
+          cartridge_model: profileCartridgeModel
         });
       }
       
@@ -355,6 +371,16 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
       )
     )
   );
+
+  const SHOTGUN_BRANDS = [
+    'Benelli', 'Beretta', 'Browning', 'Caesar Guerini', 'Fabarm', 'Franchi',
+    'Krieghoff', 'Marocchi', 'Perazzi', 'Rizzini', 'Sabatti', 'Zoli', 'Altro'
+  ];
+
+  const CARTRIDGE_BRANDS = [
+    'Baschieri & Pellagri', 'Bornaghi', 'Cheddite', 'Clever', 'Fiocchi',
+    'Nobel Sport', 'RC', 'Trust', 'Winchester', 'Altro'
+  ];
 
   return (
     <div className="space-y-6">
@@ -817,6 +843,64 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                   )}
+                  
+                  {/* Equipment Section */}
+                  <div className="md:col-span-2 bg-slate-950/50 p-6 rounded-2xl border border-slate-800 space-y-4 mb-6">
+                    <h4 className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center gap-2 mb-2">
+                      <i className="fas fa-crosshairs"></i> {t('equipment_label')}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shotgun_brand')}</label>
+                        <select 
+                          value={profileShotgunBrand} 
+                          onChange={e => setProfileShotgunBrand(e.target.value)} 
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                        >
+                          <option value="">{t('select_dot')}</option>
+                          {SHOTGUN_BRANDS.map(brand => (
+                            <option key={brand} value={brand}>{brand}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shotgun_model')}</label>
+                        <input 
+                          type="text" 
+                          value={profileShotgunModel} 
+                          onChange={e => setProfileShotgunModel(e.target.value)} 
+                          placeholder={t('shotgun_model_placeholder')}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cartridge_brand')}</label>
+                        <select 
+                          value={profileCartridgeBrand} 
+                          onChange={e => setProfileCartridgeBrand(e.target.value)} 
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none"
+                        >
+                          <option value="">{t('select_dot')}</option>
+                          {CARTRIDGE_BRANDS.map(brand => (
+                            <option key={brand} value={brand}>{brand}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cartridge_model')}</label>
+                        <input 
+                          type="text" 
+                          value={profileCartridgeModel} 
+                          onChange={e => setProfileCartridgeModel(e.target.value)} 
+                          placeholder={t('cartridge_model_placeholder')}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="md:col-span-2 border-t border-slate-800 pt-6">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('language')}</label>
                     <div className="flex gap-4 mt-2">

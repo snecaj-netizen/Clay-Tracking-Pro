@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { SocietyEvent, PrizeSetting, User, Discipline } from '../types';
+import { SocietyEvent, PrizeSetting, User, Discipline, getSeriesLayout } from '../types';
 import { calculateRTE, shortenCategoryName, getDisplayCategory, INTERNATIONAL_CODES, INTL_TO_DOMESTIC } from '../ratingUtils';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
@@ -876,10 +876,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const getDotColors = (isHit: boolean) => {
     const isElica = event.discipline === Discipline.EL;
+    const isSporting = event.discipline === Discipline.SP;
+    
     if (isHit) {
-      return isElica 
-        ? 'bg-white border-slate-200 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.3)]' 
-        : 'bg-[#a3e635] border-[#65a30d] text-green-900 shadow-[0_0_10px_rgba(163,230,53,0.2)]';
+      if (isElica) return 'bg-white border-slate-200 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.3)]';
+      if (isSporting) return 'bg-white border-slate-300 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.2)]';
+      return 'bg-[#a3e635] border-[#65a30d] text-green-900 shadow-[0_0_10px_rgba(163,230,53,0.2)]';
     } else {
       return 'bg-[#ef4444] border-[#b91c1c] text-red-900 shadow-[0_0_10px_rgba(239,68,68,0.2)]';
     }
@@ -887,10 +889,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const getSmallDotColors = (isHit: boolean) => {
     const isElica = event.discipline === Discipline.EL;
+    const isSporting = event.discipline === Discipline.SP;
+    
     if (isHit) {
-      return isElica 
-        ? 'bg-white border-slate-200 text-slate-900' 
-        : 'bg-green-500/20 text-green-500 border-green-500/30';
+      if (isElica || isSporting) return 'bg-white border-slate-200 text-slate-900';
+      return 'bg-green-500/20 text-green-500 border-green-500/30';
     } else {
       return 'bg-red-500/20 text-red-500 border-red-500/30';
     }
@@ -1252,20 +1255,36 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           <i className="fas fa-times"></i>
                         </button>
                       </div>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {Array.from({ length: 25 }).map((_, targetIdx) => {
-                          const isHit = detailedScores[expandedSeries]?.[targetIdx];
-                          return (
-                            <button
-                              key={targetIdx}
-                              type="button"
-                              onClick={() => handleDetailedScoreChange(expandedSeries, targetIdx)}
-                              className={`w-full aspect-square rounded-full border-2 transition-all active:scale-90 flex items-center justify-center text-[10px] font-bold ${getDotColors(isHit)}`}
-                            >
-                              {targetIdx + 1}
-                            </button>
-                          );
-                        })}
+                      <div className="space-y-4">
+                        {(() => {
+                          const layoutInfo = getSeriesLayout(event.discipline as Discipline);
+                          let absoluteIdx = 0;
+                          return layoutInfo.layout.map((count, groupIdx) => (
+                            <div key={groupIdx} className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="h-px flex-1 bg-slate-800"></div>
+                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-2">{layoutInfo.label} {groupIdx + 1}</span>
+                                <div className="h-px flex-1 bg-slate-800"></div>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 justify-center">
+                                {Array.from({ length: count }).map(() => {
+                                  const targetIdx = absoluteIdx++;
+                                  const isHit = detailedScores[expandedSeries!]?.[targetIdx];
+                                  return (
+                                    <button
+                                      key={targetIdx}
+                                      type="button"
+                                      onClick={() => handleDetailedScoreChange(expandedSeries!, targetIdx)}
+                                      className={`w-9 h-9 rounded-full border-2 transition-all active:scale-90 flex items-center justify-center text-[11px] font-black ${getDotColors(isHit)}`}
+                                    >
+                                      {targetIdx + 1}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     </div>
                   )}
@@ -1832,18 +1851,35 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                     : Array.from({ length: 25 }, (_, i) => i < score);
                                   
                                   return (
-                                    <div key={sIdx} className="flex flex-col gap-1">
-                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Serie {sIdx + 1} ({score})</div>
-                                      <div className="flex flex-wrap gap-1">
-                                        {dScore.map((hit: boolean, tIdx: number) => (
-                                          <div 
-                                            key={tIdx} 
-                                            className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold border ${getSmallDotColors(hit)}`}
-                                            title={`Piattello ${tIdx + 1}: ${hit ? 'Colpito' : 'Zero'}`}
-                                          >
-                                            {hit ? '1' : '0'}
-                                          </div>
-                                        ))}
+                                    <div key={sIdx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
+                                      <div className="flex justify-between items-center px-1">
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serie {sIdx + 1}</div>
+                                        <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/25</span></div>
+                                      </div>
+                                      <div className="flex flex-wrap gap-4 items-end">
+                                        {(() => {
+                                          const layoutInfo = getSeriesLayout(event.discipline as Discipline);
+                                          let absIdx = 0;
+                                          return layoutInfo.layout.map((count, gIdx) => (
+                                            <div key={gIdx} className="flex flex-col gap-1">
+                                              <span className="text-[7px] text-slate-600 font-black uppercase tracking-tight opacity-70 leading-none">{layoutInfo.label.charAt(0)}{gIdx + 1}</span>
+                                              <div className="flex gap-0.5">
+                                                {Array.from({ length: count }).map(() => {
+                                                  const tIdx = absIdx++;
+                                                  const hit = dScore[tIdx];
+                                                  return (
+                                                    <div 
+                                                      key={tIdx} 
+                                                      className={`w-2 h-2 rounded-full border ${getSmallDotColors(hit)} shadow-sm`}
+                                                      title={`P${tIdx + 1}: ${hit ? 'Colpito' : 'Zero'}`}
+                                                    >
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          ));
+                                        })()}
                                       </div>
                                     </div>
                                   );

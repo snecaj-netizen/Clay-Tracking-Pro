@@ -136,6 +136,10 @@ export interface User {
   avatar?: string;
   birth_date?: string;
   phone?: string;
+  shotgun_brand?: string;
+  shotgun_model?: string;
+  cartridge_brand?: string;
+  cartridge_model?: string;
   is_logged_in?: boolean;
   is_international?: boolean;
   nationality?: string;
@@ -312,30 +316,35 @@ export interface Stats {
 }
 
 export const getSeriesLayout = (discipline: Discipline) => {
-  if (discipline === Discipline.SP) {
+  // Compak Sporting (CK) & Sporting (SP)
+  if (discipline === Discipline.CK || discipline === Discipline.SP || discipline === Discipline.ES) {
     return {
       label: 'Piazzola',
-      layout: [9, 9, 7]
+      layout: [5, 5, 5, 5, 5]
     };
   }
+  // Elica (EL)
   if (discipline === Discipline.EL) {
     return {
       label: 'Serie',
-      layout: [3, 3, 3, 3] // Example for 12 targets, can be adjusted
+      layout: [12] // Standard Elica series 12 targets
     };
   }
+  // Double Trap (DT)
   if (discipline === Discipline.DT) {
     return {
       label: 'Pedana',
-      layout: [6, 6, 6, 6, 6] // 30 targets
+      layout: [10, 10, 10] // DT is often series of 30 targets (15 doubles)
     };
   }
+  // Skeet ISSF (SK ISSF)
   if (discipline === Discipline.SK_ISSF) {
     return {
       label: 'Pedana',
-      layout: [3, 3, 3, 3, 3, 3, 3, 4] // 25 targets over 8 stations
+      layout: [3, 2, 3, 2, 3, 2, 3, 4, 3] // Combined stations to sum 25
     };
   }
+  // Default for Fossa Olimpica (FO), Fossa Universale (FU), etc.
   return {
     label: 'Pedana',
     layout: [5, 5, 5, 5, 5]

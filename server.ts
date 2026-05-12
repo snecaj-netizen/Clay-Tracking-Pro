@@ -98,7 +98,7 @@ const sendVerificationEmail = async (email: string, name: string, token: string,
   }
 };
 
-const sendRegistrationEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string, lang: string = 'it') => {
+const sendRegistrationEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string, lang: string = 'it', isSocietyAction: boolean = false) => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Registration email not sent.');
     return;
@@ -120,9 +120,16 @@ const sendRegistrationEmail = async (email: string, name: string, eventName: str
   
   const title = isEn ? 'Registration Confirmation' : 'Conferma Iscrizione';
   const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
-  const successMsg = isEn 
+  
+  let successMsg = isEn 
     ? 'Your registration for the event has been successfully recorded. Here are the details:' 
     : 'La tua iscrizione alla gara è stata registrata con successo. Ecco i dettagli:';
+
+  if (isSocietyAction) {
+    successMsg = isEn
+      ? 'Your Club has registered you for the event as part of a team. Here are the details:'
+      : 'La tua Società ha effettuato l\'iscrizione per te come parte di una squadra. Ecco i dettagli:';
+  }
   
   const labelEvent = isEn ? 'Event' : 'Gara';
   const labelLocation = isEn ? 'Shooting Range' : 'Campo di Tiro';
@@ -187,7 +194,7 @@ const sendRegistrationEmail = async (email: string, name: string, eventName: str
   }
 };
 
-const sendRegistrationModifiedEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string, lang: string = 'it') => {
+const sendRegistrationModifiedEmail = async (email: string, name: string, eventName: string, eventDate: string, societyName: string, phone: string, day: string, session: string, lang: string = 'it', isSocietyAction: boolean = false) => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Modification email not sent.');
     return;
@@ -209,9 +216,16 @@ const sendRegistrationModifiedEmail = async (email: string, name: string, eventN
   
   const title = isEn ? 'Registration Modified' : 'Iscrizione Modificata';
   const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
-  const successMsg = isEn 
+  
+  let successMsg = isEn 
     ? 'Your registration for the event has been successfully modified. Here are the new details:' 
     : 'La tua iscrizione alla gara è stata modificata con successo. Ecco i nuovi dettagli:';
+
+  if (isSocietyAction) {
+    successMsg = isEn
+      ? 'Your Club has modified your registration for the event. Here are the new details:'
+      : 'La tua Società ha modificato la tua iscrizione alla gara. Ecco i nuovi dettagli:';
+  }
   
   const labelEvent = isEn ? 'Event' : 'Gara';
   const labelLocation = isEn ? 'Shooting Range' : 'Campo di Tiro';
@@ -276,7 +290,7 @@ const sendRegistrationModifiedEmail = async (email: string, name: string, eventN
   }
 };
 
-const sendUnregistrationEmail = async (email: string, name: string, eventName: string, societyName: string, lang: string = 'it') => {
+const sendUnregistrationEmail = async (email: string, name: string, eventName: string, societyName: string, lang: string = 'it', isSocietyAction: boolean = false) => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Unregistration email not sent.');
     return;
@@ -289,9 +303,16 @@ const sendUnregistrationEmail = async (email: string, name: string, eventName: s
   
   const title = isEn ? 'Registration Canceled' : 'Iscrizione Cancellata';
   const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
-  const confirmMsg = isEn 
+  
+  let confirmMsg = isEn 
     ? 'We confirm that your registration for the following event has been canceled:' 
     : 'Ti confermiamo che la tua iscrizione alla seguente gara è stata cancellata:';
+
+  if (isSocietyAction) {
+    confirmMsg = isEn
+      ? 'Your Club has withdrawn your team and canceled your registration for the following event:'
+      : 'La tua Società ha ritirato la tua squadra e cancellato la tua iscrizione alla seguente gara:';
+  }
   
   const labelEvent = isEn ? 'Event' : 'Gara';
   const labelLocation = isEn ? 'Shooting Range' : 'Campo di Tiro';
@@ -431,6 +452,10 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS shotgun_brand TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS shotgun_model TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS cartridge_brand TEXT");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS cartridge_model TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP");
@@ -1645,7 +1670,11 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
       nationality: user.nationality,
       international_id: user.international_id,
       original_club: user.original_club,
-      language: user.language
+      language: user.language,
+      shotgun_brand: user.shotgun_brand,
+      shotgun_model: user.shotgun_model,
+      cartridge_brand: user.cartridge_brand,
+      cartridge_model: user.cartridge_model
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1655,7 +1684,8 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   const { 
     name, surname, email, password, category, qualification, society, shooter_code, avatar, birth_date, phone,
-    nationality, international_id, original_club, email_verified, language
+    nationality, international_id, original_club, email_verified, language,
+    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -1673,14 +1703,16 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           name = $1, surname = $2, email = $3, password = $4, category = $5, qualification = $6, 
           society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11,
           nationality = $13, international_id = $14, original_club = $15,
-          email_verified = $16, language = $17
+          email_verified = $16, language = $17,
+          shotgun_brand = $18, shotgun_model = $19, cartridge_brand = $20, cartridge_model = $21
         WHERE id = $12`,
         [
           name, surname, email, hash, category, finalQualification, 
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
           nationality || null, international_id || null, original_club || null,
-          targetEmailVerified, language || 'it'
+          targetEmailVerified, language || 'it',
+          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
         ]
       );
     } else {
@@ -1689,14 +1721,16 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           name = $1, surname = $2, email = $3, category = $4, qualification = $5, 
           society = $6, shooter_code = $7, avatar = $8, birth_date = $9, phone = $10,
           nationality = $12, international_id = $13, original_club = $14,
-          email_verified = $15, language = $16
+          email_verified = $15, language = $16,
+          shotgun_brand = $17, shotgun_model = $18, cartridge_brand = $19, cartridge_model = $20
         WHERE id = $11`,
         [
           name, surname, email, category, finalQualification, 
           society, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
           nationality || null, international_id || null, original_club || null,
-          targetEmailVerified, language || 'it'
+          targetEmailVerified, language || 'it',
+          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
         ]
       );
     }
@@ -2118,7 +2152,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const excludeRole = req.query.excludeRole as string;
     const societyFilter = req.query.society as string;
     
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, nationality, international_id, original_club FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, nationality, international_id, original_club, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
     let params: any[] = [];
     let whereClauses: string[] = [];
@@ -2214,7 +2248,8 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { 
     name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone,
-    is_international, nationality, international_id, original_club, email_verified 
+    is_international, nationality, international_id, original_club, email_verified,
+    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -2234,10 +2269,11 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id",
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id",
       [
         name, surname, email, hash, role || 'user', category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active',
-        !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified
+        !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
+        shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
       ]
     );
     
@@ -2256,7 +2292,10 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
       `/admin?tab=users`
     );
 
-    res.json({ id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, shooter_code, avatar, birth_date, phone, status: 'active' });
+    res.json({ 
+      id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, shooter_code, avatar, birth_date, phone, status: 'active',
+      shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
+    });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -2341,7 +2380,8 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { 
     name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status,
-    is_international, nationality, international_id, original_club, email_verified, language
+    is_international, nationality, international_id, original_club, email_verified, language,
+    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -2375,20 +2415,22 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20 WHERE id = $19",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20, shotgun_brand = $21, shotgun_model = $22, cartridge_brand = $23, cartridge_model = $24 WHERE id = $19",
         [
           name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
-          req.params.id, language || 'it'
+          req.params.id, language || 'it',
+          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
         ]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19 WHERE id = $18",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19, shotgun_brand = $20, shotgun_model = $21, cartridge_brand = $22, cartridge_model = $23 WHERE id = $18",
         [
           name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
-          req.params.id, language || 'it'
+          req.params.id, language || 'it',
+          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
         ]
       );
     }
@@ -4002,6 +4044,10 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
     else if (type === 'A') size = 6;
     else if (type === 'B') size = 3;
 
+    const oldTeamRes = await client.query('SELECT is_sent, date, name FROM teams WHERE id = $1', [teamId]);
+    const wasSent = oldTeamRes.rows[0]?.is_sent;
+    const teamDate = oldTeamRes.rows[0]?.date || '-';
+
     const updatedTeam = await client.query(`
       UPDATE teams SET name = $1, society = $2, size = $3, team_type = $4, type = $7
       WHERE id = $5 AND competition_name = $6
@@ -4016,6 +4062,14 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
 
     // Update members
     if (memberIds) {
+      const oldMembersRes = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
+      const oldMemberIds = oldMembersRes.rows.map(r => Number(r.user_id));
+      const numericMemberIds = memberIds.map((id: any) => Number(id));
+
+      const removedMemberIds = oldMemberIds.filter(id => !numericMemberIds.includes(id));
+      const addedMemberIds = numericMemberIds.filter(id => !oldMemberIds.includes(id));
+      const keptMemberIds = numericMemberIds.filter(id => oldMemberIds.includes(id));
+
       // Remove all members from this team
       await client.query(`DELETE FROM team_members WHERE team_id = $1`, [teamId]);
       
@@ -4024,6 +4078,105 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
         UPDATE competitions SET team_id = NULL, team_name = NULL 
         WHERE team_id = $1 AND event_id = $2
       `, [teamId, eventId]);
+
+      if (wasSent) {
+        // 1. Handle REMOVED members
+        if (removedMemberIds.length > 0) {
+          const removedUsersRes = await client.query(`
+            SELECT id, name, surname, email, email_verified, language
+            FROM users WHERE id = ANY($1)
+          `, [removedMemberIds]);
+
+          for (const u of removedUsersRes.rows) {
+            if (u.email && u.email_verified) {
+              sendUnregistrationEmail(
+                u.email,
+                `${u.name} ${u.surname}`,
+                event.name,
+                event.location,
+                u.language || 'it',
+                true
+              ).catch(err => console.error('Error sending unregistration email on team update:', err));
+            }
+            await client.query(`
+              DELETE FROM event_registrations 
+              WHERE event_id = $1 AND user_id = $2 AND registration_day = $3 AND registration_type = 'Iscrizione da Squadra'
+            `, [eventId, u.id, teamDate]);
+          }
+        }
+
+        // 2. Handle ADDED members
+        if (addedMemberIds.length > 0) {
+          const addedUsersRes = await client.query(`
+            SELECT id, name, surname, email, email_verified, language, phone,
+                   shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
+            FROM users WHERE id = ANY($1)
+          `, [addedMemberIds]);
+
+          for (const u of addedUsersRes.rows) {
+            const phone = u.phone || '';
+            const shotgun_brand = u.shotgun_brand || 'Beretta';
+            const shotgun_model = u.shotgun_model || '';
+            const cartridge_brand = u.cartridge_brand || 'Fiocchi';
+            const cartridge_model = u.cartridge_model || '';
+
+            await client.query(`
+              INSERT INTO event_registrations (
+                event_id, user_id, registration_day, registration_type,
+                shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
+                shooting_session, notes, phone
+              )
+              VALUES ($1, $2, $3, 'Iscrizione da Squadra', $4, $5, $6, $7, 'morning', '', $8)
+              ON CONFLICT (event_id, user_id) DO UPDATE SET
+                registration_type = EXCLUDED.registration_type,
+                shotgun_brand = EXCLUDED.shotgun_brand, shotgun_model = EXCLUDED.shotgun_model,
+                cartridge_brand = EXCLUDED.cartridge_brand, cartridge_model = EXCLUDED.cartridge_model,
+                phone = EXCLUDED.phone, updated_at = CURRENT_TIMESTAMP
+            `, [eventId, u.id, teamDate, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, phone]);
+
+            if (u.email && u.email_verified) {
+              sendRegistrationEmail(
+                u.email,
+                `${u.name} ${u.surname}`,
+                event.name,
+                event.start_date,
+                event.location,
+                phone,
+                teamDate,
+                'morning',
+                u.language || 'it',
+                true
+              ).catch(err => console.error('Error sending registration email on team update:', err));
+            }
+          }
+        }
+
+        // 3. Handle KEPT members (send modification email if team properties changed)
+        // For simplicity, we send it if the team was sent, as the name or other things might have changed
+        if (keptMemberIds.length > 0) {
+          const keptUsersRes = await client.query(`
+            SELECT id, name, surname, email, email_verified, language, phone
+            FROM users WHERE id = ANY($1)
+          `, [keptMemberIds]);
+
+          for (const u of keptUsersRes.rows) {
+            if (u.email && u.email_verified) {
+              sendRegistrationModifiedEmail(
+                u.email,
+                `${u.name} ${u.surname}`,
+                event.name,
+                event.start_date,
+                event.location,
+                u.phone || '-',
+                teamDate,
+                'morning',
+                u.language || 'it',
+                true
+              ).catch(err => console.error('Error sending modification email on team update:', err));
+            }
+          }
+        }
+      }
 
       if (memberIds.length > 0) {
         // Assign new members
@@ -4073,22 +4226,85 @@ app.post('/api/events/:id/teams/:teamId/send', authenticateToken, async (req: an
     
     await client.query('UPDATE teams SET is_sent = TRUE WHERE id = $1', [teamId]);
     
+    // Fetch event details for emails
+    const eventRes = await client.query('SELECT name, location, start_date FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) throw new Error('Evento non trovato');
+    const event = eventRes.rows[0];
+
     const teamRes = await client.query('SELECT date FROM teams WHERE id = $1', [teamId]);
     const teamDate = teamRes.rows[0]?.date || '-';
 
-    const members = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
-    for (const m of members.rows) {
+    const membersRes = await client.query(`
+      SELECT tm.user_id, u.name, u.surname, u.email, u.email_verified, u.language, u.phone,
+             u.shotgun_brand, u.shotgun_model, u.cartridge_brand, u.cartridge_model
+      FROM team_members tm
+      JOIN users u ON tm.user_id = u.id
+      WHERE tm.team_id = $1
+    `, [teamId]);
+
+    for (const m of membersRes.rows) {
       if (!m.user_id) continue;
+      
+      const phone = m.phone || '';
+      const shotgun_brand = m.shotgun_brand || 'Beretta';
+      const shotgun_model = m.shotgun_model || '';
+      const cartridge_brand = m.cartridge_brand || 'Fiocchi';
+      const cartridge_model = m.cartridge_model || '';
+      
       const regRes = await client.query('SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2', [eventId, m.user_id]);
-      if (regRes.rows.length === 0) {
+      const isUpdate = regRes.rows.length > 0;
+      
+      if (!isUpdate) {
         await client.query(`
           INSERT INTO event_registrations (
             event_id, user_id, registration_day, registration_type,
             shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
             shooting_session, notes, phone
           )
-          VALUES ($1, $2, $3, 'Iscrizione da Squadra', 'Beretta', '', 'Fiocchi', '', 'morning', '', '')
-        `, [eventId, m.user_id, teamDate]);
+          VALUES ($1, $2, $3, 'Iscrizione da Squadra', $4, $5, $6, $7, 'morning', '', $8)
+        `, [eventId, m.user_id, teamDate, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, phone]);
+        
+        // Send email for new registration
+        if (m.email && m.email_verified) {
+          sendRegistrationEmail(
+            m.email,
+            `${m.name} ${m.surname}`,
+            event.name,
+            event.start_date,
+            event.location,
+            phone,
+            teamDate,
+            'morning',
+            m.language || 'it',
+            true
+          ).catch(err => console.error('Error sending registration email from team send:', err));
+        }
+      } else {
+        // Update existing registration with team info
+        await client.query(`
+          UPDATE event_registrations 
+          SET registration_type = 'Iscrizione da Squadra', 
+              shotgun_brand = $1, shotgun_model = $2, 
+              cartridge_brand = $3, cartridge_model = $4,
+              phone = $5, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $6
+        `, [shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, phone, regRes.rows[0].id]);
+
+        // Send email for modified registration
+        if (m.email && m.email_verified) {
+          sendRegistrationModifiedEmail(
+            m.email,
+            `${m.name} ${m.surname}`,
+            event.name,
+            event.start_date,
+            event.location,
+            phone,
+            teamDate,
+            'morning',
+            m.language || 'it',
+            true
+          ).catch(err => console.error('Error sending modification email from team send:', err));
+        }
       }
     }
     
@@ -4111,18 +4327,40 @@ app.post('/api/events/:id/teams/:teamId/withdraw', authenticateToken, async (req
     // 1. Update team status
     await client.query('UPDATE teams SET is_sent = FALSE WHERE id = $1', [teamId]);
 
-    // 2. Delete registrations
-    const membersRes = await client.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
-    const memberIds = membersRes.rows.map(r => r.user_id);
+    // Fetch event details for emails
+    const eventRes = await client.query('SELECT name, location FROM events WHERE id = $1', [eventId]);
+    const event = eventRes.rows[0];
+
+    // 2. Fetch members to send cancellation emails
+    const membersRes = await client.query(`
+      SELECT tm.user_id, u.name, u.surname, u.email, u.email_verified, u.language
+      FROM team_members tm
+      JOIN users u ON tm.user_id = u.id
+      WHERE tm.team_id = $1
+    `, [teamId]);
     
     const teamRes = await client.query('SELECT date FROM teams WHERE id = $1', [teamId]);
     const teamDate = teamRes.rows[0]?.date || '-';
 
-    for (const userId of memberIds) {
+    for (const m of membersRes.rows) {
+      if (!m.user_id) continue;
+      
+      // Before deleting, send cancellation email
+      if (m.email && m.email_verified) {
+        sendUnregistrationEmail(
+          m.email,
+          `${m.name} ${m.surname}`,
+          event?.name || 'Evento',
+          event?.location || 'TAV',
+          m.language || 'it',
+          true
+        ).catch(err => console.error('Error sending cancellation email from team withdraw:', err));
+      }
+
       await client.query(`
         DELETE FROM event_registrations 
         WHERE event_id = $1 AND user_id = $2 AND registration_day = $3 AND registration_type = 'Iscrizione da Squadra'
-      `, [eventId, userId, teamDate]);
+      `, [eventId, m.user_id, teamDate]);
     }
     
     await client.query('COMMIT');
@@ -4335,9 +4573,21 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
       // Don't fail the whole registration if this fails
     }
 
-    // Also update user phone if provided and not already set
+    // Update user phone and equipment if provided
     if (phone) {
-      await pool.query('UPDATE users SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = \'\')', [phone, targetUserId]);
+      await pool.query('UPDATE users SET phone = $1 WHERE id = $2', [phone, targetUserId]);
+    }
+    if (shotgun_brand) {
+      await pool.query('UPDATE users SET shotgun_brand = $1 WHERE id = $2', [shotgun_brand, targetUserId]);
+    }
+    if (shotgun_model) {
+      await pool.query('UPDATE users SET shotgun_model = $1 WHERE id = $2', [shotgun_model, targetUserId]);
+    }
+    if (cartridge_brand) {
+      await pool.query('UPDATE users SET cartridge_brand = $1 WHERE id = $2', [cartridge_brand, targetUserId]);
+    }
+    if (cartridge_model) {
+      await pool.query('UPDATE users SET cartridge_model = $1 WHERE id = $2', [cartridge_model, targetUserId]);
     }
 
     // Handle automatic squad assignment if time is specified OR if explicitly requested
