@@ -105,8 +105,8 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
         </button>
       </div>
 
-      <div className="flex flex-col items-center justify-center p-4 md:p-10 min-h-screen">
-        <div ref={containerRef} className="w-full max-w-[297mm] mx-auto flex flex-col gap-8 print:gap-0 print:block print:max-w-none">
+      <div className="flex flex-col items-center justify-center p-4 md:p-10 min-h-screen print:p-0 print:block print:min-h-0">
+        <div ref={containerRef} className="w-full max-w-[297mm] mx-auto flex flex-col gap-8 print:gap-0 print:block print:max-w-none print:m-0">
           {shooters.map((shooter, idx) => (
             <BibPrintSheet 
               key={idx}
