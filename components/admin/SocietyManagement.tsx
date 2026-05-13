@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { GestureHandling } from 'leaflet-gesture-handling';
+import 'leaflet-gesture-handling/dist/leaflet-gesture-handling.css';
 import * as XLSX from 'xlsx';
 import SocietyDetailModal from '../SocietyDetailModal';
 import { Discipline } from '../../types';
@@ -16,6 +18,9 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Register GestureHandling
+L.Map.addInitHook('addHandler', 'gestureHandling', GestureHandling);
 
 // Red icon for user's society
 const redIcon = new L.Icon({
@@ -45,6 +50,18 @@ function MapResizer() {
       map.invalidateSize();
     }, 100);
     return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+// Gesture handler to require two fingers to drag the map
+function GestureHandler() {
+  const map = useMap();
+  useEffect(() => {
+    (map as any).gestureHandling.enable();
+    return () => {
+      (map as any).gestureHandling.disable();
+    };
   }, [map]);
   return null;
 }
@@ -697,6 +714,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
             className="z-0"
           >
             <MapResizer />
+            <GestureHandler />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

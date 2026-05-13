@@ -31,6 +31,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
+    "leaflet-gesture-handling": "^1.2.2",
     "lucide-react": "^0.476.0",
     "motion": "^12.38.0",
     "node-cron": "^4.2.1",
