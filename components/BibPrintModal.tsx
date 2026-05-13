@@ -2,8 +2,6 @@ import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BibPrintSheet } from './BibPrintSheet'; // Use existing component
 import { SocietyEvent } from '../types';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface BibPrintModalProps {
@@ -23,8 +21,6 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
       const timer = setTimeout(() => {
         if (autoAction === 'print') {
           handlePrint();
-        } else if (autoAction === 'download') {
-          handleDownloadPDF();
         }
       }, 1000);
       return () => clearTimeout(timer);
@@ -36,45 +32,6 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
     window.print();
   };
 
-  const handleDownloadPDF = async () => {
-    if (!containerRef.current) return;
-    
-    const element = containerRef.current;
-    
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4',
-      compress: true
-    });
-    
-    // Iterate over children (bibs)
-    const pages = Array.from(element.children) as HTMLElement[];
-    for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
-        const canvas = await html2canvas(page, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            // Proportions for A4 Landscape at 96 DPI: 1123 x 794
-            width: 1123,
-            height: 794,
-            windowWidth: 1123,
-            windowHeight: 794
-        });
-        
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        
-        if (i > 0) pdf.addPage('a4', 'landscape');
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-    }
-    
-    pdf.save(`pettorali_${event.name || 'gara'}.pdf`);
-  };
-
   return createPortal(
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] overflow-y-auto no-scrollbar print:p-0 print:bg-white print:static print:inset-auto bib-print-overlay">
       
@@ -84,12 +41,6 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
           <h3 className="text-white font-black uppercase text-[10px] md:text-xs tracking-widest opacity-50">Anteprima Pettorali</h3>
         </div>
         
-        <button 
-          onClick={handleDownloadPDF}
-          className="flex-1 sm:flex-none px-3 md:px-6 py-2 rounded-xl bg-slate-800 text-white font-black uppercase text-[9px] md:text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-xl border border-white/5"
-        >
-          <i className="fas fa-download"></i> <span className="">{t('download_pdf')}</span>
-        </button>
         <button 
           onClick={handlePrint}
           className="flex-1 sm:flex-none px-3 md:px-6 py-2 rounded-xl bg-orange-600 text-white font-black uppercase text-[9px] md:text-xs tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-xl border border-orange-400/20"

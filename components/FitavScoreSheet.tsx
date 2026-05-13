@@ -1,8 +1,6 @@
 import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { SocietyEvent } from '../types';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 interface FitavScoreSheetProps {
   teams: {
@@ -34,8 +32,6 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
       const timer = setTimeout(() => {
         if (autoAction === 'print') {
           handlePrint();
-        } else if (autoAction === 'download') {
-          handleDownloadPDF();
         }
       }, 1000);
       return () => clearTimeout(timer);
@@ -56,40 +52,6 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
   const handlePrint = () => {
     window.focus();
     window.print();
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!containerRef.current) return;
-    
-    const element = containerRef.current;
-    const pages = Array.from(element.children).filter(child => child.tagName === 'DIV');
-    
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
-    
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i] as HTMLElement;
-      const canvas = await html2canvas(page, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1123,
-        windowHeight: 794
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      if (i > 0) pdf.addPage('a4', 'landscape');
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-    }
-    
-    pdf.save(`statino_${event?.name || 'gara'}.pdf`);
   };
 
   // Helper to get Pedana number and target range for a specific cell
@@ -118,15 +80,6 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
     >
       {/* Controls (Hidden on Print, outside ref) */}
       <div className="fixed top-6 right-6 flex gap-4 z-[2100] print:hidden">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDownloadPDF();
-          }}
-          className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2 shadow-2xl"
-        >
-          <i className="fas fa-download text-sm"></i> Scarica PDF
-        </button>
         <button 
           onClick={(e) => {
             e.stopPropagation();

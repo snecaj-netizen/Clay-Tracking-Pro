@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { SocietyEvent, EventSquad } from '../types';
 import { getDisplayCategory } from '../ratingUtils';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { X, Download, Printer } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 
 interface ShootingOrderPreviewProps {
   event: SocietyEvent;
@@ -24,8 +22,6 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
       const timer = setTimeout(() => {
         if (autoAction === 'print') {
           handlePrint();
-        } else if (autoAction === 'download') {
-          handleDownloadPDF();
         }
       }, 1000);
       return () => clearTimeout(timer);
@@ -48,46 +44,6 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
     if (!normalized || normalized === 'all') return '';
     const [year, month, day] = normalized.split('-');
     return `${day}/${month}/${year}`;
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!containerRef.current) return;
-    
-    const element = containerRef.current;
-    const pages = Array.from(element.children).filter(child => child.tagName === 'DIV');
-    
-    const maxField = event.total_fields || Math.max(...squads.map(s => s.field_number), 0);
-    const orientation = maxField <= 3 ? 'portrait' : 'landscape';
-
-    const pdf = new jsPDF({
-      orientation: orientation,
-      unit: 'mm',
-      format: 'a4',
-      compress: true
-    });
-    
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i] as HTMLElement;
-      const canvas = await html2canvas(page, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: orientation === 'portrait' ? 794 : 1123,
-        height: orientation === 'portrait' ? 1123 : 794,
-        windowWidth: orientation === 'portrait' ? 794 : 1123,
-        windowHeight: orientation === 'portrait' ? 1123 : 794
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.8);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      if (i > 0) pdf.addPage('a4', orientation);
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-    }
-    
-    pdf.save(`ordine_di_tiro_${event.name.replace(/\s+/g, '_')}.pdf`);
   };
 
   const handlePrint = () => {
@@ -124,15 +80,6 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
     >
       {/* Controls Container */}
       <div className="fixed top-6 right-6 flex gap-4 z-[10000] print:hidden">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDownloadPDF();
-          }}
-          className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2 shadow-2xl"
-        >
-          <Download className="w-4 h-4" /> {t('download_pdf')}
-        </button>
         <button 
           onClick={(e) => {
             e.stopPropagation();
