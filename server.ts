@@ -1382,7 +1382,7 @@ const sendPushNotification = async (
     if (numericUserIds.length === 0) return;
 
     const { rows: userDatas } = await pool.query(
-      `SELECT u.id, u.language, ns.rate_limit, 
+      `SELECT u.id, u.language, ns.rate_limit, ns.global_enabled,
         (SELECT COUNT(*) FROM notifications n WHERE n.user_id = u.id AND DATE(n.created_at) = CURRENT_DATE) as today_count
        FROM users u
        LEFT JOIN notification_settings ns ON u.id = ns.user_id
@@ -1391,8 +1391,11 @@ const sendPushNotification = async (
     );
 
     const usersToNotify = userDatas.filter(u => {
+      // Respect user's individual global toggle
+      if (u.global_enabled === false) return false;
+      
       const limit = u.rate_limit !== null ? u.rate_limit : settings.rate_limit;
-      return parseInt(u.today_count) < limit;
+      return parseInt(u.today_count) < (limit || 100);
     });
 
     if (usersToNotify.length === 0) return;
@@ -1831,6 +1834,44 @@ app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdm
     res.json(event);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/notification-settings', authenticateToken, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query("SELECT global_enabled, rate_limit, templates, muted_entities FROM notification_settings WHERE user_id = $1", [req.user.id]);
+    if (rows.length === 0) {
+      const { rows: newRows } = await pool.query(
+        "INSERT INTO notification_settings (user_id) VALUES ($1) RETURNING global_enabled, rate_limit, templates, muted_entities",
+        [req.user.id]
+      );
+      return res.json(newRows[0]);
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching notification settings:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/notification-settings', authenticateToken, async (req: any, res) => {
+  try {
+    const { global_enabled, muted_entities } = req.body;
+    
+    await pool.query(`
+      INSERT INTO notification_settings 
+        (user_id, global_enabled, muted_entities, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) DO UPDATE SET
+        global_enabled = EXCLUDED.global_enabled,
+        muted_entities = EXCLUDED.muted_entities,
+        updated_at = CURRENT_TIMESTAMP
+    `, [req.user.id, global_enabled, JSON.stringify(muted_entities || [])]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating notification settings:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -3230,8 +3271,10 @@ app.post('/api/admin/challenges', authenticateToken, requireAdminOrSociety, asyn
 app.put('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { societyId, name, discipline, mode, startDate, endDate, prize } = req.body;
   try {
-    const { rows: challengeRows } = await pool.query("SELECT society_id FROM challenges WHERE id = $1", [req.params.id]);
+    const { rows: challengeRows } = await pool.query("SELECT society_id, name FROM challenges WHERE id = $1", [req.params.id]);
     if (challengeRows.length === 0) return res.status(404).json({ error: 'Sfida non trovata' });
+
+    const notificationName = name || challengeRows[0].name;
 
     if (req.user.role === 'society') {
       const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [challengeRows[0].society_id]);
@@ -3254,7 +3297,7 @@ app.put('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety, a
     const { rows: socRows } = await pool.query("SELECT name FROM societies WHERE id = $1", [societyId]);
     const societyName = socRows[0]?.name;
     const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
-    await sendAdminCompactNotification('sfida', name, 'aggiornata', 'Gara di Società', societyName, from);
+    await sendAdminCompactNotification('sfida', notificationName, 'aggiornata', 'Gara di Società', societyName, from);
 
     res.json({ success: true });
   } catch (err: any) {
@@ -3552,18 +3595,24 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
   try {
     await client.query('BEGIN');
     
-    // Check authorization
+    // Get current team info for authorization and notification fallback
+    const { rows: teamRows } = await client.query("SELECT society, name FROM teams WHERE id = $1", [id]);
+    if (teamRows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Team not found" });
+    }
+
     if (req.user.role === 'society') {
-      const { rows } = await client.query("SELECT society FROM teams WHERE id = $1", [id]);
-      const teamSociety = rows[0]?.society?.toString().trim().toLowerCase();
+      const teamSociety = teamRows[0].society?.toString().trim().toLowerCase();
       const userSociety = req.user.society?.toString().trim().toLowerCase();
-      if (rows.length === 0 || teamSociety !== userSociety) {
+      if (teamSociety !== userSociety) {
         await client.query('ROLLBACK');
         return res.status(403).json({ error: "Unauthorized" });
       }
     }
 
     const teamId = parseInt(id);
+    const finalTeamName = name || teamRows[0].name;
     const society = req.user.role === 'society' ? req.user.society : bodySociety;
     const numericMemberIds = memberIds.map((mid: any) => parseInt(mid));
 
@@ -3654,8 +3703,8 @@ app.put('/api/teams/:id', authenticateToken, requireAdminOrSociety, async (req: 
         allInvolvedIds,
         { it: "Squadra Aggiornata", en: "Squad Updated" },
         { 
-          it: `La squadra "${name}" è stata modificata. Controlla i dettagli.`,
-          en: `The squad "${name}" has been modified. Check the details.`
+          it: `La squadra "${finalTeamName}" è stata modificata. Controlla i dettagli.`,
+          en: `The squad "${finalTeamName}" has been modified. Check the details.`
         },
         `/history`,
         'team'
@@ -4051,6 +4100,7 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
     const oldTeamRes = await client.query('SELECT is_sent, date, name FROM teams WHERE id = $1', [teamId]);
     const wasSent = oldTeamRes.rows[0]?.is_sent;
     const teamDate = oldTeamRes.rows[0]?.date || '-';
+    const finalName = name || oldTeamRes.rows[0]?.name;
 
     const updatedTeam = await client.query(`
       UPDATE teams SET name = $1, society = $2, size = $3, team_type = $4, type = $7
@@ -4195,15 +4245,15 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
         await client.query(`
           UPDATE competitions SET team_id = $1, team_name = $2 
           WHERE event_id = $3 AND user_id = ANY($4)
-        `, [teamId, name, eventId, memberIds]);
+        `, [teamId, finalName, eventId, memberIds]);
         
         // Send push notification to team members
         await sendPushNotification(
           memberIds,
           { it: "Squadra Aggiornata", en: "Squad Updated" },
           { 
-            it: `La squadra "${name}" per la gara "${event.name}" è stata modificata.`,
-            en: `The squad "${name}" for the event "${event.name}" has been modified.`
+            it: `La squadra "${finalName}" per la gara "${event.name}" è stata modificata.`,
+            en: `The squad "${finalName}" for the event "${event.name}" has been modified.`
           },
           `/history`,
           'team'
@@ -4885,21 +4935,37 @@ app.put('/api/events/:eventId/registrations/:registrationId', authenticateToken,
 
     res.json(finalResult.rows[0]);
 
-    // Handle automatic squad assignment if time is specified OR if explicitly requested OR if moved from a squad
+    // Handle squad assignment if day/time changed OR if explicitly requested
     const { addToSquad } = req.body;
     const isTimeFormat = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(shooting_session);
     
-    if (isTimeFormat || (addToSquad && (isAdmin || isSociety)) || (changed && wasInSquad)) {
+    if (changed || (addToSquad && (isAdmin || isSociety))) {
       try {
-        if (isTimeFormat) {
-          // Remove from ANY existing squad for this event first to avoid duplicates
+        // Find squad and position before removal to reorder others
+        const oldSquadInfo = await pool.query(
+          `SELECT squad_id, position FROM event_squad_members 
+           WHERE registration_id = $1 
+           AND squad_id IN (SELECT id FROM event_squads WHERE event_id = $2)`,
+          [registrationId, eventId]
+        );
+
+        if (oldSquadInfo.rows.length > 0) {
+          const { squad_id: oldSqId, position: oldPos } = oldSquadInfo.rows[0];
+
+          // Remove from squad
           await pool.query(
-            `DELETE FROM event_squad_members 
-             WHERE registration_id = $1 
-             AND squad_id IN (SELECT id FROM event_squads WHERE event_id = $2)`,
-            [registrationId, eventId]
+            "DELETE FROM event_squad_members WHERE registration_id = $1 AND squad_id = $2",
+            [registrationId, oldSqId]
           );
 
+          // Shift others UP to fill the gap
+          await pool.query(
+            "UPDATE event_squad_members SET position = position - 1 WHERE squad_id = $1 AND position > $2",
+            [oldSqId, oldPos]
+          );
+        }
+
+        if (isTimeFormat) {
           // Find existing squad for this time and day (handle date format normalization)
           let altDay = registration_day;
           if (registration_day && registration_day.includes('-')) {
@@ -5026,18 +5092,31 @@ app.delete('/api/events/:eventId/registrations/:registrationId', authenticateTok
     `, [registrationId]);
     const details = detailsResult.rows[0];
 
-    // Find the squad ID before deletion
+    // Find the squad and position before deletion to reorder others
     const squadInfo = await pool.query(
-      'SELECT squad_id FROM event_squad_members WHERE registration_id = $1',
+      'SELECT squad_id, position FROM event_squad_members WHERE registration_id = $1',
       [registrationId]
     );
     const affectedSquadId = squadInfo.rows[0]?.squad_id;
+    const oldPosition = squadInfo.rows[0]?.position;
 
     // Remove from competition records if totalscore is 0 (hasn't started yet)
     await pool.query(
       'DELETE FROM competitions WHERE id = $1 AND totalscore = 0',
       [`evt_${eventId}_${regCheck.rows[0].user_id}`]
     );
+
+    // If they were in a squad, manually remove and update positions to avoid gap
+    if (affectedSquadId && oldPosition) {
+      await pool.query(
+        'DELETE FROM event_squad_members WHERE registration_id = $1 AND squad_id = $2',
+        [registrationId, affectedSquadId]
+      );
+      await pool.query(
+        'UPDATE event_squad_members SET position = position - 1 WHERE squad_id = $1 AND position > $2',
+        [affectedSquadId, oldPosition]
+      );
+    }
 
     await pool.query('DELETE FROM event_registrations WHERE id = $1 AND event_id = $2', [registrationId, eventId]);
 
@@ -5759,7 +5838,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
   
   try {
     // Check if event is validated
-    const { rows: currentEvent } = await pool.query("SELECT status, location, created_by FROM events WHERE id = $1", [req.params.id]);
+    const { rows: currentEvent } = await pool.query("SELECT status, location, created_by, name, visibility FROM events WHERE id = $1", [req.params.id]);
     if (currentEvent.length === 0) return res.status(404).json({ error: 'Evento non trovato' });
     
     if (currentEvent[0].status === 'validated' && req.user.role !== 'admin') {
@@ -5811,15 +5890,20 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
       ]
     );
 
+    // Use fallbacks for notification logic (for partial updates where body might be missing these fields)
+    const notificationName = name || currentEvent[0].name;
+    const notificationVisibility = visibility || currentEvent[0].visibility;
+    const notificationLocation = location || currentEvent[0].location;
+
     // Send push notification for update
     let userIds: number[] = [];
-    if (visibility === 'Pubblica') {
+    if (notificationVisibility === 'Pubblica') {
       const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society'");
       userIds = users.map(u => u.id);
     } else {
       let targetSociety = req.user.society;
       if (!targetSociety && req.user.role === 'admin') {
-        targetSociety = location;
+        targetSociety = notificationLocation;
       }
       if (targetSociety) {
         const { rows: users } = await pool.query(
@@ -5833,18 +5917,18 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
       sendPushNotification(userIds, 
         { it: "Evento Aggiornato", en: "Event Updated" },
         { 
-          it: `L'evento "${name}" ha subito delle modifiche.`,
-          en: `The event "${name}" has been modified.`
+          it: `L'evento "${notificationName}" ha subito delle modifiche.`,
+          en: `The event "${notificationName}" has been modified.`
         }, 
         `/events?id=${req.params.id}`, 
-        visibility === 'Pubblica' ? 'all' : 'society'
+        notificationVisibility === 'Pubblica' ? 'all' : 'society'
       );
     }
 
     // Admin compact notification
     const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
-    const targetSociety = visibility === 'Pubblica' ? null : (req.user.society || location);
-    await sendAdminCompactNotification('gara', name, 'aggiornata', visibility, targetSociety, from);
+    const targetSociety = notificationVisibility === 'Pubblica' ? null : (req.user.society || notificationLocation);
+    await sendAdminCompactNotification('gara', notificationName, 'aggiornata', notificationVisibility, targetSociety, from);
 
     res.json({ message: 'Evento aggiornato' });
   } catch (err: any) {

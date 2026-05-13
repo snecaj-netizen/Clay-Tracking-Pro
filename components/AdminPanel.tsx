@@ -95,6 +95,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
     resultsPage, setResultsPage, resultsPerPage, filterShooter, setFilterShooter, filterSociety, setFilterSociety, filterDiscipline, setFilterDiscipline, filterLocation, setFilterLocation, filterYear, setFilterYear, fetchAllResults,
     loading, error, setError, handleRetry,
     showUserForm, setShowUserForm, editingUser, setEditingUser, showProfilePassword, setShowProfilePassword, profileSubTab, setProfileSubTab, showSocietyForm, setShowSocietyForm, editingSociety, setEditingSociety, selectedTeamForSheet, setSelectedTeamForSheet, selectedTeamSheetAction, setSelectedTeamSheetAction, showTeamForm, setShowTeamForm, shareData, setShareData,
+    personalNotificationSettings, setPersonalNotificationSettings, fetchPersonalNotificationSettings, updatePersonalNotificationSettings,
     setRole, setCategory, setQualification, setSociety,
     setSocName, setSocCode, setSocEmail, setSocAddress, setSocCity, setSocRegion, setSocZip, setSocPhone, setSocMobile, setSocWebsite, setSocContactName, setSocLogo, setSocOpeningHours, setSocGoogleMapsLink,
     setNewTeamCompetitionName, setNewTeamDiscipline, setNewTeamSociety, setNewTeamLocation, setNewTeamDate, setNewTeamTargets,
@@ -626,6 +627,16 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                 {t('profile_data')}
               </button>
               <button
+                onClick={() => setProfileSubTab('notifications')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs lg:text-sm font-black uppercase tracking-widest transition-all ${
+                  profileSubTab === 'notifications' 
+                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {t('notifications_label')}
+              </button>
+              <button
                 onClick={() => setProfileSubTab('help')}
                 className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs lg:text-sm font-black uppercase tracking-widest transition-all ${
                   profileSubTab === 'help' 
@@ -927,6 +938,63 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                   {t('update_profile')}
                 </button>
               </form>
+            </div>
+          ) : profileSubTab === 'notifications' ? (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="bg-slate-950/30 p-6 rounded-2xl border border-slate-800 mb-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                      <i className="fas fa-bell text-orange-500"></i> {t('notifications_label')}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">{t('notifications_desc_user')}</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await updatePersonalNotificationSettings(personalNotificationSettings);
+                        triggerToast(t('settings_saved_success'), 'success');
+                      } catch (err) {
+                        triggerToast(t('settings_save_error'), 'error');
+                      }
+                    }}
+                    className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2 px-6 rounded-xl transition-all active:scale-95 text-[10px] uppercase shadow-lg shadow-orange-600/20"
+                  >
+                    {t('save_label')}
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Global Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-slate-900 rounded-xl border border-slate-800 group hover:border-orange-500/30 transition-all">
+                    <div>
+                      <h4 className="text-sm font-bold text-white mb-1">{t('global_status_label')}</h4>
+                      <p className="text-[10px] text-slate-500">{t('global_status_desc')}</p>
+                    </div>
+                    <button
+                      onClick={() => setPersonalNotificationSettings(prev => ({ ...prev, global_enabled: !prev.global_enabled }))}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 ${personalNotificationSettings.global_enabled ? 'bg-emerald-600 shadow-[0_0_10px_rgba(5,150,105,0.4)]' : 'bg-slate-800'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${personalNotificationSettings.global_enabled ? 'left-7' : 'left-1'}`}></div>
+                    </button>
+                  </div>
+
+                  {/* Placeholder for more specific settings if implemented in backend later */}
+                  <div className="p-4 bg-orange-600/5 rounded-xl border border-orange-500/20">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-orange-600/10 flex items-center justify-center text-orange-500 shrink-0">
+                        <i className="fas fa-info-circle"></i>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">Quali notifiche riceverò?</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Riceverai avvisi per le tue iscrizioni, modifiche ai risultati, nuovi contest nella Hall of Fame e promemoria per le gare imminenti (2 giorni prima).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">

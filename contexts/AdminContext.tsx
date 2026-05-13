@@ -101,8 +101,8 @@ interface AdminContextType {
   setSelectedUser: React.Dispatch<React.SetStateAction<any | null>>;
   showProfilePassword: boolean;
   setShowProfilePassword: React.Dispatch<React.SetStateAction<boolean>>;
-  profileSubTab: 'details' | 'help' | 'events';
-  setProfileSubTab: React.Dispatch<React.SetStateAction<'details' | 'help' | 'events'>>;
+  profileSubTab: 'details' | 'help' | 'events' | 'notifications';
+  setProfileSubTab: React.Dispatch<React.SetStateAction<'details' | 'help' | 'events' | 'notifications'>>;
   showSocietyForm: boolean;
   setShowSocietyForm: React.Dispatch<React.SetStateAction<boolean>>;
   editingSociety: any | null;
@@ -195,6 +195,12 @@ interface AdminContextType {
   setKpiFilter: React.Dispatch<React.SetStateAction<string>>;
   fetchedDashboardStats: any | null;
   dashboardStats: any;
+  
+  // Notification Settings
+  personalNotificationSettings: { global_enabled: boolean, muted_entities: any[] };
+  setPersonalNotificationSettings: React.Dispatch<React.SetStateAction<{ global_enabled: boolean, muted_entities: any[] }>>;
+  fetchPersonalNotificationSettings: () => Promise<void>;
+  updatePersonalNotificationSettings: (settings: { global_enabled: boolean, muted_entities: any[] }) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -275,7 +281,7 @@ export const AdminProvider: React.FC<{
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
-  const [profileSubTab, setProfileSubTab] = useState<'details' | 'help' | 'events'>('details');
+  const [profileSubTab, setProfileSubTab] = useState<'details' | 'help' | 'events' | 'notifications'>('details');
   const [showSocietyForm, setShowSocietyForm] = useState(false);
   const [editingSociety, setEditingSociety] = useState<any | null>(null);
   const [selectedTeamForSheet, setSelectedTeamForSheet] = useState<any | null>(null);
@@ -286,6 +292,58 @@ export const AdminProvider: React.FC<{
   const [showFilters, setShowFilters] = useState(false);
   const [selectedShooterResults, setSelectedShooterResults] = useState<any | null>(null);
   const [shareData, setShareData] = useState<{ comp: Competition, user: User } | null>(null);
+
+  // Notification Settings
+  const [personalNotificationSettings, setPersonalNotificationSettings] = useState<{ global_enabled: boolean, muted_entities: any[] }>({
+    global_enabled: true,
+    muted_entities: []
+  });
+
+  const fetchPersonalNotificationSettings = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/notification-settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPersonalNotificationSettings({
+          global_enabled: data.global_enabled,
+          muted_entities: data.muted_entities || []
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching personal notification settings:', err);
+    }
+  }, [token]);
+
+  const updatePersonalNotificationSettings = async (settings: { global_enabled: boolean, muted_entities: any[] }) => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/notification-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(settings)
+      });
+      if (res.ok) {
+        setPersonalNotificationSettings(settings);
+      } else {
+        throw new Error('Failed to update notification settings');
+      }
+    } catch (err) {
+      console.error('Error updating personal notification settings:', err);
+      throw err;
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchPersonalNotificationSettings();
+    }
+  }, [token, fetchPersonalNotificationSettings]);
 
   // Form Fields - User
   const [name, setName] = useState('');
@@ -747,6 +805,7 @@ export const AdminProvider: React.FC<{
     allResults, setAllResults, totalResults, resultsPage, setResultsPage, resultsPerPage, filterShooter, setFilterShooter, filterSociety, setFilterSociety, filterDiscipline, setFilterDiscipline, filterLocation, setFilterLocation, filterYear, setFilterYear, filterMonth, setFilterMonth, filterDate, setFilterDate, filterCategory, setFilterCategory, filterQualification, setFilterQualification, fetchAllResults,
     loading, setLoading, backgroundLoading, error, setError, handleRetry,
     activeTab, setActiveTab, hideInternalFAB, setHideInternalFAB, showUserForm, setShowUserForm, editingUser, setEditingUser, selectedUser, setSelectedUser, showProfilePassword, setShowProfilePassword, profileSubTab, setProfileSubTab, showSocietyForm, setShowSocietyForm, editingSociety, setEditingSociety, selectedTeamForSheet, setSelectedTeamForSheet, selectedTeamSheetAction, setSelectedTeamSheetAction, showTeamForm, setShowTeamForm, editingTeam, setEditingTeam, editingScore, setEditingScore, showFilters, setShowFilters, selectedShooterResults, setSelectedShooterResults, shareData, setShareData,
+    personalNotificationSettings, setPersonalNotificationSettings, fetchPersonalNotificationSettings, updatePersonalNotificationSettings,
     name, setName, surname, setSurname, email, setEmail, password, setPassword, role, setRole, category, setCategory, qualification, setQualification, society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar, birthDate, setBirthDate, phone, setPhone,
     nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
     shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel,
