@@ -154,7 +154,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
           <div 
             key={tIdx}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-8 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page box-border"
+            className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-4 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page box-border"
             style={{
               width: '297mm',
               height: '210mm',
@@ -162,7 +162,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             }}
           >
             {/* Header Section */}
-            <div className="flex items-center justify-between mb-8 px-6 relative">
+            <div className="flex items-center justify-between mb-4 px-6 relative">
               <div className="w-32 flex items-center justify-start">
                 {hostingSociety?.logo ? (
                   <img 

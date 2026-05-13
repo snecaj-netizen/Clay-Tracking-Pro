@@ -175,7 +175,7 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
             <div 
               key={`${day}-${chunkIdx}`}
               onClick={(e) => e.stopPropagation()}
-              className={`bg-white text-black p-8 md:p-12 shadow-2xl relative print:shadow-none print:p-6 print:m-0 cursor-default animate-in zoom-in-95 duration-300 print:break-after-page ${dayData.isPortrait ? 'w-[210mm] min-h-[297mm]' : 'w-[297mm] min-h-[210mm]'} mx-auto overflow-hidden box-border`}
+              className={`bg-white text-black p-8 md:p-12 shadow-2xl relative print:shadow-none print:p-4 print:m-0 cursor-default animate-in zoom-in-95 duration-300 print:break-after-page ${dayData.isPortrait ? 'w-[210mm] min-h-[297mm]' : 'w-[297mm] min-h-[210mm]'} mx-auto overflow-hidden box-border`}
               style={{
                 width: dayData.isPortrait ? '210mm' : '297mm',
                 height: dayData.isPortrait ? '297mm' : '210mm',
@@ -236,7 +236,7 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
                                     const catQual = getDisplayCategory(cat, qual, event.type || "");
 
                                     return (
-                                      <div key={pos} className="flex items-center text-[8px] h-6 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors px-1">
+                                      <div key={pos} className="flex items-center text-[8px] h-[21px] border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors px-1">
                                         <span className="w-3 font-bold text-slate-300">{pos}</span>
                                         <div className="flex-1 min-w-0 flex items-center gap-1 overflow-hidden py-0">
                                           {member ? (
