@@ -1263,17 +1263,18 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       const normalizedGenDay = normalizeDate(genDay);
                       const targetSquads = normalizedGenDay === 'all' ? squads : squads.filter(s => normalizeDate(s.squad_day) === normalizedGenDay);
                       setOrderPreviewSquads(targetSquads);
+                      setAutoAction('print');
                       setShowOrderPreview(true);
                     }}
                     disabled={displayedSquads.length === 0 || isSaving}
                     className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Ordine di tiro (PDF)
+                    Ordine di Tiro
                   </button>
-                    <button 
-                      onClick={() => {
-                        const allTeamsData = displayedSquads
+                  <button 
+                    onClick={() => {
+                      const allTeamsData = displayedSquads
                           .filter(s => s.members && s.members.length > 0)
                           .map(s => ({
                           id: String(s.id),
@@ -1304,7 +1305,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20"
                     >
                       <Printer className="w-3.5 h-3.5" />
-                      Stampa Tutti Statini
+                      Stampa Statini
                     </button>
 
                     <button 
@@ -1316,7 +1317,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                       className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20"
                     >
                       <Printer className="w-3.5 h-3.5" />
-                      Stampa Tutti Pettorali
+                      Stampa Pettorali
                     </button>
                 </div>
               </div>
@@ -1674,19 +1675,11 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                       <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center flex-wrap gap-2">
-                                            <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-xl border border-slate-800">
-                                              <span className="text-sm font-black text-slate-500">B</span>
-                                              <input 
-                                                type="number"
-                                                value={squad.squad_number}
-                                                onChange={(e) => {
-                                                  const val = parseInt(e.target.value) || 1;
-                                                  setSquads(prev => prev.map(s => String(s.id) === String(squad.id) ? { ...s, squad_number: val } : s));
-                                                  setHasUnsavedChanges(true);
-                                                }}
-                                                disabled={squad.is_locked}
-                                                className="w-10 bg-transparent text-sm font-black text-white focus:outline-none disabled:opacity-50"
-                                              />
+                                            <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+                                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Batt.</span>
+                                              <span className="text-sm font-black text-white">
+                                                {squadNumberMap.get(squad.id) || squad.squad_number}
+                                              </span>
                                             </div>
                                             {squad.squad_day && (
                                               <span className="text-[9px] font-black text-orange-500 bg-orange-500/10 px-2 py-1 rounded-lg uppercase tracking-widest border border-orange-500/20">
@@ -1758,6 +1751,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                                 startTime: squad.start_time,
                                                 roundNumber: squad.round_number
                                               };
+                                              setAutoAction('print');
                                               setSelectedSquadsForSheet([teamData]);
                                             }}
                                             className="w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 flex items-center justify-center hover:text-orange-500 hover:border-orange-500/50 [.light-theme_&]:bg-white [.light-theme_&]:border-slate-200 transition-all"
@@ -2170,8 +2164,12 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
         <ShootingOrderPreview
           event={event}
           squads={orderPreviewSquads}
-          onClose={() => setShowOrderPreview(false)}
+          onClose={() => {
+            setShowOrderPreview(false);
+            setAutoAction(null);
+          }}
           squadNumberMap={squadNumberMap}
+          autoAction={autoAction}
         />
       )}
 

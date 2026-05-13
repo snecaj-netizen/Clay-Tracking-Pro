@@ -121,25 +121,34 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
             @page { size: A4 landscape; margin: 0; }
-            body { background: white !important; margin: 0 !important; padding: 0 !important; }
-            html, body { height: auto !important; overflow: visible !important; }
+            html, body { 
+              margin: 0 !important; 
+              padding: 0 !important; 
+              background: white !important;
+              width: 100%;
+              height: 100%;
+              overflow: visible !important;
+            }
             body > *:not(.bib-print-overlay) { display: none !important; }
             .bib-print-overlay { 
               display: block !important; 
-              position: relative !important; 
+              position: static !important; 
               padding: 0 !important; 
               margin: 0 !important;
               background: white !important;
               overflow: visible !important;
-              z-index: 9999 !important;
+              z-index: 1 !important;
+              width: 100%;
             }
             .printable-bib { 
               page-break-after: always !important; 
+              break-after: page !important;
               margin: 0 !important;
               border: 6px solid black !important;
-              width: 100% !important;
-              height: 100vh !important;
+              width: 297mm !important;
+              height: 210mm !important;
               display: flex !important;
+              box-sizing: border-box !important;
             }
             .print\\:hidden { display: none !important; }
         }

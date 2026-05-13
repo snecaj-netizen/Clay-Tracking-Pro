@@ -154,7 +154,12 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
           <div 
             key={tIdx}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-0 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page"
+            className="bg-white text-black w-full min-h-[210mm] p-4 md:p-8 shadow-2xl relative print:shadow-none print:p-8 print:m-0 cursor-default animate-in zoom-in-95 duration-300 border-[4px] border-double border-black print:break-after-page box-border"
+            style={{
+              width: '297mm',
+              height: '210mm',
+              boxSizing: 'border-box'
+            }}
           >
             {/* Header Section */}
             <div className="flex items-center justify-between mb-8 px-6 relative">
@@ -341,11 +346,15 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
           @media print {
             @page {
               size: A4 landscape;
-              margin: 5mm;
+              margin: 0;
             }
-            body {
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
               background: white !important;
               -webkit-print-color-adjust: exact;
+              width: 100%;
+              height: 100%;
             }
             /* Nascondi tutto il resto durante la stampa */
             body > *:not(.fitav-print-overlay) {
@@ -354,8 +363,12 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             .fitav-print-overlay {
               display: block !important;
               position: static !important;
+              margin: 0 !important;
               padding: 0 !important;
               background: white !important;
+              overflow: visible !important;
+              z-index: 1 !important;
+              width: 100%;
             }
             .shadow-2xl {
               box-shadow: none !important;
@@ -366,6 +379,7 @@ const FitavScoreSheet: React.FC<FitavScoreSheetProps> = ({ teams, event, onClose
             }
             .print\\:break-after-page {
               break-after: page;
+              page-break-after: always;
             }
           }
         `}} />

@@ -12,11 +12,25 @@ interface ShootingOrderPreviewProps {
   squads: EventSquad[];
   onClose: () => void;
   squadNumberMap: Map<number | string, number>;
+  autoAction?: 'print' | 'download' | null;
 }
 
-const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squads, onClose, squadNumberMap }) => {
+const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squads, onClose, squadNumberMap, autoAction }) => {
   const { t, language } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (autoAction) {
+      const timer = setTimeout(() => {
+        if (autoAction === 'print') {
+          handlePrint();
+        } else if (autoAction === 'download') {
+          handleDownloadPDF();
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoAction]);
 
   const normalizeDate = (d: any) => {
     if (!d || d === 'all') return 'all';
@@ -161,54 +175,59 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
             <div 
               key={`${day}-${chunkIdx}`}
               onClick={(e) => e.stopPropagation()}
-              className={`bg-white text-black p-8 md:p-12 shadow-2xl relative print:shadow-none print:p-8 print:m-0 cursor-default animate-in zoom-in-95 duration-300 print:break-after-page ${dayData.isPortrait ? 'w-[210mm] min-h-[297mm]' : 'w-[297mm] min-h-[210mm]'} mx-auto overflow-hidden`}
+              className={`bg-white text-black p-8 md:p-12 shadow-2xl relative print:shadow-none print:p-6 print:m-0 cursor-default animate-in zoom-in-95 duration-300 print:break-after-page ${dayData.isPortrait ? 'w-[210mm] min-h-[297mm]' : 'w-[297mm] min-h-[210mm]'} mx-auto overflow-hidden box-border`}
+              style={{
+                width: dayData.isPortrait ? '210mm' : '297mm',
+                height: dayData.isPortrait ? '297mm' : '210mm',
+                boxSizing: 'border-box'
+              }}
             >
               {/* Header */}
-              <div className="flex justify-between items-start mb-8">
+              <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h1 className="text-2xl font-black uppercase tracking-tight">{event.location || "ASD Tav Lazio"}</h1>
+                  <h1 className="text-xl font-black uppercase tracking-tight">{event.location || "ASD Tav Lazio"}</h1>
                 </div>
                 <div className="text-right">
-                  <h2 className="text-sm font-black uppercase">{event.name}</h2>
-                  <p className="text-[10px] font-bold text-slate-500 mt-1">
+                  <h2 className="text-xs font-black uppercase">{event.name}</h2>
+                  <p className="text-[9px] font-bold text-slate-500 mt-0.5">
                     Dal {formatDateDisplay(event.start_date)} al {formatDateDisplay(event.end_date)}
                   </p>
-                  <p className="text-[10px] font-black uppercase mt-1">
+                  <p className="text-[9px] font-black uppercase mt-0.5">
                     Giorno {dayIdx + 1} - Pagina {chunkIdx + 1}
                   </p>
                 </div>
               </div>
 
               {/* Table Body */}
-              <div className="w-full pb-16">
+              <div className="w-full pb-2">
                 {/* Field Headers */}
-                <div className="flex border-b-2 border-black mb-2">
+                <div className="flex border-b-2 border-black mb-1">
                   {dayData.fields.map(field => (
-                    <div key={field} className="flex-1 px-4 py-1 text-xs font-black uppercase border-r border-slate-200 last:border-r-0">
+                    <div key={field} className="flex-1 px-3 py-0.5 text-[10px] font-black uppercase border-r border-slate-200 last:border-r-0">
                       Campo {field}
                     </div>
                   ))}
                 </div>
 
                 {/* Times and Squads */}
-                <div className="space-y-6">
+                <div className="space-y-1">
                   {chunk.map(time => (
-                    <div key={time} className="flex min-h-[30mm]">
+                    <div key={time} className="flex">
                       {dayData.fields.map(field => {
                         const squad = squadsByTime[time]?.[field];
                         const sqNum = squad ? (squadNumberMap.get(squad.id) || squad.squad_number) : null;
                         
                         return (
-                          <div key={field} className="flex-1 px-4 border-r border-slate-100 last:border-r-0">
+                          <div key={field} className="flex-1 px-3 border-r border-slate-100 last:border-r-0">
                             {squad ? (
-                              <div className="space-y-1">
-                                <div className="border-b border-black pb-1 mb-2 bg-slate-50/50 p-1 rounded-sm">
-                                  <div className="text-[10px] font-black uppercase text-slate-900 flex justify-between items-center">
+                              <div className="space-y-0">
+                                <div className="border-b border-black pb-0.5 mb-1 bg-slate-50/50 p-1 rounded-sm">
+                                  <div className="text-[8px] font-black uppercase text-slate-900 flex justify-between items-center">
                                     <span>Batt. {sqNum}</span>
                                     <span className="text-orange-600 font-bold">{squad.start_time}</span>
                                   </div>
                                 </div>
-                                <div className="space-y-[1px] mt-1">
+                                <div className="space-y-0 mt-0.5">
                                   {[1, 2, 3, 4, 5, 6].map(pos => {
                                     const member = squad.members.find(m => m.position === pos);
                                     
@@ -217,21 +236,21 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
                                     const catQual = getDisplayCategory(cat, qual, event.type || "");
 
                                     return (
-                                      <div key={pos} className="flex items-center text-[9px] h-10 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors px-1">
-                                        <span className="w-5 font-bold text-slate-300">{pos}</span>
-                                        <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden py-0.5">
+                                      <div key={pos} className="flex items-center text-[8px] h-6 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors px-1">
+                                        <span className="w-3 font-bold text-slate-300">{pos}</span>
+                                        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-hidden py-0">
                                           {member ? (
                                             <>
                                               {member.bib_number && (
-                                                <span className="font-black text-orange-600 mr-0.5 text-[9px] leading-relaxed">
+                                                <span className="font-black text-orange-600 mr-0.5 text-[8px] leading-tight">
                                                   ({member.bib_number})
                                                 </span>
                                               )}
-                                              <span className="font-black text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis text-[9px] leading-relaxed">
+                                              <span className="font-black text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis text-[8px] leading-tight">
                                                 {member.last_name} {member.first_name}
                                               </span>
                                               {catQual && (
-                                                <span className="text-[7px] font-black text-slate-400 bg-slate-100 px-1 py-0.5 rounded uppercase flex-shrink-0 leading-none">
+                                                <span className="text-[6px] font-black text-slate-400 bg-slate-100 px-1 py-0.25 rounded uppercase flex-shrink-0 leading-none">
                                                   {catQual}
                                                 </span>
                                               )}
@@ -243,11 +262,7 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
                                   })}
                                 </div>
                               </div>
-                            ) : (
-                              <div className="h-full border-b border-slate-50 flex items-center justify-center py-4">
-                                {/* Empty Column Space */}
-                              </div>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}
@@ -257,7 +272,7 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
               </div>
 
               {/* Footer */}
-              <div className="absolute bottom-10 left-12 right-12 flex justify-between items-end text-[7px] font-bold uppercase italic text-slate-400">
+              <div className="absolute bottom-6 left-10 right-10 flex justify-between items-end text-[6px] font-bold uppercase italic text-slate-400">
                 <p>Documento generato da Clay Performance</p>
                 <p>Pagina {chunkIdx + 1} di {timeChunks.length} - {formatDateDisplay(day)}</p>
                 <p>Data: {new Date().toLocaleString('it-IT')}</p>
@@ -272,9 +287,13 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
               size: ${dayData.isPortrait ? 'A4 portrait' : 'A4 landscape'};
               margin: 0;
             }
-            body {
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
               background: white !important;
               -webkit-print-color-adjust: exact;
+              width: 100%;
+              height: 100%;
             }
             body > *:not(.order-preview-overlay) {
               display: none !important;
@@ -282,14 +301,19 @@ const ShootingOrderPreview: React.FC<ShootingOrderPreviewProps> = ({ event, squa
             .order-preview-overlay {
               display: block !important;
               position: static !important;
+              margin: 0 !important;
               padding: 0 !important;
               background: white !important;
+              overflow: visible !important;
+              z-index: 1 !important;
+              width: 100%;
             }
             .shadow-2xl {
               box-shadow: none !important;
             }
             .print\\:break-after-page {
               break-after: page;
+              page-break-after: always;
             }
           }
         `}} />
