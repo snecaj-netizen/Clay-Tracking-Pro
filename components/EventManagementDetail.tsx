@@ -2156,6 +2156,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
             setAutoAction(null);
           }}
           hostingSocietyName={event.location || 'SOCIETÀ'}
+          hostingSocietyLogo={societies.find(s => s.name === event.location)?.logo}
           autoAction={autoAction}
         />
       )}

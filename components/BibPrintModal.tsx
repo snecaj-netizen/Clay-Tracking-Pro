@@ -9,10 +9,11 @@ interface BibPrintModalProps {
   event: SocietyEvent;
   onClose: () => void;
   hostingSocietyName: string;
+  hostingSocietyLogo?: string;
   autoAction?: 'print' | 'download' | null;
 }
 
-export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, onClose, hostingSocietyName, autoAction }) => {
+export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, onClose, hostingSocietyName, hostingSocietyLogo, autoAction }) => {
   const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +39,7 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
       {/* Controls Header */}
       <div className="sticky top-0 left-0 w-full bg-slate-900/90 backdrop-blur-xl border-b border-white/10 p-3 md:p-4 z-[2100] flex flex-wrap justify-end items-center gap-2 md:gap-4 print:hidden">
         <div className="hidden sm:block mr-auto px-4">
-          <h3 className="text-white font-black uppercase text-[10px] md:text-xs tracking-widest opacity-50">Anteprima Pettorali</h3>
+          <h3 className="text-white font-black uppercase text-[10px] md:text-xs tracking-widest opacity-50">Anteprima Pettorali {hostingSocietyName}</h3>
         </div>
         
         <button 
@@ -64,6 +65,7 @@ export const BibPrintModal: React.FC<BibPrintModalProps> = ({ shooters, event, o
               shooter={shooter}
               competitionName={event.name}
               societyName={hostingSocietyName}
+              societyLogo={hostingSocietyLogo}
             />
           ))}
         </div>
