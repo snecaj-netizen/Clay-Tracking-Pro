@@ -105,6 +105,11 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [eventSearch, setEventSearch] = useState('');
   const [rankingPreference, setRankingPreference] = useState<'categoria' | 'qualifica'>(data?.ranking_preference || 'categoria');
   const [rankingPreferenceOverride, setRankingPreferenceOverride] = useState<'categoria' | 'qualifica' | null>(data?.ranking_preference_override || null);
+  
+  const targetsPerSeries = useMemo(() => {
+    const seriesLayoutObj = getSeriesLayout(discipline);
+    return seriesLayoutObj.layout.reduce((a, b) => a + b, 0) || 25;
+  }, [discipline]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -343,7 +348,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
   const handleScoreChange = (index: number, value: string) => {
     const num = parseInt(value) || 0;
-    const clamped = Math.min(25, Math.max(0, num));
+    const clamped = Math.min(targetsPerSeries, Math.max(0, num));
     const newScores = [...scores];
     newScores[index] = clamped;
     setScores(newScores);
@@ -365,7 +370,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       setExpandedSeries(idx);
       if (!detailedScores[idx] || detailedScores[idx].length === 0) {
         const currentScore = scores[idx] || 0;
-        const newSeries = Array(25).fill(false);
+        const newSeries = Array(targetsPerSeries).fill(false);
         for (let i = 0; i < currentScore; i++) {
           newSeries[i] = true;
         }
@@ -381,7 +386,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const handleDetailedScoreChange = (seriesIndex: number, targetIndex: number) => {
     setDetailedScores(prev => {
       const newDetailed = [...prev];
-      const newSeries = [...(newDetailed[seriesIndex] || Array(25).fill(false))];
+      const newSeries = [...(newDetailed[seriesIndex] || Array(targetsPerSeries).fill(false))];
       newSeries[targetIndex] = !newSeries[targetIndex];
       newDetailed[seriesIndex] = newSeries;
       
@@ -972,7 +977,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
                   <div className="flex items-center gap-3">
-                  <input type="number" min="0" max="25" value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
+                  <input type="number" min="0" max={targetsPerSeries} value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
                   <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
                     <i className="fas fa-list-ul"></i>
                   </button>

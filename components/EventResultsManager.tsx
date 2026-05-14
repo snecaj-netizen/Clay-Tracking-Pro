@@ -46,11 +46,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const layoutInfo = useMemo(() => getSeriesLayout(event.discipline as Discipline), [event.discipline]);
+  const targetsPerSeries = useMemo(() => {
+    const sum = layoutInfo.layout.reduce((a, b) => a + b, 0);
+    return sum > 0 ? sum : 25;
+  }, [layoutInfo]);
+
   // Form state
   const [selectedUserId, setSelectedUserId] = useState('');
   const [totalTargets, setTotalTargets] = useState(event.targets || 100);
-  const [series, setSeries] = useState<string[]>(() => Array(Math.ceil((event.targets || 100) / 25)).fill('0'));
-  const [detailedScores, setDetailedScores] = useState<boolean[][]>(() => Array.from({ length: Math.ceil((event.targets || 100) / 25) }, () => []));
+  const [series, setSeries] = useState<string[]>(() => Array(Math.ceil((event.targets || 100) / targetsPerSeries)).fill('0'));
+  const [detailedScores, setDetailedScores] = useState<boolean[][]>(() => Array.from({ length: Math.ceil((event.targets || 100) / targetsPerSeries) }, () => []));
   const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
   const [shootOff, setShootOff] = useState('');
   const [showQuickAddShooter, setShowQuickAddShooter] = useState(false);
@@ -251,14 +257,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       setExpandedSeries(null);
     } else {
       setExpandedSeries(idx);
-      // Initialize with 25 hits (green) by default if not already set
+      // Initialize with hits (green) by default if not already set
       if (!detailedScores[idx] || detailedScores[idx].length === 0) {
         const newDetailed = [...detailedScores];
-        newDetailed[idx] = Array(25).fill(true);
+        newDetailed[idx] = Array(targetsPerSeries).fill(true);
         setDetailedScores(newDetailed);
         
         const newScores = [...series];
-        newScores[idx] = '25';
+        newScores[idx] = targetsPerSeries.toString();
         setSeries(newScores);
       }
     }
@@ -268,7 +274,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     setIsDirty(true);
     setDetailedScores(prev => {
       const newDetailed = [...prev];
-      const newSeries = [...(newDetailed[seriesIndex] || Array(25).fill(true))];
+      const newSeries = [...(newDetailed[seriesIndex] || Array(targetsPerSeries).fill(true))];
       newSeries[targetIndex] = !newSeries[targetIndex];
       newDetailed[seriesIndex] = newSeries;
       
@@ -290,7 +296,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       return;
     }
 
-    const clampedScore = Math.min(25, Math.max(0, score));
+    const clampedScore = Math.min(targetsPerSeries, Math.max(0, score));
     
     // Update series numeric value
     const newScores = [...series];
@@ -299,7 +305,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
     // Update detailed scores: first 'clampedScore' are hits, rest are misses (zeros)
     const newDetailed = [...detailedScores];
-    newDetailed[idx] = Array(25).fill(false).map((_, i) => i < clampedScore);
+    newDetailed[idx] = Array(targetsPerSeries).fill(false).map((_, i) => i < clampedScore);
     setDetailedScores(newDetailed);
   };
 
@@ -337,8 +343,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         const aSeries = a.detailedScores[sIdx] || [];
         const bSeries = b.detailedScores[sIdx] || [];
         
-        // Assuming 25 targets per series
-        for (let tIdx = 24; tIdx >= 0; tIdx--) {
+        // Countback from the last target of the series
+        const targetsToCompare = Math.max(aSeries.length, bSeries.length, targetsPerSeries);
+        for (let tIdx = targetsToCompare - 1; tIdx >= 0; tIdx--) {
           const aHit = aSeries[tIdx] === true;
           const bHit = bSeries[tIdx] === true;
           
@@ -457,7 +464,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         },
         margin: { left: 15, right: 15 },
         didParseCell: (cellData) => {
-          if (cellData.section === 'body' && cellData.cell.text[0] === '25') {
+          if (cellData.section === 'body' && cellData.cell.text[0] === targetsPerSeries.toString()) {
             // Series columns start at index 4
             if (cellData.column.index >= 4 && cellData.column.index < 4 + pdfMaxSeriesCount) {
               cellData.cell.styles.textColor = [220, 38, 38]; // red-600
@@ -839,7 +846,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       }
 
       // Reset form and refresh
-      const numSeries = Math.ceil((event.targets || 100) / 25);
+      const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
       setSelectedUserId('');
       setSeries(Array(numSeries).fill('0'));
       setDetailedScores(Array.from({ length: numSeries }, () => []));
@@ -876,11 +883,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const getDotColors = (isHit: boolean) => {
     const isElica = event.discipline === Discipline.EL;
-    const isSporting = event.discipline === Discipline.SP;
+    const isSporting = event.discipline === Discipline.SP || event.discipline === Discipline.CK || event.discipline === Discipline.ES;
     
     if (isHit) {
       if (isElica) return 'bg-white border-slate-200 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.3)]';
-      if (isSporting) return 'bg-white border-slate-300 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.2)]';
       return 'bg-[#a3e635] border-[#65a30d] text-green-900 shadow-[0_0_10px_rgba(163,230,53,0.2)]';
     } else {
       return 'bg-[#ef4444] border-[#b91c1c] text-red-900 shadow-[0_0_10px_rgba(239,68,68,0.2)]';
@@ -889,10 +895,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const getSmallDotColors = (isHit: boolean) => {
     const isElica = event.discipline === Discipline.EL;
-    const isSporting = event.discipline === Discipline.SP;
+    const isSporting = event.discipline === Discipline.SP || event.discipline === Discipline.CK || event.discipline === Discipline.ES;
     
     if (isHit) {
-      if (isElica || isSporting) return 'bg-white border-slate-200 text-slate-900';
+      if (isElica) return 'bg-white border-slate-200 text-slate-900';
       return 'bg-green-500/20 text-green-500 border-green-500/30';
     } else {
       return 'bg-red-500/20 text-red-500 border-red-500/30';
@@ -900,11 +906,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
 
   const maxSeriesCount = React.useMemo(() => {
-    const eventSeriesCount = Math.ceil((event.targets || 100) / 25);
+    const eventSeriesCount = Math.ceil((event.targets || 100) / targetsPerSeries);
     if (filteredResults.length === 0) return eventSeriesCount;
     const resultSeriesCounts = filteredResults.map(r => Array.isArray(r.scores) ? r.scores.length : 0);
     return Math.max(eventSeriesCount, ...resultSeriesCounts);
-  }, [filteredResults, event.targets]);
+  }, [filteredResults, event.targets, targetsPerSeries]);
 
   const handleSavePrizeSettings = async () => {
     try {
@@ -1225,7 +1231,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         <input 
                           type="number" 
                           min="0" 
-                          max="25"
+                          max={targetsPerSeries}
                           value={s}
                           onChange={(e) => handleSeriesValueChange(i, e.target.value)}
                           onFocus={() => {
@@ -1438,7 +1444,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       <button 
                         type="button"
                         onClick={() => {
-                          const numSeries = Math.ceil((event.targets || 100) / 25);
+                          const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
                           setEditingResultId(null);
                           setSelectedUserId('');
                           setSeries(Array(numSeries).fill('0'));
@@ -1727,7 +1733,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                         setSelectedUserId(r.user_id.toString());
                                         setEditingResultId(null);
                                         // Reset form for new result
-                                        const numSeries = Math.ceil((event.targets || 100) / 25);
+                                        const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
                                         setSeries(Array(numSeries).fill('0'));
                                         setDetailedScores(Array.from({ length: numSeries }, () => []));
                                         setShootOff('');
@@ -1798,7 +1804,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               </div>
                             </td>
                           {Array.from({ length: maxSeriesCount }).map((_, i) => (
-                            <td key={i} className={`p-2 sm:p-3 font-mono text-[11px] sm:text-sm text-center ${r.scores && r.scores[i] === 25 ? 'text-red-500 font-black' : 'text-slate-300'}`}>
+                            <td key={i} className={`p-2 sm:p-3 font-mono text-[11px] sm:text-sm text-center ${r.scores && r.scores[i] === targetsPerSeries ? 'text-red-500 font-black' : 'text-slate-300'}`}>
                               {r.scores && r.scores[i] !== undefined ? r.scores[i] : '-'}
                             </td>
                           ))}
@@ -1848,13 +1854,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                   // Use detailed scores if available, otherwise generate default dots based on score
                                   const dScore = (r.detailedScores && r.detailedScores[sIdx] && r.detailedScores[sIdx].length > 0) 
                                     ? r.detailedScores[sIdx] 
-                                    : Array.from({ length: 25 }, (_, i) => i < score);
+                                    : Array.from({ length: targetsPerSeries }, (_, i) => i < score);
                                   
                                   return (
                                     <div key={sIdx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
                                       <div className="flex justify-between items-center px-1">
                                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serie {sIdx + 1}</div>
-                                        <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/25</span></div>
+                                        <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/{targetsPerSeries}</span></div>
                                       </div>
                                       <div className="flex flex-wrap gap-4 items-end">
                                         {(() => {

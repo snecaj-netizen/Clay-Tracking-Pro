@@ -318,37 +318,51 @@ export interface Stats {
 }
 
 export const getSeriesLayout = (discipline: Discipline) => {
-  // Compak Sporting (CK) & Sporting (SP)
-  if (discipline === Discipline.CK || discipline === Discipline.SP || discipline === Discipline.ES) {
-    return {
-      label: 'Piazzola',
-      layout: [5, 5, 5, 5, 5]
-    };
+  switch (discipline) {
+    case Discipline.SP: // Sporting (Percorso di Caccia) - 3 stations
+      return {
+        label: 'Piazzola',
+        layout: [9, 9, 7]
+      };
+    case Discipline.CK: // Compak Sporting
+    case Discipline.ES: // English Sporting
+    case Discipline.PC: // Club Cup
+      return {
+        label: 'Piazzola',
+        layout: [5, 5, 5, 5, 5]
+      };
+    case Discipline.FO: // Fossa Olimpica
+    case Discipline.FU: // Fossa Universale
+    case Discipline.TR1: // Trap 1
+      return {
+        label: 'Pedana',
+        layout: [5, 5, 5, 5, 5]
+      };
+    case Discipline.SK: // Skeet
+    case Discipline.SK_ISSF: // Skeet ISSF
+      return {
+        label: 'Stazione',
+        layout: [3, 3, 3, 3, 3, 3, 3, 4] // Breakdown for 25 targets across 8 stations
+      };
+    case Discipline.DT: // Double Trap
+      return {
+        label: 'Pedana',
+        layout: [6, 6, 6, 6, 6] // 30 targets (15 doubles)
+      };
+    case Discipline.EL: // Elica
+      return {
+        label: 'Serie',
+        layout: [12]
+      };
+    case Discipline.TC: // Tiro Combinato
+      return {
+        label: 'Serie',
+        layout: [5, 5, 5, 5] // 20 targets total
+      };
+    default:
+      return {
+        label: 'Pedana',
+        layout: [5, 5, 5, 5, 5]
+      };
   }
-  // Elica (EL)
-  if (discipline === Discipline.EL) {
-    return {
-      label: 'Serie',
-      layout: [12] // Standard Elica series 12 targets
-    };
-  }
-  // Double Trap (DT)
-  if (discipline === Discipline.DT) {
-    return {
-      label: 'Pedana',
-      layout: [10, 10, 10] // DT is often series of 30 targets (15 doubles)
-    };
-  }
-  // Skeet ISSF (SK ISSF)
-  if (discipline === Discipline.SK_ISSF) {
-    return {
-      label: 'Pedana',
-      layout: [3, 2, 3, 2, 3, 2, 3, 4, 3] // Combined stations to sum 25
-    };
-  }
-  // Default for Fossa Olimpica (FO), Fossa Universale (FU), etc.
-  return {
-    label: 'Pedana',
-    layout: [5, 5, 5, 5, 5]
-  };
 };
