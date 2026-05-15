@@ -254,6 +254,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [registeringEvent, setRegisteringEvent] = useState<SocietyEvent | null>(null);
   const [managingSquadsEvent, setManagingSquadsEvent] = useState<SocietyEvent | null>(null);
   const [managingEventDetail, setManagingEventDetail] = useState<SocietyEvent | null>(null);
+  const [viewingPosterUrl, setViewingPosterUrl] = useState<{url: string, name: string} | null>(null);
   const [refreshDetailVersion, setRefreshDetailVersion] = useState(0);
   const [initialManagementTab, setInitialManagementTab] = useState<'registrations' | 'squads' | 'results'>('registrations');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
@@ -2487,7 +2488,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               {selectedEvent.poster_url && (
                 <div className="space-y-2">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('poster_image')}</p>
-                  <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 aspect-video relative group">
+                  <div 
+                    onClick={() => setViewingPosterUrl({ url: selectedEvent.poster_url!, name: selectedEvent.name })}
+                    className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 aspect-video relative group cursor-pointer"
+                  >
                     {selectedEvent.poster_url.startsWith('data:application/pdf') ? (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-3">
                         <i className="fas fa-file-pdf text-5xl text-red-500"></i>
@@ -2496,13 +2500,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     ) : (
                       <img src={selectedEvent.poster_url} alt="Locandina" className="w-full h-full object-cover" />
                     )}
-                    <a 
-                      href={selectedEvent.poster_url} 
-                      download={`Locandina_${selectedEvent.name.replace(/\s+/g, '_')}`}
-                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 text-white font-black uppercase text-xs tracking-widest"
-                    >
-                      <i className="fas fa-download text-xl"></i> {t('download_file')}
-                    </a>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 text-white font-black uppercase text-xs tracking-widest">
+                      <i className="fas fa-expand text-xl"></i> {t('view_poster')}
+                    </div>
                   </div>
                 </div>
               )}
@@ -2675,6 +2675,87 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           event={managingSquadsEvent}
           onClose={() => setManagingSquadsEvent(null)}
         />,
+        document.body
+      )}
+
+      {viewingPosterUrl && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-md z-[2000] flex flex-col items-center justify-center p-4 animate-in fade-in duration-300"
+          onClick={() => setViewingPosterUrl(null)}
+        >
+          <div className="absolute top-4 right-4 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={async () => {
+                if (navigator.share) {
+                  try {
+                    const { url, name } = viewingPosterUrl;
+                    if (url.startsWith('data:')) {
+                      const res = await fetch(url);
+                      const blob = await res.blob();
+                      const ext = blob.type.split('/')[1] || 'png';
+                      const file = new File([blob], `Locandina_${name.replace(/\s+/g, '_')}.${ext}`, { type: blob.type });
+                      await navigator.share({
+                        files: [file],
+                        title: `Locandina ${name}`,
+                      });
+                    } else {
+                      await navigator.share({
+                        title: `Locandina ${viewingPosterUrl.name}`,
+                        url: viewingPosterUrl.url,
+                      });
+                    }
+                  } catch (err) {
+                    if ((err as Error).name !== 'AbortError') {
+                      console.error('Error sharing:', err);
+                    }
+                  }
+                } else {
+                   triggerToast?.(t('share_not_supported'), 'info');
+                }
+              }}
+              className="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 transition-all shadow-xl border border-slate-700"
+              title={t('share')}
+            >
+              <i className="fas fa-share-alt"></i>
+            </button>
+            <a 
+              href={viewingPosterUrl.url} 
+              download={`Locandina_${viewingPosterUrl.name.replace(/\s+/g, '_')}`}
+              className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-xl active:scale-95"
+              title={t('download_file')}
+              onClick={e => e.stopPropagation()}
+            >
+              <i className="fas fa-download"></i>
+            </a>
+            <button 
+              onClick={() => setViewingPosterUrl(null)}
+              className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center hover:bg-red-600 transition-all shadow-xl border border-slate-700"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="w-full max-w-5xl h-[80vh] flex items-center justify-center" onClick={e => e.stopPropagation()}>
+            {viewingPosterUrl.url.startsWith('data:application/pdf') ? (
+              <iframe 
+                src={viewingPosterUrl.url} 
+                className="w-full h-full rounded-2xl bg-white shadow-2xl"
+                title="PDF Document"
+              />
+            ) : (
+              <img 
+                src={viewingPosterUrl.url} 
+                alt="Poster" 
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300" 
+              />
+            )}
+          </div>
+          
+          <div className="mt-4 text-center" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-black uppercase tracking-tight text-lg">{viewingPosterUrl.name}</h3>
+            <p className="text-slate-400 text-xs mt-1 font-bold uppercase tracking-widest">{t('poster_image')}</p>
+          </div>
+        </div>,
         document.body
       )}
 

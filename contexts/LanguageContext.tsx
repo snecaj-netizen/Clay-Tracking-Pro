@@ -1069,6 +1069,8 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   'online_registration_desc': { it: 'Clicca sul pulsante per iscriverti alla gara.', en: 'Click the button to register for the competition.' },
   'online_registration_registered_desc': { it: 'Sei già iscritto a questa gara.', en: 'You are already registered for this competition.' },
   'pdf_document': { it: 'Documento PDF', en: 'PDF Document' },
+  'view_poster': { it: 'Visualizza Locandina', en: 'View Poster' },
+  'share_not_supported': { it: 'La condivisione non è supportata dal tuo browser', en: 'Sharing is not supported by your browser' },
   'download_file': { it: 'Scarica File', en: 'Download File' },
   'team_label': { it: 'Squadra', en: 'Team' },
   'registration_success': { it: 'Iscrizione completata con successo!', en: 'Registration completed successfully!' },
