@@ -3,5 +3,8 @@
   "description": "Professional Clay Shooting Performance Tracker with AI Coaching and detailed analytics.",
   "requestFramePermissions": [
     "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }
