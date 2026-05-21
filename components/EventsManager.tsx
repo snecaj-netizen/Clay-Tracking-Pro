@@ -8,6 +8,7 @@ import EventResultsManager from './EventResultsManager';
 import { EventRegistrationModal } from './EventRegistrationModal';
 import { EventSquadManager } from './EventSquadManager';
 import { EventManagementDetail } from './EventManagementDetail';
+import CompetitionShareCard from './CompetitionShareCard';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -255,6 +256,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [managingSquadsEvent, setManagingSquadsEvent] = useState<SocietyEvent | null>(null);
   const [managingEventDetail, setManagingEventDetail] = useState<SocietyEvent | null>(null);
   const [viewingPosterUrl, setViewingPosterUrl] = useState<{url: string, name: string} | null>(null);
+  const [showCompetitionShare, setShowCompetitionShare] = useState<SocietyEvent | null>(null);
   const [refreshDetailVersion, setRefreshDetailVersion] = useState(0);
   const [initialManagementTab, setInitialManagementTab] = useState<'registrations' | 'squads' | 'results'>('registrations');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
@@ -2353,8 +2355,17 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               >
                 <i className="fas fa-times text-lg"></i>
               </button>
+
+              <button 
+                type="button"
+                onClick={() => setShowCompetitionShare(selectedEvent)} 
+                className="absolute top-3 right-[68px] sm:top-4 sm:right-[76px] w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-orange-600 hover:text-white transition-all flex items-center justify-center shadow-lg z-20"
+                title={t('share_label') || 'Condividi Gara'}
+              >
+                <i className="fas fa-share-alt text-lg"></i>
+              </button>
               
-              <div className="relative z-10 w-full pr-10 sm:pr-0">
+              <div className="relative z-10 w-full pr-[110px] sm:pr-0">
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${selectedEvent.discipline === Discipline.TRAINING ? 'bg-blue-900/40 text-blue-400 border border-blue-900/50' : 'bg-orange-900/40 text-orange-500 border border-orange-900/50'}`}>
                     {selectedEvent.discipline}
@@ -2363,23 +2374,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     {selectedEvent.visibility}
                   </span>
                 </div>
-                <h2 
-                  onClick={() => {
-                    const canManage = user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess && (selectedEvent.location === user?.society || selectedEvent.created_by === user?.id));
-                    const canView = user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess);
-                    
-                    if (canManage) {
-                      setManagingResultsEvent(selectedEvent);
-                      setSelectedEvent(null);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    } else if (canView) {
-                      setViewingResultsEvent(selectedEvent);
-                      setSelectedEvent(null);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
-                  className={`text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words transition-colors ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:text-orange-500' : ''}`}
-                >
+                <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase italic tracking-tighter break-words">
                   {selectedEvent.name}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1 flex items-center gap-2">
@@ -2757,6 +2752,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           </div>
         </div>,
         document.body
+      )}
+
+      {showCompetitionShare && (
+        <CompetitionShareCard
+          event={showCompetitionShare}
+          societies={societies}
+          onClose={() => setShowCompetitionShare(null)}
+          triggerToast={triggerToast}
+        />
       )}
 
     </div>
