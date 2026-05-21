@@ -21,6 +21,24 @@ import cron from 'node-cron';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+const SERVER_BOOT_ID = crypto.randomBytes(16).toString('hex');
+let CLIENT_BUILD_HASH = 'dev';
+try {
+  const indexPath = path.resolve(process.cwd(), 'dist/index.html');
+  if (fs.existsSync(indexPath)) {
+    const contents = fs.readFileSync(indexPath, 'utf8');
+    CLIENT_BUILD_HASH = crypto.createHash('md5').update(contents).digest('hex');
+  } else {
+    const rootIndexPath = path.resolve(process.cwd(), 'index.html');
+    if (fs.existsSync(rootIndexPath)) {
+      const contents = fs.readFileSync(rootIndexPath, 'utf8');
+      CLIENT_BUILD_HASH = crypto.createHash('md5').update(contents).digest('hex');
+    }
+  }
+} catch (err) {
+  console.error('Error computing build hash on start:', err);
+}
+
 // 1. IMMEDIATE HEALTH CHECK (Must be first)
 app.get('/ping', (req, res) => res.send('pong'));
 
@@ -1248,6 +1266,13 @@ const requireAdminOrSociety = (req: any, res: any, next: any) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });
+});
+
+app.get('/api/app-version', (req, res) => {
+  res.json({
+    bootId: SERVER_BOOT_ID,
+    buildHash: CLIENT_BUILD_HASH
+  });
 });
 
 app.get('/api/gemini-key', authenticateToken, (req, res) => {
