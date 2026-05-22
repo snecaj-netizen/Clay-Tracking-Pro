@@ -192,7 +192,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState<any | null>(null);
   const [validationRows, setValidationRows] = useState<any[] | null>(null);
-  const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create'>('all');
+  const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create' | 'conflict'>('all');
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
@@ -513,6 +513,97 @@ const UserManagement: React.FC<UserManagementProps> = ({
     XLSX.writeFile(wb, 'utenti_clay_tracker.xlsx');
   };
 
+  const parseExcelDate = (val: any): string | null => {
+    if (!val) return null;
+    // If it's already a JS Date object
+    if (val instanceof Date) {
+      if (isNaN(val.getTime())) return null;
+      return val.toISOString().split('T')[0];
+    }
+    // If it's a number (Excel date serial)
+    if (typeof val === 'number') {
+      const utcDate = new Date(Date.UTC(1899, 11, 30 + val));
+      if (!isNaN(utcDate.getTime())) {
+        return utcDate.toISOString().split('T')[0];
+      }
+    }
+    // If it's a string, try parsing it
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed) return null;
+      
+      // Check if it fits common European formats: DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+      const dmyRegex = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/;
+      const dmyMatch = trimmed.match(dmyRegex);
+      if (dmyMatch) {
+        const day = parseInt(dmyMatch[1], 10);
+        const month = parseInt(dmyMatch[2], 10) - 1; // 0-indexed in JS
+        const year = parseInt(dmyMatch[3], 10);
+        const customDate = new Date(year, month, day);
+        if (!isNaN(customDate.getTime())) {
+          const mm = String(month + 1).padStart(2, '0');
+          const dd = String(day).padStart(2, '0');
+          return `${year}-${mm}-${dd}`;
+        }
+      }
+      
+      // Generic fallback
+      const parsed = new Date(trimmed);
+      if (!isNaN(parsed.getTime())) {
+        const yyyy = parsed.getFullYear();
+        if (yyyy > 1900) {
+          const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+          const dd = String(parsed.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        }
+      }
+    }
+    return null;
+  };
+
+  const getProposedChanges = (v: any) => {
+    if (!v.existing) return [];
+    const fields = [
+      { key: 'name', label: 'Nome' },
+      { key: 'surname', label: 'Cognome' },
+      { key: 'category', label: 'Categoria' },
+      { key: 'qualification', label: 'Qualifica' },
+      { key: 'society', label: 'Società' },
+      { key: 'birth_date', label: 'Data di Nascita', isDate: true },
+      { key: 'phone', label: 'Telefono' },
+      { key: 'email', label: 'Email', customUserVal: v.decisionEmail },
+    ];
+
+    const diffs: { label: string; oldVal: string; newVal: string }[] = [];
+
+    fields.forEach(f => {
+      let oldVal = v.existing[f.key] || '';
+      let newVal = f.customUserVal !== undefined ? (f.customUserVal || '') : (v.user[f.key] || '');
+
+      if (f.isDate) {
+        if (oldVal) {
+          try { oldVal = new Date(oldVal).toISOString().split('T')[0]; } catch (e) {}
+        }
+        if (newVal) {
+          try { newVal = new Date(newVal).toISOString().split('T')[0]; } catch (e) {}
+        }
+      }
+
+      const cleanOld = String(oldVal).trim();
+      const cleanNew = String(newVal).trim();
+
+      if (cleanNew && cleanNew !== cleanOld) {
+        diffs.push({
+          label: f.label,
+          oldVal: cleanOld || 'Nessuno/a',
+          newVal: cleanNew
+        });
+      }
+    });
+
+    return diffs;
+  };
+
   const handleImportUsersExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -521,7 +612,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
@@ -535,7 +626,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
           qualification: row.Qualifica || row.qualification,
           society: row.Società || row.society,
           shooter_code: row['Codice Tiratore'] || row.shooter_code,
-          birth_date: row['Data di Nascita'] || row.birth_date,
+          birth_date: parseExcelDate(row['Data di Nascita'] || row.birth_date),
           phone: row.Telefono || row.phone
         }));
 
@@ -1668,6 +1759,24 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   {validationRows.filter((v: any) => v.decisionAction === 'create').length}
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setImportFilterTab('conflict')}
+                className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  importFilterTab === 'conflict'
+                    ? 'border-orange-500/50 bg-orange-500/10 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.1)]'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-orange-500/30 hover:text-orange-400/80'
+                }`}
+              >
+                <i className="fas fa-exclamation-triangle"></i>
+                <span>Conflitti</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  importFilterTab === 'conflict' ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter((v: any) => v.state === 'conflict_omonimia').length}
+                </span>
+              </button>
             </div>
 
             {/* Scrollable validation list */}
@@ -1676,7 +1785,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 const matchesFilter = 
                   importFilterTab === 'all' || 
                   (importFilterTab === 'update' && v.decisionAction === 'update') || 
-                  (importFilterTab === 'create' && v.decisionAction === 'create');
+                  (importFilterTab === 'create' && v.decisionAction === 'create') ||
+                  (importFilterTab === 'conflict' && v.state === 'conflict_omonimia');
 
                 if (!matchesFilter) return null;
 
@@ -1765,6 +1875,37 @@ const UserManagement: React.FC<UserManagementProps> = ({
                           )}
                         </div>
                       )}
+
+                      {v.decisionAction === 'update' && v.existing && (() => {
+                        const diffs = getProposedChanges(v);
+                        if (diffs.length === 0) {
+                          return (
+                            <div className="bg-slate-900/10 border border-slate-800/40 rounded-xl p-3 text-xs text-slate-450 italic mt-2">
+                              <i className="fas fa-info-circle text-slate-500 mr-2"></i>
+                              Tutti i dati personali nel database coincidono con il file Excel. Nessuna modifica necessaria.
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="bg-blue-950/20 border border-blue-500/20 rounded-xl p-4 space-y-2 animate-in fade-in duration-300 mt-2">
+                            <h6 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <i className="fas fa-exchange-alt"></i> Modifiche personali che verranno salvate:
+                            </h6>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              {diffs.map((d, dIdx) => (
+                                <div key={dIdx} className="bg-slate-950/45 border border-slate-800/40 rounded-lg p-2.5 flex flex-col justify-between text-xs hover:border-blue-500/10 transition-colors">
+                                  <span className="text-slate-500 font-extrabold uppercase text-[9px] tracking-wider mb-1">{d.label}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-slate-400 line-through truncate max-w-[120px]" title={d.oldVal}>{d.oldVal}</span>
+                                    <i className="fas fa-arrow-right text-[10px] text-blue-500"></i>
+                                    <span className="text-blue-400 font-bold truncate max-w-[150px]" title={d.newVal}>{d.newVal}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Interactive Choice (Only for Conflict & optionally Customizable) */}
                       {isConflict && (

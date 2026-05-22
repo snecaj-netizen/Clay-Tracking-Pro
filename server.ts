@@ -2482,7 +2482,19 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
           const existing = matchesByCode[0];
           validatedUsers.push({
             user: { ...u, society: societyName, qualification: finalQual },
-            existing: { id: existing.id, name: existing.name, surname: existing.surname, email: existing.email, shooter_code: existing.shooter_code, society: existing.society },
+            existing: { 
+              id: existing.id, 
+              name: existing.name, 
+              surname: existing.surname, 
+              email: existing.email, 
+              role: existing.role,
+              category: existing.category,
+              qualification: existing.qualification,
+              society: existing.society,
+              shooter_code: existing.shooter_code, 
+              birth_date: existing.birth_date, 
+              phone: existing.phone 
+            },
             state: 'update',
             method: 'code',
             message: `Tiratore individuato tramite Codice Tiratore (${u.shooter_code}).`
@@ -2496,7 +2508,19 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
             // Entrambi hanno codice tiratore ed essi DIFFERISCONO. Omonimia certa!
             validatedUsers.push({
               user: { ...u, society: societyName, qualification: finalQual },
-              existing: { id: existing.id, name: existing.name, surname: existing.surname, email: existing.email, shooter_code: existing.shooter_code, society: existing.society },
+              existing: { 
+                id: existing.id, 
+                name: existing.name, 
+                surname: existing.surname, 
+                email: existing.email, 
+                role: existing.role,
+                category: existing.category,
+                qualification: existing.qualification,
+                society: existing.society,
+                shooter_code: existing.shooter_code, 
+                birth_date: existing.birth_date, 
+                phone: existing.phone 
+              },
               state: 'conflict_omonimia',
               method: 'email',
               message: `Conflitto: l'email '${u.email}' appartiene a ${existing.name} ${existing.surname} (Codice: ${existing.shooter_code}), ma il tiratore caricato ha codice differente (${u.shooter_code}).`
@@ -2506,7 +2530,19 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
             // Consentiamo la scelta interattiva per sicurezza.
             validatedUsers.push({
               user: { ...u, society: societyName, qualification: finalQual },
-              existing: { id: existing.id, name: existing.name, surname: existing.surname, email: existing.email, shooter_code: existing.shooter_code, society: existing.society },
+              existing: { 
+                id: existing.id, 
+                name: existing.name, 
+                surname: existing.surname, 
+                email: existing.email, 
+                role: existing.role,
+                category: existing.category,
+                qualification: existing.qualification,
+                society: existing.society,
+                shooter_code: existing.shooter_code, 
+                birth_date: existing.birth_date, 
+                phone: existing.phone 
+              },
               state: 'conflict_omonimia',
               method: 'email',
               message: `L'email '${u.email}' è già presente nel server (associata a ${existing.name} ${existing.surname}). Confermi l'aggiornamento o vuoi registrare un nuovo account diverso?`
@@ -2595,21 +2631,22 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
         const finalQual = getAutoQualification(u.birth_date, u.qualification);
 
         let existingUserObj: any = null;
-        if (isRichFormat && action === 'update' && existingUserId) {
-          const { rows } = await client.query("SELECT * FROM users WHERE id = $1", [existingUserId]);
-          if (rows.length > 0) existingUserObj = rows[0];
-        }
-
-        // Se non trovato tramite ID, cerchiamo per codice tiratore (che è l'identificativo principale univoco)
-        if (!existingUserObj && u.shooter_code) {
-          const { rows } = await client.query("SELECT * FROM users WHERE LOWER(shooter_code) = LOWER($1)", [u.shooter_code]);
-          if (rows.length > 0) existingUserObj = rows[0];
-        }
-
-        // Come fallback per retrocompatibilità, cerchiamo per email se ancora non trovato
-        if (!existingUserObj && u.email) {
-          const { rows } = await client.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [u.email]);
-          if (rows.length > 0) existingUserObj = rows[0];
+        if (isRichFormat) {
+          if (action === 'update' && existingUserId) {
+            const { rows } = await client.query("SELECT * FROM users WHERE id = $1", [existingUserId]);
+            if (rows.length > 0) existingUserObj = rows[0];
+          }
+          // Se action === 'create', existingUserObj rimarrà null per consentire la creazione di un nuovo utente sdoppiato
+        } else {
+          // Se non è formato rich (import diretto), cerchiamo corrispondenze per codice o e-mail
+          if (u.shooter_code) {
+            const { rows } = await client.query("SELECT * FROM users WHERE LOWER(shooter_code) = LOWER($1)", [u.shooter_code]);
+            if (rows.length > 0) existingUserObj = rows[0];
+          }
+          if (!existingUserObj && u.email) {
+            const { rows } = await client.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [u.email]);
+            if (rows.length > 0) existingUserObj = rows[0];
+          }
         }
 
         if (existingUserObj) {

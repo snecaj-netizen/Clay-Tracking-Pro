@@ -17,22 +17,22 @@ import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
 // Lazy load heavy components
-const Dashboard = lazy(() => import('../components/Dashboard.tsx'));
-const CompetitionForm = lazy(() => import('../components/CompetitionForm.tsx'));
-const HistoryList = lazy(() => import('../components/HistoryList.tsx'));
-const Warehouse = lazy(() => import('../components/Warehouse.tsx'));
-const AdminPanel = lazy(() => import('../components/AdminPanel.tsx'));
-const EventsManager = lazy(() => import('../components/EventsManager.tsx'));
-const AICoachPage = lazy(() => import('../components/AICoachPage.tsx'));
-const LeTueGarePage = lazy(() => import('../components/LeTueGarePage.tsx'));
-const GarePage = lazy(() => import('../components/GarePage.tsx'));
-const LaMiaSocietaPage = lazy(() => import('../components/LaMiaSocietaPage.tsx'));
-const AdminPageView = lazy(() => import('../components/AdminPageView.tsx'));
-const SocietyDetailModal = lazy(() => import('../components/SocietyDetailModal.tsx'));
-const NotificationsPage = lazy(() => import('../components/NotificationsPage.tsx'));
-const EventRegistrationModal = lazy(() => import('../components/EventRegistrationModal.tsx').then(module => ({ default: module.EventRegistrationModal })));
-const NotificationsManager = lazy(() => import('../components/NotificationsManager.tsx'));
-const PublicPortal = lazy(() => import('../components/PublicPortal.tsx'));
+const Dashboard = lazy(() => import('../components/Dashboard'));
+const CompetitionForm = lazy(() => import('../components/CompetitionForm'));
+const HistoryList = lazy(() => import('../components/HistoryList'));
+const Warehouse = lazy(() => import('../components/Warehouse'));
+const AdminPanel = lazy(() => import('../components/AdminPanel'));
+const EventsManager = lazy(() => import('../components/EventsManager'));
+const AICoachPage = lazy(() => import('../components/AICoachPage'));
+const LeTueGarePage = lazy(() => import('../components/LeTueGarePage'));
+const GarePage = lazy(() => import('../components/GarePage'));
+const LaMiaSocietaPage = lazy(() => import('../components/LaMiaSocietaPage'));
+const AdminPageView = lazy(() => import('../components/AdminPageView'));
+const SocietyDetailModal = lazy(() => import('../components/SocietyDetailModal'));
+const NotificationsPage = lazy(() => import('../components/NotificationsPage'));
+const EventRegistrationModal = lazy(() => import('../components/EventRegistrationModal').then(module => ({ default: module.EventRegistrationModal })));
+const NotificationsManager = lazy(() => import('../components/NotificationsManager'));
+const PublicPortal = lazy(() => import('../components/PublicPortal'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">

@@ -4,3 +4,4 @@
 node_modules
 # But we WANT the build folder
 !build/
+!dist/
