@@ -1729,7 +1729,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 onClick={() => setImportFilterTab('update')}
                 className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
                   importFilterTab === 'update'
-                    ? 'border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                    ? 'border-blue-500/50 bg-blue-900/40 text-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
                     : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-blue-500/30 hover:text-blue-400/80'
                 }`}
               >
@@ -1810,7 +1810,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                       isConflict 
                         ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' 
                         : isUpdate 
-                          ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+                          ? 'bg-blue-900/40 border-blue-500/50 text-blue-200' 
                           : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400'
                     }`}>
                       <span className="flex items-center gap-2">
