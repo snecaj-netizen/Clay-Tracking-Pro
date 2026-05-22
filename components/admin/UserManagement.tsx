@@ -518,7 +518,10 @@ const UserManagement: React.FC<UserManagementProps> = ({
     // If it's already a JS Date object
     if (val instanceof Date) {
       if (isNaN(val.getTime())) return null;
-      return val.toISOString().split('T')[0];
+      const yyyy = val.getFullYear();
+      const mm = String(val.getMonth() + 1).padStart(2, '0');
+      const dd = String(val.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     }
     // If it's a number (Excel date serial)
     if (typeof val === 'number') {
