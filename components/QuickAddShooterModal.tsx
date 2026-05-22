@@ -44,7 +44,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
     const cleanName = name.trim().toLowerCase().replace(/[\s']/g, '');
     const cleanSurname = surname.trim().toLowerCase().replace(/[\s']/g, '');
     const finalEmail = isSociety ? `${cleanName}.${cleanSurname}@gmail.com` : email;
-    const finalPassword = isSociety ? shooterCode : password;
+    const finalPassword = isSociety ? shooterCode : (password || shooterCode);
 
     const body = {
       name,
@@ -117,9 +117,9 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
                   <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('password_label')} *</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('password_label')} ({t('optional') || 'Opzionale'})</label>
                   <div className="relative">
-                    <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-10 text-white focus:border-orange-600 outline-none transition-all" />
+                    <input type={showPassword ? "text" : "password"} required={false} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-10 text-white focus:border-orange-600 outline-none transition-all" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                       <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                     </button>

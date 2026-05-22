@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import SocietySearch from '../SocietySearch';
@@ -50,7 +50,9 @@ const UserRow = React.memo(({
   onSelect, 
   onToggleStatus, 
   onEdit, 
-  onDelete 
+  onDelete,
+  isSelected,
+  onToggleSelect
 }: { 
   user: any, 
   currentUser: any, 
@@ -58,12 +60,23 @@ const UserRow = React.memo(({
   onSelect: (u: any) => void, 
   onToggleStatus: (id: number, status: string) => void, 
   onEdit: (u: any) => void, 
-  onDelete: (id: number) => void 
+  onDelete: (id: number) => void,
+  isSelected: boolean,
+  onToggleSelect: (id: number) => void
 }) => {
   const { t } = useLanguage();
   
   return (
     <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+      <td className="py-3 px-4">
+        <input 
+          type="checkbox" 
+          checked={isSelected} 
+          disabled={u.email === 'snecaj@gmail.com'}
+          onChange={() => onToggleSelect(u.id)}
+          className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-orange-600 focus:ring-orange-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+        />
+      </td>
       <td className="py-3 px-4 text-sm text-white font-bold">
         <div 
           className="flex items-center gap-3 cursor-pointer hover:text-orange-500 transition-colors"
@@ -176,6 +189,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [userSortConfig, setUserSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResults, setImportResults] = useState<any | null>(null);
+  const [validationRows, setValidationRows] = useState<any[] | null>(null);
+  const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create'>('all');
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
 
@@ -315,6 +333,84 @@ const UserManagement: React.FC<UserManagementProps> = ({
     );
   };
 
+  const handleToggleSelectUser = useCallback((id: number) => {
+    setSelectedUserIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleBulkDelete = (targetIds?: number[]) => {
+    const idsToDelete = targetIds || selectedUserIds;
+    if (idsToDelete.length === 0) return;
+
+    triggerConfirm(
+      t('delete') + ` ${idsToDelete.length} ` + t('users_label'),
+      `Sei sicuro di voler cancellare definitivamente questi ${idsToDelete.length} utenti? Questa azione è irreversibile.`,
+      async () => {
+        try {
+          const res = await fetch('/api/admin/users/bulk-delete', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ ids: idsToDelete })
+          });
+
+          if (!res.ok) throw new Error("Errore durante l'eliminazione di massa degli utenti");
+          
+          if (triggerToast) {
+            triggerToast("Utenti eliminati con successo", "success");
+          }
+          setSelectedUserIds([]);
+          fetchUsers();
+          fetchSocieties();
+        } catch (err: any) {
+          setError(err.message);
+        }
+      },
+      t('delete'),
+      'danger'
+    );
+  };
+
+  const handleDeleteAllFiltered = () => {
+    const filteredUsersToDelete = sortedUsers.filter(u => u.email !== 'snecaj@gmail.com');
+    if (filteredUsersToDelete.length === 0) return;
+
+    const idsToDelete = filteredUsersToDelete.map(u => u.id);
+    
+    triggerConfirm(
+      "Elimina Tutti i Filtrati",
+      `Sei sicuro di voler cancellare definitivamente TUTTI i ${filteredUsersToDelete.length} tiratori attualmente corrispondenti ai filtri applicati? Questa operazione è irreversibile.`,
+      async () => {
+        try {
+          const res = await fetch('/api/admin/users/bulk-delete', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ ids: idsToDelete })
+          });
+
+          if (!res.ok) throw new Error("Errore durante l'eliminazione degli utenti filtrati");
+          
+          if (triggerToast) {
+            triggerToast("Tutti i tiratori filtrati sono stati eliminati", "success");
+          }
+          setSelectedUserIds([]);
+          fetchUsers();
+          fetchSocieties();
+        } catch (err: any) {
+          setError(err.message);
+        }
+      },
+      t('delete'),
+      'danger'
+    );
+  };
+
   const editUser = (user: any) => {
     setEditingUser(user);
     setName(user.name || '');
@@ -443,41 +539,54 @@ const UserManagement: React.FC<UserManagementProps> = ({
           phone: row.Telefono || row.phone
         }));
 
-        triggerConfirm(
-          t('import'),
-          t('import_users_confirm').replace('{{count}}', String(importedUsers.length)),
-          async () => {
-            try {
-              const res = await fetch('/api/admin/users/import', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ users: importedUsers })
-              });
-              
-              if (!res.ok) throw new Error(t('import_error_msg'));
-              
-              const results = await res.json();
-              fetchUsers();
-              if (triggerToast) {
-                triggerToast(
-                  t('import_completed')
-                    .replace('{{created}}', String(results.created))
-                    .replace('{{updated}}', String(results.updated))
-                    .replace('{{errors}}', String(results.errors)), 
-                  results.errors > 0 ? 'error' : 'success'
-                );
+        setIsImporting(true);
+        try {
+          const res = await fetch('/api/admin/users/import/validate', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ users: importedUsers })
+          });
+          
+          if (!res.ok) throw new Error(t('import_error_msg'));
+          const validationData = await res.json();
+          
+          const rowsWithChoices = validationData.map((v: any, index: number) => {
+            let initialAction: 'create' | 'update' = 'create';
+            let initialEmail = v.user.email;
+            
+            if (v.state === 'update') {
+              initialAction = 'update';
+            } else if (v.state === 'conflict_omonimia') {
+              initialAction = 'create';
+              if (v.user.email) {
+                initialEmail = v.user.email;
+              } else {
+                const cleanName = (v.user.name || 'user').toLowerCase().replace(/\s+/g, '');
+                const cleanSurname = (v.user.surname || 'surname').toLowerCase().replace(/\s+/g, '');
+                initialEmail = `${cleanName}.${cleanSurname}@gmail.com`;
               }
-            } catch (err) {
-              console.error('Error importing users:', err);
-              setError(t('import_error_msg'));
             }
-          },
-          t('import'),
-          'primary'
-        );
+            
+            return {
+              ...v,
+              decisionAction: initialAction,
+              decisionEmail: initialEmail
+            };
+          });
+          
+          setValidationRows(rowsWithChoices);
+        } catch (err) {
+          console.error('Error validating users:', err);
+          setError(t('import_error_msg'));
+          if (triggerToast) {
+            triggerToast(t('import_error_msg'), 'error');
+          }
+        } finally {
+          setIsImporting(false);
+        }
       } catch (err) {
         console.error('Error reading Excel file:', err);
         setError(t('excel_read_error'));
@@ -485,6 +594,55 @@ const UserManagement: React.FC<UserManagementProps> = ({
     };
     reader.readAsBinaryString(file);
     e.target.value = ''; // Reset input
+  };
+
+  const handleSaveImportedUsers = async () => {
+    if (!validationRows) return;
+    
+    setIsImporting(true);
+    try {
+      const finalUsersPayload = validationRows.map((v: any) => ({
+        action: v.decisionAction,
+        existingUserId: v.decisionAction === 'update' ? v.existing?.id : undefined,
+        data: {
+          ...v.user,
+          email: v.decisionEmail
+        }
+      }));
+
+      const res = await fetch('/api/admin/users/import', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ users: finalUsersPayload })
+      });
+      
+      if (!res.ok) throw new Error(t('import_error_msg'));
+      
+      const results = await res.json();
+      fetchUsers();
+      setValidationRows(null);
+      setImportResults(results);
+      if (triggerToast) {
+        triggerToast(
+          t('import_completed')
+            .replace('{{created}}', String(results.created))
+            .replace('{{updated}}', String(results.updated))
+            .replace('{{errors}}', String(results.errors)), 
+          results.errors > 0 ? 'error' : 'success'
+        );
+      }
+    } catch (err) {
+      console.error('Error saving imported users:', err);
+      setError(t('import_error_msg'));
+      if (triggerToast) {
+        triggerToast(t('import_error_msg'), 'error');
+      }
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const updateAutoQualification = (date: string, currentQual: string, setter: (val: string) => void) => {
@@ -761,11 +919,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                  {role === 'society' ? t('club_code_required') : t('shooter_code')}
+                  {role === 'society' ? `${t('club_code_required')} *` : `${t('shooter_code')} *`}
                 </label>
                 <input 
                   type="text" 
-                  required={role === 'society'} 
+                  required={role === 'user' || role === 'society'} 
                   value={shooterCode} 
                   onChange={e => setShooterCode(role === 'user' ? e.target.value.toUpperCase() : e.target.value)} 
                   disabled={currentUser?.role === 'society' && !!editingUser}
@@ -894,7 +1052,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category')}</label>
-                  <select required={!qualification} value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                     <option value="">{t('select_dot')}</option>
                     <option value="Eccellenza">Eccellenza</option>
                     <option value="1*">1*</option>
@@ -904,7 +1062,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('qualification')}</label>
-                  <select required={!category} value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                  <select value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
                     <option value="">{t('select_dot')}</option>
                     <option value="MAN">MAN (Man)</option>
                     <option value="LAD">LAD (Lady)</option>
@@ -996,9 +1154,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('password_label')} {editingUser && t('password_change_notice')}</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('password_label')} {editingUser ? t('password_change_notice') : `(${t('optional') || 'Opzionale'})`}</label>
                 <div className="relative">
-                  <input type={showPassword ? "text" : "password"} required={!editingUser} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 pr-10 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <input type={showPassword ? "text" : "password"} required={false} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 pr-10 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)} 
@@ -1026,10 +1184,66 @@ const UserManagement: React.FC<UserManagementProps> = ({
       document.body
     )}
 
+      {/* Bulk actions and filters context indicator bar */}
+      {(selectedUserIds.length > 0 || (hasActiveFilters && sortedUsers.length > 0)) && (
+        <div className="mb-6 p-4 rounded-2xl bg-slate-900 border border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-3 duration-200">
+          <div className="flex items-center gap-2.5 text-xs font-bold text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+            {selectedUserIds.length > 0 ? (
+              <span>Selezionati <strong>{selectedUserIds.length}</strong> tiratori. Puoi cancellarli tutti insieme o deselezionarli.</span>
+            ) : (
+              <span>Filtri attivi. Trovati <strong>{sortedUsers.length}</strong> tiratori corrispondenti. Puoi eliminarli in blocco.</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0 justify-end">
+            {selectedUserIds.length > 0 && (
+              <button 
+                onClick={() => handleBulkDelete()}
+                className="w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white border border-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-red-600/10"
+              >
+                <i className="fas fa-trash"></i> Elimina selezionati ({selectedUserIds.length})
+              </button>
+            )}
+            {hasActiveFilters && sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').length > 0 && (
+              <button 
+                onClick={handleDeleteAllFiltered}
+                className="w-full sm:w-auto px-4 py-2.5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 hover:border-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <i className="fas fa-user-minus"></i> Elimina filtrati ({sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').length})
+              </button>
+            )}
+            {selectedUserIds.length > 0 && (
+              <button 
+                onClick={() => setSelectedUserIds([])}
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer text-center"
+              >
+                Annulla
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto scroll-shadows">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              <th className="py-3 px-4 w-12 text-center">
+                <input 
+                  type="checkbox" 
+                  checked={sortedUsers.length > 0 && sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').every(u => selectedUserIds.includes(u.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const selectable = sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').map(u => u.id);
+                      setSelectedUserIds(prev => Array.from(new Set([...prev, ...selectable])));
+                    } else {
+                      const visibleIds = sortedUsers.map(u => u.id);
+                      setSelectedUserIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-850 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                />
+              </th>
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('name')}>
                 {t('name')} {userSortConfig?.key === 'name' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
               </th>
@@ -1064,11 +1278,13 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 onToggleStatus={handleToggleStatus}
                 onEdit={editUser}
                 onDelete={handleDelete}
+                isSelected={selectedUserIds.includes(u.id)}
+                onToggleSelect={handleToggleSelectUser}
               />
             ))}
             {sortedUsers.length === 0 && (
               <tr>
-                <td colSpan={currentUser?.role === 'society' ? 6 : 7} className="py-8 text-center text-slate-500 text-sm italic">
+                <td colSpan={currentUser?.role === 'society' ? 7 : 8} className="py-8 text-center text-slate-500 text-sm italic">
                   {t('no_users_found')}
                 </td>
               </tr>
@@ -1265,6 +1481,407 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   <i className="fas fa-trash-alt"></i> {t('delete')}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {isImporting && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-4">
+          <div className="relative flex flex-col items-center max-w-sm text-center">
+            {/* Spinning custom circular animation */}
+            <div className="w-16 h-16 rounded-full border-4 border-slate-800 border-t-orange-500 animate-spin mb-6"></div>
+            <h3 className="text-xl font-black text-white uppercase italic tracking-wider mb-2">
+              Elaborazione in Corso
+            </h3>
+            <p className="text-slate-400 text-sm">
+              Il sistema sta analizzando, creando e aggiornando i profili dei tiratori. Non chiudere questa pagina.
+            </p>
+          </div>
+        </div>
+      , document.body)}
+
+      {importResults && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9990] flex items-center justify-center p-4" onClick={() => setImportResults(null)}>
+          <div 
+            className="bg-slate-950 border border-slate-800/80 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header with decorative visuals */}
+            <div className="relative bg-slate-900 border-b border-slate-800/60 p-6 flex items-center justify-between overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-orange-600/10 rounded-full blur-3xl -mr-24 -mt-24"></div>
+              <div className="relative z-10">
+                <h3 className="text-lg font-black text-white uppercase italic tracking-wider flex items-center gap-2">
+                  <i className="fas fa-file-import text-orange-500"></i> Risultato Importazione
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Sintesi dell'elaborazione del file Excel</p>
+              </div>
+              <button 
+                onClick={() => setImportResults(null)} 
+                className="relative z-10 w-10 h-10 rounded-xl bg-slate-800 hover:bg-red-600/20 hover:text-red-500 text-slate-400 transition-all flex items-center justify-center shadow-md cursor-pointer"
+              >
+                <i className="fas fa-times text-md"></i>
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Summary KPIs */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 text-center">
+                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Nuovi Caricati</p>
+                  <p className="text-2xl font-black text-white">{importResults.created}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 text-center">
+                  <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Aggiornati</p>
+                  <p className="text-2xl font-black text-white">{importResults.updated}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 text-center">
+                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Errori</p>
+                  <p className="text-2xl font-black text-white">{importResults.errors}</p>
+                </div>
+              </div>
+
+              {/* Updates Details Log */}
+              {importResults.updatedDetails && importResults.updatedDetails.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <i className="fas fa-exchange-alt text-blue-500"></i> Dettaglio Utenti Aggiornati
+                  </h4>
+                  <div className="border border-slate-800 rounded-2xl divide-y divide-slate-800 max-h-72 overflow-y-auto bg-slate-900/10 shrink-0">
+                    {importResults.updatedDetails.map((userDetail: any, idx: number) => (
+                      <div key={idx} className="p-4 space-y-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <p className="text-sm font-black text-white uppercase italic tracking-tight">
+                            {userDetail.name} {userDetail.surname}
+                          </p>
+                          <span className="text-[10px] font-medium text-slate-500">
+                            {userDetail.email}
+                          </span>
+                        </div>
+                        <ul className="space-y-1 pl-3 border-l-2 border-orange-500/40">
+                          {userDetail.changes.map((change: string, changeIdx: number) => (
+                            <li key={changeIdx} className="text-xs text-slate-200 flex items-center gap-2 leading-relaxed">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></span>
+                              <span>{change}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action button at bottom */}
+            <div className="p-6 bg-slate-900/90 border-t border-slate-800 flex justify-end">
+              <button 
+                onClick={() => setImportResults(null)}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg cursor-pointer"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {validationRows && createPortal(
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[9980] flex items-center justify-center p-4">
+          <div 
+            className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl relative"
+          >
+            {/* Header */}
+            <div className="relative bg-slate-900 border-b border-slate-800 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between overflow-hidden gap-4">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+              <div className="relative z-10">
+                <h3 className="text-xl font-black text-white uppercase italic tracking-wider flex items-center gap-2">
+                  <i className="fas fa-user-check text-orange-500 animate-pulse"></i> Validazione Importazione Utenti
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Risolvi le omonime e decidi se integrare i profili o sdoppiarli prima del salvataggio finale</p>
+              </div>
+              <div className="relative z-10 shrink-0 flex items-center gap-3">
+                <span className="bg-slate-800 border border-slate-700 text-xs text-slate-300 font-bold px-3 py-1.5 rounded-xl">
+                  {validationRows.length} tiratori trovati nel file
+                </span>
+                <button 
+                  onClick={() => setValidationRows(null)} 
+                  className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-red-600/20 hover:text-red-500 text-slate-400 transition-all flex items-center justify-center shadow-md cursor-pointer"
+                >
+                  <i className="fas fa-times text-md"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs for quick filtering */}
+            <div className="bg-slate-900/40 border-b border-slate-800/80 p-4 flex gap-3 overflow-x-auto shrink-0 justify-center">
+              <button
+                type="button"
+                onClick={() => setImportFilterTab('all')}
+                className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  importFilterTab === 'all'
+                    ? 'border-slate-700 bg-slate-800 text-white shadow-lg'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-slate-800 hover:text-slate-300'
+                }`}
+              >
+                <span>Tutti</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  importFilterTab === 'all' ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setImportFilterTab('update')}
+                className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  importFilterTab === 'update'
+                    ? 'border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-blue-500/30 hover:text-blue-400/80'
+                }`}
+              >
+                <i className="fas fa-sync-alt"></i>
+                <span>Da Aggiornare</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  importFilterTab === 'update' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter((v: any) => v.decisionAction === 'update').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setImportFilterTab('create')}
+                className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  importFilterTab === 'create'
+                    ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-400/80'
+                }`}
+              >
+                <i className="fas fa-plus"></i>
+                <span>Nuovi</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  importFilterTab === 'create' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter((v: any) => v.decisionAction === 'create').length}
+                </span>
+              </button>
+            </div>
+
+            {/* Scrollable validation list */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {validationRows.map((v: any, index: number) => {
+                const matchesFilter = 
+                  importFilterTab === 'all' || 
+                  (importFilterTab === 'update' && v.decisionAction === 'update') || 
+                  (importFilterTab === 'create' && v.decisionAction === 'create');
+
+                if (!matchesFilter) return null;
+
+                const isConflict = v.state === 'conflict_omonimia';
+                const isUpdate = v.state === 'update';
+                const isCreate = v.state === 'create';
+
+                return (
+                  <div 
+                    key={index} 
+                    className={`border rounded-2xl transition-all overflow-hidden ${
+                      isConflict 
+                        ? 'border-orange-500 bg-orange-500/[0.02] shadow-[0_0_20px_rgba(249,115,22,0.05)]' 
+                        : isUpdate 
+                          ? 'border-blue-500/40 bg-blue-500/[0.01]' 
+                          : 'border-slate-800/80 bg-slate-950'
+                    }`}
+                  >
+                    {/* State banner */}
+                    <div className={`px-4 py-2 border-b flex items-center justify-between gap-3 text-xs font-black uppercase tracking-widest ${
+                      isConflict 
+                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' 
+                        : isUpdate 
+                          ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+                          : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400'
+                    }`}>
+                      <span className="flex items-center gap-2">
+                        {isConflict && <i className="fas fa-exclamation-triangle"></i>}
+                        {isUpdate && <i className="fas fa-user-edit"></i>}
+                        {isCreate && <i className="fas fa-user-plus"></i>}
+                        {isConflict ? 'Rilevato Conflitto (Possibile Omonimia)' : isUpdate ? 'Pianificato per Aggiornamento' : 'Nuovo Tiratore'}
+                      </span>
+                      <span className="opacity-70 text-[10px] lowercase italic font-normal">
+                        {v.message || (isCreate ? 'Verrò creato come nuova scheda' : '')}
+                      </span>
+                    </div>
+
+                    <div className="p-4 sm:p-5 space-y-4">
+                      {/* Main Data Split or Info Layout */}
+                      {isConflict ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* File data (excel) */}
+                          <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-800">
+                            <h5 className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-3">Da file caricato (Excel)</h5>
+                            <div className="space-y-2">
+                              <p className="text-sm font-black text-white italic">{v.user.name} {v.user.surname}</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                                <div><span className="text-slate-500">Codice:</span> <span className="font-mono uppercase">{v.user.shooter_code || 'Non inserito'}</span></div>
+                                <div><span className="text-slate-500">Email:</span> <span>{v.user.email}</span></div>
+                                <div><span className="text-slate-500">Società:</span> <span className="italic">{v.user.society || 'Nessuna'}</span></div>
+                                <div><span className="text-slate-500">Qualifica:</span> <span>{v.user.qualification || 'Nessuna'}</span></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Existing data (db) */}
+                          <div className="bg-slate-900/30 rounded-xl p-4 border border-slate-800/40 opacity-90">
+                            <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Esistente nel database</h5>
+                            <div className="space-y-2">
+                              <p className="text-sm font-black text-slate-300 italic">{v.existing?.name} {v.existing?.surname}</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 font-medium">
+                                <div><span className="text-slate-600">Codice:</span> <span className="font-mono uppercase">{v.existing?.shooter_code || 'Non impostato'}</span></div>
+                                <div><span className="text-slate-600">Email:</span> <span>{v.existing?.email}</span></div>
+                                <div><span className="text-slate-600">Società:</span> <span className="italic">{v.existing?.society || 'Nessuna'}</span></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-black text-white italic">{v.user.name} {v.user.surname}</p>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-slate-400">
+                              <span><i className="fas fa-envelope text-slate-600 mr-1"></i> {v.user.email}</span>
+                              {v.user.shooter_code && <span><i className="fas fa-id-card text-slate-600 mr-1 font-mono"></i> <span className="uppercase">{v.user.shooter_code}</span></span>}
+                              {v.user.society && <span><i className="fas fa-building text-slate-600 mr-1"></i> <span className="italic">{v.user.society}</span></span>}
+                            </div>
+                          </div>
+                          {isUpdate && v.existing && (
+                            <div className="text-xs text-slate-500 flex items-center gap-1">
+                              <span>Aggiornerà il profilo:</span>
+                              <span className="font-bold text-slate-300 bg-slate-900 border border-slate-800 px-2 py-1 rounded-lg">
+                                ID {v.existing.id} - {v.existing.name} {v.existing.surname}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Interactive Choice (Only for Conflict & optionally Customizable) */}
+                      {isConflict && (
+                        <div className="border-t border-slate-800/60 pt-4 space-y-4">
+                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
+                            Seleziona l'azione corretta da applicare:
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Option 1: Update Existing Profile */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const copy = [...validationRows];
+                                copy[index].decisionAction = 'update';
+                                copy[index].decisionEmail = v.user.email; // reset to original
+                                setValidationRows(copy);
+                              }}
+                              className={`flex items-start gap-3 p-4 rounded-xl border transition-all text-left ${
+                                v.decisionAction === 'update'
+                                  ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.15)] text-white'
+                                  : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
+                              }`}
+                            >
+                              <div className="mt-1">
+                                <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${v.decisionAction === 'update' ? 'border-blue-500 text-blue-500' : 'border-slate-600'}`}>
+                                  {v.decisionAction === 'update' && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
+                                </span>
+                              </div>
+                              <div>
+                                <h6 className="text-xs font-black uppercase tracking-wider mb-1">Unisci ed Aggiorna Profilo</h6>
+                                <p className="text-[10px] leading-relaxed text-slate-400">
+                                  Integrazione sicura. Aggiorna i dati del tiratore esistente ({v.existing?.name} {v.existing?.surname}) con i dati caricati.
+                                </p>
+                              </div>
+                            </button>
+
+                            {/* Option 2: Create Separate profile */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const copy = [...validationRows];
+                                copy[index].decisionAction = 'create';
+                                // Proponi default unico d'accesso
+                                if (v.user.email) {
+                                  copy[index].decisionEmail = v.user.email;
+                                } else {
+                                  const cleanName = (v.user.name || 'user').toLowerCase().replace(/\s+/g, '');
+                                  const cleanSurname = (v.user.surname || 'surname').toLowerCase().replace(/\s+/g, '');
+                                  copy[index].decisionEmail = `${cleanName}.${cleanSurname}@gmail.com`;
+                                }
+                                setValidationRows(copy);
+                              }}
+                              className={`flex items-start gap-3 p-4 rounded-xl border transition-all text-left ${
+                                v.decisionAction === 'create'
+                                  ? 'border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.15)] text-white'
+                                  : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
+                              }`}
+                            >
+                              <div className="mt-1">
+                                <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${v.decisionAction === 'create' ? 'border-orange-500 text-orange-500' : 'border-slate-600'}`}>
+                                  {v.decisionAction === 'create' && <span className="w-2 h-2 rounded-full bg-orange-500"></span>}
+                                </span>
+                              </div>
+                              <div>
+                                <h6 className="text-xs font-black uppercase tracking-wider mb-1">Registra come Nuovo Tiratore</h6>
+                                <p className="text-[10px] leading-relaxed text-slate-400">
+                                  Gestione Omonimia. Lascia intatto il tiratore esistente e crea una nuova ed indipendente scheda personale.
+                                </p>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Email Customization Field if 'create' is active for this row */}
+                          {v.decisionAction === 'create' && (
+                            <div className="bg-slate-900/70 border border-slate-800 p-4 rounded-xl space-y-2 animate-in slide-in-from-top-2 duration-200">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                                <i className="fas fa-key text-orange-500 mr-1"></i> E-mail d'Accesso Unica del Nuovo Profilo (Omonimo)
+                              </label>
+                              <p className="text-[10px] text-slate-500">
+                                Poiché l'e-mail deve essere univoca per ciascun tiratore, per consentire l'accesso separato a Pippo e Pippo2, abbiamo generato un indirizzo e-mail unico di login. Puoi modificarlo liberamente:
+                              </p>
+                              <input 
+                                type="email"
+                                required
+                                value={v.decisionEmail}
+                                onChange={(e) => {
+                                  const copy = [...validationRows];
+                                  copy[index].decisionEmail = e.target.value;
+                                  setValidationRows(copy);
+                                }}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-orange-500 focus:outline-none transition-all font-semibold"
+                                placeholder="Inserisci un'email unica di login"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Actions Footer */}
+            <div className="p-6 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <button 
+                onClick={() => setValidationRows(null)}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-widest transition-all cursor-pointer text-center"
+              >
+                Annulla Importazione
+              </button>
+              <button 
+                onClick={handleSaveImportedUsers}
+                className="w-full sm:w-auto px-10 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <i className="fas fa-check-circle"></i> Conferma ed Elabora {validationRows.length} Utenti
+              </button>
             </div>
           </div>
         </div>

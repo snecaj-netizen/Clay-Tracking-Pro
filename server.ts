@@ -445,7 +445,7 @@ const initDB = async () => {
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         surname TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
+        email TEXT NOT NULL,
         password TEXT NOT NULL,
         role TEXT DEFAULT 'user',
         category TEXT,
@@ -459,6 +459,14 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure email unique constraint/index is dropped so duplicate email is supported
+    try {
+      await pool.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key").catch(() => {});
+      await pool.query("DROP INDEX IF EXISTS users_email_idx").catch(() => {});
+    } catch (dbErr) {
+      console.log("Ignored drop constraint error:", dbErr);
+    }
 
     // Add columns if they don't exist (for existing databases)
     try {
@@ -1525,13 +1533,22 @@ app.post('/api/auth/register', async (req, res) => {
   } = req.body;
 
   try {
-    const { rows: existingUsers } = await pool.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1)", [email]);
-    if (existingUsers.length > 0) {
-      return res.status(400).json({ error: 'Un account con questa email esiste già.' });
+    if (!shooter_code) {
+      return res.status(400).json({ error: 'Il codice tiratore è obbligatorio.' });
     }
 
+    // Check shooter_code uniqueness instead of email
+    const { rows: existingByShooterCode } = await pool.query(
+      "SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1)", 
+      [shooter_code]
+    );
+    if (existingByShooterCode.length > 0) {
+      return res.status(400).json({ error: 'Un account con questo codice tiratore esiste già.' });
+    }
+
+    const finalPassword = password || shooter_code;
     const salt = bcrypt.genSaltSync(10);
-    const hash = bcrypt.hashSync(password, salt);
+    const hash = bcrypt.hashSync(finalPassword, salt);
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const userLanguage = language || (!!is_international ? 'en' : 'it');
     
@@ -1611,8 +1628,29 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   console.log(`Login attempt for: ${email} on database: ${process.env.DATABASE_URL?.substring(0, 30)}...`);
   try {
-    const { rows } = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
-    const user = rows[0];
+    // Look up by either email OR shooter_code (which becomes the primary unique identifier)
+    const { rows } = await pool.query(
+      "SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(shooter_code) = LOWER($1)", 
+      [email]
+    );
+
+    let user = null;
+    if (rows.length === 1) {
+      user = rows[0];
+    } else if (rows.length > 1) {
+      // Find the user whose password hash matches the given credentials
+      for (const r of rows) {
+        if (bcrypt.compareSync(password, r.password)) {
+          user = r;
+          break;
+        }
+      }
+      // If none matches, fallback to the first one so we can show standard password error
+      if (!user) {
+        user = rows[0];
+      }
+    }
+
     if (!user) {
       console.log(`Login failed: User not found (${email})`);
       return res.status(400).json({ error: 'User not found' });
@@ -2324,8 +2362,9 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
-  if (role === 'society' && !shooter_code) {
-    return res.status(400).json({ error: 'Il Codice Società (Codice Tiratore) è obbligatorio per gli utenti società' });
+  const finalRole = role || 'user';
+  if ((finalRole === 'user' || finalRole === 'society') && !shooter_code) {
+    return res.status(400).json({ error: 'Il campo codice tiratore/codice società è obbligatorio.' });
   }
 
   if (req.user.role === 'society') {
@@ -2334,14 +2373,30 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     }
   }
 
+  // Enforce unique shooter_code on creation if provided
+  if (shooter_code) {
+    try {
+      const { rows: existingByCode } = await pool.query(
+        "SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1)",
+        [shooter_code]
+      );
+      if (existingByCode.length > 0) {
+        return res.status(400).json({ error: 'Un utente con questo codice tiratore/società esiste già.' });
+      }
+    } catch {
+      // Ignore database temporary check errors
+    }
+  }
+
+  const actualPassword = password || shooter_code || 'ClayTracker123!';
   const salt = bcrypt.genSaltSync(10);
-  const hash = bcrypt.hashSync(password, salt);
+  const hash = bcrypt.hashSync(actualPassword, salt);
 
   try {
     const { rows } = await pool.query(
       "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id",
       [
-        name, surname, email, hash, role || 'user', category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active',
+        name, surname, email, hash, finalRole, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active',
         !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
         shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
       ]
@@ -2371,11 +2426,125 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   }
 });
 
+app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const { users } = req.body;
+  if (!Array.isArray(users)) return res.status(400).json({ error: 'Formato dati non valido' });
+
+  const client = await pool.connect();
+  try {
+    const validatedUsers = [];
+    // Cache societies for faster lookup
+    const { rows: societies } = await client.query("SELECT name, code FROM societies");
+    const societyMap = new Map(societies.map(s => [s.code?.toLowerCase(), s.name]));
+
+    for (const u of users) {
+      if (!u.shooter_code) {
+        validatedUsers.push({
+          user: u,
+          state: 'error',
+          reason: 'Codice Tiratore mancante'
+        });
+        continue;
+      }
+
+      if (!u.email) {
+        // Automatically generate standard email
+        const cleanName = (u.name || 'user').toLowerCase().replace(/\s+/g, '').replace(/[\s']/g, '');
+        const cleanSurname = (u.surname || 'surname').toLowerCase().replace(/\s+/g, '').replace(/[\s']/g, '');
+        u.email = `${cleanName}.${cleanSurname}@gmail.com`;
+      }
+
+      try {
+        let societyName = u.society;
+        if (u.society_code) {
+          const foundName = societyMap.get(u.society_code.toString().toLowerCase());
+          if (foundName) societyName = foundName;
+        }
+
+        if (req.user.role === 'society') {
+          societyName = req.user.society;
+        }
+
+        const finalQual = getAutoQualification(u.birth_date, u.qualification);
+
+        // Cerchiamo corrispondenza per email nel database dei nostri utenti
+        const { rows: matchesByEmail } = await client.query("SELECT * FROM users WHERE email = $1", [u.email]);
+        
+        // Cerchiamo corrispondenza per codice tiratore (se presente nell'import)
+        let matchesByCode: any[] = [];
+        if (u.shooter_code) {
+          const { rows } = await client.query("SELECT * FROM users WHERE shooter_code = $1", [u.shooter_code]);
+          matchesByCode = rows;
+        }
+
+        // 1. Stesso codice tiratore -> Identità certa, è lo stesso utente, si aggiorna.
+        if (matchesByCode.length > 0) {
+          const existing = matchesByCode[0];
+          validatedUsers.push({
+            user: { ...u, society: societyName, qualification: finalQual },
+            existing: { id: existing.id, name: existing.name, surname: existing.surname, email: existing.email, shooter_code: existing.shooter_code, society: existing.society },
+            state: 'update',
+            method: 'code',
+            message: `Tiratore individuato tramite Codice Tiratore (${u.shooter_code}).`
+          });
+        }
+        // 2. Stessa email ma codice tiratore assente o diverso -> Conflitto di omonimia potenziale!
+        else if (matchesByEmail.length > 0) {
+          const existing = matchesByEmail[0];
+          
+          if (existing.shooter_code && u.shooter_code && existing.shooter_code !== u.shooter_code) {
+            // Entrambi hanno codice tiratore ed essi DIFFERISCONO. Omonimia certa!
+            validatedUsers.push({
+              user: { ...u, society: societyName, qualification: finalQual },
+              existing: { id: existing.id, name: existing.name, surname: existing.surname, email: existing.email, shooter_code: existing.shooter_code, society: existing.society },
+              state: 'conflict_omonimia',
+              method: 'email',
+              message: `Conflitto: l'email '${u.email}' appartiene a ${existing.name} ${existing.surname} (Codice: ${existing.shooter_code}), ma il tiratore caricato ha codice differente (${u.shooter_code}).`
+            });
+          } else {
+            // Uno o entrambi non hanno codice tiratore. Potrebbero essere omonimi o la stessa persona.
+            // Consentiamo la scelta interattiva per sicurezza.
+            validatedUsers.push({
+              user: { ...u, society: societyName, qualification: finalQual },
+              existing: { id: existing.id, name: existing.name, surname: existing.surname, email: existing.email, shooter_code: existing.shooter_code, society: existing.society },
+              state: 'conflict_omonimia',
+              method: 'email',
+              message: `L'email '${u.email}' è già presente nel server (associata a ${existing.name} ${existing.surname}). Confermi l'aggiornamento o vuoi registrare un nuovo account diverso?`
+            });
+          }
+        }
+        // 3. Nuovo utente
+        else {
+          validatedUsers.push({
+            user: { ...u, society: societyName, qualification: finalQual },
+            state: 'create',
+            message: 'Nuovo utente'
+          });
+        }
+
+      } catch (err: any) {
+        validatedUsers.push({
+          user: u,
+          state: 'error',
+          reason: err.message
+        });
+      }
+    }
+
+    res.json(validatedUsers);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { users } = req.body;
   if (!Array.isArray(users)) return res.status(400).json({ error: 'Invalid data format' });
 
   const results = { created: 0, updated: 0, errors: 0 };
+  const updatedDetails: any[] = [];
   const client = await pool.connect();
 
   try {
@@ -2385,10 +2554,30 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
     const { rows: societies } = await client.query("SELECT name, code FROM societies");
     const societyMap = new Map(societies.map(s => [s.code?.toLowerCase(), s.name]));
 
-    for (const u of users) {
-      if (!u.email) {
+    for (const item of users) {
+      let isRichFormat = false;
+      let action: 'create' | 'update' = 'create';
+      let existingUserId: number | null = null;
+      let u: any = {};
+
+      if (item && item.action && item.data) {
+        isRichFormat = true;
+        action = item.action;
+        existingUserId = item.existingUserId || null;
+        u = item.data;
+      } else {
+        u = item;
+      }
+
+      if (!u.shooter_code) {
         results.errors++;
         continue;
+      }
+
+      if (!u.email) {
+        const cleanName = (u.name || 'user').toLowerCase().replace(/\s+/g, '').replace(/[\s']/g, '');
+        const cleanSurname = (u.surname || 'surname').toLowerCase().replace(/\s+/g, '').replace(/[\s']/g, '');
+        u.email = `${cleanName}.${cleanSurname}@gmail.com`;
       }
 
       try {
@@ -2403,23 +2592,137 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           societyName = req.user.society;
         }
 
-        const { rows: existing } = await client.query("SELECT id FROM users WHERE email = $1", [u.email]);
-        
-        if (existing.length > 0) {
-          // Update profile
-          const finalQual = getAutoQualification(u.birth_date, u.qualification);
+        const finalQual = getAutoQualification(u.birth_date, u.qualification);
+
+        let existingUserObj: any = null;
+        if (isRichFormat && action === 'update' && existingUserId) {
+          const { rows } = await client.query("SELECT * FROM users WHERE id = $1", [existingUserId]);
+          if (rows.length > 0) existingUserObj = rows[0];
+        }
+
+        // Se non trovato tramite ID, cerchiamo per codice tiratore (che è l'identificativo principale univoco)
+        if (!existingUserObj && u.shooter_code) {
+          const { rows } = await client.query("SELECT * FROM users WHERE LOWER(shooter_code) = LOWER($1)", [u.shooter_code]);
+          if (rows.length > 0) existingUserObj = rows[0];
+        }
+
+        // Come fallback per retrocompatibilità, cerchiamo per email se ancora non trovato
+        if (!existingUserObj && u.email) {
+          const { rows } = await client.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [u.email]);
+          if (rows.length > 0) existingUserObj = rows[0];
+        }
+
+        if (existingUserObj) {
+          const old = existingUserObj;
+          
+          // Verifica se la password è stata cambiata rispetto al default iniziale impostato
+          // (ovvero se la password NON coincide con il codice tiratore, 'ClayTracker123!', o 'Password123!')
+          let hasChangedPassword = false;
+          if (old.password) {
+            const matchesCode = old.shooter_code ? bcrypt.compareSync(old.shooter_code, old.password) : false;
+            const matchesDefaultSec = bcrypt.compareSync('ClayTracker123!', old.password);
+            const matchesDefaultSec2 = bcrypt.compareSync('Password123!', old.password);
+            if (!matchesCode && !matchesDefaultSec && !matchesDefaultSec2) {
+              hasChangedPassword = true;
+            }
+          }
+
+          // Verifica se l'email è stata già modificata/personalizzata dall'utente
+          // (se è diversa dal formato predefinito nome.cognome@gmail.com o è già stata verificata)
+          const cleanName = (old.name || 'user').toLowerCase().replace(/\s+/g, '').replace(/[\s']/g, '');
+          const cleanSurname = (old.surname || 'surname').toLowerCase().replace(/\s+/g, '').replace(/[\s']/g, '');
+          const defaultEmail = `${cleanName}.${cleanSurname}@gmail.com`;
+
+          let hasChangedEmail = false;
+          if (old.email && old.email.toLowerCase() !== defaultEmail.toLowerCase()) {
+            hasChangedEmail = true;
+          }
+          if (old.email_verified) {
+            hasChangedEmail = true;
+          }
+
+          // Regola: Se questi campi sono stati cambiati dal tiratore allora non toccarli. 
+          // Se invece il campo password è vuoto [o non cambiato] e l'email è uguale allora procediamo con l'aggiornamento con le regole attuali.
+          let targetEmail = old.email;
+          let targetPassword = old.password;
+
+          if (!hasChangedEmail && u.email && u.email !== old.email) {
+            targetEmail = u.email;
+          }
+
+          if (!hasChangedPassword && u.password) {
+            const salt = bcrypt.genSaltSync(10);
+            targetPassword = bcrypt.hashSync(u.password, salt);
+          }
+
+          // Track detailed changes
+          const changes: string[] = [];
+          
+          if (u.name && u.name !== old.name) {
+            changes.push(`Nome: '${old.name || ""}' ➔ '${u.name}'`);
+          }
+          if (u.surname && u.surname !== old.surname) {
+            changes.push(`Cognome: '${old.surname || ""}' ➔ '${u.surname}'`);
+          }
+          if (u.category && u.category !== old.category) {
+            changes.push(`Categoria: '${old.category || "Nessuna"}' ➔ '${u.category}'`);
+          }
+          if (finalQual && finalQual !== old.qualification) {
+            changes.push(`Qualifica: '${old.qualification || "Nessuna"}' ➔ '${finalQual}'`);
+          }
+          if (societyName && societyName !== old.society) {
+            changes.push(`Società: '${old.society || "Nessuna"}' ➔ '${societyName}'`);
+          }
+          if (u.shooter_code !== undefined && u.shooter_code !== null && u.shooter_code !== old.shooter_code) {
+            changes.push(`Codice Tiratore: '${old.shooter_code || "Nessuno"}' ➔ '${u.shooter_code}'`);
+          }
+          if (u.phone !== undefined && u.phone !== null && u.phone !== old.phone) {
+            changes.push(`Telefono: '${old.phone || "Nessuno"}' ➔ '${u.phone}'`);
+          }
+          if (targetEmail !== old.email) {
+            changes.push(`Email: '${old.email}' ➔ '${targetEmail}'`);
+          }
+          if (targetPassword !== old.password) {
+            changes.push(`Password agganciata o aggiornata`);
+          }
+          if (u.birth_date) {
+            try {
+              const oldBirth = old.birth_date ? new Date(old.birth_date).toISOString().split('T')[0] : '';
+              const newBirth = new Date(u.birth_date).toISOString().split('T')[0];
+              if (oldBirth !== newBirth) {
+                changes.push(`Data di Nascita: '${oldBirth || "Nessuna"}' ➔ '${newBirth}'`);
+              }
+            } catch (e) {
+              // ignore date parsing error in comparison
+            }
+          }
+
+          // Update profile, including email/password conditionally matching our target variables
           await client.query(
-            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8, is_international = $9, nationality = $10, international_id = $11, original_club = $12, email_verified = $13 WHERE id = $14",
+            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8, is_international = $9, nationality = $10, international_id = $11, original_club = $12, email_verified = $13, email = $14, password = $15 WHERE id = $16",
             [
-              u.name, u.surname, u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null,
-              !!u.is_international, u.nationality || null, u.international_id || null, u.original_club || null, !!u.email_verified,
-              existing[0].id
+              u.name || old.name, u.surname || old.surname, u.category || old.category, finalQual || old.qualification, societyName || old.society, 
+              u.shooter_code !== undefined ? u.shooter_code : old.shooter_code, 
+              u.birth_date || old.birth_date, u.phone !== undefined ? u.phone : old.phone,
+              u.is_international !== undefined ? !!u.is_international : !!old.is_international, 
+              u.nationality !== undefined ? u.nationality : old.nationality, 
+              u.international_id !== undefined ? u.international_id : old.international_id, 
+              u.original_club !== undefined ? u.original_club : old.original_club, 
+              u.email_verified !== undefined ? !!u.email_verified : !!old.email_verified,
+              targetEmail,
+              targetPassword,
+              old.id
             ]
           );
           results.updated++;
+          updatedDetails.push({
+            name: u.name || old.name,
+            surname: u.surname || old.surname,
+            email: targetEmail,
+            changes: changes.length > 0 ? changes : ["Dati personali riallineati"]
+          });
         } else {
           // Create new
-          const finalQual = getAutoQualification(u.birth_date, u.qualification);
           const salt = bcrypt.genSaltSync(10);
           const hash = bcrypt.hashSync(u.password || u.shooter_code || 'Password123!', salt);
           await client.query(
@@ -2438,7 +2741,12 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
     }
     
     await client.query('COMMIT');
-    res.json(results);
+    res.json({
+      created: results.created,
+      updated: results.updated,
+      errors: results.errors,
+      updatedDetails
+    });
   } catch (err: any) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
@@ -2456,8 +2764,24 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
   
   const finalQualification = getAutoQualification(birth_date, qualification);
 
-  if (role === 'society' && !shooter_code) {
-    return res.status(400).json({ error: 'Il Codice Società (Codice Tiratore) è obbligatorio per gli utenti società' });
+  const finalRole = role || 'user';
+  if ((finalRole === 'user' || finalRole === 'society') && !shooter_code) {
+    return res.status(400).json({ error: 'Il campo codice tiratore/codice società è obbligatorio.' });
+  }
+
+  // Enforce unique shooter_code on update if provided
+  if (shooter_code) {
+    try {
+      const { rows: existingWithCode } = await pool.query(
+        "SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1) AND id <> $2",
+        [shooter_code, req.params.id]
+      );
+      if (existingWithCode.length > 0) {
+        return res.status(400).json({ error: 'Un utente con questo codice tiratore/società esiste già.' });
+      }
+    } catch {
+      // Ignore database errors
+    }
   }
 
   try {
@@ -2915,6 +3239,35 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, asy
 
     await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/users/bulk-delete', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  try {
+    if (req.user.role === 'society') {
+      return res.status(403).json({ error: 'Solo l\'amministratore può eliminare gli utenti' });
+    }
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Nessun identificativo fornito' });
+    }
+    
+    // Filtriamo per non cancellare l'admin principale
+    const { rows: protectedUsers } = await pool.query(
+      "SELECT id FROM users WHERE email = 'snecaj@gmail.com' AND id = ANY($1)",
+      [ids]
+    );
+    const protectedIds = protectedUsers.map((u: any) => u.id);
+    const targetIds = ids.filter(id => !protectedIds.includes(Number(id)));
+    
+    if (targetIds.length === 0) {
+      return res.json({ success: true, count: 0 });
+    }
+    
+    await pool.query("DELETE FROM users WHERE id = ANY($1)", [targetIds]);
+    res.json({ success: true, count: targetIds.length });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
