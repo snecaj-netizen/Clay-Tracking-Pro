@@ -69,13 +69,15 @@ const UserRow = React.memo(({
   return (
     <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
       <td className="py-3 px-4">
-        <input 
-          type="checkbox" 
-          checked={isSelected} 
-          disabled={u.email === 'snecaj@gmail.com'}
-          onChange={() => onToggleSelect(u.id)}
-          className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-orange-600 focus:ring-orange-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-        />
+        {currentUser?.role === 'admin' && (
+          <input 
+            type="checkbox" 
+            checked={isSelected} 
+            disabled={u.email === 'snecaj@gmail.com'}
+            onChange={() => onToggleSelect(u.id)}
+            className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-orange-600 focus:ring-orange-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          />
+        )}
       </td>
       <td className="py-3 px-4 text-sm text-white font-bold">
         <div 
@@ -1279,7 +1281,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     )}
 
       {/* Bulk actions and filters context indicator bar */}
-      {(selectedUserIds.length > 0 || (hasActiveFilters && sortedUsers.length > 0)) && (
+      {(currentUser?.role === 'admin' && (selectedUserIds.length > 0 || (hasActiveFilters && sortedUsers.length > 0))) && (
         <div className="mb-6 p-4 rounded-2xl bg-slate-900 border border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-3 duration-200">
           <div className="flex items-center gap-2.5 text-xs font-bold text-slate-300">
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
@@ -1323,20 +1325,22 @@ const UserManagement: React.FC<UserManagementProps> = ({
           <thead>
             <tr className="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
               <th className="py-3 px-4 w-12 text-center">
-                <input 
-                  type="checkbox" 
-                  checked={sortedUsers.length > 0 && sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').every(u => selectedUserIds.includes(u.id))}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      const selectable = sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').map(u => u.id);
-                      setSelectedUserIds(prev => Array.from(new Set([...prev, ...selectable])));
-                    } else {
-                      const visibleIds = sortedUsers.map(u => u.id);
-                      setSelectedUserIds(prev => prev.filter(id => !visibleIds.includes(id)));
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-850 text-orange-600 focus:ring-orange-500 cursor-pointer"
-                />
+                {currentUser?.role === 'admin' && (
+                  <input 
+                    type="checkbox" 
+                    checked={sortedUsers.length > 0 && sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').every(u => selectedUserIds.includes(u.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const selectable = sortedUsers.filter(u => u.email !== 'snecaj@gmail.com').map(u => u.id);
+                        setSelectedUserIds(prev => Array.from(new Set([...prev, ...selectable])));
+                      } else {
+                        const visibleIds = sortedUsers.map(u => u.id);
+                        setSelectedUserIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-850 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                  />
+                )}
               </th>
               <th className="py-3 px-4 cursor-pointer hover:text-slate-300 transition-colors group" onClick={() => requestUserSort('name')}>
                 {t('name')} {userSortConfig?.key === 'name' ? (userSortConfig?.direction === 'asc' ? <i className="fas fa-sort-up ml-1 text-orange-500"></i> : <i className="fas fa-sort-down ml-1 text-orange-500"></i>) : <i className="fas fa-sort ml-1 opacity-0 group-hover:opacity-50"></i>}
