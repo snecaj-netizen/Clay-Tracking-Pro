@@ -34,7 +34,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
     {
       id: 'le-tue-gare',
       tab: 'history',
-      label: t('register_your_race') || 'Registra la tua gara',
+      label: t('register_your_race') || 'Le tue gare e risultati',
       icon: 'fa-plus-circle',
       color: 'bg-slate-800',
       description: t('dashboard_desc') || 'Inserisci i tuoi risultati e allenamenti',

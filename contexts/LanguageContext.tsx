@@ -28,7 +28,7 @@ const translations: Translations = {
   'settings': { it: 'Impostazioni', en: 'Settings' },
   'logout': { it: 'Esci', en: 'Logout' },
   'home': { it: 'Home', en: 'Home' },
-  'register_your_race': { it: 'Registra la tua gara', en: 'Record your competition' },
+  'register_your_race': { it: 'Le tue gare e risultati', en: 'Your competitions and results' },
   'dashboard_desc': { it: 'Inserisci i tuoi risultati e allenamenti', en: 'Enter your results and training' },
   'society_portal': { it: 'Portale Società', en: 'Club Portal' },
   'shooter_portal': { it: 'PORTALE PER IL TIRO AL VOLO', en: 'Clay Shooting Portal' },
