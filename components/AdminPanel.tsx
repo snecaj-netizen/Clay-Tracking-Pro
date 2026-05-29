@@ -856,7 +856,8 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                   )}
                   
                   {/* Equipment Section */}
-                  <div className="md:col-span-2 bg-slate-950/50 p-6 rounded-2xl border border-slate-800 space-y-4 mb-6">
+                  {currentUser?.role !== 'society' && (
+                    <div className="md:col-span-2 bg-slate-950/50 p-6 rounded-2xl border border-slate-800 space-y-4 mb-6">
                     <h4 className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center gap-2 mb-2">
                       <i className="fas fa-crosshairs"></i> {t('equipment_label')}
                     </h4>
@@ -911,6 +912,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                   </div>
+                  )}
 
                   <div className="md:col-span-2 border-t border-slate-800 pt-6">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('language')}</label>
