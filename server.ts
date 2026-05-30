@@ -1610,16 +1610,25 @@ app.get('/verify-email', async (req, res) => {
 
 app.post('/api/auth/resend-verification', async (req, res) => {
   const { email } = req.body;
+  console.log(`[DEBUG] Attempting to resend verification to: ${email}`);
   try {
     const { rows } = await pool.query("SELECT id, name, email_verified FROM users WHERE LOWER(email) = LOWER($1)", [email]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Utente non trovato' });
-    if (rows[0].email_verified) return res.status(400).json({ error: 'Email già verificata' });
+    if (rows.length === 0) {
+      console.log(`[DEBUG] User not found for email: ${email}`);
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    if (rows[0].email_verified) {
+      console.log(`[DEBUG] Email already verified: ${email}`);
+      return res.status(400).json({ error: 'Email già verificata' });
+    }
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
     await pool.query("UPDATE users SET verification_token = $1 WHERE id = $2", [verificationToken, rows[0].id]);
     await sendVerificationEmail(email, rows[0].name, verificationToken, req.get('host'));
+    console.log(`[DEBUG] Verification email successfully processed for: ${email}`);
     res.json({ success: true });
   } catch (err) {
+    console.error(`[DEBUG] Error resending verification:`, err);
     res.status(500).json({ error: 'Errore durante l\'invio.' });
   }
 });
