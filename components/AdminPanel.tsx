@@ -974,7 +974,17 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                       <p className="text-[10px] text-slate-500">{t('global_status_desc')}</p>
                     </div>
                     <button
-                      onClick={() => setPersonalNotificationSettings(prev => ({ ...prev, global_enabled: !prev.global_enabled }))}
+                      onClick={() => {
+                        triggerConfirm(
+                          t('confirm_toggle_notifications_title'),
+                          t('confirm_toggle_notifications_message'),
+                          () => {
+                            setPersonalNotificationSettings(prev => ({ ...prev, global_enabled: !prev.global_enabled }));
+                          },
+                          t('confirm_btn'),
+                          'primary'
+                        )
+                      }}
                       className={`w-12 h-6 rounded-full relative transition-all duration-300 ${personalNotificationSettings.global_enabled ? 'bg-emerald-600 shadow-[0_0_10px_rgba(5,150,105,0.4)]' : 'bg-slate-800'}`}
                     >
                       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${personalNotificationSettings.global_enabled ? 'left-7' : 'left-1'}`}></div>

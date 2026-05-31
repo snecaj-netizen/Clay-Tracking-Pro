@@ -233,6 +233,8 @@ const translations: Translations = {
   'edit_label': { it: 'Modifica', en: 'Edit' },
   'save_label': { it: 'Salva', en: 'Save' },
   'notifications_management': { it: 'Gestione Notifiche', en: 'Notifications Management' },
+  'confirm_toggle_notifications_title': { it: 'Conferma Notifiche', en: 'Confirm Notifications' },
+  'confirm_toggle_notifications_message': { it: 'Sei sicuro di voler cambiare lo stato delle notifiche?', en: 'Are you sure you want to change notification status?' },
   'notifications_desc_admin': { it: 'Configura e monitora il sistema di avvisi', en: 'Configure and monitor the alert system' },
   'notifications_desc_user': { it: 'I tuoi aggiornamenti e avvisi in tempo reale', en: 'Your updates and alerts in real time' },
   'control_panel_label': { it: 'Pannello Controllo', en: 'Control Panel' },

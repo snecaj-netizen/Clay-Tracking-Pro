@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useUI } from '../contexts/UIContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const urlBase64ToUint8Array = (base64String: string) => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -21,12 +23,15 @@ interface NotificationBellProps {
 }
 
 export default function NotificationBell({ token, onToggle }: NotificationBellProps) {
+  const { triggerConfirm, triggerToast } = useUI();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>(
     'Notification' in window ? Notification.permission : 'default'
   );
+  const [globalNotificationEnabled, setGlobalNotificationEnabled] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,6 +66,7 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
     if (!token) return;
     fetchNotifications();
     checkSubscription();
+    fetchNotificationSettings();
   }, [token]);
 
   const fetchNotifications = async () => {
@@ -76,6 +82,42 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
       if (err instanceof Error && err.message !== 'Failed to fetch') {
         console.error('Error fetching notifications:', err);
       }
+    }
+  };
+
+  const fetchNotificationSettings = async () => {
+    try {
+      const res = await fetch('/api/notification-settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalNotificationEnabled(data.global_enabled);
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  };
+
+  const toggleNotifications = async () => {
+    const newStatus = !globalNotificationEnabled;
+    try {
+      const res = await fetch('/api/notification-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ global_enabled: newStatus, muted_entities: [] })
+      });
+      if (res.ok) {
+        setGlobalNotificationEnabled(newStatus);
+        triggerToast(t('settings_saved_success'), 'success');
+      } else {
+        throw new Error('Failed to update');
+      }
+    } catch (err) {
+      triggerToast(t('settings_save_error'), 'error');
     }
   };
 
@@ -212,14 +254,32 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
         <div className="fixed top-[72px] left-4 right-4 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-2 sm:w-80 sm:max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[1200] origin-top-right">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-sm font-black text-white uppercase tracking-tight">Notifiche</h3>
-            {!isSubscribed && permission !== 'granted' && permission !== 'denied' && (
-              <button 
-                onClick={subscribeUser}
-                className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400"
+            
+            <div className="flex items-center gap-3">
+              {!isSubscribed && permission !== 'granted' && permission !== 'denied' && (
+                <button 
+                  onClick={subscribeUser}
+                  className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400"
+                >
+                  Attiva Push
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  triggerConfirm(
+                    t('confirm_toggle_notifications_title'),
+                    t('confirm_toggle_notifications_message'),
+                    toggleNotifications,
+                    t('confirm_btn'),
+                    'primary'
+                  )
+                }}
+                className={`w-10 h-5 rounded-full relative transition-all duration-300 ${globalNotificationEnabled ? 'bg-emerald-600' : 'bg-slate-700'}`}
               >
-                Attiva Push
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${globalNotificationEnabled ? 'left-5.5' : 'left-0.5'}`}></div>
               </button>
-            )}
+            </div>
           </div>
           
           <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto">
@@ -260,3 +320,4 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
     </div>
   );
 }
+
