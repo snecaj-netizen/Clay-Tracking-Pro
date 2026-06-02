@@ -931,6 +931,7 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   'specific_competition_optional': { it: 'Gara (Opzionale)', en: 'Competition (Optional)' },
   'no_specific_competition': { it: 'Nessuna gara specifica', en: 'No specific competition' },
   'select_shooters_label': { it: 'Seleziona Tiratori ({{current}}/{{total}})', en: 'Select Shooters ({{current}}/{{total}})' },
+  'shooters_label': { it: 'Tiratori', en: 'Shooters' },
   'search_shooter_placeholder': { it: 'Cerca tiratore...', en: 'Search shooter...' },
   'select_exactly_shooters': { it: 'Seleziona esattamente {{count}} tiratori', en: 'Select exactly {{count}} shooters' },
   'team_saved_success': { it: 'Squadra salvata con successo!', en: 'Team saved successfully!' },

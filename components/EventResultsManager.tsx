@@ -61,7 +61,23 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [shootOff, setShootOff] = useState('');
   const [showQuickAddShooter, setShowQuickAddShooter] = useState(false);
 
-  const categories = useMemo(() => Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean))).sort(), [results]);
+  const categories = useMemo(() => {
+    const list = Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean)));
+    return list.sort((a, b) => {
+      const getCategoryRank = (cat: string) => {
+        const upper = (cat || "").toUpperCase().trim();
+        if (upper === "ECCELLENZA" || upper === "E") return 1;
+        if (upper === "PRIMA" || upper === "1*" || upper === "1ª" || upper === "1" || upper.includes("PRIMA") || upper.includes("1^") || upper.includes("1ª")) return 2;
+        if (upper === "SECONDA" || upper === "2*" || upper === "2ª" || upper === "2" || upper.includes("SECONDA") || upper.includes("2^") || upper.includes("2ª")) return 3;
+        if (upper === "TERZA" || upper === "3*" || upper === "3ª" || upper === "3" || upper.includes("TERZA") || upper.includes("3^") || upper.includes("3ª")) return 4;
+        return 999;
+      };
+      const rankA = getCategoryRank(a);
+      const rankB = getCategoryRank(b);
+      if (rankA !== rankB) return rankA - rankB;
+      return a.localeCompare(b);
+    });
+  }, [results]);
   const qualifications = useMemo(() => Array.from(new Set(results.map(r => r.qualification_at_time || r.qualification).filter(Boolean))).sort(), [results]);
 
   const shouldShowInternational = event.type === 'Internazionale';

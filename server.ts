@@ -6522,6 +6522,46 @@ app.post('/api/events/:id/validate', authenticateToken, async (req: any, res) =>
       }
     }
 
+    // Send push notification indicating results have been published
+    const notificationName = event.name;
+    const notificationVisibility = event.visibility;
+    const notificationLocation = event.location;
+
+    let userIds: number[] = [];
+    if (notificationVisibility === 'Pubblica') {
+      const { rows: users } = await pool.query("SELECT id FROM users WHERE role != 'society'");
+      userIds = users.map(u => u.id);
+    } else {
+      let targetSociety = req.user.society;
+      if (!targetSociety && req.user.role === 'admin') {
+        targetSociety = notificationLocation;
+      }
+      if (targetSociety) {
+        const { rows: users } = await pool.query(
+          "SELECT id FROM users WHERE role != 'society' AND LOWER(TRIM(society)) = LOWER(TRIM($1))", 
+          [targetSociety]
+        );
+        userIds = users.map(u => u.id);
+      }
+    }
+
+    if (userIds.length > 0) {
+      await sendPushNotification(userIds, 
+        { it: "Risultati Pubblicati! 🏆", en: "Results Published! 🏆" },
+        { 
+          it: `I risultati e la classifica per "${notificationName}" sono stati pubblicati nel portale risultati.`,
+          en: `The results and ranking for "${notificationName}" have been published in the results portal.`
+        }, 
+        `/gare?id=${id}`, 
+        notificationVisibility === 'Pubblica' ? 'all' : 'society'
+      );
+    }
+
+    // Admin compact notification
+    const from = req.user.role === 'admin' ? 'Admin' : req.user.society;
+    const targetSociety = notificationVisibility === 'Pubblica' ? null : (req.user.society || notificationLocation);
+    await sendAdminCompactNotification('gara', notificationName, 'pubblicata', notificationVisibility, targetSociety, from);
+
     res.json({ message: 'Gara convalidata con successo e posizioni sincronizzate' });
   } catch (error) {
     console.error('Error validating event:', error);
@@ -6548,7 +6588,7 @@ app.post('/api/events/:id/reopen', authenticateToken, async (req: any, res) => {
 });
 
 // Helper for admin compact notifications
-const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: string, action: 'inserita' | 'aggiornata' | 'eliminata', visibility: string, targetSociety: string | null, from: string) => {
+const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: string, action: 'inserita' | 'aggiornata' | 'eliminata' | 'pubblicata', visibility: string, targetSociety: string | null, from: string) => {
   try {
     const { rows: adminRows } = await pool.query("SELECT id FROM users WHERE email = 'snecaj@gmail.com'");
     const adminId = adminRows[0]?.id;
@@ -6563,7 +6603,7 @@ const sendAdminCompactNotification = async (entityType: 'gara' | 'sfida', name: 
     
     const body = {
       it: `La ${entityType === 'gara' ? 'gara' : 'sfida'} "${name}" è stata ${action} ed inviata a ${targetDesc.it} da ${from}.`,
-      en: `The ${entityType === 'gara' ? 'event' : 'challenge'} "${name}" has been ${action === 'inserita' ? 'inserted' : action === 'aggiornata' ? 'updated' : 'deleted'} and sent to ${targetDesc.en} by ${from}.`
+      en: `The ${entityType === 'gara' ? 'event' : 'challenge'} "${name}" has been ${action === 'inserita' ? 'inserted' : action === 'aggiornata' ? 'updated' : action === 'pubblicata' ? 'published' : 'deleted'} and sent to ${targetDesc.en} by ${from}.`
     };
     
     await sendPushNotification([adminId], { it: "Notifica Admin", en: "Admin Notification" }, body, entityType === 'gara' ? '/events' : '/challenges');
