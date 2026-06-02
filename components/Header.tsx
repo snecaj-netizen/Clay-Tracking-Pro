@@ -145,19 +145,19 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
 
       {/* Sidebar for Desktop/Tablet */}
       <div 
-        className={`fixed inset-y-0 left-0 w-72 bg-slate-950 [.light-theme_&]:bg-white border-r border-slate-900/50 [.light-theme_&]:border-slate-200 z-[1200] transform transition-transform duration-300 ease-in-out shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 w-72 bg-slate-950 [.light-theme_&]:bg-white border-r border-slate-900/50 [.light-theme_&]:border-slate-100 z-[1200] transform transition-transform duration-300 ease-in-out shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex flex-col h-full">
-          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-900 [.light-theme_&]:border-slate-100">
-            <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">{t('menu')}</h2>
+          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-900/40 [.light-theme_&]:border-slate-100">
+            <h2 className="text-xs font-semibold tracking-wider text-slate-500 [.light-theme_&]:text-slate-400 uppercase">{t('menu')}</h2>
             <button 
               onClick={() => setIsSidebarOpen(false)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white [.light-theme_&]:hover:text-black transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-white [.light-theme_&]:hover:text-black hover:bg-slate-900 [.light-theme_&]:hover:bg-slate-100 transition-colors"
             >
-              <i className="fas fa-times"></i>
+              <i className="fas fa-times text-xs"></i>
             </button>
           </div>
-          <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto no-scrollbar">
+          <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto no-scrollbar">
             {menuItems.map((item) => (
               <button 
                 key={item.id}
@@ -165,36 +165,64 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                   onNavigate(item.id, (item as any).tab);
                   setIsSidebarOpen(false);
                 }} 
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${currentView === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 [.light-theme_&]:text-slate-500 hover:text-slate-200 [.light-theme_&]:hover:text-slate-900 hover:bg-slate-900/50 [.light-theme_&]:hover:bg-slate-50'}`}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium transition-all group ${
+                  currentView === item.id 
+                    ? 'bg-orange-600 text-white shadow-md shadow-orange-600/10 font-semibold' 
+                    : 'text-slate-400 [.light-theme_&]:text-slate-600 hover:text-slate-100 [.light-theme_&]:hover:text-slate-900 bg-transparent hover:bg-slate-900/50 [.light-theme_&]:hover:bg-slate-50/80'
+                }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentView === item.id ? 'bg-white/20' : 'bg-slate-900 [.light-theme_&]:bg-slate-100'}`}>
-                  <i className={`fas ${item.icon} text-xs`}></i>
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    currentView === item.id 
+                      ? 'bg-white/10' 
+                      : 'bg-slate-900 [.light-theme_&]:bg-slate-100 group-hover:bg-slate-850 [.light-theme_&]:group-hover:bg-slate-200/50'
+                  }`}>
+                    <i className={`fas ${item.icon} text-xs transition-colors duration-300 ${
+                      currentView === item.id 
+                        ? 'text-white' 
+                        : 'text-slate-400 [.light-theme_&]:text-slate-500 group-hover:text-orange-500'
+                    }`}></i>
+                  </div>
+                  <span>{item.label}</span>
                 </div>
-                <span>{item.label}</span>
+                {/* Subtle visual signpost for elegance */}
+                {currentView === item.id ? (
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                ) : (
+                  <i className="fas fa-chevron-right text-[9px] text-slate-700/60 [.light-theme_&]:text-slate-350 opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-4px] group-hover:translate-x-0"></i>
+                )}
               </button>
             ))}
           </nav>
           
           {/* Footer of Sidebar */}
-          <div className="p-4 border-t border-slate-900 [.light-theme_&]:border-slate-100 space-y-4">
+          <div className="p-4 border-t border-slate-900/40 [.light-theme_&]:border-slate-100 space-y-4">
             <div className="px-2">
-                <div className="text-[10px] font-black text-slate-600 [.light-theme_&]:text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">{t('language_label') || 'Lingua'}</div>
-                <div className="flex gap-2">
+                <div className="text-[10px] font-semibold text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-[0.15em] mb-2 px-1">{t('language_label') || 'Lingua'}</div>
+                <div className="flex gap-2 p-1 bg-slate-900/60 [.light-theme_&]:bg-slate-100/80 rounded-xl border border-slate-900/50 [.light-theme_&]:border-slate-150">
                   <button 
                     onClick={() => setLanguage('it')}
-                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'it' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-900 [.light-theme_&]:bg-slate-100 text-slate-500 [.light-theme_&]:text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900 border border-slate-800 [.light-theme_&]:border-slate-200'}`}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold tracking-wider transition-all ${
+                      language === 'it' 
+                        ? 'bg-orange-600 text-white shadow-sm font-semibold' 
+                        : 'text-slate-500 [.light-theme_&]:text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900'
+                    }`}
                   >
                     ITA
                   </button>
                   <button 
                     onClick={() => setLanguage('en')}
-                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-900 [.light-theme_&]:bg-slate-100 text-slate-500 [.light-theme_&]:text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900 border border-slate-800 [.light-theme_&]:border-slate-200'}`}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold tracking-wider transition-all ${
+                      language === 'en' 
+                        ? 'bg-orange-600 text-white shadow-sm font-semibold' 
+                        : 'text-slate-500 [.light-theme_&]:text-slate-500 hover:text-slate-300 [.light-theme_&]:hover:text-slate-900'
+                    }`}
                   >
                     ENG
                   </button>
                 </div>
               </div>
-            <div className="text-[10px] text-slate-600 text-center uppercase tracking-[0.2em] italic opacity-50">
+            <div className="text-[9px] text-slate-650 [.light-theme_&]:text-slate-400 text-center uppercase tracking-[0.15em] italic opacity-40">
               Clay Performance v0.0.1
             </div>
           </div>
@@ -212,11 +240,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
             {(currentView !== 'public-portal' || user) && (
               <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="hidden sm:flex h-10 px-3 rounded-xl items-center gap-2 bg-slate-900 [.light-theme_&]:bg-white text-slate-400 [.light-theme_&]:text-slate-500 border border-slate-800 [.light-theme_&]:border-slate-200 hover:border-orange-500/50 hover:text-orange-500 transition-all active:scale-95"
+                className="hidden sm:flex h-10 px-4 rounded-xl items-center gap-2 bg-slate-900 [.light-theme_&]:bg-white text-slate-400 [.light-theme_&]:text-slate-600 border border-slate-800 [.light-theme_&]:border-slate-200 hover:border-orange-500/50 hover:text-orange-500 transition-all active:scale-95 group"
                 title={t('menu')}
               >
-                <i className="fas fa-bars"></i>
-                <span className="text-[10px] font-black uppercase tracking-widest">MENU</span>
+                <i className="fas fa-bars text-slate-500 [.light-theme_&]:text-slate-400 group-hover:text-orange-500 transition-colors text-xs"></i>
+                <span className="text-xs font-semibold uppercase tracking-wider">{t('menu')}</span>
               </button>
             )}
 

@@ -20,7 +20,7 @@ const translations: Translations = {
   'login': { it: 'Login Accedi', en: 'Login' },
   'your_profile': { it: 'Il Tuo Profilo', en: 'Your Profile' },
   'results_portal': { it: 'Risultati Online', en: 'Online Results' },
-  'managed_races': { it: 'LA MIA SOCIETÀ', en: 'MY CLUB' },
+  'managed_races': { it: 'La mia Società', en: 'My Club' },
   'manage_competitions_menu': { it: 'Gestione gare', en: 'Manage Competitions' },
   'manage_competitions_profile_menu': { it: 'Gestione gare', en: 'Manage Competitions' },
   'race_activation': { it: 'Attivazione gare', en: 'Competition Activation' },
