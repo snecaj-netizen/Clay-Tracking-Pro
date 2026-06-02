@@ -10,6 +10,7 @@ import { Discipline } from '../../types';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { compressImage } from '../../lib/imageCompressor';
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -170,18 +171,24 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
     });
   }, [societies, societySearch, societyRegionSearch]);
 
-  const handleSocietyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSocietyLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setError(t('image_too_large_error'));
-        return;
+      try {
+        const compressedBase64 = await compressImage(file, 300, 300, 0.8); // Logos can be 300x300 max
+        setSocLogo(compressedBase64);
+      } catch (err) {
+        console.error('Failed to compress logo image:', err);
+        if (file.size > 2 * 1024 * 1024) {
+          setError(t('image_too_large_error'));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setSocLogo(reader.result as string);
+        };
+        reader.readAsDataURL(file);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSocLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

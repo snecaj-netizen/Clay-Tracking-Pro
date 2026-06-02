@@ -17,6 +17,7 @@ import { Competition, Cartridge, CartridgeType, AppData, User } from '../types';
 import { AdminProvider, useAdmin } from '../contexts/AdminContext';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { compressImage } from '../lib/imageCompressor';
 import { generatePortalFlyer } from '../lib/pdfUtils';
 
 type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications' | 'event-control';
@@ -337,18 +338,24 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
 
 
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        setError(t('image_too_large_error'));
-        return;
+      try {
+        const compressedBase64 = await compressImage(file, 200, 200, 0.7); // User avatars can be 200x200 max
+        setProfileAvatar(compressedBase64);
+      } catch (err) {
+        console.error('Failed to compress avatar:', err);
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+          setError(t('image_too_large_error'));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setProfileAvatar(reader.result as string);
+        };
+        reader.readAsDataURL(file);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

@@ -7,6 +7,7 @@ import { User, UserRole, DashboardStats } from '../../types';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { compressImage } from '../../lib/imageCompressor';
 
 interface UserManagementProps {
   currentUser: any;
@@ -212,18 +213,24 @@ const UserManagement: React.FC<UserManagementProps> = ({
     }
   }, [currentUser, showUserForm, editingUser]);
 
-  const handleUserAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUserAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        setError(t('image_too_large_error'));
-        return;
+      try {
+        const compressedBase64 = await compressImage(file, 200, 200, 0.7); // User avatars can be 200x200 max
+        setUserAvatar(compressedBase64);
+      } catch (err) {
+        console.error('Failed to compress avatar image:', err);
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+          setError(t('image_too_large_error'));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setUserAvatar(reader.result as string);
+        };
+        reader.readAsDataURL(file);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUserAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

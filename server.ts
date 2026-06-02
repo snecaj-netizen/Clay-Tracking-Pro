@@ -3769,7 +3769,12 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
     const challenge = challengeRows[0];
 
     const { rows: compRows } = await pool.query(`
-      SELECT c.*, u.name as user_name, u.surname as user_surname, u.category, u.qualification
+      SELECT 
+        c.id, c.user_id, c.name, c.date, c.enddate, c.location, c.discipline, c.level, 
+        c.totalscore, c.totaltargets, c.averageperseries, c.position, c.cost, c.win, 
+        c.notes, c.weather, c.scores, c.detailedscores, c.usedcartridges, c.chokes, 
+        c.event_id, c.shoot_off,
+        u.name as user_name, u.surname as user_surname, u.category, u.qualification
       FROM competitions c
       JOIN users u ON c.user_id = u.id
       WHERE c.discipline = $1 
@@ -6651,7 +6656,13 @@ app.get('/api/public/events', async (req, res) => {
 app.get('/api/public/events/:id/results', async (req, res) => {
   try {
     const { rows: results } = await pool.query(
-      `SELECT c.*, u.id as user_id, u.name as user_name, u.surname as user_surname, u.society, u.avatar
+      `SELECT 
+         c.id, c.user_id, c.name, c.date, c.enddate, c.location, c.discipline, c.level, 
+         c.totalscore, c.totaltargets, c.averageperseries, c.position, c.cost, c.win, 
+         c.notes, c.weather, c.scores, c.detailedscores, c.usedcartridges, c.chokes, 
+         c.event_id, c.shoot_off, c.category_at_time, c.qualification_at_time, c.society_at_time, 
+         c.ranking_preference, c.ranking_preference_override, c.hidden_from_user, c.team_id, c.team_name,
+         u.id as user_id, u.name as user_name, u.surname as user_surname, u.society, u.avatar
        FROM competitions c
        JOIN users u ON c.user_id = u.id
        JOIN events e ON c.event_id = e.id

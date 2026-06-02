@@ -11,6 +11,7 @@ import { EventManagementDetail } from './EventManagementDetail';
 import CompetitionShareCard from './CompetitionShareCard';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { compressImage } from '../lib/imageCompressor';
 
 interface EventsManagerProps {
   user: any;
@@ -1347,20 +1348,26 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     );
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        if (triggerToast) {
-          triggerToast(t('file_too_large_error'), 'error');
+      try {
+        const compressedBase64 = await compressImage(file, 800, 800, 0.7); // Posters can be 800x800 max
+        setPosterUrl(compressedBase64);
+      } catch (err) {
+        console.error('Failed to compress poster image:', err);
+        if (file.size > 5 * 1024 * 1024) {
+          if (triggerToast) {
+            triggerToast(t('file_too_large_error'), 'error');
+          }
+          return;
         }
-        return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPosterUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPosterUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

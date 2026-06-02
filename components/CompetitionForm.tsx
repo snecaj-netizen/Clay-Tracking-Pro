@@ -7,6 +7,7 @@ import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import { handleNetworkError } from './ConnectionStatus';
 import { useLanguage } from '../contexts/LanguageContext';
+import { compressImage } from '../lib/imageCompressor';
 
 interface CompetitionFormProps {
   initialData?: Competition;
@@ -398,18 +399,29 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     });
   };
 
-  const handleImageUpload = (seriesIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (seriesIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        const compressedBase64 = await compressImage(file, 800, 800, 0.6); // 800px max, 0.6 quality for scorecard photos
         setSeriesImages(prev => {
           const newImages = [...prev];
-          newImages[seriesIndex] = reader.result as string;
+          newImages[seriesIndex] = compressedBase64;
           return newImages;
         });
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Failed to compress image:', err);
+        // Fallback to normal FileReader
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setSeriesImages(prev => {
+            const newImages = [...prev];
+            newImages[seriesIndex] = reader.result as string;
+            return newImages;
+          });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 

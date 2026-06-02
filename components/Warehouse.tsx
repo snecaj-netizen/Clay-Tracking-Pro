@@ -5,6 +5,7 @@ import ExpandingFAB from './ExpandingFAB';
 import { Cartridge, CartridgeType } from '../types';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { compressImage } from '../lib/imageCompressor';
 
 interface WarehouseProps {
   user: any;
@@ -192,16 +193,25 @@ const Warehouse: React.FC<WarehouseProps> = ({
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [cartridges, cartridgeTypes, filterYear]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isType: boolean = false) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isType: boolean = false) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        const compressedBase64 = await compressImage(file, 600, 600, 0.7); // 600px max, 0.7 quality is excellent for cartridge photos
         if (isType) {
-          setTypeImageUrl(reader.result as string);
+          setTypeImageUrl(compressedBase64);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Failed to compress image:', err);
+        // Fallback
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (isType) {
+            setTypeImageUrl(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
