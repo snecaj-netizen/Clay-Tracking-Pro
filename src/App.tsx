@@ -142,7 +142,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'le-tue-gare' | 'warehouse' | 'gare' | 'la-mia-societa' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal'>(
     getInitialView()
   );
-  const [historyStack, setHistoryStack] = useState<{view: string, tab?: string}[]>([{ view: token ? 'home' : 'public-portal' }]);
+  const [historyStack, setHistoryStack] = useState<{view: string, tab?: string, portalState?: any}[]>([{ view: token ? 'home' : 'public-portal' }]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [previousView, setPreviousView] = useState<'home' | 'le-tue-gare' | 'gare' | 'la-mia-societa' | 'warehouse' | 'societies' | 'new' | 'settings' | 'profile' | 'notifications' | 'ai-coach' | 'dashboard' | 'history' | 'admin' | 'event-results' | 'admin-events' | 'admin-control' | 'public-portal' | null>(null);
   const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
@@ -856,6 +856,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handlePushPortalState = (subState: { portalView: string; name?: string; type?: string; eventId?: string }) => {
+    const newIndex = historyIndex + 1;
+    const stateObj = { 
+      view: 'public-portal', 
+      index: newIndex,
+      ...subState
+    };
+    
+    setHistoryStack(prev => {
+      const newStack = prev.slice(0, newIndex);
+      newStack.push({ view: 'public-portal', portalState: subState });
+      return newStack;
+    });
+    setHistoryIndex(newIndex);
+    
+    window.history.pushState(stateObj, '');
+  };
+
   const handleSocietyClick = (name: string) => {
     const soc = societies.find(s => s.name === name);
     if (soc) {
@@ -1216,7 +1234,7 @@ const App: React.FC = () => {
 
           {view === 'public-portal' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-              <PublicPortal token={token || undefined} />
+              <PublicPortal token={token || undefined} onPushState={handlePushPortalState} />
             </div>
           )}
 

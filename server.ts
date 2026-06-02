@@ -6625,7 +6625,8 @@ app.get('/api/public/events', async (req, res) => {
       SELECT 
         e.*, 
         s.code as society_code,
-        u.name as creator_name
+        u.name as creator_name,
+        (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count
       FROM events e 
       LEFT JOIN users u ON e.created_by = u.id
       LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name))

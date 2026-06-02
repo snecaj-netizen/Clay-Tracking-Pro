@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface PublicPortalProps {
   token?: string; // Optional if we are in public mode
+  onPushState?: (subState: { portalView: string; name?: string; type?: string; eventId?: string }) => void;
 }
 
 const REGIONS = [
@@ -16,7 +17,7 @@ const REGIONS = [
   'Trentino-Alto Adige', 'Umbria', 'Valle d\'Aosta', 'Veneto'
 ];
 
-const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
+const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
   const { language, t } = useLanguage();
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,8 +39,9 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
   useEffect(() => {
     fetchPublicEvents();
     // Ensure we have a valid initial state for this portal if we don't have one
-    if (!window.history.state || window.history.state.view !== 'public-portal') {
-      window.history.replaceState({ view: 'public-portal', portalView: 'home' }, '');
+    if (!window.history.state || window.history.state.view !== 'public-portal' || window.history.state.portalView === undefined) {
+      const idx = window.history.state?.index !== undefined ? window.history.state.index : 0;
+      window.history.replaceState({ view: 'public-portal', portalView: 'home', index: idx }, '');
     }
   }, []);
 
@@ -98,12 +100,20 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token }) => {
 
   const handleSelectSociety = (name: string, type: 'ongoing' | 'past') => {
     setSelectedSociety({ name, type });
-    window.history.pushState({ view: 'public-portal', portalView: 'society', name, type }, '');
+    if (onPushState) {
+      onPushState({ portalView: 'society', name, type });
+    } else {
+      window.history.pushState({ view: 'public-portal', portalView: 'society', name, type }, '');
+    }
   };
 
   const handleSelectEvent = (event: SocietyEvent) => {
     setViewingEvent(event);
-    window.history.pushState({ view: 'public-portal', portalView: 'event', eventId: event.id }, '');
+    if (onPushState) {
+      onPushState({ portalView: 'event', eventId: event.id });
+    } else {
+      window.history.pushState({ view: 'public-portal', portalView: 'event', eventId: event.id }, '');
+    }
   };
 
   const handleBackFromEvent = () => {

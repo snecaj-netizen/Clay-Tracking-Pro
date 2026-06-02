@@ -248,26 +248,24 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
               </button>
             )}
 
-            {(currentView !== 'public-portal' || user) && (
-              <div className="hidden lg:flex items-center gap-1">
-                <button 
-                  onClick={onGoBack} 
-                  disabled={!canGoBack}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoBack ? 'bg-slate-900 [.light-theme_&]:bg-white text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white border border-slate-800 [.light-theme_&]:border-slate-200' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
-                  title={t('previous')}
-                >
-                  <i className="fas fa-chevron-left text-xs"></i>
-                </button>
-                <button 
-                  onClick={onGoForward} 
-                  disabled={!canGoForward}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoForward ? 'bg-slate-900 [.light-theme_&]:bg-white text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white border border-slate-800 [.light-theme_&]:border-slate-200' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
-                  title={t('next')}
-                >
-                  <i className="fas fa-chevron-right text-xs"></i>
-                </button>
-              </div>
-            )}
+            <div className="hidden lg:flex items-center gap-1">
+              <button 
+                onClick={onGoBack} 
+                disabled={!canGoBack}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoBack ? 'bg-slate-900 [.light-theme_&]:bg-white text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white border border-slate-800 [.light-theme_&]:border-slate-200' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
+                title={t('previous')}
+              >
+                <i className="fas fa-chevron-left text-xs"></i>
+              </button>
+              <button 
+                onClick={onGoForward} 
+                disabled={!canGoForward}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canGoForward ? 'bg-slate-900 [.light-theme_&]:bg-white text-slate-300 [.light-theme_&]:text-slate-600 hover:bg-slate-800 [.light-theme_&]:hover:bg-slate-100 hover:text-white border border-slate-800 [.light-theme_&]:border-slate-200' : 'bg-slate-900/30 text-slate-700 border border-slate-800/30 cursor-not-allowed'}`}
+                title={t('next')}
+              >
+                <i className="fas fa-chevron-right text-xs"></i>
+              </button>
+            </div>
             <button 
               onClick={() => {
                 if (currentView === 'public-portal' && !user) return;

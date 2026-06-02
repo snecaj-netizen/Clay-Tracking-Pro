@@ -78,9 +78,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       return a.localeCompare(b);
     });
   }, [results]);
-  const qualifications = useMemo(() => Array.from(new Set(results.map(r => r.qualification_at_time || r.qualification).filter(Boolean))).sort(), [results]);
-
   const shouldShowInternational = event.type === 'Internazionale';
+
+  const getShooterQualification = (r: any) => {
+    const qual = r?.qualification_at_time || r?.qualification;
+    if (!qual) return '';
+    if (!shouldShowInternational && qual.toUpperCase() === 'MAN') {
+      return '';
+    }
+    return qual;
+  };
+
+  const qualifications = useMemo(() => {
+    const list = results.map(r => getShooterQualification(r)).filter(Boolean);
+    return Array.from(new Set(list)).sort();
+  }, [results, shouldShowInternational]);
 
   const formatDisplayValue = (val: string | null | undefined, type: 'category' | 'qualification') => {
     if (!val || val === '-') return '';
@@ -457,7 +469,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           );
           
             const catDisp = formatDisplayValue(r.category_at_time || r.category, 'category');
-            const qualDisp = formatDisplayValue(r.qualification_at_time || r.qualification, 'qualification');
+            const qualDisp = formatDisplayValue(getShooterQualification(r), 'qualification');
             const displayStr = [catDisp, qualDisp].filter(Boolean).join('/');
             
             return [
@@ -504,7 +516,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     categories.forEach(cat => {
       if (currentY > 240) { doc.addPage(); currentY = 20; }
       const catResults = results.filter(r => {
-        const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+        const rQual = getShooterQualification(r);
+        let effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+        if (effectivePref === 'qualifica' && !rQual) {
+          effectivePref = 'categoria';
+        }
         if (effectivePref === 'qualifica') return false;
         return (r.category_at_time || r.category) === cat;
       }).sort(sortResults);
@@ -517,9 +533,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     qualifications.forEach(qual => {
       if (currentY > 240) { doc.addPage(); currentY = 20; }
       const qualResults = results.filter(r => {
-        const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+        const rQual = getShooterQualification(r);
+        let effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+        if (effectivePref === 'qualifica' && !rQual) {
+          effectivePref = 'categoria';
+        }
         if (effectivePref !== 'qualifica') return false;
-        return (r.qualification_at_time || r.qualification) === qual;
+        return rQual === qual;
       }).sort(sortResults);
       if (qualResults.length > 0) {
         renderTable(`${t('pdf_qualification_ranking')}: ${qual}`, qualResults);
@@ -649,7 +669,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`${t('pdf_page')} ${i} ${t('pdf_of')} ${pageCount} - ${t('pdf_generated_by')} Clay Performance`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      doc.text(`${t('pdf_page')} ${i} ${t('pdf_of')} ${pageCount} - ${t('pdf_generated_by')}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     }
 
     if (shouldDownload) {
@@ -717,10 +737,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
 
     const rCat = r.category_at_time || r.category;
-    const rQual = r.qualification_at_time || r.qualification;
+    const rQual = getShooterQualification(r);
     
     // Priority: Event Override > Competition Override > Shooter Preference
-    const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+    let effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+    if (effectivePref === 'qualifica' && !rQual) {
+      effectivePref = 'categoria';
+    }
 
     if (viewMode === 'categoria') {
       if (!selectedCategory) return true;
@@ -984,17 +1007,27 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     if (!prizeSettings || prizeSettings.length === 0) return false;
 
     const rCat = result.category_at_time || result.category;
-    const rQual = result.qualification_at_time || result.qualification;
+    const rQual = getShooterQualification(result);
     
     // Priority: Event Override > Competition Override > Shooter Preference
-    const effectivePref = event.ranking_preference_override || result.ranking_preference_override || result.ranking_preference || 'categoria';
+    let effectivePref = event.ranking_preference_override || result.ranking_preference_override || result.ranking_preference || 'categoria';
+    if (effectivePref === 'qualifica' && !rQual) {
+      effectivePref = 'categoria';
+    }
 
     // Calculate ranking in category
     if (effectivePref === 'categoria') {
       const categorySetting = prizeSettings.find(s => s.type === 'categoria' && s.name === rCat);
       if (categorySetting) {
         const catResults = results
-          .filter(r => (r.category_at_time || r.category) === rCat && (event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria') === 'categoria')
+          .filter(r => {
+            const rQualLocal = getShooterQualification(r);
+            let rPref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+            if (rPref === 'qualifica' && !rQualLocal) {
+              rPref = 'categoria';
+            }
+            return (r.category_at_time || r.category) === rCat && rPref === 'categoria';
+          })
           .sort(sortResults);
         const rank = catResults.findIndex(r => r.id === result.id);
         if (rank !== -1 && rank < categorySetting.count) return true;
@@ -1006,7 +1039,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       const qualificationSetting = prizeSettings.find(s => s.type === 'qualifica' && s.name === rQual);
       if (qualificationSetting) {
         const qualResults = results
-          .filter(r => (r.qualification_at_time || r.qualification) === rQual && (event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria') === 'qualifica')
+          .filter(r => {
+            const rQualLocal = getShooterQualification(r);
+            let rPref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+            if (rPref === 'qualifica' && !rQualLocal) {
+              rPref = 'categoria';
+            }
+            return rQualLocal === rQual && rPref === 'qualifica';
+          })
           .sort(sortResults);
         const rank = qualResults.findIndex(r => r.id === result.id);
         if (rank !== -1 && rank < qualificationSetting.count) return true;
@@ -1608,7 +1648,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   surname: r.user_surname,
                   society: r.society_at_time || r.society,
                   category: r.category_at_time || r.category,
-                  qualification: r.qualification_at_time || r.qualification
+                  qualification: getShooterQualification(r)
                 }))].map(u => [u.id, u])).values())}
                 teams={teams} 
                 token={token} 
@@ -1652,12 +1692,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                       {formatDisplayValue(shooter.category_at_time || shooter.category, 'category')}
                                     </span>
                                   )}
-                                  {formatDisplayValue(shooter.category_at_time || shooter.category, 'category') && formatDisplayValue(shooter.qualification_at_time || shooter.qualification, 'qualification') && (
+                                  {formatDisplayValue(shooter.category_at_time || shooter.category, 'category') && formatDisplayValue(getShooterQualification(shooter), 'qualification') && (
                                     <span className="text-slate-700 text-[10px]">/</span>
                                   )}
-                                  {formatDisplayValue(shooter.qualification_at_time || shooter.qualification, 'qualification') && (
+                                  {formatDisplayValue(getShooterQualification(shooter), 'qualification') && (
                                     <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black border ${ (event.ranking_preference_override || shooter.ranking_preference_override || shooter.ranking_preference || 'categoria') === 'qualifica' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
-                                      {formatDisplayValue(shooter.qualification_at_time || shooter.qualification, 'qualification')}
+                                      {formatDisplayValue(getShooterQualification(shooter), 'qualification')}
                                     </span>
                                   )}
                                 </div>
@@ -1698,10 +1738,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <tbody>
                     {filteredResults.map((r, idx) => {
                       const rCat = r.category_at_time || r.category;
-                      const rQual = r.qualification_at_time || r.qualification;
+                      const rQual = getShooterQualification(r);
                       
                       // Priority: Event Override > Competition Override > Shooter Preference
-                      const effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+                      let effectivePref = event.ranking_preference_override || r.ranking_preference_override || r.ranking_preference || 'categoria';
+                      if (effectivePref === 'qualifica' && !rQual) {
+                        effectivePref = 'categoria';
+                      }
                       const isOverridden = !!(event.ranking_preference_override || r.ranking_preference_override);
                       
                       if (r.is_registered_only) {
@@ -1726,15 +1769,15 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                     {formatDisplayValue(r.category, 'category')}
                                   </span>
                                 )}
-                                {formatDisplayValue(r.category, 'category') && formatDisplayValue(r.qualification, 'qualification') && (
+                                {formatDisplayValue(r.category, 'category') && formatDisplayValue(getShooterQualification(r), 'qualification') && (
                                   <span className="text-slate-800">/</span>
                                 )}
-                                {formatDisplayValue(r.qualification, 'qualification') && (
+                                {formatDisplayValue(getShooterQualification(r), 'qualification') && (
                                   <span className={`px-1.5 py-0.5 rounded ${r.registration_type === 'Qualifica' || r.registration_type === 'Per Qualifica' ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30' : 'bg-slate-800 text-slate-500'}`}>
-                                    {formatDisplayValue(r.qualification, 'qualification')}
+                                    {formatDisplayValue(getShooterQualification(r), 'qualification')}
                                   </span>
                                 )}
-                                {!formatDisplayValue(r.category, 'category') && !formatDisplayValue(r.qualification, 'qualification') && <span>-</span>}
+                                {!formatDisplayValue(r.category, 'category') && !formatDisplayValue(getShooterQualification(r), 'qualification') && <span>-</span>}
                               </div>
                             </td>
                             {Array.from({ length: maxSeriesCount }).map((_, i) => (
