@@ -172,6 +172,26 @@ const Warehouse: React.FC<WarehouseProps> = ({
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [groupedStock]);
 
+  const historyByProducer = useMemo(() => {
+    const filtered = cartridges.filter(c => filterYear === 'ALL' || new Date(c.purchaseDate).getFullYear().toString() === filterYear);
+    const groups: Record<string, Cartridge[]> = {};
+    
+    filtered.forEach(c => {
+      const typeInfo = c.typeId ? cartridgeTypes.find(t => t.id === c.typeId) : null;
+      const displayProducer = (typeInfo?.producer || c.producer || '').toUpperCase().trim();
+      if (!groups[displayProducer]) {
+        groups[displayProducer] = [];
+      }
+      groups[displayProducer].push(c);
+    });
+
+    Object.keys(groups).forEach(prod => {
+      groups[prod].sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+    });
+
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [cartridges, cartridgeTypes, filterYear]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isType: boolean = false) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -816,52 +836,94 @@ const Warehouse: React.FC<WarehouseProps> = ({
                     <i className="fas fa-euro-sign text-base sm:text-xl"></i>
                   </div>
                 </div>
-                {[...cartridges]
-                  .filter(c => filterYear === 'ALL' || new Date(c.purchaseDate).getFullYear().toString() === filterYear)
-                  .sort((a,b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
-                  .map(c => {
-                    const typeInfo = c.typeId ? cartridgeTypes.find(t => t.id === c.typeId) : null;
-                    const displayProducer = typeInfo?.producer || c.producer;
-                    const displayModel = typeInfo?.model || c.model;
-                    const displayGrams = typeInfo?.grams !== undefined ? typeInfo.grams : c.grams;
-                    const displayImageUrl = typeInfo?.imageUrl || c.imageUrl;
-
+                {historyByProducer.length === 0 ? (
+                  <div className="text-center py-20 text-slate-600 border-2 border-dashed border-slate-700 rounded-3xl">
+                    <i className="fas fa-box-open text-4xl mb-3 opacity-20"></i>
+                    <p className="text-sm font-medium">{t('warehouse_empty')}</p>
+                  </div>
+                ) : (
+                  historyByProducer.map(([producer, items]) => {
+                    const isExpanded = expandedProducers.includes(producer);
+                    const totalPurchasedForProducer = items.reduce((acc, c) => acc + (c.initialQuantity || c.quantity), 0);
                     return (
-                      <div key={c.id} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
-                            {displayImageUrl ? <img src={displayImageUrl} alt={displayModel} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
+                      <div key={producer} className="space-y-4">
+                        <button 
+                          onClick={() => toggleProducer(producer)}
+                          className="w-full flex items-center justify-between px-2 group"
+                        >
+                          <h3 className="text-sm font-black text-white group-hover:text-orange-500 uppercase tracking-widest flex items-center gap-2 transition-colors">
+                            <span className={`w-1 h-4 rounded-full transition-colors ${isExpanded ? 'bg-orange-600' : 'bg-slate-700 group-hover:bg-orange-600/50'}`}></span>
+                            {producer}
+                          </h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-slate-500 group-hover:text-orange-500 uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 transition-colors">
+                              {totalPurchasedForProducer} {t('pieces_short')}
+                            </span>
+                            <i className={`fas fa-chevron-down text-[8px] text-slate-600 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></i>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-white text-xs leading-tight">{displayProducer} <span className="text-orange-500">{displayModel}</span> {displayGrams && <span className="text-slate-500">• {displayGrams}g</span>}</h4>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')} {c.armory && `• ${c.armory}`}</p>
-                          </div>
+                        </button>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              className="overflow-hidden"
+                            >
+                              <div className="grid grid-cols-1 gap-3 pb-2">
+                                {items.map(c => {
+                                  const typeInfo = c.typeId ? cartridgeTypes.find(t => t.id === c.typeId) : null;
+                                  const displayProducer = typeInfo?.producer || c.producer;
+                                  const displayModel = typeInfo?.model || c.model;
+                                  const displayGrams = typeInfo?.grams !== undefined ? typeInfo.grams : c.grams;
+                                  const displayImageUrl = typeInfo?.imageUrl || c.imageUrl;
+
+                                  return (
+                                    <div key={c.id} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between group">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
+                                          {displayImageUrl ? <img src={displayImageUrl} alt={displayModel} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><i className="fas fa-box text-slate-700 text-xs"></i></div>}
+                                        </div>
+                                        <div>
+                                          <h4 className="font-bold text-white text-xs leading-tight">{displayProducer} <span className="text-orange-500">{displayModel}</span> {displayGrams && <span className="text-slate-500">• {displayGrams}g</span>}</h4>
+                                          <p className="text-[9px] text-slate-600 font-bold uppercase">{new Date(c.purchaseDate).toLocaleDateString(language === 'it' ? 'it-IT' : 'en-US')} {c.armory && `• ${c.armory}`}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-right">
+                                          <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">{t('pieces_short')}</span></p>
+                                          <p className="text-[9px] text-blue-500 font-bold">€{c.cost.toFixed(2)}</p>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          <button 
+                                            onClick={() => startEdit(c)} 
+                                            className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
+                                            title={t('edit')}
+                                          >
+                                            <i className="fas fa-edit text-xs"></i>
+                                          </button>
+                                          <button 
+                                            onClick={() => triggerConfirm(t('delete_stock_title'), t('confirm_delete_stock_desc'), () => onDelete(c.id), t('delete'), 'danger')} 
+                                            className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
+                                            title={t('delete')}
+                                          >
+                                            <i className="fas fa-trash text-xs"></i>
+                                          </button>
+                                        </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <p className="text-xs font-black text-white">{c.initialQuantity || c.quantity} <span className="text-[9px] text-slate-500">{t('pieces_short')}</span></p>
-                            <p className="text-[9px] text-blue-500 font-bold">€{c.cost.toFixed(2)}</p>
-                          </div>
-                            <div className="flex gap-1">
-                              <button 
-                                onClick={() => startEdit(c)} 
-                                className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-orange-500 hover:border-slate-700 transition-all"
-                                title={t('edit')}
-                              >
-                                <i className="fas fa-edit text-xs"></i>
-                              </button>
-                              <button 
-                                onClick={() => triggerConfirm(t('delete_stock_title'), t('confirm_delete_stock_desc'), () => onDelete(c.id), t('delete'), 'danger')} 
-                                className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-red-500 hover:border-slate-700 transition-all"
-                                title={t('delete')}
-                              >
-                                <i className="fas fa-trash text-xs"></i>
-                              </button>
-                            </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
               </div>
             )}
           </motion.div>
