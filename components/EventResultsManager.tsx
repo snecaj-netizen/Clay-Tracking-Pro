@@ -742,8 +742,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     const societyMap = new Map<string, any[]>();
     
     results.filter(r => !r.is_registered_only).forEach(r => {
-      const soc = r.society_at_time || r.society;
-      if (!soc) return;
+      const rawSoc = r.society_at_time || r.society;
+      if (!rawSoc) return;
+      const soc = rawSoc.trim();
       if (!societyMap.has(soc)) {
         societyMap.set(soc, []);
       }
