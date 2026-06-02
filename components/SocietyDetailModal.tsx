@@ -82,13 +82,13 @@ const SocietyDetailModal: React.FC<SocietyDetailModalProps> = ({
             {society.phone && (
               <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Telefono</p>
-                <p className="text-sm font-bold text-white">{society.phone}</p>
+                <a href={`tel:${society.phone}`} className="text-sm font-bold text-white hover:text-orange-500 transition-colors">{society.phone}</a>
               </div>
             )}
             {society.mobile && (
               <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Cellulare</p>
-                <p className="text-sm font-bold text-white">{society.mobile}</p>
+                <a href={`tel:${society.mobile}`} className="text-sm font-bold text-white hover:text-orange-500 transition-colors">{society.mobile}</a>
               </div>
             )}
             {society.address && (
