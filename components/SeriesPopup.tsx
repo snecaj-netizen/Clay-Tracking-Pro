@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Competition, getSeriesLayout } from '../types';
+import { Competition, getSeriesLayout, Discipline } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SeriesPopupProps {
@@ -135,20 +135,21 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
             <div className={`grid grid-cols-1 ${seriesLayoutObj.label === 'Piazzola' ? '' : 'sm:grid-cols-2'} gap-3 sm:gap-4`}>
               {seriesLayoutObj.layout.map((targetCount, pedanaIdx) => {
                 const startIndex = seriesLayoutObj.layout.slice(0, pedanaIdx).reduce((a, b) => a + b, 0);
+                const isDCK = competition.discipline === Discipline.DCK;
                 return (
                   <div key={pedanaIdx} className="flex items-center gap-3 sm:gap-2 bg-slate-950/30 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none border border-slate-800/30 sm:border-none">
                     <span className="text-[10px] sm:text-[9px] font-bold text-slate-500 w-14 sm:w-12 uppercase tracking-widest shrink-0">{seriesLayoutObj.label} {pedanaIdx + 1}</span>
-                    <div className="flex flex-nowrap overflow-x-auto custom-scrollbar pb-1 pt-1 gap-2 sm:gap-1.5 w-full">
+                    <div className={`flex flex-nowrap overflow-x-auto custom-scrollbar pb-1 pt-1 ${isDCK ? 'gap-1' : 'gap-2 sm:gap-1.5'} w-full`}>
                       {Array.from({ length: targetCount }).map((_, targetOffset) => {
                         const targetIdx = startIndex + targetOffset;
                         const isHit = detailedScore[targetIdx];
                         return (
-                          <div key={targetIdx} className="flex flex-col items-center gap-1 shrink-0">
+                          <div key={targetIdx} className={`flex flex-col items-center ${isDCK ? 'gap-[1px]' : 'gap-1'} shrink-0`}>
                             <span className="text-[8px] text-slate-500 font-bold">{targetIdx + 1}</span>
                             <button
                               type="button"
                               onClick={() => handleDetailedScoreChange(targetIdx)}
-                              className={`w-8 h-8 sm:w-7 sm:h-7 rounded-full border-2 transition-all active:scale-90 ${isHit ? 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
+                              className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5' : 'w-8 h-8 sm:w-7 sm:h-7'} rounded-full border-2 transition-all active:scale-90 ${isHit ? 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
                               title={`${t('target_with_index').replace('{{index}}', (targetIdx + 1).toString())}: ${isHit ? t('hit_label') : t('missed_label')}`}
                             />
                           </div>

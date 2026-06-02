@@ -706,6 +706,7 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
 
   // Disciplines
   'Compak Sporting (CK)': { it: 'Compak Sporting (CK)', en: 'Compak Sporting (CK)' },
+  'Doppietto Compak (DCK)': { it: 'Doppietto Compak (DCK)', en: 'Doppietto Compak (DCK)' },
   'Sporting (SP)': { it: 'Sporting (SP)', en: 'Sporting (SP)' },
   'English Sporting (ES)': { it: 'English Sporting (ES)', en: 'English Sporting (ES)' },
   'Club Cup (PC)': { it: 'Club Cup (PC)', en: 'Club Cup (PC)' },

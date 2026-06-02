@@ -99,7 +99,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
         { id: 'PC_A', name: t('team_section_a_name'), size: 3 },
         { id: 'PC_B', name: t('team_section_b_name'), size: 3 }
       ];
-    } else if (event.discipline === 'Sporting (SP)' || event.discipline === 'Compak Sporting (CK)') {
+    } else if (event.discipline === 'Sporting (SP)' || event.discipline === 'Compak Sporting (CK)' || event.discipline === 'Doppietto Compak (DCK)') {
       return [
         { id: 'SP_A', name: t('team_cat_a_name'), size: 6 },
         { id: 'SP_B', name: t('team_qual_b_name'), size: 3 }

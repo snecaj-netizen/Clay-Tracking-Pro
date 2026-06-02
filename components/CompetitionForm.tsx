@@ -230,6 +230,12 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const seriesLayoutObj = getSeriesLayout(discipline);
     const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
 
+    // Ensure total targets is a multiple of 50 for DCK
+    if (discipline === Discipline.DCK && totalTargets % 50 !== 0) {
+      setTotalTargets(100);
+      return;
+    }
+
     if (isTraining) {
       setLevel(CompetitionLevel.TRAINING);
       if (name === '') setName('Sessione di Allenamento');
@@ -724,6 +730,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
               {(discipline === Discipline.EL ? [12, 24, 36] : 
                 discipline === Discipline.DT ? [150] :
                 discipline === Discipline.SK_ISSF ? [75, 125] :
+                discipline === Discipline.DCK ? [50, 100, 150, 200] :
                 [25, 50, 75, 100, 150, 200]).map(val => (
                 <button key={val} type="button" onClick={() => setTotalTargets(val)} className={`flex-1 min-w-[60px] py-3 rounded-xl font-bold transition-all ${totalTargets === val ? 'bg-orange-600 text-white' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>{val}</button>
               ))}
@@ -1004,19 +1011,20 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                       return (
                       <div key={pedanaIdx} className="flex items-center gap-3">
                         <span className="text-[10px] font-bold text-slate-500 w-12 uppercase tracking-widest">{seriesLayout.label} {pedanaIdx + 1}</span>
-                        <div className="flex flex-wrap gap-2">
+                        <div className={`flex flex-wrap ${discipline === Discipline.DCK ? 'gap-1' : 'gap-2'}`}>
                           {Array.from({ length: targetCount }).map((_, targetOffset) => {
                             const targetIdx = startIndex + targetOffset;
                             const isHit = detailedScores[idx][targetIdx];
+                            const isDCK = discipline === Discipline.DCK;
                             
                             const getDotColors = (hit: boolean) => {
                               const isElica = discipline === Discipline.EL;
                               if (hit) {
                                 return isElica 
-                                  ? 'bg-white border-slate-200 shadow-[0_0_10px_rgba(255,255,255,0.3)]' 
-                                  : 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]';
+                                  ? 'bg-white border-slate-200 shadow-[0_0_10px_rgba(255,255,255,0.3)] text-slate-900 border-2' 
+                                  : 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)] text-green-900 border-2';
                               } else {
-                                return 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]';
+                                return 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)] text-red-100 border-2';
                               }
                             };
 
@@ -1025,9 +1033,11 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                                 key={targetIdx}
                                 type="button"
                                 onClick={() => handleDetailedScoreChange(idx, targetIdx)}
-                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all active:scale-90 ${getDotColors(isHit)}`}
+                                className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[7px] sm:text-[9px]' : 'w-8 h-8 sm:w-10 sm:h-10 text-[11px]'} rounded-full transition-all active:scale-90 ${getDotColors(isHit)} flex items-center justify-center font-bold`}
                                 title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
-                              />
+                              >
+                                {isDCK ? targetIdx + 1 : ''}
+                              </button>
                             );
                           })}
                         </div>

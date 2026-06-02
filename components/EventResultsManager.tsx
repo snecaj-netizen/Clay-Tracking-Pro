@@ -923,7 +923,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const getDotColors = (isHit: boolean) => {
     const isElica = event.discipline === Discipline.EL;
-    const isSporting = event.discipline === Discipline.SP || event.discipline === Discipline.CK || event.discipline === Discipline.ES;
+    const isSporting = event.discipline === Discipline.SP || event.discipline === Discipline.CK || event.discipline === Discipline.ES || event.discipline === Discipline.DCK;
     
     if (isHit) {
       if (isElica) return 'bg-white border-slate-200 text-slate-900 shadow-[0_0_10px_rgba(255,255,255,0.3)]';
@@ -935,7 +935,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const getSmallDotColors = (isHit: boolean) => {
     const isElica = event.discipline === Discipline.EL;
-    const isSporting = event.discipline === Discipline.SP || event.discipline === Discipline.CK || event.discipline === Discipline.ES;
+    const isSporting = event.discipline === Discipline.SP || event.discipline === Discipline.CK || event.discipline === Discipline.ES || event.discipline === Discipline.DCK;
     
     if (isHit) {
       if (isElica) return 'bg-white border-slate-200 text-slate-900';
@@ -1322,6 +1322,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         {(() => {
                           const layoutInfo = getSeriesLayout(event.discipline as Discipline);
                           let absoluteIdx = 0;
+                          const isDCK = event.discipline === Discipline.DCK;
                           return layoutInfo.layout.map((count, groupIdx) => (
                             <div key={groupIdx} className="space-y-1.5">
                               <div className="flex items-center gap-2">
@@ -1329,7 +1330,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-2">{layoutInfo.label} {groupIdx + 1}</span>
                                 <div className="h-px flex-1 bg-slate-800"></div>
                               </div>
-                              <div className="flex flex-wrap gap-1.5 justify-center">
+                              <div className={`flex flex-wrap ${isDCK ? 'gap-1' : 'gap-1.5'} justify-center`}>
                                 {Array.from({ length: count }).map(() => {
                                   const targetIdx = absoluteIdx++;
                                   const isHit = detailedScores[expandedSeries!]?.[targetIdx];
@@ -1338,7 +1339,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                       key={targetIdx}
                                       type="button"
                                       onClick={() => handleDetailedScoreChange(expandedSeries!, targetIdx)}
-                                      className={`w-9 h-9 rounded-full border-2 transition-all active:scale-90 flex items-center justify-center text-[11px] font-black ${getDotColors(isHit)}`}
+                                      className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[7px] sm:text-[9px] border' : 'w-9 h-9 border-2 text-[11px]'} rounded-full transition-all active:scale-90 flex items-center justify-center font-black ${getDotColors(isHit)}`}
                                     >
                                       {targetIdx + 1}
                                     </button>

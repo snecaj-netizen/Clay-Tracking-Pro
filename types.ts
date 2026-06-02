@@ -1,6 +1,7 @@
 
 export enum Discipline {
   CK = 'Compak Sporting (CK)',
+  DCK = 'Doppietto Compak (DCK)',
   SP = 'Sporting (SP)',
   ES = 'English Sporting (ES)',
   PC = 'Club Cup (PC)',
@@ -331,6 +332,11 @@ export const getSeriesLayout = (discipline: Discipline) => {
       return {
         label: 'Piazzola',
         layout: [5, 5, 5, 5, 5]
+      };
+    case Discipline.DCK: // Doppietto Compak
+      return {
+        label: 'Piazzola',
+        layout: [10, 10, 10, 10, 10]
       };
     case Discipline.FO: // Fossa Olimpica
     case Discipline.FU: // Fossa Universale

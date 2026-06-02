@@ -1064,6 +1064,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     }
   }, [initialEvents]);
 
+  // Assist target count and field setup based on discipline
+  useEffect(() => {
+    if (discipline === Discipline.DCK) {
+      if (targets % 50 !== 0) {
+        setTargets(100);
+        setTotalFields(2);
+      } else {
+        setTotalFields(Math.max(1, Math.ceil(targets / 50)));
+      }
+    } else {
+      setTotalFields(Math.max(1, Math.ceil(targets / 25)));
+    }
+  }, [discipline]);
+
   const fetchEvents = async (signal?: AbortSignal) => {
     console.log('EventsManager: fetchEvents called', { hasToken: !!token });
     if (!token) {
@@ -1930,13 +1944,14 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                       <input 
                         type="number" 
                         required 
-                        min="25" 
-                        step="25" 
+                        min={discipline === Discipline.DCK ? "50" : "25"} 
+                        step={discipline === Discipline.DCK ? "50" : "25"} 
                         value={targets} 
                         onChange={(e) => {
                           const val = parseInt(e.target.value);
                           setTargets(val);
-                          setTotalFields(Math.max(1, Math.ceil(val / 25)));
+                          const valPerSeries = discipline === Discipline.DCK ? 50 : 25;
+                          setTotalFields(Math.max(1, Math.ceil(val / valPerSeries)));
                         }} 
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" 
                       />
