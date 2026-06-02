@@ -416,6 +416,7 @@ process.on('uncaughtException', (err) => {
 
 // Helper to calculate qualification based on age
 const getAutoQualification = (birthDate: string | null, currentQual: string | null): string | null => {
+  if (currentQual === 'LAD') return 'LAD';
   if (!birthDate) return currentQual;
   const birthDateObj = new Date(birthDate);
   const birthYear = birthDateObj.getFullYear();

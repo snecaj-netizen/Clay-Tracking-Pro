@@ -183,6 +183,8 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
     const currentYear = new Date().getFullYear();
     const age = currentYear - birthYear;
 
+    if (currentQual === 'LAD') return; // Do not override Lady
+
     if (age <= 20) setter('JUN');
     else if (age >= 21 && age <= 55) setter('MAN');
     else if (age >= 56 && age <= 65) setter('SEN');
@@ -294,6 +296,8 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
       });
 
       if (!res.ok) throw new Error(t('profile_update_error'));
+      
+      triggerToast(t('profile_update_success'), 'success');
       
       // Refresh local user lists in AdminContext if we are an admin
       if (currentUser?.role === 'admin') {

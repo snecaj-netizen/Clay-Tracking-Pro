@@ -1,0 +1,5 @@
+components/InstallPrompt.tsx:120:                            <span>Scorri e seleziona <span className="text-white [.light-theme_&]:text-slate-900 font-bold">"Aggiungi alla schermata Home"</span>.</span>
+components/InstallPrompt.tsx:124:                            <span>Tocca <span className="text-white [.light-theme_&]:text-slate-900 font-bold">"Aggiungi"</span> in alto a destra.</span>
+components/InstallPrompt.tsx:137:                  : "Aggiungi Clay Performance al tuo telefono per aprirla in un attimo, ricevere notifiche e usarla come una vera applicazione."
+components/ShooterSearch.tsx:136:            placeholder={multiple && Array.isArray(value) && value.length > 0 ? "Aggiungi un altro..." : placeholder}
+components/EventManagementDetail.tsx:1250:                    Aggiungi
