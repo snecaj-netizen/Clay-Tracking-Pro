@@ -323,9 +323,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                   <div className="flex justify-between items-start mb-3">
                     {(event.status === 'validated' || event.is_management_enabled) && (
                       <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                        event.status === 'validated' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 animate-bounce'
+                        event.status === 'validated' 
+                          ? 'bg-green-100 text-green-700' 
+                          : (selectedSociety?.type === 'past' 
+                            ? 'bg-amber-100 text-amber-700' 
+                            : 'bg-orange-100 text-orange-700 animate-bounce')
                       }`}>
-                        {event.status === 'validated' ? t('finished_label') : t('live_label')}
+                        {event.status === 'validated' 
+                          ? t('finished_label') 
+                          : (selectedSociety?.type === 'past' 
+                            ? t('concluded_not_validated') 
+                            : t('live_label'))}
                       </div>
                     )}
                     {event.society_code && (
