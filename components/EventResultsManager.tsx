@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import * as XLSX from 'xlsx';
 import { SocietyEvent, PrizeSetting, User, Discipline, getSeriesLayout } from '../types';
 import { calculateRTE, shortenCategoryName, getDisplayCategory, INTERNATIONAL_CODES, INTL_TO_DOMESTIC } from '../ratingUtils';
 import ShooterSearch from './ShooterSearch';
@@ -21,6 +22,29 @@ interface EventResultsManagerProps {
   onEventUpdate?: () => void;
   societies?: any[];
 }
+
+const normalizeCategory = (catStr: any): string => {
+  if (!catStr) return 'Seconda';
+  const upper = catStr.toString().toUpperCase().trim();
+  if (upper === 'ECCELLENZA' || upper === 'E') return 'Eccellenza';
+  if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª') return 'Prima';
+  if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª') return 'Seconda';
+  if (upper.includes('TERZA') || upper === '3' || upper === '3^' || upper === '3*' || upper === '3ª') return 'Terza';
+  return 'Seconda';
+};
+
+const normalizeQualification = (qualStr: any): string => {
+  if (!qualStr) return '';
+  const upper = qualStr.toString().toUpperCase().trim();
+  if (upper.includes('LAD')) return 'Lady';
+  if (upper.includes('SETT') || upper.includes('GIOV')) return 'Settore Giovanile';
+  if (upper.includes('JUN')) return 'Junior';
+  if (upper.includes('VET')) return 'Veterani';
+  if (upper.includes('MAS')) return 'Master';
+  if (upper.includes('PARAL') || upper.includes('PARA')) return 'Paralimpici';
+  if (upper.includes('SEN') || upper.includes('SR')) return 'Senior';
+  return '';
+};
 
 const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token, user, onClose, readOnly = false, onEventUpdate, societies = [] }) => {
   const { triggerConfirm, triggerToast } = useUI();
@@ -45,6 +69,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [parsedRows, setParsedRows] = useState<any[]>([]);
   
   const layoutInfo = useMemo(() => getSeriesLayout(event.discipline as Discipline), [event.discipline]);
   const targetsPerSeries = useMemo(() => {
@@ -150,6 +175,368 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       }
     }
   }, [selectedUserId, results, editingResultId]);
+
+  useEffect(() => {
+    if (parsedRows.length > 0 && users.length > 0) {
+      setParsedRows(prev => prev.map(row => {
+        const foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === row.shooterCode?.toUpperCase().trim());
+        const hasMissingUserErr = row.errors.includes("Tiratore non registrato a portale (Codice Tiratore non trovato)");
+        
+        let nextErrors = [...row.errors];
+        if (foundUser) {
+          if (hasMissingUserErr) {
+            nextErrors = nextErrors.filter(e => e !== "Tiratore non registrato a portale (Codice Tiratore non trovato)");
+          }
+
+          const surname = row.surname || foundUser.surname || '';
+          const name = row.name || foundUser.name || '';
+          const email = row.email || foundUser.email || '';
+          const society = row.society || foundUser.society || event.location || '';
+          const category = row.category && row.category !== 'Seconda' ? row.category : normalizeCategory(foundUser.category || 'Seconda');
+          const qualification = row.qualification || normalizeQualification(foundUser.qualification || '');
+
+          if (surname) nextErrors = nextErrors.filter(e => e !== "Cognome mancante");
+          if (name) nextErrors = nextErrors.filter(e => e !== "Nome mancante");
+          if (email) {
+            nextErrors = nextErrors.filter(e => e !== "Email mancante");
+            if (email.includes('@')) {
+              nextErrors = nextErrors.filter(e => e !== "Formato Email non valido");
+            }
+          }
+
+          return {
+            ...row,
+            userId: foundUser.id,
+            userFound: true,
+            surname,
+            name,
+            email,
+            society,
+            category,
+            qualification,
+            errors: nextErrors,
+            isValid: nextErrors.filter(e => !e.startsWith("ATTENZIONE:")).length === 0
+          };
+        } else {
+          if (!hasMissingUserErr) {
+            nextErrors.push("Tiratore non registrato a portale (Codice Tiratore non trovato)");
+          }
+          return {
+            ...row,
+            userId: undefined,
+            userFound: false,
+            errors: nextErrors,
+            isValid: false
+          };
+        }
+      }));
+    }
+  }, [users]);
+
+  const handleDownloadExcelTemplate = () => {
+    const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+    const headers = [
+      'Codice Tiratore *',
+      'Cognome *',
+      'Nome *',
+      'Email *',
+      'Società',
+      'Categoria *',
+      'Qualifica',
+      'PETT'
+    ];
+    for (let i = 1; i <= numSeries; i++) {
+      headers.push(`S${i}`);
+    }
+    headers.push('Shoot-Off');
+    headers.push('Preferenza Classifica');
+
+    const exampleRow: any = {
+      'Codice Tiratore *': 'RSSMRA80A01H501Y',
+      'Cognome *': 'Rossi',
+      'Nome *': 'Mario',
+      'Email *': 'mario.rossi@example.com',
+      'Società': event.location || 'Società Esempio',
+      'Categoria *': 'Seconda',
+      'Qualifica': 'Lady',
+      'PETT': '1'
+    };
+    for (let i = 1; i <= numSeries; i++) {
+      exampleRow[`S${i}`] = '22';
+    }
+    exampleRow['Shoot-Off'] = '';
+    exampleRow['Preferenza Classifica'] = 'Categoria';
+
+    const worksheet = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template Risultati");
+    
+    XLSX.writeFile(workbook, `Template_Risultati_${event.name.replace(/\s+/g, '_')}.xlsx`);
+    triggerToast("Template scaricato con successo!", "success");
+  };
+
+  const handleUploadExcelResults = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json(worksheet);
+
+        if (rawRows.length === 0) {
+          triggerToast("Il file Excel non contiene righe di dati.", "error");
+          setLoading(false);
+          return;
+        }
+
+        const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+
+        const parsed: any[] = rawRows.map((raw: any, index: number) => {
+          const getVal = (keys: string[]): string => {
+            for (const k of keys) {
+              const matchedKey = Object.keys(raw).find(rk => rk.toLowerCase().replace(/\s+/g, '').replace(/[*_]/g, '') === k.toLowerCase().replace(/\s+/g, ''));
+              if (matchedKey) return String(raw[matchedKey] || '').trim();
+            }
+            return '';
+          };
+
+          const shooterCode = getVal(['codicetiratore', 'codice', 'cf', 'fiscalcode', 'tessera', 'fitav']);
+          const rawSurname = getVal(['cognome', 'surname', 'lastname']);
+          const rawName = getVal(['nome', 'name', 'firstname']);
+          const rawEmail = getVal(['email', 'mail']);
+          const rawSociety = getVal(['societa', 'club', 'team']);
+          const rawCategory = getVal(['categoria', 'category', 'class']);
+          const rawQualification = getVal(['qualifica', 'qualification']);
+          const bibNumber = getVal(['pett', 'pettorale', 'bib']);
+          
+          const rawPref = getVal(['preferenza', 'preferenzaclassifica', 'rankingpreference']);
+          const rankingPreference: 'categoria' | 'qualifica' = (rawPref.toLowerCase().includes('qual') || rawPref.toLowerCase() === 'qualifica') ? 'qualifica' : 'categoria';
+
+          const scores: number[] = [];
+          for (let sIdx = 1; sIdx <= numSeries; sIdx++) {
+            const val = getVal([`s${sIdx}`]);
+            const scoreNum = parseInt(val);
+            scores.push(isNaN(scoreNum) ? 0 : scoreNum);
+          }
+
+          const rawOff = getVal(['shootoff', 'shoot-off', 'spareggio']);
+          const shootOff = rawOff ? (parseInt(rawOff) || null) : null;
+
+          let userId: number | undefined;
+          let userFound = false;
+          let foundUser: any = null;
+
+          if (shooterCode) {
+            foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === shooterCode.toUpperCase().trim());
+            if (foundUser) {
+              userId = foundUser.id;
+              userFound = true;
+            }
+          }
+
+          // Resolve values based on existing user or raw values from Excel
+          const surname = rawSurname || (foundUser ? foundUser.surname : '');
+          const name = rawName || (foundUser ? foundUser.name : '');
+          const email = rawEmail || (foundUser ? foundUser.email : '');
+          const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
+          const category = normalizeCategory(rawCategory || (foundUser ? foundUser.category : 'Seconda'));
+          const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
+
+          const errors: string[] = [];
+          
+          if (!shooterCode) {
+            errors.push("Codice Tiratore mancante");
+          } else if (shooterCode.length < 5) {
+            errors.push("Codice Tiratore troppo corto");
+          }
+
+          if (!surname) errors.push("Cognome mancante");
+          if (!name) errors.push("Nome mancante");
+          if (!email) {
+            errors.push("Email mancante");
+          } else if (!email.includes('@')) {
+            errors.push("Formato Email non valido");
+          }
+
+          scores.forEach((s, sI) => {
+            if (s < 0 || s > targetsPerSeries) {
+              errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${targetsPerSeries})`);
+            }
+          });
+
+          if (shooterCode && !userFound) {
+            errors.push("Tiratore non registrato a portale (Codice Tiratore non trovato)");
+          }
+
+          if (userFound) {
+            const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
+            if (hasExisting) {
+              errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+            }
+          }
+
+          return {
+            index,
+            shooterCode: shooterCode.toUpperCase(),
+            surname,
+            name,
+            email,
+            society,
+            category,
+            qualification,
+            bibNumber,
+            scores,
+            shootOff,
+            rankingPreference,
+            errors,
+            userFound,
+            userId,
+            isValid: errors.filter(e => !e.startsWith("ATTENZIONE:")).length === 0
+          };
+        });
+
+        setParsedRows(parsed);
+        triggerToast(`File Excel analizzato: ${parsed.length} righe caricate. Controlla la tabella di convalida.`, "success");
+      } catch (err: any) {
+        triggerToast(`Errore durante l'analisi del file Excel: ${err.message}`, "error");
+      } finally {
+        setLoading(false);
+        e.target.value = '';
+      }
+    };
+    reader.onerror = () => {
+      triggerToast("Errore di caricamento del file Excel.", "error");
+      setLoading(false);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleCreateUserInline = async (rowIndex: number) => {
+    const row = parsedRows[rowIndex];
+    if (!row) return;
+    
+    if (!row.name || !row.surname || !row.email || !row.category || !row.shooterCode) {
+      triggerToast("Dati del tiratore incompleti nel file Excel per poterlo registrare.", "error");
+      return;
+    }
+    
+    try {
+      const body = {
+        name: row.name.trim(),
+        surname: row.surname.trim(),
+        email: row.email.trim(),
+        role: 'user',
+        category: row.category,
+        qualification: row.qualification || undefined,
+        society: row.society || event.location || '',
+        shooter_code: row.shooterCode.toUpperCase().trim(),
+        password: row.shooterCode.toUpperCase().trim()
+      };
+      
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Errore nella registrazione");
+      }
+      
+      const newUser = await res.json();
+      triggerToast(`Tiratore ${body.surname} ${body.name} registrato con successo!`, 'success');
+      
+      setUsers(prev => [...prev, newUser]);
+    } catch (err: any) {
+      triggerToast(err.message, 'error');
+    }
+  };
+
+  const handleSaveAllExcelResults = async () => {
+    const rowsWithCriticalErrors = parsedRows.filter(r => r.errors.some(e => !e.startsWith("ATTENZIONE:")));
+    
+    if (rowsWithCriticalErrors.length > 0) {
+      triggerToast("Risolvi gli errori dei tiratori prima di procedere con il salvataggio dei risultati.", "error");
+      return;
+    }
+
+    setSaving(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const row of parsedRows) {
+      const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+      const totalScore = row.scores.reduce((a: number, b: number) => a + b, 0);
+      const totalTargetsVal = event.targets || 100;
+      const averagePerSeries = totalScore / numSeries;
+
+      const detailed: boolean[][] = row.scores.map((score: number) => {
+        const arr = Array(targetsPerSeries).fill(false);
+        for (let i = 0; i < score; i++) {
+          arr[i] = true;
+        }
+        return arr;
+      });
+
+      const payload = {
+        id: `evt_${event.id}_${row.userId}_${Date.now()}`,
+        userId: row.userId,
+        eventId: event.id,
+        name: event.name,
+        date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        location: event.location,
+        discipline: event.discipline,
+        level: event.type,
+        totalScore,
+        totalTargets: totalTargetsVal,
+        averagePerSeries,
+        ranking_preference: row.rankingPreference || 'categoria',
+        ranking_preference_override: null,
+        scores: row.scores,
+        detailedScores: detailed,
+        shootOff: row.shootOff
+      };
+
+      try {
+        const res = await fetch('/api/competitions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }
+
+    setSaving(false);
+    if (failCount === 0) {
+      triggerToast(`Importazione completata con successo! ${successCount} risultati salvati.`, "success");
+      setParsedRows([]);
+      fetchData();
+    } else {
+      triggerToast(`Importazione terminata con qualche errore. Salvati: ${successCount}. Falliti: ${failCount}`, "info");
+      fetchData();
+    }
+  };
 
   // Removed useEffect that was overwriting series/detailedScores on totalTargets change
   // Now handled in onChange and handleEditResult
@@ -1154,8 +1541,38 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         
         <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
           {/* Form Section */}
-          {!readOnly && event.status !== 'validated' && (
+          {!readOnly && event.status !== 'validated' && parsedRows.length === 0 && (
             <div className="w-full md:w-1/3 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-slate-800 md:overflow-y-auto bg-slate-900/50 shrink-0 md:shrink">
+              {/* Excel Import/Export for Admin */}
+              {user?.role === 'admin' && (
+                <div className="mb-6 p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-2xl space-y-2 shadow-inner">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <i className="fas fa-file-excel text-sm"></i>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Importazione Excel</h4>
+                  </div>
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleDownloadExcelTemplate}
+                      className="px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
+                    >
+                      <i className="fas fa-download text-xs"></i>
+                      <span>{t('download_template_excel')}</span>
+                    </button>
+                    <label className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-emerald-600/10 w-full">
+                      <i className="fas fa-upload text-xs"></i>
+                      <span>{t('upload_results_excel')}</span>
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={handleUploadExcelResults}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-white uppercase tracking-widest">
                   {editingResultId ? t('update_label') : t('insert_result_label')}
@@ -1531,8 +1948,138 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           )}
 
           {/* Results Table Section */}
-          <div className={`w-full ${(readOnly || event.status === 'validated') ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 [.light-theme_&]:bg-white shrink-0 md:shrink transition-colors`}>
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+          <div className={`w-full ${(readOnly || event.status === 'validated' || parsedRows.length > 0) ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 [.light-theme_&]:bg-white shrink-0 md:shrink transition-colors`}>
+            {parsedRows.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                  <div>
+                    <h3 className="text-xl font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight leading-none">
+                      {t('excel_import_preview_title')}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Rivedi i dati caricati dall'Excel. Correggi eventuali errori o registra i tiratori mancanti direttamente prima di salvare i risultati in database.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setParsedRows([])}
+                      className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                      {t('back_to_results')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || parsedRows.some(r => r.errors.some((e: string) => !e.startsWith("ATTENZIONE:")))}
+                      onClick={handleSaveAllExcelResults}
+                      className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2"
+                    >
+                      {saving && <i className="fas fa-circle-notch fa-spin"></i>}
+                      {saving ? 'Salvataggio...' : t('confirm_and_save_all')}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/45 custom-scrollbar">
+                  <table className="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-[10px] uppercase tracking-widest text-slate-500 bg-slate-900/80">
+                        <th className="p-3 font-black text-center w-12 text-slate-300">Stato</th>
+                        <th className="p-3 font-black text-slate-300">Tiratore</th>
+                        <th className="p-3 font-black text-center text-slate-300">Codice</th>
+                        <th className="p-3 font-black text-center text-slate-300">Email</th>
+                        <th className="p-3 font-black text-slate-300">Società / Categoria / Qualifica</th>
+                        {Array.from({ length: Math.ceil((event.targets || 100) / targetsPerSeries) }).map((_, i) => (
+                          <th key={i} className="p-3 font-black text-center w-14 text-slate-300 font-bold">S{i + 1}</th>
+                        ))}
+                        <th className="p-3 font-black text-center w-14 text-slate-300">Shoot-Off</th>
+                        <th className="p-3 font-black text-center w-20 text-slate-300 font-bold">Preferenza</th>
+                        <th className="p-3 font-black text-center w-36 text-slate-300">Azioni</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedRows.map((row, idx) => {
+                        const hasErrors = row.errors.some((e: string) => !e.startsWith("ATTENZIONE:"));
+                        const hasWarnings = row.errors.some((e: string) => e.startsWith("ATTENZIONE:"));
+                        
+                        return (
+                          <tr key={idx} className={`border-b border-slate-800 hover:bg-slate-900/50 transition-colors ${hasErrors ? 'bg-red-500/5' : ''}`}>
+                            <td className="p-3 text-center">
+                              {hasErrors ? (
+                                <i className="fas fa-exclamation-circle text-red-500 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:")).join('\n')}></i>
+                              ) : hasWarnings ? (
+                                <i className="fas fa-exclamation-triangle text-amber-500 text-base" title={row.errors.join('\n')}></i>
+                              ) : (
+                                <i className="fas fa-check-circle text-green-500 text-base"></i>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <div className="font-black text-white text-xs">{row.surname} {row.name}</div>
+                              {row.errors.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {row.errors.map((err: string, eIdx: number) => (
+                                    <div key={eIdx} className={`text-[9px] font-medium leading-none ${err.startsWith("ATTENZIONE:") ? 'text-amber-500 font-bold' : 'text-red-500'}`}>
+                                      • {err}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3 text-center font-mono text-xs text-slate-400 font-bold">{row.shooterCode}</td>
+                            <td className="p-3 text-center text-xs text-slate-400">{row.email}</td>
+                            <td className="p-3 text-xs">
+                              <div className="text-slate-300">{row.society}</div>
+                              <div className="flex gap-1 mt-1">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-850 text-orange-400 border border-slate-800 text-[9px] font-bold">{row.category}</span>
+                                {row.qualification && (
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-850 text-indigo-400 border border-slate-800 text-[9px] font-bold">{row.qualification}</span>
+                                )}
+                              </div>
+                            </td>
+                            {row.scores.map((s: number, sIdx: number) => (
+                              <td key={sIdx} className="p-3 text-center font-bold text-sm text-white">{s}</td>
+                            ))}
+                            <td className="p-3 text-center font-bold text-sm text-amber-500">{row.shootOff || '-'}</td>
+                            <td className="p-3 text-center text-[10px] font-bold uppercase text-slate-500">
+                              {row.rankingPreference === 'qualifica' ? 'Qualifica' : 'Categoria'}
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {!row.userFound && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCreateUserInline(idx)}
+                                    className="px-2 py-1 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-blue-500/30 transition-all flex items-center gap-1"
+                                    title="Registra Tiratore a database con questi dati Excel"
+                                  >
+                                    <i className="fas fa-user-plus"></i>
+                                    <span>Crea</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setParsedRows(prev => prev.filter((_, i) => i !== idx));
+                                    triggerToast("Riga rimossa dall'importazione.", "info");
+                                  }}
+                                  className="px-2 py-1 rounded bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-red-500/30 transition-all flex items-center gap-1"
+                                  title="Escludi questa riga dall'importazione"
+                                >
+                                  <i className="fas fa-trash text-[8px]"></i>
+                                  <span>Escludi</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
               <h3 className="text-lg font-bold text-white [.light-theme_&]:text-slate-900 uppercase tracking-widest transition-colors">
                 {event.status === 'validated' ? t('pdf_final_ranking') : (readOnly ? t('pdf_general_ranking') : t('pdf_provisional_ranking'))}
               </h3>
@@ -1962,8 +2509,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 </table>
               </div>
             )}
-          </div>
-        </div>
+          </>
+        )}
+      </div>
+    </div>
 
         {/* Floating Refresh Button */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1050]">

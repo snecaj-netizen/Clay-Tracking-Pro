@@ -1385,9 +1385,36 @@ const sendPushNotification = async (
   title: string | { it: string, en: string }, 
   body: string | { it: string, en: string }, 
   url: string, 
-  recipientType?: 'all' | 'society' | 'team'
+  recipientType?: 'all' | 'society' | 'team',
+  eventId?: string
 ) => {
   try {
+    let resolvedEventId = eventId;
+    if (!resolvedEventId && url) {
+      const match = url.match(/[?&]id=([^&]+)/);
+      if (match) {
+        resolvedEventId = match[1];
+      }
+    }
+
+    if (resolvedEventId) {
+      const { rows: eventRows } = await pool.query("SELECT end_date FROM events WHERE id = $1", [resolvedEventId]);
+      if (eventRows.length > 0) {
+        const endDateStr = eventRows[0].end_date;
+        if (endDateStr) {
+          const dateMatch = endDateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            const endDateOnly = dateMatch[1];
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (todayStr > endDateOnly) {
+              console.log(`Skipping notification for event ${resolvedEventId} because its end date (${endDateOnly}) has passed (today: ${todayStr}).`);
+              return;
+            }
+          }
+        }
+      }
+    }
+
     // Get Admin ID and settings
     const { rows: adminRows } = await pool.query("SELECT id, language FROM users WHERE email = 'snecaj@gmail.com'");
     const adminId = adminRows[0]?.id;
@@ -1895,7 +1922,8 @@ app.put('/api/admin/events/:id/toggle-management', authenticateToken, requireAdm
               en: `Registration for the competition "${event.name}" at ${event.location} is now open! Register now!`
             },
             `/gare?id=${event.id}`,
-            'all'
+            'all',
+            event.id
           ).catch(e => console.error("Error sending registration notification:", e));
         }
       } catch (notifyErr) {
@@ -6351,7 +6379,8 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
           en: `The event "${notificationName}" has been modified.`
         }, 
         `/events?id=${req.params.id}`, 
-        notificationVisibility === 'Pubblica' ? 'all' : 'society'
+        notificationVisibility === 'Pubblica' ? 'all' : 'society',
+        req.params.id
       );
     }
 
@@ -6559,7 +6588,8 @@ app.post('/api/events/:id/validate', authenticateToken, async (req: any, res) =>
           en: `The results and ranking for "${notificationName}" have been published in the results portal.`
         }, 
         `/gare?id=${id}`, 
-        notificationVisibility === 'Pubblica' ? 'all' : 'society'
+        notificationVisibility === 'Pubblica' ? 'all' : 'society',
+        id
       );
     }
 
@@ -6946,7 +6976,8 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
         "Nuovo Risultato!",
         `È stato inserito un nuovo risultato per te nella gara "${c.name}".`,
         `/history`,
-        'all'
+        'all',
+        c.eventId || undefined
       );
     }
 
@@ -7113,7 +7144,8 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
         "Risultato Aggiornato!",
         `Il tuo risultato nella gara "${c.name || compName}" è stato aggiornato.`,
         `/history`,
-        'all'
+        'all',
+        compEventId || undefined
       );
     }
     

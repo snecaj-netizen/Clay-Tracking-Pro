@@ -314,12 +314,16 @@ const translations: Translations = {
   'all_roles': { it: 'Tutti i ruoli', en: 'All roles' },
   'new_user': { it: 'Nuovo Utente', en: 'New User' },
   'export_excel': { it: 'Esporta Excel', en: 'Export Excel' },
+  'download_template_excel': { it: 'Scarica Template Excel', en: 'Download Excel Template' },
+  'upload_results_excel': { it: 'Carica Risultati da Excel', en: 'Upload Results from Excel' },
+  'back_to_results': { it: 'Torna ai Risultati', en: 'Back to Results' },
+  'confirm_and_save_all': { it: 'Convalida e Salva Risultati', en: 'Validate and Save Results' },
+  'excel_import_preview_title': { it: 'Convalida Risultati Importati da Excel', en: 'Validate Imported Excel Results' },
 
   // Public Portal
   'ongoing_events': { it: 'Gare in corso', en: 'Ongoing competitions' },
   'past_events': { it: 'Gare passate', en: 'Past competitions' },
   'active_competitions': { it: 'Gare attive', en: 'Active competitions' },
-  'back_to_results': { it: 'Torna ai risultati', en: 'Back to results' },
   'back_to_societies': { it: 'Torna all\'elenco società', en: 'Back to clubs list' },
   'events_at_society': { it: 'Gare presso', en: 'Competitions at' },
   'error_loading': { it: 'Errore nel caricamento', en: 'Loading error' },
