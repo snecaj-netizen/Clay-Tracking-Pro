@@ -1554,12 +1554,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     <button
                       type="button"
                       onClick={handleDownloadExcelTemplate}
-                      className="px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
+                      className="px-3 py-2 rounded-xl bg-slate-700/50 border border-slate-600 hover:border-emerald-500/50 text-white hover:text-emerald-300 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
                     >
                       <i className="fas fa-download text-xs"></i>
                       <span>{t('download_template_excel')}</span>
                     </button>
-                    <label className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-emerald-600/10 w-full">
+                    <label className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-emerald-500/20 w-full">
                       <i className="fas fa-upload text-xs"></i>
                       <span>{t('upload_results_excel')}</span>
                       <input
@@ -1983,7 +1983,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/45 custom-scrollbar">
                   <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead>
-                      <tr className="border-b border-slate-800 text-[10px] uppercase tracking-widest text-slate-500 bg-slate-900/80">
+                      <tr className="border-b border-slate-700 text-[10px] uppercase tracking-widest text-slate-200 bg-slate-800">
                         <th className="p-3 font-black text-center w-12 text-slate-300">Stato</th>
                         <th className="p-3 font-black text-slate-300">Tiratore</th>
                         <th className="p-3 font-black text-center text-slate-300">Codice</th>
@@ -2003,7 +2003,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         const hasWarnings = row.errors.some((e: string) => e.startsWith("ATTENZIONE:"));
                         
                         return (
-                          <tr key={idx} className={`border-b border-slate-800 hover:bg-slate-900/50 transition-colors ${hasErrors ? 'bg-red-500/5' : ''}`}>
+                          <tr key={idx} className={`border-b border-slate-700 hover:bg-slate-800/50 transition-colors ${hasErrors ? 'bg-red-500/10' : ''}`}>
                             <td className="p-3 text-center">
                               {hasErrors ? (
                                 <i className="fas fa-exclamation-circle text-red-500 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:")).join('\n')}></i>
