@@ -183,7 +183,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     role, setRole, category, setCategory, qualification, setQualification,
     society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar,
     birthDate, setBirthDate, phone, setPhone,
-    nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isEmailVerified, setIsEmailVerified,
+    nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isCacciatore, setIsCacciatore, isEmailVerified, setIsEmailVerified,
     shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel,
     hideInternalFAB
   } = useAdmin();
@@ -204,8 +204,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
     if (role === 'society') {
       setSurname('');
       setIsInternational(false);
+      setIsCacciatore(false);
     }
-  }, [role, setSurname, setIsInternational]);
+  }, [role, setSurname, setIsInternational, setIsCacciatore]);
 
   useEffect(() => {
     if (currentUser?.role === 'society' && showUserForm && !editingUser) {
@@ -238,7 +239,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     e.preventDefault();
     setError('');
 
-    if (role === 'user') {
+    if (role === 'user' && !isCacciatore) {
       const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
       if (shooterCode && !shooterCodeRegex.test(shooterCode)) {
         setError(t('shooter_code_format_desc'));
@@ -252,7 +253,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
       name, surname, email, role, category, qualification, society, shooter_code: shooterCode, 
       password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, 
       phone: phone || undefined,
-      nationality, international_id: internationalId, original_club: originalClub, is_international: isInternational, email_verified: isEmailVerified,
+      nationality, international_id: internationalId, original_club: originalClub, is_international: isInternational, is_cacciatore: isCacciatore, email_verified: isEmailVerified,
       shotgun_brand: shotgunBrand, shotgun_model: shotgunModel, cartridge_brand: cartridgeBrand, cartridge_model: cartridgeModel
     };
 
@@ -271,7 +272,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
       setEditingUser(null);
       setShowUserForm(false);
       setName(''); setSurname(''); setEmail(''); setPassword(''); setRole('user'); setCategory(''); setQualification(''); setSociety(''); setShooterCode(''); setUserAvatar(''); setBirthDate(''); setPhone('');
-      setNationality(''); setInternationalId(''); setOriginalClub(''); setIsInternational(false); setIsEmailVerified(false);
+      setNationality(''); setInternationalId(''); setOriginalClub(''); setIsInternational(false); setIsCacciatore(false); setIsEmailVerified(false);
       fetchUsers();
       if (onUserUpdate && editingUser && editingUser.id === currentUser.id) {
         onUserUpdate({
@@ -437,6 +438,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     setInternationalId(user.international_id || '');
     setOriginalClub(user.original_club || '');
     setIsInternational(!!user.is_international);
+    setIsCacciatore(!!user.is_cacciatore);
     setIsEmailVerified(!!user.email_verified);
     setShotgunBrand(user.shotgun_brand || '');
     setShotgunModel(user.shotgun_model || '');
@@ -1017,22 +1019,22 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   onChange={setSociety}
                   societies={societies}
                   placeholder={t('select_dot')}
-                  disabled={currentUser?.role === 'society'}
+                  disabled={currentUser?.role === 'society' || isCacciatore}
                 />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                  {role === 'society' ? `${t('club_code_required')} *` : `${t('shooter_code')} *`}
+                  {role === 'society' ? `${t('club_code_required')} *` : isCacciatore ? `${t('shooter_code')}` : `${t('shooter_code')} *`}
                 </label>
                 <input 
                   type="text" 
-                  required={role === 'user' || role === 'society'} 
+                  required={(role === 'user' || role === 'society') && !isCacciatore} 
                   value={shooterCode} 
                   onChange={e => setShooterCode(role === 'user' ? e.target.value.toUpperCase() : e.target.value)} 
-                  disabled={currentUser?.role === 'society' && !!editingUser}
-                  pattern={role === 'user' ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
-                  title={role === 'user' ? t('shooter_code_format_title') : undefined}
-                  placeholder={role === 'user' ? t('shooter_code_placeholder') : ""}
+                  disabled={(currentUser?.role === 'society' && !!editingUser) || isCacciatore}
+                  pattern={(role === 'user' && !isCacciatore) ? "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}" : undefined}
+                  title={(role === 'user' && !isCacciatore) ? t('shooter_code_format_title') : undefined}
+                  placeholder={role === 'user' ? (isCacciatore ? 'Generato automaticamente' : t('shooter_code_placeholder')) : ""}
                   className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''} ${role === 'user' ? 'uppercase' : ''}`} 
                 />
               </div>
@@ -1155,33 +1157,76 @@ const UserManagement: React.FC<UserManagementProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category')}</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                    <option value="">{t('select_dot')}</option>
-                    <option value="Eccellenza">Eccellenza</option>
-                    <option value="1*">1*</option>
-                    <option value="2*">2*</option>
-                    <option value="3*">3*</option>
+                  <select value={category} disabled={isCacciatore} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none disabled:opacity-50">
+                    {isCacciatore ? (
+                      <option value="Cacciatore">Cacciatore (CA)</option>
+                    ) : (
+                      <>
+                        <option value="">{t('select_dot')}</option>
+                        <option value="Eccellenza">Eccellenza</option>
+                        <option value="1*">1*</option>
+                        <option value="2*">2*</option>
+                        <option value="3*">3*</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('qualification')}</label>
-                  <select value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                    <option value="">{t('select_dot')}</option>
-                    <option value="MAN">MAN (Man)</option>
-                    <option value="LAD">LAD (Lady)</option>
-                    <option value="JUN">JUN (Junior)</option>
-                    <option value="SEN">SEN (Senior)</option>
-                    <option value="VET">VET (Veteran)</option>
-                    <option value="MAS">MAS (Master)</option>
+                  <select value={qualification} disabled={isCacciatore} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none disabled:opacity-50">
+                    {isCacciatore ? (
+                      <option value="Cacciatori">Cacciatori</option>
+                    ) : (
+                      <>
+                        <option value="">{t('select_dot')}</option>
+                        <option value="MAN">MAN (Man)</option>
+                        <option value="LAD">LAD (Lady)</option>
+                        <option value="JUN">JUN (Junior)</option>
+                        <option value="SEN">SEN (Senior)</option>
+                        <option value="VET">VET (Veteran)</option>
+                        <option value="MAS">MAS (Master)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
             )}
 
-            {/* Row 4.5: International Toggle & Status (Admin Only) */}
-            {currentUser?.role === 'admin' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {role !== 'society' ? (
+            {/* Row 4.5: Toggles & Status */}
+            {role === 'user' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Cacciatore Toggle */}
+                <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Tiratore Cacciatore (CA)</span>
+                    <span className="text-[9px] text-slate-500 font-medium leading-none">Non richiede codice FITAV, inserito sotto Cacciatori</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newVal = !isCacciatore;
+                      setIsCacciatore(newVal);
+                      if (newVal) {
+                        setIsInternational(false);
+                        setSociety('Cacciatori');
+                        setCategory('Cacciatore');
+                        setQualification('Cacciatori');
+                      } else {
+                        if (society === 'Cacciatori') {
+                          setSociety('');
+                          setCategory('');
+                          setQualification('');
+                        }
+                      }
+                    }}
+                    className={`w-10 h-5 rounded-full transition-all relative ${isCacciatore ? 'bg-orange-600' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isCacciatore ? 'right-1' : 'left-1'}`}></div>
+                  </button>
+                </div>
+
+                {/* International Toggle */}
+                {currentUser?.role === 'admin' && (
                   <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('international_shooter_label')}</span>
@@ -1189,28 +1234,36 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsInternational(!isInternational)}
+                      onClick={() => {
+                        const newVal = !isInternational;
+                        setIsInternational(newVal);
+                        if (newVal) {
+                          setIsCacciatore(false);
+                        }
+                      }}
                       className={`w-10 h-5 rounded-full transition-all relative ${isInternational ? 'bg-orange-600' : 'bg-slate-700'}`}
                     >
                       <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isInternational ? 'right-1' : 'left-1'}`}></div>
                     </button>
                   </div>
-                ) : (
-                  <div className="hidden md:block"></div>
                 )}
-                <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('verified_email_label_desc')}</span>
-                    <span className="text-[9px] text-slate-500 font-medium leading-none">{t('verified_email_status_desc')}</span>
+
+                {/* Email Verification Toggle */}
+                {currentUser?.role === 'admin' && (
+                  <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{t('verified_email_label_desc')}</span>
+                      <span className="text-[9px] text-slate-500 font-medium leading-none">{t('verified_email_status_desc')}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsEmailVerified(!isEmailVerified)}
+                      className={`w-10 h-5 rounded-full transition-all relative ${isEmailVerified ? 'bg-emerald-600' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isEmailVerified ? 'right-1' : 'left-1'}`}></div>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsEmailVerified(!isEmailVerified)}
-                    className={`w-10 h-5 rounded-full transition-all relative ${isEmailVerified ? 'bg-emerald-600' : 'bg-slate-700'}`}
-                  >
-                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isEmailVerified ? 'right-1' : 'left-1'}`}></div>
-                  </button>
-                </div>
+                )}
               </div>
             )}
 

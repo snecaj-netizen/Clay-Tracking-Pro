@@ -22,7 +22,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   const { triggerConfirm, triggerToast } = useUI();
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'A' | 'B' | 'ALL'>('A');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'A' | 'B' | 'CA' | 'ALL'>('A');
   const [formData, setFormData] = useState({
     name: '',
     society: '',
@@ -60,28 +60,37 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       const t = type.toUpperCase();
       return t.includes('(B)') || t.includes('_B') || t === 'B' || t.endsWith(' B');
     };
+    const isHunter = (type: string) => {
+      if (!type) return false;
+      const t = type.toUpperCase();
+      return t === 'CACCIATORI' || t.includes('CACCIATOR');
+    };
 
-    const groupA = teamsWithTotals.filter(t => isGroupA(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const groupB = teamsWithTotals.filter(t => isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const others = teamsWithTotals.filter(t => !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const groupA = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && isGroupA(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const groupB = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const hunters = teamsWithTotals.filter(t => isHunter(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const others = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
 
     // Filter by society if selected
     let filteredA = groupA;
     let filteredB = groupB;
+    let filteredHunters = hunters;
     let filteredOthers = others;
 
     if (filterSociety) {
       filteredA = groupA.filter(t => t.society === filterSociety);
       filteredB = groupB.filter(t => t.society === filterSociety);
+      filteredHunters = hunters.filter(t => t.society === filterSociety);
       filteredOthers = others.filter(t => t.society === filterSociety);
     }
 
     let result = [];
     if (selectedTypeFilter === 'A') result = filteredA;
     else if (selectedTypeFilter === 'B') result = filteredB;
-    else result = [...filteredA, ...filteredB, ...filteredOthers];
+    else if (selectedTypeFilter === 'CA') result = filteredHunters;
+    else result = [...filteredA, ...filteredB, ...filteredHunters, ...filteredOthers];
 
-    return { groupA: filteredA, groupB: filteredB, others: filteredOthers, filtered: result };
+    return { groupA: filteredA, groupB: filteredB, hunters: filteredHunters, others: filteredOthers, filtered: result };
   }, [teams, results, filterSociety, selectedTypeFilter]);
 
   const societies = useMemo(() => {
@@ -94,18 +103,26 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   }, [results]);
 
   const teamTypes = useMemo(() => {
+    const list = [];
     if (event.discipline === 'Club Cup (PC)') {
-      return [
-        { id: 'PC_A', name: t('team_section_a_name'), size: 3 },
-        { id: 'PC_B', name: t('team_section_b_name'), size: 3 }
-      ];
+      list.push(
+        { id: 'PC_A', name: t('team_section_a_name') || 'Settore A (PC)', size: 3 },
+        { id: 'PC_B', name: t('team_section_b_name') || 'Settore B (PC)', size: 3 }
+      );
     } else if (event.discipline === 'Sporting (SP)' || event.discipline === 'Compak Sporting (CK)' || event.discipline === 'Doppietto Compak (DCK)') {
-      return [
-        { id: 'SP_A', name: t('team_cat_a_name'), size: 6 },
-        { id: 'SP_B', name: t('team_qual_b_name'), size: 3 }
-      ];
+      list.push(
+        { id: 'SP_A', name: t('team_cat_a_name') || 'Tipologia A', size: 6 },
+        { id: 'SP_B', name: t('team_qual_b_name') || 'Tipologia B', size: 3 }
+      );
+    } else {
+      list.push(
+        { id: 'TAV_FITAV', name: 'Squadra FITAV', size: 3 }
+      );
     }
-    return [];
+    list.push(
+      { id: 'CACCIATORI', name: 'Squadre Cacciatori', size: 3 }
+    );
+    return list;
   }, [event.discipline, t]);
 
   const availableShooters = useMemo(() => {
@@ -121,6 +138,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       const formSoc = (formData.society || '').toLowerCase().trim();
       if (s !== formSoc) return false;
       
+      // Filter shooters based on team type: hunter teams only accept hunters, etc.
+      const isHunterTeam = formData.type === 'CACCIATORI';
+      const isUserHunter = !!u.is_cacciatore || u.category === 'Cacciatore' || s === 'cacciatori';
+      if (isHunterTeam !== isUserHunter) return false;
+
       // Check if the user is already in a team for this event
       // We look at the teams array to see if they are in any team's member_ids
       const isUserInAnotherTeam = teams.some(t => t.id !== editingTeamId && t.member_ids?.includes(u.id));
@@ -353,7 +375,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t('team_type_label')}</label>
               <select
                 value={formData.type}
-                onChange={e => setFormData({...formData, type: e.target.value, memberIds: []})}
+                onChange={e => {
+                  const val = e.target.value;
+                  const targetSoc = val === 'CACCIATORI' ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (formData.society === 'Cacciatori' ? '' : formData.society));
+                  setFormData({...formData, type: val, society: targetSoc, memberIds: []});
+                }}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
               >
                 <option value="">{t('select_type')}</option>
@@ -439,6 +465,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'B' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
           >
             {t('squads_b')}
+          </button>
+          <button
+            onClick={() => setSelectedTypeFilter('CA')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'CA' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+          >
+            Squadre Cacciatori (CA)
           </button>
           <button
             onClick={() => setSelectedTypeFilter('ALL')}

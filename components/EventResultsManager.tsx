@@ -85,6 +85,80 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [expandedSeries, setExpandedSeries] = useState<number | null>(null);
   const [shootOff, setShootOff] = useState('');
   const [showQuickAddShooter, setShowQuickAddShooter] = useState(false);
+  const [quickAddInitialDetails, setQuickAddInitialDetails] = useState<any>(null);
+
+  const reEvaluateParsedRows = (updatedUsers: any[]) => {
+    setParsedRows(prevRows => {
+      return prevRows.map(row => {
+        let userId = row.userId;
+        let userFound = row.userFound;
+        let foundUser: any = null;
+
+        // Try code lookup
+        if (row.shooterCode) {
+          foundUser = updatedUsers.find(u => u.shooter_code?.toUpperCase().trim() === row.shooterCode.toUpperCase().trim());
+        }
+
+        // Try Name + Surname lookup
+        if (!foundUser && row.surname && row.name) {
+          foundUser = updatedUsers.find(u => 
+            u.surname?.toLowerCase().trim() === row.surname.toLowerCase().trim() && 
+            u.name?.toLowerCase().trim() === row.name.toLowerCase().trim()
+          );
+        }
+
+        if (foundUser) {
+          userId = foundUser.id;
+          userFound = true;
+        }
+
+        // Re-construct the errors array
+        const updatedErrors = row.errors.filter((e: string) => 
+          !e.includes("mancante") && 
+          !e.includes("non registrato") && 
+          !e.includes("non trovato") &&
+          !e.includes("ricerca fallita")
+        );
+
+        const finalShooterCode = row.shooterCode || (foundUser ? foundUser.shooter_code : '');
+
+        // Check if shooters or codes are missing, similar to initial mapping
+        if (!finalShooterCode && !userFound) {
+          updatedErrors.push("Codice Tiratore mancante");
+        } else if (finalShooterCode && finalShooterCode.length < 5) {
+          updatedErrors.push("Codice Tiratore troppo corto");
+        }
+
+        if (!row.surname) updatedErrors.push("Cognome mancante");
+        if (!row.name) updatedErrors.push("Nome mancante");
+        if (!row.email) {
+          updatedErrors.push("Email mancante");
+        } else if (!row.email && !row.email?.includes('@')) {
+          updatedErrors.push("Formato Email non valido");
+        }
+
+        if (!userFound) {
+          updatedErrors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
+        }
+
+        if (userFound) {
+          const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
+          if (hasExisting && !updatedErrors.some((e: string) => e.includes("Risultato già registrato"))) {
+            updatedErrors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+          }
+        }
+
+        return {
+          ...row,
+          shooterCode: finalShooterCode ? finalShooterCode.toUpperCase() : '',
+          userId,
+          userFound,
+          errors: updatedErrors,
+          isValid: updatedErrors.filter((e: string) => !e.startsWith("ATTENZIONE:")).length === 0
+        };
+      });
+    });
+  };
 
   const categories = useMemo(() => {
     const list = Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean)));
@@ -340,7 +414,19 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             }
           }
 
+          if (!userFound && rawSurname && rawName) {
+            foundUser = users.find(u => 
+              u.surname?.toLowerCase().trim() === rawSurname.toLowerCase().trim() && 
+              u.name?.toLowerCase().trim() === rawName.toLowerCase().trim()
+            );
+            if (foundUser) {
+              userId = foundUser.id;
+              userFound = true;
+            }
+          }
+
           // Resolve values based on existing user or raw values from Excel
+          const finalShooterCode = shooterCode || (foundUser ? foundUser.shooter_code : '');
           const surname = rawSurname || (foundUser ? foundUser.surname : '');
           const name = rawName || (foundUser ? foundUser.name : '');
           const email = rawEmail || (foundUser ? foundUser.email : '');
@@ -350,9 +436,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
           const errors: string[] = [];
           
-          if (!shooterCode) {
+          if (!finalShooterCode && !userFound) {
             errors.push("Codice Tiratore mancante");
-          } else if (shooterCode.length < 5) {
+          } else if (finalShooterCode && finalShooterCode.length < 5) {
             errors.push("Codice Tiratore troppo corto");
           }
 
@@ -370,8 +456,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             }
           });
 
-          if (shooterCode && !userFound) {
-            errors.push("Tiratore non registrato a portale (Codice Tiratore non trovato)");
+          if (!userFound) {
+            errors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
           }
 
           if (userFound) {
@@ -383,7 +469,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
           return {
             index,
-            shooterCode: shooterCode.toUpperCase(),
+            shooterCode: finalShooterCode ? finalShooterCode.toUpperCase() : '',
             surname,
             name,
             email,
@@ -417,49 +503,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     reader.readAsArrayBuffer(file);
   };
 
-  const handleCreateUserInline = async (rowIndex: number) => {
+  const handleCreateUserInline = (rowIndex: number) => {
     const row = parsedRows[rowIndex];
     if (!row) return;
-    
-    if (!row.name || !row.surname || !row.email || !row.category || !row.shooterCode) {
-      triggerToast("Dati del tiratore incompleti nel file Excel per poterlo registrare.", "error");
-      return;
-    }
-    
-    try {
-      const body = {
-        name: row.name.trim(),
-        surname: row.surname.trim(),
-        email: row.email.trim(),
-        role: 'user',
-        category: row.category,
-        qualification: row.qualification || undefined,
-        society: row.society || event.location || '',
-        shooter_code: row.shooterCode.toUpperCase().trim(),
-        password: row.shooterCode.toUpperCase().trim()
-      };
-      
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Errore nella registrazione");
-      }
-      
-      const newUser = await res.json();
-      triggerToast(`Tiratore ${body.surname} ${body.name} registrato con successo!`, 'success');
-      
-      setUsers(prev => [...prev, newUser]);
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
+
+    const initialDetails = {
+      name: row.name ? row.name.trim() : '',
+      surname: row.surname ? row.surname.trim() : '',
+      email: row.email ? row.email.trim() : '',
+      society: row.society ? row.society.trim() : '',
+      shooterCode: row.shooterCode ? row.shooterCode.toUpperCase().trim() : '',
+      category: row.category || '',
+      qualification: row.qualification || ''
+    };
+
+    setQuickAddInitialDetails(initialDetails);
+    setShowQuickAddShooter(true);
   };
 
   const handleSaveAllExcelResults = async () => {
@@ -984,12 +1043,6 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     if (event.has_team_ranking && teams.length > 0) {
       if (currentY > 240) { doc.addPage(); currentY = 20; }
       
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(234, 88, 12); // orange-600
-      doc.text(t('pdf_team_ranking'), 20, currentY);
-      currentY += 5;
-
       const teamRankings = teams.map(team => {
         const teamMembers = (team.member_ids || []).map((id: string) => {
           const result = results.find(r => r.user_id === id);
@@ -1010,43 +1063,69 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         };
       }).sort((a, b) => b.totalScore - a.totalScore);
 
-      const headers = [[t('pdf_pos'), t('team_label'), t('shooters_label'), t('pdf_total')]];
-      
-      const bodyData = teamRankings.map((team, index) => {
-        const typeStr = team.type ? ` (${team.type})` : '';
-        const nameStr = `${team.name}\n${team.society}${typeStr}`;
-        const shootersStr = team.members.map((s: any) => 
-          `${s.user_surname} ${s.user_name} (${s.totalscore})`
-        ).join('\n');
-        
-        return [
-          index + 1,
-          nameStr,
-          shootersStr,
-          team.totalScore
-        ];
-      });
+      const isHunter = (type: string) => {
+        if (!type) return false;
+        const t = type.toUpperCase();
+        return t === 'CACCIATORI' || t.includes('CACCIATOR');
+      };
 
-      autoTable(doc, {
-        startY: currentY,
-        head: headers,
-        body: bodyData,
-        theme: 'striped',
-        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
-        bodyStyles: { fontSize: 7, cellPadding: 2 },
-        columnStyles: {
-          0: { cellWidth: 10 }, // Pos
-          1: { cellWidth: 40 }, // Squadra
-          2: { cellWidth: 'auto' }, // Tiratori
-          3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' }, // Totale
-        },
-        margin: { left: 15, right: 15 },
-        didDrawPage: (data: any) => {
-          currentY = data.cursor.y + 15;
-        }
-      });
-      
-      currentY = (doc as any).lastAutoTable.finalY + 15;
+      const fitavTeams = teamRankings.filter(t => !isHunter(t.type || t.team_type));
+      const hunterTeams = teamRankings.filter(t => isHunter(t.type || t.team_type));
+
+      const drawRankTable = (title: string, list: typeof teamRankings) => {
+        if (list.length === 0) return;
+        if (currentY > 240) { doc.addPage(); currentY = 20; }
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(234, 88, 12); // orange-600
+        doc.text(title, 20, currentY);
+        currentY += 5;
+
+        const headers = [[t('pdf_pos'), t('team_label'), t('shooters_label'), t('pdf_total')]];
+        const bodyData = list.map((team, index) => {
+          const typeStr = team.type ? ` (${team.type})` : '';
+          const nameStr = `${team.name}\n${team.society}${typeStr}`;
+          const shootersStr = team.members.map((s: any) => 
+            `${s.user_surname} ${s.user_name} (${s.totalscore})`
+          ).join('\n');
+          
+          return [
+            index + 1,
+            nameStr,
+            shootersStr,
+            team.totalScore
+          ];
+        });
+
+        autoTable(doc, {
+          startY: currentY,
+          head: headers,
+          body: bodyData,
+          theme: 'striped',
+          headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
+          bodyStyles: { fontSize: 7, cellPadding: 2 },
+          columnStyles: {
+            0: { cellWidth: 10 }, // Pos
+            1: { cellWidth: 40 }, // Squadra
+            2: { cellWidth: 'auto' }, // Tiratori
+            3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' }, // Totale
+          },
+          margin: { left: 15, right: 15 },
+          didDrawPage: (data: any) => {
+            currentY = data.cursor.y + 15;
+          }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+      };
+
+      if (fitavTeams.length > 0) {
+        drawRankTable(t('pdf_team_ranking') || 'Classifica Squadre FITAV', fitavTeams);
+      }
+      if (hunterTeams.length > 0) {
+        drawRankTable('Classifica Squadre Cacciatori', hunterTeams);
+      }
     }
 
     // Footer on each page
@@ -2605,12 +2684,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           token={token}
           currentUser={user}
           societies={societies}
-          onClose={() => setShowQuickAddShooter(false)}
+          initialDetails={quickAddInitialDetails || undefined}
+          onClose={() => {
+            setShowQuickAddShooter(false);
+            setQuickAddInitialDetails(null);
+          }}
           onSuccess={(newUser) => {
-            setUsers(prev => [...prev, newUser]);
+            const updatedUsers = [...users, newUser];
+            setUsers(updatedUsers);
             setSelectedUserId(newUser.id);
             setIsDirty(true);
             setShowQuickAddShooter(false);
+            if (quickAddInitialDetails) {
+              reEvaluateParsedRows(updatedUsers);
+              setQuickAddInitialDetails(null);
+            }
           }}
         />
       )}

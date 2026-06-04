@@ -10,23 +10,43 @@ interface QuickAddShooterModalProps {
   societies: any[];
   onClose: () => void;
   onSuccess: (newUser: any) => void;
+  initialDetails?: {
+    name?: string;
+    surname?: string;
+    email?: string;
+    society?: string;
+    shooterCode?: string;
+    category?: string;
+    qualification?: string;
+  };
 }
 
-const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, currentUser, societies, onClose, onSuccess }) => {
+const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, currentUser, societies, onClose, onSuccess, initialDetails }) => {
   const { triggerToast } = useUI();
   const { t } = useLanguage();
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const isInitiallyCacciatore = () => {
+    const soc = initialDetails?.society?.toUpperCase() || '';
+    const cat = initialDetails?.category?.toUpperCase() || '';
+    const qual = initialDetails?.qualification?.toUpperCase() || '';
+    return soc === 'CACCIATORI' || cat.includes('CACCIATOR') || qual.includes('CACCIATOR');
+  };
+
+  const initialCac = isInitiallyCacciatore();
+
+  const [name, setName] = useState(initialDetails?.name || '');
+  const [surname, setSurname] = useState(initialDetails?.surname || '');
+  const [email, setEmail] = useState(initialDetails?.email || '');
+  const [password, setPassword] = useState(initialDetails?.shooterCode || '');
   const [showPassword, setShowPassword] = useState(false);
-  const [category, setCategory] = useState('Eccellenza');
-  const [qualification, setQualification] = useState('');
-  const [society, setSociety] = useState(currentUser?.role === 'society' ? currentUser.society : '');
-  const [shooterCode, setShooterCode] = useState('');
+  const [category, setCategory] = useState(initialCac ? 'Cacciatore' : (initialDetails?.category || 'Eccellenza'));
+  const [qualification, setQualification] = useState(initialCac ? 'Cacciatori' : (initialDetails?.qualification || ''));
+  const [society, setSociety] = useState(initialCac ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (initialDetails?.society || '')));
+  const [shooterCode, setShooterCode] = useState(initialDetails?.shooterCode || '');
   const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isCacciatore, setIsCacciatore] = useState(initialCac);
 
   const handleShooterCodeChange = (val: string) => {
     const uppercaseVal = val.toUpperCase();
@@ -44,7 +64,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
 
     // Validate FITAV card format: 3 letters + 2 numbers + 2 letters + 2 numbers
     const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
-    if (shooterCode && !shooterCodeRegex.test(shooterCode)) {
+    if (!isCacciatore && shooterCode && !shooterCodeRegex.test(shooterCode)) {
       if (triggerToast) triggerToast(t('invalid_shooter_code_format'), 'error');
       return;
     }
@@ -56,11 +76,12 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
       surname: surname.trim(),
       email: email.trim(),
       role: 'user',
-      category,
-      qualification: qualification || undefined,
-      society,
-      shooter_code: shooterCode,
-      password: password || shooterCode,
+      category: isCacciatore ? 'Cacciatore' : category,
+      qualification: isCacciatore ? 'Cacciatori' : (qualification || undefined),
+      society: isCacciatore ? 'Cacciatori' : society,
+      shooter_code: shooterCode || undefined,
+      is_cacciatore: isCacciatore,
+      password: password || shooterCode || undefined,
       birth_date: birthDate || undefined,
       phone: phone || undefined
     };
@@ -105,6 +126,33 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
         <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
           <form id="quick-add-shooter-form" onSubmit={handleSubmit} className="space-y-6">
             
+            {/* Row 0: Cacciatore Toggle */}
+            <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Tiratore Cacciatore (CA)</span>
+                <span className="text-[9px] text-slate-500 font-medium leading-none">Crea come Cacciatore (nessun codice FITAV obbligatorio)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const newVal = !isCacciatore;
+                  setIsCacciatore(newVal);
+                  if (newVal) {
+                    setSociety('Cacciatori');
+                    setCategory('Cacciatore');
+                    setQualification('Cacciatori');
+                  } else {
+                    setSociety(currentUser?.role === 'society' ? currentUser.society : '');
+                    setCategory('Eccellenza');
+                    setQualification('');
+                  }
+                }}
+                className={`w-10 h-5 rounded-full transition-all relative ${isCacciatore ? 'bg-orange-600' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isCacciatore ? 'right-1' : 'left-1'}`}></div>
+              </button>
+            </div>
+
             {/* Row 1: Nome* - Cognome* */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
@@ -126,20 +174,23 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
                   onChange={setSociety}
                   societies={societies}
                   placeholder={t('select_placeholder')}
-                  disabled={currentUser?.role === 'society'}
+                  disabled={currentUser?.role === 'society' || isCacciatore}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('shooter_code_label')} *</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  {isCacciatore ? t('shooter_code_label') : `${t('shooter_code_label')} *`}
+                </label>
                 <input 
                   type="text" 
-                  required
+                  required={!isCacciatore}
                   value={shooterCode} 
                   onChange={e => handleShooterCodeChange(e.target.value)} 
-                  pattern="[A-Z]{3}\d{2}[A-Z]{2}\d{2}"
-                  title={t('shooter_code_format_title')}
-                  placeholder={t('shooter_code_placeholder')}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all uppercase" 
+                  pattern={isCacciatore ? undefined : "[A-Z]{3}\\d{2}[A-Z]{2}\\d{2}"}
+                  title={isCacciatore ? undefined : t('shooter_code_format_title')}
+                  placeholder={isCacciatore ? 'Generato automaticamente' : t('shooter_code_placeholder')}
+                  disabled={isCacciatore}
+                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all uppercase ${isCacciatore ? 'opacity-50 cursor-not-allowed' : ''}`} 
                 />
               </div>
             </div>
@@ -148,23 +199,35 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category_label')} *</label>
-                <select required value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                  <option value="Eccellenza">Eccellenza</option>
-                  <option value="Prima">Prima</option>
-                  <option value="Seconda">Seconda</option>
-                  <option value="Terza">Terza</option>
+                <select required value={category} disabled={isCacciatore} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none disabled:opacity-50">
+                  {isCacciatore ? (
+                    <option value="Cacciatore">Cacciatore (CA)</option>
+                  ) : (
+                    <>
+                      <option value="Eccellenza">Eccellenza</option>
+                      <option value="Prima">Prima</option>
+                      <option value="Seconda">Seconda</option>
+                      <option value="Terza">Terza</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('qualification_label')}</label>
-                <select value={qualification} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none">
-                  <option value="">{t('none_label')}</option>
-                  <option value="Lady">Lady</option>
-                  <option value="Settore Giovanile">Settore Giovanile</option>
-                  <option value="Junior">Junior</option>
-                  <option value="Veterani">Veterani</option>
-                  <option value="Master">Master</option>
-                  <option value="Paralimpici">Paralimpici</option>
+                <select value={qualification} disabled={isCacciatore} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all appearance-none disabled:opacity-50">
+                  {isCacciatore ? (
+                    <option value="Cacciatori">Cacciatori</option>
+                  ) : (
+                    <>
+                      <option value="">{t('none_label')}</option>
+                      <option value="Lady">Lady</option>
+                      <option value="Settore Giovanile">Settore Giovanile</option>
+                      <option value="Junior">Junior</option>
+                      <option value="Veterani">Veterani</option>
+                      <option value="Master">Master</option>
+                      <option value="Paralimpici">Paralimpici</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>

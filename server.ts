@@ -490,6 +490,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS international_id TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS original_club TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_international BOOLEAN DEFAULT false");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_cacciatore BOOLEAN DEFAULT false");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'it'");
@@ -1555,51 +1556,71 @@ app.post('/api/auth/register', async (req, res) => {
   const { 
     name, surname, email, password, 
     birth_date, phone, 
-    is_international, nationality, international_id, original_club,
+    is_international, is_cacciatore, nationality, international_id, original_club,
     society, shooter_code, qualification, category,
     language
   } = req.body;
 
   try {
-    if (!shooter_code) {
+    let finalShooterCode = shooter_code;
+    let finalSociety = society;
+    let finalCategory = category;
+    let finalQualification = qualification;
+
+    if (!!is_cacciatore) {
+      if (!finalShooterCode) {
+        const rand = Math.round(100000 + Math.random() * 900000);
+        finalShooterCode = `CAC-${rand}`;
+      }
+      if (!finalSociety) {
+        finalSociety = 'Cacciatori';
+      }
+      if (!finalCategory) {
+        finalCategory = 'Cacciatore';
+      }
+      if (!finalQualification) {
+        finalQualification = 'Cacciatori';
+      }
+    }
+
+    if (!finalShooterCode) {
       return res.status(400).json({ error: 'Il codice tiratore è obbligatorio.' });
     }
 
     // Check shooter_code uniqueness instead of email
     const { rows: existingByShooterCode } = await pool.query(
       "SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1)", 
-      [shooter_code]
+      [finalShooterCode]
     );
     if (existingByShooterCode.length > 0) {
       return res.status(400).json({ error: 'Un account con questo codice tiratore esiste già.' });
     }
 
-    const finalPassword = password || shooter_code;
+    const finalPassword = password || finalShooterCode;
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(finalPassword, salt);
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const userLanguage = language || (!!is_international ? 'en' : 'it');
     
-    let finalQualification = qualification;
-    if (!qualification && birth_date) {
+    if (!finalQualification && birth_date) {
         finalQualification = getAutoQualification(birth_date, null);
     }
 
-    const finalSociety = !!is_international ? 'International Shooters' : society;
+    const resolvedSociety = !!is_international ? 'International Shooters' : finalSociety;
 
     await pool.query(
       `INSERT INTO users (
         name, surname, email, password, role, 
         birth_date, phone, status, 
-        is_international, nationality, international_id, original_club,
+        is_international, is_cacciatore, nationality, international_id, original_club,
         society, shooter_code, qualification, category,
         verification_token, email_verified, language
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
       [
         name, surname, email, hash, 'user', 
         birth_date || null, phone || null, 'active',
-        !!is_international, nationality || null, international_id || null, original_club || null,
-        finalSociety || null, shooter_code || null, finalQualification || null, category || null,
+        !!is_international, !!is_cacciatore, nationality || null, international_id || null, original_club || null,
+        resolvedSociety || null, finalShooterCode || null, finalQualification || null, finalCategory || null,
         verificationToken, false, userLanguage
       ]
     );
@@ -1741,6 +1762,7 @@ app.post('/api/auth/login', async (req, res) => {
         birth_date: user.birth_date, 
         phone: user.phone,
         is_international: !!user.is_international,
+        is_cacciatore: !!user.is_cacciatore,
         email_verified: !!user.email_verified,
         nationality: user.nationality,
         international_id: user.international_id,
@@ -1773,6 +1795,7 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
       birth_date: user.birth_date,
       phone: user.phone,
       is_international: !!user.is_international,
+      is_cacciatore: !!user.is_cacciatore,
       email_verified: !!user.email_verified,
       nationality: user.nationality,
       international_id: user.international_id,
@@ -2298,7 +2321,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const excludeRole = req.query.excludeRole as string;
     const societyFilter = req.query.society as string;
     
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, nationality, international_id, original_club, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, is_cacciatore, nationality, international_id, original_club, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
     let params: any[] = [];
     let whereClauses: string[] = [];
@@ -2394,14 +2417,33 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
 app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { 
     name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone,
-    is_international, nationality, international_id, original_club, email_verified,
+    is_international, is_cacciatore, nationality, international_id, original_club, email_verified,
     shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
   } = req.body;
   
-  const finalQualification = getAutoQualification(birth_date, qualification);
+  let finalShooterCode = shooter_code;
+  let finalSociety = society;
+  let finalCategory = category;
+  let finalQualification = getAutoQualification(birth_date, qualification);
+
+  if (!!is_cacciatore) {
+    if (!finalShooterCode) {
+      const rand = Math.round(100000 + Math.random() * 900000);
+      finalShooterCode = `CAC-${rand}`;
+    }
+    if (!finalSociety) {
+      finalSociety = 'Cacciatori';
+    }
+    if (!finalCategory) {
+      finalCategory = 'Cacciatore';
+    }
+    if (!finalQualification) {
+      finalQualification = 'Cacciatori';
+    }
+  }
 
   const finalRole = role || 'user';
-  if ((finalRole === 'user' || finalRole === 'society') && !shooter_code) {
+  if ((finalRole === 'user' || finalRole === 'society') && !finalShooterCode) {
     return res.status(400).json({ error: 'Il campo codice tiratore/codice società è obbligatorio.' });
   }
 
@@ -2412,11 +2454,11 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   }
 
   // Enforce unique shooter_code on creation if provided
-  if (shooter_code) {
+  if (finalShooterCode) {
     try {
       const { rows: existingByCode } = await pool.query(
         "SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1)",
-        [shooter_code]
+        [finalShooterCode]
       );
       if (existingByCode.length > 0) {
         return res.status(400).json({ error: 'Un utente con questo codice tiratore/società esiste già.' });
@@ -2426,16 +2468,16 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     }
   }
 
-  const actualPassword = password || shooter_code || 'ClayTracker123!';
+  const actualPassword = password || finalShooterCode || 'ClayTracker123!';
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(actualPassword, salt);
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id",
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, is_cacciatore, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id",
       [
-        name, surname, email, hash, finalRole, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, 'active',
-        !!is_international, nationality || null, international_id || null, original_club || null, !!email_verified,
+        name, surname, email, hash, finalRole, finalCategory, finalQualification, finalSociety, finalShooterCode, avatar || null, birth_date || null, phone || null, 'active',
+        !!is_international, !!is_cacciatore, nationality || null, international_id || null, original_club || null, !!email_verified,
         shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
       ]
     );
@@ -2833,7 +2875,7 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { 
     name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status,
-    is_international, nationality, international_id, original_club, email_verified, language,
+    is_international, is_cacciatore, nationality, international_id, original_club, email_verified, language,
     shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
   } = req.body;
   
@@ -2884,22 +2926,24 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20, shotgun_brand = $21, shotgun_model = $22, cartridge_brand = $23, cartridge_model = $24 WHERE id = $19",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, is_cacciatore = $25, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20, shotgun_brand = $21, shotgun_model = $22, cartridge_brand = $23, cartridge_model = $24 WHERE id = $19",
         [
           name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
           req.params.id, language || 'it',
-          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
+          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null,
+          !!is_cacciatore
         ]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19, shotgun_brand = $20, shotgun_model = $21, cartridge_brand = $22, cartridge_model = $23 WHERE id = $18",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, is_cacciatore = $24, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19, shotgun_brand = $20, shotgun_model = $21, cartridge_brand = $22, cartridge_model = $23 WHERE id = $18",
         [
           name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
           req.params.id, language || 'it',
-          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
+          shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null,
+          !!is_cacciatore
         ]
       );
     }

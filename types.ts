@@ -144,6 +144,7 @@ export interface User {
   cartridge_model?: string;
   is_logged_in?: boolean;
   is_international?: boolean;
+  is_cacciatore?: boolean;
   nationality?: string;
   international_id?: string;
   original_club?: string;

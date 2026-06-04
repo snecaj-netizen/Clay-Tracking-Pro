@@ -60,6 +60,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
     birth_date: '',
     phone: '',
     is_international: false,
+    is_cacciatore: false,
     nationality: '',
     international_id: '',
     original_club: '',
@@ -260,18 +261,42 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-4">
-              <div className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50">
-                <div className="flex-1">
-                  <h4 className="text-xs font-black text-white uppercase">{displayLang === 'it' ? 'Tiratore Internazionale?' : 'International Shooter?'}</h4>
-                  <p className="text-[10px] text-slate-500">{displayLang === 'it' ? 'Se non risiedi in Italia e non hai codice FITAV' : 'If you don\'t live in Italy and don\'t have a FITAV code'}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50">
+                  <div className="flex-1">
+                    <h4 className="text-xs font-black text-white uppercase">{displayLang === 'it' ? 'Tiratore Internazionale?' : 'International Shooter?'}</h4>
+                    <p className="text-[10px] text-slate-500">{displayLang === 'it' ? 'Se risiedi all\'estero' : 'If you live abroad'}</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setRegData({
+                      ...regData, 
+                      is_international: !regData.is_international,
+                      is_cacciatore: false
+                    })}
+                    className={`w-12 h-6 rounded-full transition-all relative ${regData.is_international ? 'bg-orange-600' : 'bg-slate-800'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${regData.is_international ? 'right-1' : 'left-1'}`} />
+                  </button>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setRegData({...regData, is_international: !regData.is_international})}
-                  className={`w-12 h-6 rounded-full transition-all relative ${regData.is_international ? 'bg-orange-600' : 'bg-slate-800'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${regData.is_international ? 'right-1' : 'left-1'}`} />
-                </button>
+
+                <div className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50">
+                  <div className="flex-1">
+                    <h4 className="text-xs font-black text-white uppercase">{displayLang === 'it' ? 'Sei un Cacciatore?' : 'Are you a Hunter?'}</h4>
+                    <p className="text-[10px] text-slate-500">{displayLang === 'it' ? 'Senza codice FITAV, categoria CA' : 'Without FITAV card, category CA'}</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setRegData({
+                      ...regData, 
+                      is_cacciatore: !regData.is_cacciatore,
+                      is_international: false
+                    })}
+                    className={`w-12 h-6 rounded-full transition-all relative ${regData.is_cacciatore ? 'bg-orange-600' : 'bg-slate-800'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${regData.is_cacciatore ? 'right-1' : 'left-1'}`} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -316,6 +341,18 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
                   <input type="text" value={regData.original_club} onChange={e => setRegData({...regData, original_club: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
               </>
+            ) : regData.is_cacciatore ? (
+              <div className="sm:col-span-2 bg-slate-950/40 border border-slate-800 rounded-2xl p-4 text-center">
+                <i className="fas fa-crosshairs text-orange-500 text-lg mb-1 block"></i>
+                <span className="text-[11px] font-black uppercase text-slate-400 block tracking-wider">
+                  {displayLang === 'it' ? 'Registrazione come Tiratore Cacciatore (CA)' : 'Registering as Hunter (CA)'}
+                </span>
+                <span className="text-[10px] text-slate-500 block">
+                  {displayLang === 'it' 
+                    ? 'Nessun codice FITAV o club richiesto. Sarai inserito automaticamente sotto "Cacciatori".' 
+                    : 'No FITAV card or club required. You will be automatically categorized as Hunter.'}
+                </span>
+              </div>
             ) : (
               <>
                 <div>
