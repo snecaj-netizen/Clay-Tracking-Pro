@@ -7,9 +7,6 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
@@ -2321,7 +2318,7 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
     const excludeRole = req.query.excludeRole as string;
     const societyFilter = req.query.society as string;
     
-    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, is_cacciatore, nationality, international_id, original_club, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model FROM users";
+    let query = "SELECT id, name, surname, email, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, login_count, last_login, created_at, email_verified, is_international, is_cacciatore, nationality, international_id, original_club, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories FROM users";
     let countQuery = "SELECT COUNT(*) FROM users";
     let params: any[] = [];
     let whereClauses: string[] = [];
@@ -2418,7 +2415,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   const { 
     name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone,
     is_international, is_cacciatore, nationality, international_id, original_club, email_verified,
-    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
+    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories
   } = req.body;
   
   let finalShooterCode = shooter_code;
@@ -2474,11 +2471,11 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
   try {
     const { rows } = await pool.query(
-      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, is_cacciatore, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id",
+      "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, is_cacciatore, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id",
       [
         name, surname, email, hash, finalRole, finalCategory, finalQualification, finalSociety, finalShooterCode, avatar || null, birth_date || null, phone || null, 'active',
         !!is_international, !!is_cacciatore, nationality || null, international_id || null, original_club || null, !!email_verified,
-        shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
+        shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null, discipline_categories || null
       ]
     );
     
@@ -2499,7 +2496,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
 
     res.json({ 
       id: newUserId, name, surname, email, role: role || 'user', category: finalCategory, qualification: finalQualification, society: finalSociety, shooter_code: finalShooterCode, avatar, birth_date, phone, status: 'active',
-      shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
+      shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories
     });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -2650,6 +2647,43 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
     res.json(validatedUsers);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/admin/users/update-categories', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const { users } = req.body;
+  if (!Array.isArray(users)) return res.status(400).json({ error: 'Invalid data format' });
+
+  const results = { updated: 0, errors: 0, missing: 0 };
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    for (const u of users) {
+      if (!u.shooter_code) {
+        results.errors++;
+        continue;
+      }
+
+      const { rows } = await client.query("SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1)", [u.shooter_code]);
+      if (rows.length === 0) {
+        results.missing++;
+        continue;
+      }
+
+      await client.query("UPDATE users SET discipline_categories = $1 WHERE id = $2", [u.discipline_categories, rows[0].id]);
+      results.updated++;
+    }
+
+    await client.query('COMMIT');
+    res.json(results);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating categories:', err);
+    res.status(500).json({ error: 'Failed to update categories' });
   } finally {
     client.release();
   }
@@ -2876,7 +2910,7 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
   const { 
     name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status,
     is_international, is_cacciatore, nationality, international_id, original_club, email_verified, language,
-    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
+    shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification);
@@ -2926,24 +2960,24 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       const salt = bcrypt.genSaltSync(10);
       const hash = bcrypt.hashSync(password, salt);
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, is_cacciatore = $25, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20, shotgun_brand = $21, shotgun_model = $22, cartridge_brand = $23, cartridge_model = $24 WHERE id = $19",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, is_cacciatore = $25, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20, shotgun_brand = $21, shotgun_model = $22, cartridge_brand = $23, cartridge_model = $24, discipline_categories = $26 WHERE id = $19",
         [
           name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
           req.params.id, language || 'it',
           shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null,
-          !!is_cacciatore
+          !!is_cacciatore, discipline_categories || null
         ]
       );
     } else {
       await pool.query(
-        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, is_cacciatore = $24, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19, shotgun_brand = $20, shotgun_model = $21, cartridge_brand = $22, cartridge_model = $23 WHERE id = $18",
+        "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, is_cacciatore = $24, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19, shotgun_brand = $20, shotgun_model = $21, cartridge_brand = $22, cartridge_model = $23, discipline_categories = $25 WHERE id = $18",
         [
           name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
           !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
           req.params.id, language || 'it',
           shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null,
-          !!is_cacciatore
+          !!is_cacciatore, discipline_categories || null
         ]
       );
     }

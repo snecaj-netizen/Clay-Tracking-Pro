@@ -115,7 +115,15 @@ const UserRow = React.memo(({
           </>
         ) : '-'}
       </td>
-      <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase">{u.category || '-'} / {u.qualification || '-'}</td>
+      <td className="py-3 px-4 text-[10px] text-slate-400 font-bold uppercase flex items-center gap-2">
+        {(u.role === 'user' || u.role === 'admin') && !u.is_cacciatore && (
+            <div 
+              className={`w-2 h-2 rounded-full shrink-0 ${u.discipline_categories ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} 
+              title={u.discipline_categories ? 'Categorie inserite' : 'Categorie mancanti'}
+            />
+        )}
+        {u.category || '-'} / {u.qualification || '-'}
+      </td>
       <td className="py-3 px-4 text-sm text-slate-400">
         <div className="flex items-center gap-2">
           <div 
@@ -184,7 +192,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar,
     birthDate, setBirthDate, phone, setPhone,
     nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isCacciatore, setIsCacciatore, isEmailVerified, setIsEmailVerified,
-    shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel,
+    shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel, disciplineCategories, setDisciplineCategories,
     hideInternalFAB
   } = useAdmin();
 
@@ -196,6 +204,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [importResults, setImportResults] = useState<any | null>(null);
   const [validationRows, setValidationRows] = useState<any[] | null>(null);
   const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create' | 'conflict'>('all');
+  const [pendingCategoryUpdates, setPendingCategoryUpdates] = useState<any[] | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
@@ -253,6 +262,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
       name, surname, email, role, category, qualification, society, shooter_code: shooterCode, 
       password: password || undefined, avatar: userAvatar || undefined, birth_date: birthDate || undefined, 
       phone: phone || undefined,
+      discipline_categories: disciplineCategories || undefined,
       nationality, international_id: internationalId, original_club: originalClub, is_international: isInternational, is_cacciatore: isCacciatore, email_verified: isEmailVerified,
       shotgun_brand: shotgunBrand, shotgun_model: shotgunModel, cartridge_brand: cartridgeBrand, cartridge_model: cartridgeModel
     };
@@ -440,6 +450,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
     setIsInternational(!!user.is_international);
     setIsCacciatore(!!user.is_cacciatore);
     setIsEmailVerified(!!user.email_verified);
+    setDisciplineCategories(user.discipline_categories || '');
     setShotgunBrand(user.shotgun_brand || '');
     setShotgunModel(user.shotgun_model || '');
     setCartridgeBrand(user.cartridge_brand || '');
@@ -631,18 +642,21 @@ const UserManagement: React.FC<UserManagementProps> = ({
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
         
-        const importedUsers = data.map((row: any) => ({
-          name: row.Nome || row.name,
-          surname: row.Cognome || row.surname,
-          email: row.Email || row.email,
-          role: row.Ruolo || row.role || 'user',
-          category: row.Categoria || row.category,
-          qualification: row.Qualifica || row.qualification,
-          society: row.Società || row.society,
-          shooter_code: row['Codice Tiratore'] || row.shooter_code,
-          birth_date: parseExcelDate(row['Data di Nascita'] || row.birth_date),
-          phone: row.Telefono || row.phone
-        }));
+        const importedUsers = data
+          .filter((row: any) => (row['Codice Tiratore'] || row.shooter_code))
+          .map((row: any) => ({
+            name: row.Nome || row.name,
+            surname: row.Cognome || row.surname,
+            email: row.Email || row.email,
+            role: row.Ruolo || row.role || 'user',
+            category: row.Categoria || row.category,
+            qualification: row.Qualifica || row.qualification,
+            society: row.Società || row.society,
+            shooter_code: row['Codice Tiratore'] || row.shooter_code,
+            discipline_categories: row['Discipline Categories'] || row.discipline_categories,
+            birth_date: parseExcelDate(row['Data di Nascita'] || row.birth_date),
+            phone: row.Telefono || row.phone
+          }));
 
         setIsImporting(true);
         try {
@@ -699,6 +713,73 @@ const UserManagement: React.FC<UserManagementProps> = ({
     };
     reader.readAsBinaryString(file);
     e.target.value = ''; // Reset input
+  };
+
+  const handleUpdateCategoriesExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        const updates = data
+          .filter((row: any) => (row['Codice Tiratore'] || row.shooter_code))
+          .map((row: any) => ({
+            shooter_code: row['Codice Tiratore'] || row.shooter_code,
+            discipline_categories: row['Discipline Categories'] || row.discipline_categories,
+          }));
+
+        if (updates.length > 0) {
+          setPendingCategoryUpdates(updates);
+        } else {
+          if (triggerToast) triggerToast("Nessun dato valido trovato nel file Excel", "error");
+        }
+      } catch (err) {
+        console.error('Error reading Excel file:', err);
+        setError("Errore durante la lettura del file Excel");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset input
+  };
+
+  const handleConfirmUpdateCategories = async () => {
+    if (!pendingCategoryUpdates) return;
+
+    setIsImporting(true);
+    setPendingCategoryUpdates(null);
+    try {
+      const res = await fetch('/api/admin/users/update-categories', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ users: pendingCategoryUpdates })
+      });
+      
+      if (!res.ok) throw new Error("Errore durante l'aggiornamento delle categorie");
+      const results = await res.json();
+      
+      fetchUsers();
+      if (triggerToast) {
+        triggerToast(
+          `Aggiornamento completato: ${results.updated} aggiornati, ${results.errors} errori, ${results.missing} non trovati.`,
+          results.errors > 0 ? 'error' : 'success'
+        );
+      }
+    } catch (err) {
+      setError("Errore durante l'aggiornamento");
+      if (triggerToast) triggerToast("Errore durante l'aggiornamento", 'error');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleSaveImportedUsers = async () => {
@@ -824,6 +905,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     <i className="fas fa-file-import text-lg sm:text-xs"></i>
                     <span className="hidden sm:inline">{t('import')}</span>
                     <input type="file" accept=".xlsx, .xls" onChange={handleImportUsersExcel} className="hidden" />
+                  </label>
+                  <label className="w-11 h-11 sm:w-auto sm:px-3 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center sm:gap-2 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700 cursor-pointer shrink-0">
+                    <i className="fas fa-edit text-lg sm:text-xs"></i>
+                    <span className="hidden sm:inline">Aggiorna Categorie</span>
+                    <input type="file" accept=".xlsx, .xls" onChange={handleUpdateCategoriesExcel} className="hidden" />
                   </label>
                 </>
               )}
@@ -957,6 +1043,29 @@ const UserManagement: React.FC<UserManagementProps> = ({
       {/* User Management Dashboard */}
       {currentUser?.role === 'admin' && showDashboard && (
         <KPIDashboard />
+      )}
+
+      {pendingCategoryUpdates && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1250] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+              <i className="fas fa-edit text-orange-500"></i> Conferma Aggiornamento
+            </h3>
+            <div className="overflow-y-auto mb-6 flex-1 pr-2 space-y-2">
+               {pendingCategoryUpdates.map((u, i) => (
+                   <div key={i} className="text-xs text-slate-400 bg-slate-950 p-2 rounded-lg flex justify-between">
+                     <span className="font-bold text-white">{u.shooter_code}</span>
+                     <span>{u.discipline_categories || 'Nessuna'}</span>
+                   </div>
+               ))}
+            </div>
+            <div className="flex gap-3 shrink-0">
+               <button onClick={() => setPendingCategoryUpdates(null)} className="flex-1 bg-slate-800 text-white font-black py-3 rounded-xl">Annulla</button>
+               <button onClick={handleConfirmUpdateCategories} className="flex-1 bg-orange-600 text-white font-black py-3 rounded-xl">Conferma Aggiornamento</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {showUserForm && createPortal(
@@ -1189,6 +1298,19 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     )}
                   </select>
                 </div>
+                
+                {currentUser?.role === 'admin' && !isCacciatore && (role === 'user' || role === 'admin') && (
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Discipline Categories</label>
+                    <input 
+                      type="text" 
+                      value={disciplineCategories} 
+                      onChange={e => setDisciplineCategories(e.target.value)}
+                      placeholder="es. Fossa Olimpica, Skeet"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -1607,6 +1729,12 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('qualification')}</p>
                     <p className="text-sm font-bold text-white">{selectedUser.qualification}</p>
                   </div>
+                )}
+                {currentUser?.role === 'admin' && !selectedUser.is_cacciatore && (selectedUser.role === 'user' || selectedUser.role === 'admin') && (
+                    <div className="col-span-2 bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Discipline Categories</p>
+                        <p className="text-sm font-bold text-white">{selectedUser.discipline_categories || 'Nessuna'}</p>
+                    </div>
                 )}
               </div>
             </div>

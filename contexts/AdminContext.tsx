@@ -188,6 +188,7 @@ interface AdminContextType {
   shotgunModel: string; setShotgunModel: React.Dispatch<React.SetStateAction<string>>;
   cartridgeBrand: string; setCartridgeBrand: React.Dispatch<React.SetStateAction<string>>;
   cartridgeModel: string; setCartridgeModel: React.Dispatch<React.SetStateAction<string>>;
+  disciplineCategories: string; setDisciplineCategories: React.Dispatch<React.SetStateAction<string>>;
 
   // Dashboard
   showDashboard: boolean;
@@ -369,6 +370,7 @@ export const AdminProvider: React.FC<{
   const [shotgunModel, setShotgunModel] = useState('');
   const [cartridgeBrand, setCartridgeBrand] = useState('');
   const [cartridgeModel, setCartridgeModel] = useState('');
+  const [disciplineCategories, setDisciplineCategories] = useState('');
 
   // Form Fields - Society
   const [socName, setSocName] = useState('');
@@ -810,7 +812,7 @@ export const AdminProvider: React.FC<{
     personalNotificationSettings, setPersonalNotificationSettings, fetchPersonalNotificationSettings, updatePersonalNotificationSettings,
     name, setName, surname, setSurname, email, setEmail, password, setPassword, role, setRole, category, setCategory, qualification, setQualification, society, setSociety, shooterCode, setShooterCode, userAvatar, setUserAvatar, birthDate, setBirthDate, phone, setPhone,
     nationality, setNationality, internationalId, setInternationalId, originalClub, setOriginalClub, isInternational, setIsInternational, isCacciatore, setIsCacciatore, isEmailVerified, setIsEmailVerified,
-    shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel,
+    shotgunBrand, setShotgunBrand, shotgunModel, setShotgunModel, cartridgeBrand, setCartridgeBrand, cartridgeModel, setCartridgeModel, disciplineCategories, setDisciplineCategories,
     socName, setSocName, socCode, setSocCode, socEmail, setSocEmail, socAddress, setSocAddress, socCity, setSocCity, socRegion, setSocRegion, socZip, setSocZip, socPhone, setSocPhone, socMobile, setSocMobile, socWebsite, setSocWebsite, socContactName, setSocContactName, socLogo, setSocLogo, socOpeningHours, setSocOpeningHours, socGoogleMapsLink, setSocGoogleMapsLink, socLat, setSocLat, socLng, setSocLng, socDisciplines, setSocDisciplines,
     newTeamName, setNewTeamName, newTeamSize, setNewTeamSize, newTeamEventId, setNewTeamEventId, newTeamCompetitionName, setNewTeamCompetitionName, newTeamDiscipline, setNewTeamDiscipline, newTeamSociety, setNewTeamSociety, newTeamLocation, setNewTeamLocation, newTeamDate, setNewTeamDate, newTeamTargets, setNewTeamTargets, newTeamType, setNewTeamType, selectedShooterIds, setSelectedShooterIds,
     filterOptions, setFilterOptions, fetchFilterOptions,

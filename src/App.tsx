@@ -1,5 +1,21 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, lazy as reactLazy, Suspense, useMemo } from 'react';
 import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, AppData } from '../types';
+
+// Wrapper to handle dynamic import chunk load/fetch errors automatically
+const lazy = <T extends React.ComponentType<any>>(importFunc: () => Promise<{ default: T } | { default: React.ComponentType<any> }>) => {
+  return reactLazy(() =>
+    importFunc().catch((error) => {
+      console.error("Dynamic import failed, reloading page...", error);
+      const lastReload = sessionStorage.getItem('last-chunk-reload');
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        sessionStorage.setItem('last-chunk-reload', now.toString());
+        window.location.reload();
+      }
+      throw error;
+    }) as Promise<{ default: T }>
+  );
+};
 import Header from '../components/Header';
 import Auth from '../components/Auth';
 import ConfirmModal from '../components/ConfirmModal';

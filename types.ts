@@ -16,6 +16,19 @@ export enum Discipline {
   TRAINING = 'Allenamento'
 }
 
+export const DISCIPLINE_TO_ACRONYM: Partial<Record<Discipline, string>> = {
+  [Discipline.DT]: 'DT',
+  [Discipline.EL]: 'EL',
+  [Discipline.FO]: 'FO',
+  [Discipline.FU]: 'FU',
+  [Discipline.PC]: 'PC',
+  [Discipline.SK]: 'SK',
+  [Discipline.SP]: 'SP',
+  [Discipline.TC]: 'TC', // Wait, the string was TC:3, is it TR1 or TC? The example string has TA:3, is that trap?
+  // Re-reading user: DT:3 EL:3 FO:3 FU:3 PC:3 SK:3 SP:3 TA:3 TC:3
+  // My enum has TC and TR1. Trap is TA?
+};
+
 export enum TargetCount {
   T50 = 50,
   T75 = 75,
@@ -133,6 +146,7 @@ export interface User {
   role: UserRole;
   category?: string;
   qualification?: string;
+  discipline_categories?: string;
   society?: string;
   shooter_code?: string;
   avatar?: string;

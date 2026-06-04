@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { SocietyEvent, PrizeSetting, User, Discipline, getSeriesLayout } from '../types';
-import { calculateRTE, shortenCategoryName, getDisplayCategory, INTERNATIONAL_CODES, INTL_TO_DOMESTIC } from '../ratingUtils';
+import { calculateRTE, shortenCategoryName, getDisplayCategory, INTERNATIONAL_CODES, INTL_TO_DOMESTIC, getCategoryForDiscipline } from '../ratingUtils';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
 import QuickAddShooterModal from './QuickAddShooterModal';
@@ -132,7 +132,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         const name = row.name || (foundUser ? (foundUser.name || foundUser.nome || '') : '');
         const email = row.email || (foundUser ? (foundUser.email || '') : '');
         const society = row.society || (foundUser ? (foundUser.society || '') : '') || event.location || '';
-        const category = row.category && row.category !== 'Seconda' ? row.category : normalizeCategory(foundUser ? (foundUser.category || 'Seconda') : 'Seconda');
+        const category = getCategoryForDiscipline(foundUser, event.discipline as Discipline) || (row.category && row.category !== 'Seconda' ? row.category : normalizeCategory(foundUser ? (foundUser.category || 'Seconda') : 'Seconda'));
         const qualification = row.qualification || normalizeQualification(foundUser ? (foundUser.qualification || '') : '');
 
         // Check if shooters or codes are missing, similar to initial mapping
@@ -405,7 +405,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           const name = rawName || (foundUser ? foundUser.name : '');
           const email = rawEmail || (foundUser ? foundUser.email : '');
           const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
-          const category = normalizeCategory(rawCategory || (foundUser ? foundUser.category : 'Seconda'));
+          const category = getCategoryForDiscipline(foundUser, event.discipline as Discipline) || normalizeCategory(rawCategory || (foundUser ? foundUser.category : 'Seconda'));
           const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
 
           const errors: string[] = [];
