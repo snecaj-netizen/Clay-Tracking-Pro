@@ -555,7 +555,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                       scores: result?.scores || [],
                       shoot_off: result?.shoot_off || ''
                     };
-                  });
+                  }).sort((a, b) => b.totalscore - a.totalscore);
 
                   return (
                     <React.Fragment key={team.id}>
