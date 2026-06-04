@@ -1026,7 +1026,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             user_id: id,
             user_name: result?.user_name || user?.name || t('unknown'),
             user_surname: result?.user_surname || user?.surname || '',
-            totalscore: result?.totalscore || 0
+            totalscore: result?.totalscore || 0,
+            qualification: getShooterQualification(result || { ...user })
           };
         });
         const totalScore = teamMembers.reduce((sum: number, m: any) => sum + (m.totalscore || 0), 0);
@@ -1060,7 +1061,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         const bodyData = list.map((team, index) => {
           const typeStr = team.type ? ` (${team.type})` : '';
           const nameStr = `${team.name}\n${team.society}${typeStr}`;
-          const shootersStr = team.members.map((s: any) => 
+          const membersToRender = title.includes('Cacciatori') ? team.members.filter(m => m.qualification === 'CA') : team.members;
+          const shootersStr = membersToRender.map((s: any) => 
             `${s.user_surname} ${s.user_name} (${s.totalscore})`
           ).join('\n');
           
@@ -2163,7 +2165,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     onClick={() => setViewMode('generale')}
                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'generale' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
                   >
-                    {t('general')}
+                    {t('all_results_view')}
                   </button>
                   <button
                     onClick={() => {
