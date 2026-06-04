@@ -90,21 +90,28 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const reEvaluateParsedRows = (updatedUsers: any[]) => {
     setParsedRows(prevRows => {
       return prevRows.map(row => {
-        let userId = row.userId;
-        let userFound = row.userFound;
+        let userId: number | undefined = undefined;
+        let userFound = false;
         let foundUser: any = null;
 
-        // Try code lookup
-        if (row.shooterCode) {
-          foundUser = updatedUsers.find(u => u.shooter_code?.toUpperCase().trim() === row.shooterCode.toUpperCase().trim());
+        const cleanRowCode = row.shooterCode?.toUpperCase().trim() || '';
+
+        // Try code lookup (ONLY if row has a truthy, non-empty shooterCode)
+        if (cleanRowCode) {
+          foundUser = updatedUsers.find(u => {
+            const cleanUserCode = (u.shooter_code || u.shooterCode || '').toUpperCase().trim();
+            return cleanUserCode !== '' && cleanUserCode === cleanRowCode;
+          });
         }
 
         // Try Name + Surname lookup
         if (!foundUser && row.surname && row.name) {
-          foundUser = updatedUsers.find(u => 
-            u.surname?.toLowerCase().trim() === row.surname.toLowerCase().trim() && 
-            u.name?.toLowerCase().trim() === row.name.toLowerCase().trim()
-          );
+          foundUser = updatedUsers.find(u => {
+            const uSurname = (u.surname || u.cognome || '').toLowerCase().trim();
+            const uName = (u.name || u.nome || '').toLowerCase().trim();
+            return uSurname === row.surname.toLowerCase().trim() && 
+                   uName === row.name.toLowerCase().trim();
+          });
         }
 
         if (foundUser) {
@@ -120,7 +127,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           !e.includes("ricerca fallita")
         );
 
-        const finalShooterCode = row.shooterCode || (foundUser ? foundUser.shooter_code : '');
+        const finalShooterCode = row.shooterCode || (foundUser ? (foundUser.shooter_code || foundUser.shooterCode || '') : '');
+        const surname = row.surname || (foundUser ? (foundUser.surname || foundUser.cognome || '') : '');
+        const name = row.name || (foundUser ? (foundUser.name || foundUser.nome || '') : '');
+        const email = row.email || (foundUser ? (foundUser.email || '') : '');
+        const society = row.society || (foundUser ? (foundUser.society || '') : '') || event.location || '';
+        const category = row.category && row.category !== 'Seconda' ? row.category : normalizeCategory(foundUser ? (foundUser.category || 'Seconda') : 'Seconda');
+        const qualification = row.qualification || normalizeQualification(foundUser ? (foundUser.qualification || '') : '');
 
         // Check if shooters or codes are missing, similar to initial mapping
         if (!finalShooterCode && !userFound) {
@@ -129,11 +142,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           updatedErrors.push("Codice Tiratore troppo corto");
         }
 
-        if (!row.surname) updatedErrors.push("Cognome mancante");
-        if (!row.name) updatedErrors.push("Nome mancante");
-        if (!row.email) {
+        if (!surname) updatedErrors.push("Cognome mancante");
+        if (!name) updatedErrors.push("Nome mancante");
+        if (!email) {
           updatedErrors.push("Email mancante");
-        } else if (!row.email && !row.email?.includes('@')) {
+        } else if (email && !email.includes('@')) {
           updatedErrors.push("Formato Email non valido");
         }
 
@@ -151,6 +164,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         return {
           ...row,
           shooterCode: finalShooterCode ? finalShooterCode.toUpperCase() : '',
+          surname,
+          name,
+          email,
+          society,
+          category,
+          qualification,
           userId,
           userFound,
           errors: updatedErrors,
@@ -180,6 +199,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const shouldShowInternational = event.type === 'Internazionale';
 
   const getShooterQualification = (r: any) => {
+    // Detect hunter: if categorized as Cacciatore or in Cacciatori society
+    const isHunter = r?.category_at_time === 'Cacciatore' || 
+                     r?.category === 'Cacciatore' ||
+                     (r?.society_at_time || r?.society || '').toLowerCase() === 'cacciatori';
+    if (isHunter) return 'CA';
+
     const qual = r?.qualification_at_time || r?.qualification;
     if (!qual) return '';
     if (!shouldShowInternational && qual.toUpperCase() === 'MAN') {
@@ -252,58 +277,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   useEffect(() => {
     if (parsedRows.length > 0 && users.length > 0) {
-      setParsedRows(prev => prev.map(row => {
-        const foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === row.shooterCode?.toUpperCase().trim());
-        const hasMissingUserErr = row.errors.includes("Tiratore non registrato a portale (Codice Tiratore non trovato)");
-        
-        let nextErrors = [...row.errors];
-        if (foundUser) {
-          if (hasMissingUserErr) {
-            nextErrors = nextErrors.filter(e => e !== "Tiratore non registrato a portale (Codice Tiratore non trovato)");
-          }
-
-          const surname = row.surname || foundUser.surname || '';
-          const name = row.name || foundUser.name || '';
-          const email = row.email || foundUser.email || '';
-          const society = row.society || foundUser.society || event.location || '';
-          const category = row.category && row.category !== 'Seconda' ? row.category : normalizeCategory(foundUser.category || 'Seconda');
-          const qualification = row.qualification || normalizeQualification(foundUser.qualification || '');
-
-          if (surname) nextErrors = nextErrors.filter(e => e !== "Cognome mancante");
-          if (name) nextErrors = nextErrors.filter(e => e !== "Nome mancante");
-          if (email) {
-            nextErrors = nextErrors.filter(e => e !== "Email mancante");
-            if (email.includes('@')) {
-              nextErrors = nextErrors.filter(e => e !== "Formato Email non valido");
-            }
-          }
-
-          return {
-            ...row,
-            userId: foundUser.id,
-            userFound: true,
-            surname,
-            name,
-            email,
-            society,
-            category,
-            qualification,
-            errors: nextErrors,
-            isValid: nextErrors.filter(e => !e.startsWith("ATTENZIONE:")).length === 0
-          };
-        } else {
-          if (!hasMissingUserErr) {
-            nextErrors.push("Tiratore non registrato a portale (Codice Tiratore non trovato)");
-          }
-          return {
-            ...row,
-            userId: undefined,
-            userFound: false,
-            errors: nextErrors,
-            isValid: false
-          };
-        }
-      }));
+      reEvaluateParsedRows(users);
     }
   }, [users]);
 
@@ -640,7 +614,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
       if (resTeams.ok) {
         const data = await resTeams.json();
-        setTeams(data.filter((t: any) => t.is_sent));
+        setTeams(data);
       }
     } catch (err) {
       if (err instanceof Error && err.message !== 'Failed to fetch') {
@@ -2315,7 +2289,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 <span className="text-sm font-bold text-white">{shooter.user_surname} {shooter.user_name}</span>
                                 <div className="flex items-center gap-1">
                                   {formatDisplayValue(shooter.category_at_time || shooter.category, 'category') && (
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black border ${ (event.ranking_preference_override || shooter.ranking_preference_override || shooter.ranking_preference || 'categoria') === 'categoria' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black border ${ (event.ranking_preference_override || shooter.ranking_preference_override || shooter.ranking_preference || 'categoria') === 'categoria' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-slate-700 text-slate-200 border-slate-600'}`}>
                                       {formatDisplayValue(shooter.category_at_time || shooter.category, 'category')}
                                     </span>
                                   )}
@@ -2695,10 +2669,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             setSelectedUserId(newUser.id);
             setIsDirty(true);
             setShowQuickAddShooter(false);
-            if (quickAddInitialDetails) {
+            if (parsedRows.length > 0) {
               reEvaluateParsedRows(updatedUsers);
-              setQuickAddInitialDetails(null);
             }
+            setQuickAddInitialDetails(null);
           }}
         />
       )}

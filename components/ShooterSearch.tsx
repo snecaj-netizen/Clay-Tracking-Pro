@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { shortenCategoryName } from '../ratingUtils';
 
 interface ShooterSearchProps {
@@ -30,7 +30,7 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
 
   useEffect(() => {
     if (multiple) {
-      setSearchTerm('');
+      return;
     } else if (useId) {
       const shooter = shooters.find(s => s.id === value || s.id === Number(value));
       setSearchTerm(shooter ? `${shooter.surname} ${shooter.name}` : '');
@@ -61,18 +61,20 @@ const ShooterSearch: React.FC<ShooterSearchProps> = ({
     };
   }, [value, shooters, useId, multiple]);
 
-  const filteredShooters = shooters.filter(s => {
-    // Always exclude society role from shooter search
-    if (s.role === 'society') return false;
+  const filteredShooters = useMemo(() => {
+    return shooters.filter(s => {
+      // Always exclude society role from shooter search
+      if (s.role === 'society') return false;
 
-    const searchStr = `${s.surname} ${s.name} ${s.email || ''} ${s.shooter_code || ''}`.toLowerCase();
-    const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
-    
-    if (multiple && Array.isArray(value)) {
-      return matchesSearch && !value.includes(useId ? s.id : `${s.surname} ${s.name}`);
-    }
-    return matchesSearch;
-  });
+      const searchStr = `${s.surname} ${s.name} ${s.email || ''} ${s.shooter_code || ''}`.toLowerCase();
+      const matchesSearch = searchTerm === '' || searchStr.includes(searchTerm.toLowerCase());
+      
+      if (multiple && Array.isArray(value)) {
+        return matchesSearch && !value.includes(useId ? s.id : `${s.surname} ${s.name}`);
+      }
+      return matchesSearch;
+    });
+  }, [shooters, searchTerm, multiple, value, useId]);
 
   const handleSelect = (shooter: any) => {
     if (multiple) {

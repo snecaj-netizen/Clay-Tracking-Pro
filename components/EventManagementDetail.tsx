@@ -153,7 +153,7 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
       setRegistrations(regData);
       setSquads(squadData);
       setResults(resultsData);
-      setTeams(teamsData.filter((t: any) => t.is_sent));
+      setTeams(teamsData);
     } catch (err: any) {
       setError(err.message);
     } finally {

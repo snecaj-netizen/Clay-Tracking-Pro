@@ -22,7 +22,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   const { triggerConfirm, triggerToast } = useUI();
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'A' | 'B' | 'CA' | 'ALL'>('A');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'A' | 'B' | 'CA' | 'LIBERA' | 'ALL'>('A');
   const [formData, setFormData] = useState({
     name: '',
     society: '',
@@ -65,32 +65,45 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       const t = type.toUpperCase();
       return t === 'CACCIATORI' || t.includes('CACCIATOR');
     };
+    const isLibera = (type: string) => {
+      if (!type) return false;
+      const t = type.toUpperCase();
+      return t === 'SQUADRA_TIRATORI' || t.includes('TIRATORI');
+    };
 
-    const groupA = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && isGroupA(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const groupB = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const groupA = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupA(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const groupB = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
     const hunters = teamsWithTotals.filter(t => isHunter(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const others = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const libera = teamsWithTotals.filter(t => isLibera(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const others = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+
+    const all = teamsWithTotals.sort((a, b) => b.totalScore - a.totalScore);
 
     // Filter by society if selected
     let filteredA = groupA;
     let filteredB = groupB;
     let filteredHunters = hunters;
+    let filteredLibera = libera;
     let filteredOthers = others;
+    let filteredAll = all;
 
     if (filterSociety) {
       filteredA = groupA.filter(t => t.society === filterSociety);
       filteredB = groupB.filter(t => t.society === filterSociety);
       filteredHunters = hunters.filter(t => t.society === filterSociety);
+      filteredLibera = libera.filter(t => t.society === filterSociety);
       filteredOthers = others.filter(t => t.society === filterSociety);
+      filteredAll = all.filter(t => t.society === filterSociety);
     }
 
     let result = [];
     if (selectedTypeFilter === 'A') result = filteredA;
     else if (selectedTypeFilter === 'B') result = filteredB;
     else if (selectedTypeFilter === 'CA') result = filteredHunters;
-    else result = [...filteredA, ...filteredB, ...filteredHunters, ...filteredOthers];
+    else if (selectedTypeFilter === 'LIBERA') result = filteredLibera;
+    else result = filteredAll;
 
-    return { groupA: filteredA, groupB: filteredB, hunters: filteredHunters, others: filteredOthers, filtered: result };
+    return { groupA: filteredA, groupB: filteredB, hunters: filteredHunters, libera: filteredLibera, others: filteredOthers, filtered: result };
   }, [teams, results, filterSociety, selectedTypeFilter]);
 
   const societies = useMemo(() => {
@@ -120,31 +133,29 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       );
     }
     list.push(
-      { id: 'CACCIATORI', name: 'Squadre Cacciatori', size: 3 }
+      { id: 'CACCIATORI', name: 'Squadre Cacciatori', size: 99 },
+      { id: 'SQUADRA_TIRATORI', name: 'Squadra Tiratori', size: 99 } // No limit, using 99 as a placeholder for "no limit"
     );
     return list;
   }, [event.discipline, t]);
 
   const availableShooters = useMemo(() => {
-    if (!formData.society) return [];
+    // If it's a SQUADRA_LIBERA, we don't strictly filter by society based on formData.society
+    const isLibera = formData.type === 'SQUADRA_TIRATORI';
     
     const registeredUserIds = new Set(results.map(r => r.user_id));
     
-    // Get all users belonging to the selected society
+    // Get all users belonging to the selected society (if not Libera)
     return users.filter(u => {
       if (!registeredUserIds.has(u.id)) return false;
       
-      const s = (u.society || '').toLowerCase().trim();
-      const formSoc = (formData.society || '').toLowerCase().trim();
-      if (s !== formSoc) return false;
+      if (!isLibera) {
+        const s = (u.society || '').toLowerCase().trim();
+        const formSoc = (formData.society || '').toLowerCase().trim();
+        if (s !== formSoc) return false;
+      }
       
-      // Filter shooters based on team type: hunter teams only accept hunters, etc.
-      const isHunterTeam = formData.type === 'CACCIATORI';
-      const isUserHunter = !!u.is_cacciatore || u.category === 'Cacciatore' || s === 'cacciatori';
-      if (isHunterTeam !== isUserHunter) return false;
-
       // Check if the user is already in a team for this event
-      // We look at the teams array to see if they are in any team's member_ids
       const isUserInAnotherTeam = teams.some(t => t.id !== editingTeamId && t.member_ids?.includes(u.id));
       if (isUserInAnotherTeam) {
         return false;
@@ -152,26 +163,40 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       
       return true;
     });
-  }, [users, results, formData.society, editingTeamId]);
+  }, [users, results, formData.society, formData.type, editingTeamId, teams]);
+
+  const mappedShooters = useMemo(() => availableShooters.map(s => ({
+    ...s,
+    name: s.name || s.user_name,
+    surname: s.surname || s.user_surname
+  })), [availableShooters]);
 
   const validateTeam = () => {
-    if (!formData.name || !formData.society || !formData.type) return t('fill_required_fields');
+    // Society is optional for 'SQUADRA_LIBERA'
+    if (!formData.name || !formData.type) return t('fill_required_fields');
+    if (formData.type !== 'SQUADRA_TIRATORI' && !formData.society) return t('fill_required_fields');
     
     const typeDef = teamTypes.find(t => t.id === formData.type);
     if (!typeDef) return t('invalid_team_type');
     
-    if (formData.memberIds.length !== typeDef.size) {
+    if (formData.type !== 'CACCIATORI' && formData.type !== 'SQUADRA_TIRATORI' && formData.memberIds.length !== typeDef.size) {
       return t('team_members_size_error').replace('{{size}}', String(typeDef.size));
     }
+    
+    if ((formData.type === 'SQUADRA_TIRATORI' || formData.type === 'CACCIATORI') && formData.memberIds.length < 1) {
+      return 'Squadra deve avere almeno un partecipante';
+    }
 
-    // Check maximum 3 teams per type per society
-    const existingTeamsOfType = teams.filter(t => 
-      t.society === formData.society && 
-      t.type === formData.type && 
-      t.id !== editingTeamId
-    );
-    if (existingTeamsOfType.length >= 3) {
-      return t('max_teams_reached').replace('{{type}}', typeDef.name);
+    // Check maximum 3 teams per type per society (doesn't apply to Libera?)
+    if (formData.type !== 'SQUADRA_TIRATORI' && formData.type !== 'CACCIATORI') {
+      const existingTeamsOfType = teams.filter(t => 
+        t.society === formData.society && 
+        t.type === formData.type && 
+        t.id !== editingTeamId
+      );
+      if (existingTeamsOfType.length >= 3) {
+        return t('max_teams_reached').replace('{{type}}', typeDef.name);
+      }
     }
 
     const members = formData.memberIds.map(id => users.find(u => u.id === id)).filter(Boolean);
@@ -231,7 +256,10 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          member_ids: formData.memberIds
+        })
       });
 
       if (res.ok) {
@@ -365,9 +393,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                   value={formData.society}
                   onChange={(val) => setFormData({...formData, society: val, memberIds: []})}
                   societies={allSocieties.length > 0 ? allSocieties : societies.map(s => ({ name: s, id: s }))}
-                  placeholder="Seleziona Società"
+                  placeholder="Seleziona Società (Opzionale)"
                   className="w-full"
-                  required
                 />
               )}
             </div>
@@ -390,46 +417,40 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
             </div>
           </div>
 
-          {formData.society && formData.type && (
-            <div className="mb-6">
-              {formData.type === 'SP_A' && (
-                <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg flex gap-3 text-sm text-blue-200">
-                  <i className="fas fa-info-circle mt-0.5 text-blue-400"></i>
-                  <p>
-                    <strong>{t('composition_note_title')}</strong> {t('composition_note_body')}
-                  </p>
-                </div>
-              )}
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                {t('select_shooters_label')
-                  .replace(/\{\{current\}\}/g, String(formData.memberIds.length))
-                  .replace(/\{\{total\}\}/g, String(teamTypes.find(t => t.id === formData.type)?.size || 0))}
-              </label>
-              <ShooterSearch 
-                value={formData.memberIds}
-                onChange={(val) => {
-                  if (Array.isArray(val)) {
-                    const typeDef = teamTypes.find(t => t.id === formData.type);
-                    if (typeDef && val.length > typeDef.size) {
-                      if (triggerToast) triggerToast(t('team_members_size_error').replace('{{size}}', String(typeDef.size)), 'info');
-                      return;
-                    }
-                    setFormData({ ...formData, memberIds: val });
+          <div className="mb-6">
+            {formData.type === 'SP_A' && (
+              <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg flex gap-3 text-sm text-blue-200">
+                <i className="fas fa-info-circle mt-0.5 text-blue-400"></i>
+                <p>
+                  <strong>{t('composition_note_title')}</strong> {t('composition_note_body')}
+                </p>
+              </div>
+            )}
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              {t('select_shooters_label')
+                .replace(/\{\{current\}\}/g, String(formData.memberIds.length))
+                .replace(/\{\{total\}\}/g, String(teamTypes.find(t => t.id === formData.type)?.size || 0))}
+            </label>
+            <ShooterSearch 
+              value={formData.memberIds}
+              onChange={(val) => {
+                if (Array.isArray(val)) {
+                  const typeDef = teamTypes.find(t => t.id === formData.type);
+                  // Allow unlimited shooters for hunter or 'free' teams
+                  if (typeDef && formData.type !== 'SQUADRA_TIRATORI' && formData.type !== 'CACCIATORI' && val.length > typeDef.size) {
+                    if (triggerToast) triggerToast(t('team_members_size_error').replace('{{size}}', String(typeDef.size)), 'info');
+                    return;
                   }
-                }}
-                shooters={availableShooters.map(s => ({
-                  ...s,
-                  // Ensure name and surname are available for ShooterSearch display
-                  name: s.name || s.user_name,
-                  surname: s.surname || s.user_surname
-                }))}
-                useId={true}
-                multiple={true}
-                placeholder={t('search_select_shooters_placeholder')}
-                className="w-full"
-              />
-            </div>
-          )}
+                  setFormData({ ...formData, memberIds: val });
+                }
+              }}
+              shooters={mappedShooters}
+              useId={true}
+              multiple={true}
+              placeholder={t('search_select_shooters_placeholder')}
+              className="w-full"
+            />
+          </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
             <button
@@ -455,29 +476,43 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       {!isCreating && (
         <div className="flex flex-wrap gap-2 mb-6">
           <button
-            onClick={() => setSelectedTypeFilter('A')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'A' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
-          >
-            {t('squads_a')}
-          </button>
-          <button
-            onClick={() => setSelectedTypeFilter('B')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'B' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
-          >
-            {t('squads_b')}
-          </button>
-          <button
-            onClick={() => setSelectedTypeFilter('CA')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'CA' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
-          >
-            Squadre Cacciatori (CA)
-          </button>
-          <button
             onClick={() => setSelectedTypeFilter('ALL')}
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'ALL' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
           >
             {t('all_teams')}
           </button>
+          {sortedAndGroupedTeams.groupA.length > 0 && (
+            <button
+              onClick={() => setSelectedTypeFilter('A')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'A' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+            >
+              {t('squads_a')}
+            </button>
+          )}
+          {sortedAndGroupedTeams.groupB.length > 0 && (
+            <button
+              onClick={() => setSelectedTypeFilter('B')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'B' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+            >
+              {t('squads_b')}
+            </button>
+          )}
+          {sortedAndGroupedTeams.hunters.length > 0 && (
+            <button
+              onClick={() => setSelectedTypeFilter('CA')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'CA' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+            >
+              Squadre Cacciatori (CA)
+            </button>
+          )}
+          {sortedAndGroupedTeams.libera.length > 0 && (
+            <button
+              onClick={() => setSelectedTypeFilter('LIBERA')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === 'LIBERA' ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+            >
+              Squadra Tiratori
+            </button>
+          )}
         </div>
       )}
 

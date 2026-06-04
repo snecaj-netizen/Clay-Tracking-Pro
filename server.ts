@@ -2498,7 +2498,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     );
 
     res.json({ 
-      id: newUserId, name, surname, email, role: role || 'user', category, qualification: finalQualification, society, shooter_code, avatar, birth_date, phone, status: 'active',
+      id: newUserId, name, surname, email, role: role || 'user', category: finalCategory, qualification: finalQualification, society: finalSociety, shooter_code: finalShooterCode, avatar, birth_date, phone, status: 'active',
       shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
     });
   } catch (err: any) {

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "start": "node server.ts",
     "build": "vite build",
+    "start": "tsx server.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
@@ -61,6 +61,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.1"
+    "@typescript-eslint/parser": "^8.57.1",
+    "esbuild": "^0.28.0"
   }
 }

@@ -25,5 +25,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Start the server
-# Using npx ensures tsx is found even if not in the PATH
-CMD ["npx", "tsx", "server.ts"]
+CMD ["npm", "start"]
