@@ -7,11 +7,20 @@ export const getCategoryForDiscipline = (user: User, discipline: Discipline): st
   const acronym = DISCIPLINE_TO_ACRONYM[discipline];
   if (!acronym) return undefined;
   
+  let targetAcronyms = [acronym.toUpperCase()];
+  if (acronym.toUpperCase() === 'PC') {
+    targetAcronyms = ['PC', 'CK'];
+  }
+
   // Format: DT:3 EL:3 FO:3 FU:3 PC:3 SK:3 SP:3 TA:3 TC:3
   const parts = user.discipline_categories.split(' ');
   for (const part of parts) {
     const [d, cat] = part.split(':');
-    if (d === acronym) return cat;
+    if (d && cat) {
+      if (targetAcronyms.includes(d.toUpperCase())) {
+        return cat;
+      }
+    }
   }
   return undefined;
 };

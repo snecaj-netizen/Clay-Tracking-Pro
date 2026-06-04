@@ -41,6 +41,63 @@ app.get('/ping', (req, res) => res.send('pong'));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
 
+const normalizeCategoryBackend = (catStr: any): string => {
+  if (!catStr) return 'Seconda';
+  const upper = catStr.toString().toUpperCase().trim();
+  if (upper === 'ECCELLENZA' || upper === 'E') return 'Eccellenza';
+  if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª') return 'Prima';
+  if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª') return 'Seconda';
+  if (upper.includes('TERZA') || upper === '3' || upper === '3^' || upper === '3*' || upper === '3ª') return 'Terza';
+  return upper; // Return original if not matched
+};
+
+function getCategoryForDisciplineBackend(disciplineCategories: string | null | undefined, disciplineStr: string | null | undefined): string | null {
+  if (!disciplineCategories || !disciplineStr) return null;
+  const upperDisc = disciplineStr.toUpperCase();
+  
+  let acronyms: string[] = [];
+  if (
+    (upperDisc.includes('SPORTING') && upperDisc.includes('COMPAK')) || 
+    upperDisc.includes('CK') || 
+    upperDisc.includes('CS') || 
+    upperDisc === 'COMPAK SPORTING' ||
+    upperDisc.includes('CLUB CUP') ||
+    upperDisc.includes('PC')
+  ) {
+    acronyms = ['CK', 'CS', 'PC'];
+  } else if (upperDisc.includes('SPORTING') || upperDisc.includes('SP') || upperDisc.includes('PV')) {
+    acronyms = ['SP', 'PV'];
+  } else if (upperDisc.includes('DOUBLE TRAP') || upperDisc.includes('DT')) {
+    acronyms = ['DT'];
+  } else if (upperDisc.includes('ELICA') || upperDisc.includes('EL')) {
+    acronyms = ['EL'];
+  } else if (upperDisc.includes('FOSSA OLIMPICA') || upperDisc.includes('FO')) {
+    acronyms = ['FO'];
+  } else if (upperDisc.includes('FOSSA UNIVERSALE') || upperDisc.includes('FU')) {
+    acronyms = ['FU'];
+  } else if (upperDisc.includes('SKEET') || upperDisc.includes('SK')) {
+    acronyms = ['SK', 'SK_ISSF'];
+  } else if (upperDisc.includes('TRAP 1') || upperDisc.includes('TR1') || upperDisc.includes('TA')) {
+    acronyms = ['TR1', 'TA'];
+  } else if (upperDisc.includes('COMBINATO') || upperDisc.includes('TC')) {
+    acronyms = ['TC'];
+  } else {
+    acronyms = [upperDisc];
+  }
+
+  const parts = disciplineCategories.split(' ');
+  for (const part of parts) {
+    const [d, cat] = part.split(':');
+    if (d && cat) {
+      if (acronyms.includes(d.toUpperCase())) {
+        return cat;
+      }
+    }
+  }
+  return null;
+}
+
+
 // Email configuration
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -1102,6 +1159,38 @@ const initDB = async () => {
       console.log("✅ Qualifications migration completed.");
     } catch (err) {
       console.error("❌ Error in qualifications migration:", err);
+    }
+
+    // Backfill past competitions' category_at_time based on users' discipline_categories
+    try {
+      const { rows: competitionsToBackfill } = await pool.query(`
+        SELECT c.id, c.user_id, c.discipline, c.category_at_time, u.discipline_categories, u.is_cacciatore
+        FROM competitions c
+        JOIN users u ON c.user_id = u.id
+        WHERE u.discipline_categories IS NOT NULL 
+          AND u.discipline_categories != ''
+          AND (u.is_cacciatore IS NULL OR u.is_cacciatore = FALSE)
+      `);
+      
+      let updatedCount = 0;
+      for (const comp of competitionsToBackfill) {
+        const discCat = getCategoryForDisciplineBackend(comp.discipline_categories, comp.discipline);
+        if (discCat) {
+          const expectedCat = normalizeCategoryBackend(discCat);
+          if (comp.category_at_time !== expectedCat) {
+            await pool.query(
+              "UPDATE competitions SET category_at_time = $1 WHERE id = $2",
+              [expectedCat, comp.id]
+            );
+            updatedCount++;
+          }
+        }
+      }
+      if (updatedCount > 0) {
+        console.log(`✅ Automated categories backfill completed: updated ${updatedCount} competition categories.`);
+      }
+    } catch (backfillErr) {
+      console.error("❌ Exception during automated categories backfill:", backfillErr);
     }
 
     console.log('Connected to PostgreSQL database and initialized tables.');
@@ -5146,10 +5235,19 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
     // Create a competition record for the shooter (Le Tue Gare)
     try {
       const compId = `evt_${id}_${targetUserId}`;
-      const userDetails = await pool.query('SELECT category, qualification, society FROM users WHERE id = $1', [targetUserId]);
-      const cat = userDetails.rows[0]?.category || null;
+      const userDetails = await pool.query('SELECT category, qualification, society, discipline_categories, is_cacciatore FROM users WHERE id = $1', [targetUserId]);
+      const isCacciatore = userDetails.rows[0]?.is_cacciatore || false;
+      let cat = userDetails.rows[0]?.category || null;
       const qual = userDetails.rows[0]?.qualification || null;
       const soc = userDetails.rows[0]?.society || null;
+      const discCats = userDetails.rows[0]?.discipline_categories || null;
+
+      if (!isCacciatore && discCats) {
+        const discCat = getCategoryForDisciplineBackend(discCats, eventObj.discipline);
+        if (discCat) {
+          cat = normalizeCategoryBackend(discCat);
+        }
+      }
       
       const numSeries = Math.ceil((eventObj.targets || 100) / 25);
       const emptyScores = Array(numSeries).fill(0);
@@ -6975,10 +7073,19 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
 
   try {
     // Fetch user details for snapshot
-    const userDetails = await pool.query('SELECT category, qualification, society FROM users WHERE id = $1', [targetUserId]);
-    const cat = userDetails.rows[0]?.category || null;
+    const userDetails = await pool.query('SELECT category, qualification, society, discipline_categories, is_cacciatore FROM users WHERE id = $1', [targetUserId]);
+    const isCacciatore = userDetails.rows[0]?.is_cacciatore || false;
+    let cat = userDetails.rows[0]?.category || null;
     const qual = userDetails.rows[0]?.qualification || null;
     const soc = userDetails.rows[0]?.society || null;
+    const discCats = userDetails.rows[0]?.discipline_categories || null;
+
+    if (!isCacciatore && discCats) {
+      const discCat = getCategoryForDisciplineBackend(discCats, c.discipline);
+      if (discCat) {
+        cat = normalizeCategoryBackend(discCat);
+      }
+    }
 
     let finalId = c.id;
     let teamId = null;

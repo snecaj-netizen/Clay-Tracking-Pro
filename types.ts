@@ -24,9 +24,9 @@ export const DISCIPLINE_TO_ACRONYM: Partial<Record<Discipline, string>> = {
   [Discipline.PC]: 'PC',
   [Discipline.SK]: 'SK',
   [Discipline.SP]: 'SP',
-  [Discipline.TC]: 'TC', // Wait, the string was TC:3, is it TR1 or TC? The example string has TA:3, is that trap?
-  // Re-reading user: DT:3 EL:3 FO:3 FU:3 PC:3 SK:3 SP:3 TA:3 TC:3
-  // My enum has TC and TR1. Trap is TA?
+  [Discipline.TC]: 'TC',
+  [Discipline.CK]: 'PC',
+  [Discipline.TR1]: 'TA',
 };
 
 export enum TargetCount {
