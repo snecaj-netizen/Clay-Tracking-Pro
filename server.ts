@@ -2890,17 +2890,26 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
         const finalQual = getAutoQualification(u.birth_date, u.qualification);
 
         let existingUserObj: any = null;
+        let matchedByShooterCode = false;
         if (isRichFormat) {
           if (action === 'update' && existingUserId) {
             const { rows } = await client.query("SELECT * FROM users WHERE id = $1", [existingUserId]);
-            if (rows.length > 0) existingUserObj = rows[0];
+            if (rows.length > 0) {
+              existingUserObj = rows[0];
+              if (existingUserObj.shooter_code) {
+                matchedByShooterCode = true;
+              }
+            }
           }
           // Se action === 'create', existingUserObj rimarrà null per consentire la creazione di un nuovo utente sdoppiato
         } else {
           // Se non è formato rich (import diretto), cerchiamo corrispondenze per codice o e-mail
           if (u.shooter_code) {
             const { rows } = await client.query("SELECT * FROM users WHERE LOWER(shooter_code) = LOWER($1)", [u.shooter_code]);
-            if (rows.length > 0) existingUserObj = rows[0];
+            if (rows.length > 0) {
+              existingUserObj = rows[0];
+              matchedByShooterCode = true;
+            }
           }
           if (!existingUserObj && u.email) {
             const { rows } = await client.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [u.email]);
@@ -2942,13 +2951,18 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           let targetEmail = old.email;
           let targetPassword = old.password;
 
-          if (!hasChangedEmail && u.email && u.email !== old.email) {
-            targetEmail = u.email;
-          }
+          if (matchedByShooterCode) {
+            // Se l'utente è stato riconosciuto tramite codice tiratore, non modifichiamo mai email e password
+            // per evitare di sovrascrivere o resettare le credenziali che potrebbe aver cambiato o personalizzato.
+          } else {
+            if (!hasChangedEmail && u.email && u.email !== old.email) {
+              targetEmail = u.email;
+            }
 
-          if (!hasChangedPassword && u.password) {
-            const salt = bcrypt.genSaltSync(10);
-            targetPassword = bcrypt.hashSync(u.password, salt);
+            if (!hasChangedPassword && u.password) {
+              const salt = bcrypt.genSaltSync(10);
+              targetPassword = bcrypt.hashSync(u.password, salt);
+            }
           }
 
           // Track detailed changes
