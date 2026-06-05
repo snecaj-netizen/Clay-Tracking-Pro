@@ -211,20 +211,24 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     };
 
     const countCat = (cats: string[]) => members.filter(m => cats.some(c => getCat(m).includes(c))).length;
+    const countCatEccellenza = () => members.filter(m => {
+      const cat = getCat(m);
+      return cat === 'e' || cat.includes('eccellenza');
+    }).length;
     const countQual = (quals: string[]) => members.filter(m => quals.some(q => getQual(m).includes(q))).length;
 
     if (formData.type === 'PC_A') {
-      const ecc = countCat(['eccellenza']);
+      const ecc = countCatEccellenza();
       if (ecc > 1) return t('max_ecc_reached');
     } else if (formData.type === 'PC_B') {
-      const ecc = countCat(['eccellenza']);
-      const prima = countCat(['1', '1°', '1a', '1^', '1*']);
-      const seconda = countCat(['2', '2°', '2a', '2^', '2*']);
+      const ecc = countCatEccellenza();
+      const prima = countCat(['prima', '1', '1°', '1a', '1^', '1*']);
+      const seconda = countCat(['seconda', '2', '2°', '2a', '2^', '2*']);
       if (ecc > 0 || prima > 0) return t('no_ecc_prima_allowed');
       if (seconda > 2) return t('max_seconda_reached');
     } else if (formData.type === 'SP_A') {
-      const ecc = countCat(['eccellenza']);
-      const prima = countCat(['1', '1°', '1a', '1^', '1*']);
+      const ecc = countCatEccellenza();
+      const prima = countCat(['prima', '1', '1°', '1a', '1^', '1*']);
       if (ecc > 1) return t('max_ecc_reached');
       if (ecc + prima > 3) return t('max_ecc_prima_three_reached');
     } else if (formData.type === 'SP_B') {

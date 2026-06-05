@@ -39,7 +39,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
   const [email, setEmail] = useState(initialDetails?.email || '');
   const [password, setPassword] = useState(initialDetails?.shooterCode || '');
   const [showPassword, setShowPassword] = useState(false);
-  const [category, setCategory] = useState(initialCac ? 'Cacciatore' : (initialDetails?.category || 'Eccellenza'));
+  const [category, setCategory] = useState(initialCac ? 'Cacciatore' : (initialDetails?.category ? (initialDetails.category === 'Eccellenza' ? 'E' : initialDetails.category === 'Prima' ? '1*' : initialDetails.category === 'Seconda' ? '2*' : initialDetails.category === 'Terza' ? '3*' : initialDetails.category) : 'E'));
   const [qualification, setQualification] = useState(initialCac ? 'Cacciatori' : (initialDetails?.qualification || ''));
   const [society, setSociety] = useState(initialCac ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (initialDetails?.society || '')));
   const [shooterCode, setShooterCode] = useState(initialDetails?.shooterCode || '');
@@ -143,7 +143,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
                     setQualification('Cacciatori');
                   } else {
                     setSociety(currentUser?.role === 'society' ? currentUser.society : '');
-                    setCategory('Eccellenza');
+                    setCategory('E');
                     setQualification('');
                   }
                 }}
@@ -204,10 +204,10 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
                     <option value="Cacciatore">Cacciatore (CA)</option>
                   ) : (
                     <>
-                      <option value="Eccellenza">Eccellenza</option>
-                      <option value="Prima">Prima</option>
-                      <option value="Seconda">Seconda</option>
-                      <option value="Terza">Terza</option>
+                      <option value="E">E</option>
+                      <option value="1*">1*</option>
+                      <option value="2*">2*</option>
+                      <option value="3*">3*</option>
                     </>
                   )}
                 </select>

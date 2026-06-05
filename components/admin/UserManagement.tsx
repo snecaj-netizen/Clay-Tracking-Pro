@@ -43,6 +43,21 @@ const UserSearchInput = ({ value, onChange, placeholder }: { value: string, onCh
   );
 };
 
+export const getUserCategory = (u: any) => {
+  if (!u) return '';
+  if (u.is_cacciatore) return 'CACC';
+  if (u.discipline_categories) {
+    const parts = u.discipline_categories.trim().split(/\s+/);
+    for (const part of parts) {
+      const [d, cat] = part.split(':');
+      if (d && cat && d.toUpperCase() === 'PC') {
+        return cat;
+      }
+    }
+  }
+  return u.category || '';
+};
+
 // User Row Component
 const UserRow = React.memo(({ 
   user: u, 
@@ -122,7 +137,7 @@ const UserRow = React.memo(({
               title={u.discipline_categories ? 'Categorie inserite' : 'Categorie mancanti'}
             />
         )}
-        {u.category || '-'} / {u.qualification || '-'}
+        {getUserCategory(u) || '-'} / {u.qualification || '-'}
       </td>
       <td className="py-3 px-4 text-sm text-slate-400">
         <div className="flex items-center gap-2">
@@ -473,6 +488,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
         if (userSortConfig.key === 'name') {
            aValue = `${a.name} ${a.surname}`.toLowerCase();
            bValue = `${b.name} ${b.surname}`.toLowerCase();
+        } else if (userSortConfig.key === 'category') {
+           aValue = String(getUserCategory(a)).toLowerCase();
+           bValue = String(getUserCategory(b)).toLowerCase();
         } else {
            aValue = String(aValue).toLowerCase();
            bValue = String(bValue).toLowerCase();
@@ -506,8 +524,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   const handleDownloadTemplate = () => {
     const template = [
-      ['Nome', 'Cognome', 'Email', 'Ruolo (user/society/admin)', 'Categoria', 'Qualifica', 'Società', 'Codice Tiratore', 'Data di Nascita (YYYY-MM-DD)', 'Telefono'],
-      ['Mario', 'Rossi', 'mario.rossi@example.com', 'user', '1*', 'Senior', 'TAV Roma', 'ABC12DE34', '1980-05-15', '3331234567']
+      ['Nome', 'Cognome', 'Email', 'Ruolo (user/society/admin)', 'Categoria', 'Qualifica', 'Società', 'Codice Tiratore', 'Data di Nascita (YYYY-MM-DD)', 'Telefono', 'Discipline Categories'],
+      ['Mario', 'Rossi', 'mario.rossi@example.com', 'user', '1*', 'Senior', 'TAV Roma', 'ABC12DE34', '1980-05-15', '3331234567', 'FO:3 SP:2 PC:1']
     ];
     const ws = XLSX.utils.aoa_to_sheet(template);
     const wb = XLSX.utils.book_new();
@@ -527,6 +545,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
       'Codice Tiratore': u.shooter_code,
       'Data di Nascita': u.birth_date,
       Telefono: u.phone,
+      'Discipline Categories': u.discipline_categories,
       Stato: u.status
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -1272,7 +1291,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     ) : (
                       <>
                         <option value="">{t('select_dot')}</option>
-                        <option value="Eccellenza">Eccellenza</option>
+                        <option value="E">E</option>
                         <option value="1*">1*</option>
                         <option value="2*">2*</option>
                         <option value="3*">3*</option>
@@ -1718,10 +1737,10 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     <p className="text-sm font-bold text-white uppercase">{selectedUser.shooter_code}</p>
                   </div>
                 )}
-                {selectedUser.category && (
+                {getUserCategory(selectedUser) && (
                   <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('category')}</p>
-                    <p className="text-sm font-bold text-white">{selectedUser.category}</p>
+                    <p className="text-sm font-bold text-white uppercase">{getUserCategory(selectedUser)}</p>
                   </div>
                 )}
                 {selectedUser.qualification && (

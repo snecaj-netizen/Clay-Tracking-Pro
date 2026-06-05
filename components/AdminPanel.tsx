@@ -825,16 +825,39 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                   </div>
                   {currentUser?.role !== 'society' && (
                     <>
-                      <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category')}</label>
-                        <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
-                          <option value="">{t('select_dot')}</option>
-                          <option value="Eccellenza">Eccellenza</option>
-                          <option value="1*">1*</option>
-                          <option value="2*">2*</option>
-                          <option value="3*">3*</option>
-                        </select>
-                      </div>
+                      {currentUser?.role === 'admin' ? (
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category')}</label>
+                          <select value={profileCategory} onChange={e => setProfileCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">
+                            <option value="">{t('select_dot')}</option>
+                            <option value="E">E</option>
+                            <option value="1*">1*</option>
+                            <option value="2*">2*</option>
+                            <option value="3*">3*</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Discipline</label>
+                          <div className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm min-h-[46px] flex flex-wrap gap-1.5 items-center">
+                            {currentUser?.discipline_categories ? (
+                              currentUser.discipline_categories.split(/\s+/).map((item: string, idx: number) => {
+                                const parts = item.split(':');
+                                const disc = parts[0] || '';
+                                const cat = parts[1] || '';
+                                return (
+                                  <span key={idx} className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-bold text-white uppercase flex items-center gap-1">
+                                    <span className="text-slate-500">{disc}:</span>
+                                    <span className="text-orange-500">{cat}</span>
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-xs text-slate-500 italic">Nessuna categoria assegnata</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('qualification')}</label>
                         <select value={profileQualification} onChange={e => setProfileQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none">

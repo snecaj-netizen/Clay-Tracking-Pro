@@ -321,7 +321,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">{t('all')}</option>
-                  <option value="Eccellenza">{t('excellence')}</option>
+                  <option value="E">{t('excellence')}</option>
                   <option value="1*">1*</option>
                   <option value="2*">2*</option>
                   <option value="3*">3*</option>

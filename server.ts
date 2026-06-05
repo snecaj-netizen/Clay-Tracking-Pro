@@ -42,13 +42,14 @@ app.get('/ping', (req, res) => res.send('pong'));
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
 
 const normalizeCategoryBackend = (catStr: any): string => {
-  if (!catStr) return 'Seconda';
+  if (!catStr) return '2*';
   const upper = catStr.toString().toUpperCase().trim();
-  if (upper === 'ECCELLENZA' || upper === 'E') return 'Eccellenza';
-  if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª') return 'Prima';
-  if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª') return 'Seconda';
-  if (upper.includes('TERZA') || upper === '3' || upper === '3^' || upper === '3*' || upper === '3ª') return 'Terza';
-  return upper; // Return original if not matched
+  if (upper === 'CACCIATORE') return 'Cacciatore';
+  if (upper === 'ECCELLENZA' || upper === 'E') return 'E';
+  if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª' || upper === '1°') return '1*';
+  if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª' || upper === '2°') return '2*';
+  if (upper.includes('TERZA') || upper === '3' || upper === '3^' || upper === '3*' || upper === '3ª' || upper === '3°') return '3*';
+  return '2*';
 };
 
 function getCategoryForDisciplineBackend(disciplineCategories: string | null | undefined, disciplineStr: string | null | undefined): string | null {
@@ -548,6 +549,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT");
       await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'it'");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS discipline_categories TEXT");
     } catch (_) {
       console.log("Columns already exist or error adding them");
     }
@@ -1191,6 +1193,42 @@ const initDB = async () => {
       }
     } catch (backfillErr) {
       console.error("❌ Exception during automated categories backfill:", backfillErr);
+    }
+
+    // Normalize existing users.category to use standard E, 1*, 2*, 3*
+    try {
+      const { rows: usersToNormalize } = await pool.query("SELECT id, category FROM users WHERE category IS NOT NULL AND category != '' AND (is_cacciatore IS NULL OR is_cacciatore = FALSE)");
+      let normalizedUsersCount = 0;
+      for (const u of usersToNormalize) {
+        const expected = normalizeCategoryBackend(u.category);
+        if (expected !== u.category) {
+          await pool.query("UPDATE users SET category = $1 WHERE id = $2", [expected, u.id]);
+          normalizedUsersCount++;
+        }
+      }
+      if (normalizedUsersCount > 0) {
+        console.log(`✅ Normalized ${normalizedUsersCount} users' categories to standard E, 1*, 2*, 3*.`);
+      }
+    } catch (err) {
+      console.error("❌ Error normalizing users' categories:", err);
+    }
+
+    // Normalize existing competitions.category_at_time to use standard E, 1*, 2*, 3*
+    try {
+      const { rows: compsToNormalize } = await pool.query("SELECT id, category_at_time FROM competitions WHERE category_at_time IS NOT NULL AND category_at_time != ''");
+      let normalizedCompsCount = 0;
+      for (const c of compsToNormalize) {
+        const expected = normalizeCategoryBackend(c.category_at_time);
+        if (expected !== c.category_at_time) {
+          await pool.query("UPDATE competitions SET category_at_time = $1 WHERE id = $2", [expected, c.id]);
+          normalizedCompsCount++;
+        }
+      }
+      if (normalizedCompsCount > 0) {
+        console.log(`✅ Normalized ${normalizedCompsCount} competitions' category_at_time to standard E, 1*, 2*, 3*.`);
+      }
+    } catch (err) {
+      console.error("❌ Error normalizing competitions' categories:", err);
     }
 
     console.log('Connected to PostgreSQL database and initialized tables.');
@@ -1853,7 +1891,12 @@ app.post('/api/auth/login', async (req, res) => {
         nationality: user.nationality,
         international_id: user.international_id,
         original_club: user.original_club,
-        language: user.language
+        language: user.language,
+        shotgun_brand: user.shotgun_brand,
+        shotgun_model: user.shotgun_model,
+        cartridge_brand: user.cartridge_brand,
+        cartridge_model: user.cartridge_model,
+        discipline_categories: user.discipline_categories
       } 
     });
   } catch (err: any) {
@@ -1890,7 +1933,8 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
       shotgun_brand: user.shotgun_brand,
       shotgun_model: user.shotgun_model,
       cartridge_brand: user.cartridge_brand,
-      cartridge_model: user.cartridge_model
+      cartridge_model: user.cartridge_model,
+      discipline_categories: user.discipline_categories
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -2622,6 +2666,12 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
 
       try {
         let societyName = u.society;
+        if (societyName) {
+          const checkCode = societyMap.get(societyName.toString().trim().toLowerCase());
+          if (checkCode) {
+            societyName = checkCode;
+          }
+        }
         if (u.society_code) {
           const foundName = societyMap.get(u.society_code.toString().toLowerCase());
           if (foundName) societyName = foundName;
@@ -2821,6 +2871,12 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 
       try {
         let societyName = u.society;
+        if (societyName) {
+          const checkCode = societyMap.get(societyName.toString().trim().toLowerCase());
+          if (checkCode) {
+            societyName = checkCode;
+          }
+        }
         if (u.society_code) {
           const foundName = societyMap.get(u.society_code.toString().toLowerCase());
           if (foundName) societyName = foundName;
@@ -2925,6 +2981,9 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           if (targetPassword !== old.password) {
             changes.push(`Password agganciata o aggiornata`);
           }
+          if (u.discipline_categories !== undefined && u.discipline_categories !== null && u.discipline_categories !== old.discipline_categories) {
+            changes.push(`Discipline Categories: '${old.discipline_categories || "Nessuna"}' ➔ '${u.discipline_categories}'`);
+          }
           if (u.birth_date) {
             try {
               const oldBirth = old.birth_date ? new Date(old.birth_date).toISOString().split('T')[0] : '';
@@ -2939,7 +2998,7 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 
           // Update profile, including email/password conditionally matching our target variables
           await client.query(
-            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8, is_international = $9, nationality = $10, international_id = $11, original_club = $12, email_verified = $13, email = $14, password = $15 WHERE id = $16",
+            "UPDATE users SET name = $1, surname = $2, category = $3, qualification = $4, society = $5, shooter_code = $6, birth_date = $7, phone = $8, is_international = $9, nationality = $10, international_id = $11, original_club = $12, email_verified = $13, email = $14, password = $15, discipline_categories = $16 WHERE id = $17",
             [
               u.name || old.name, u.surname || old.surname, u.category || old.category, finalQual || old.qualification, societyName || old.society, 
               u.shooter_code !== undefined ? u.shooter_code : old.shooter_code, 
@@ -2951,6 +3010,7 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
               u.email_verified !== undefined ? !!u.email_verified : !!old.email_verified,
               targetEmail,
               targetPassword,
+              u.discipline_categories !== undefined ? u.discipline_categories : old.discipline_categories,
               old.id
             ]
           );
@@ -2966,10 +3026,11 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           const salt = bcrypt.genSaltSync(10);
           const hash = bcrypt.hashSync(u.password || u.shooter_code || 'Password123!', salt);
           await client.query(
-            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13, $14, $15, $16)",
+            "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, birth_date, phone, status, is_international, nationality, international_id, original_club, email_verified, discipline_categories) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13, $14, $15, $16, $17)",
             [
               u.name, u.surname, u.email, hash, u.role || 'user', u.category, finalQual, societyName, u.shooter_code, u.birth_date || null, u.phone || null,
-              !!u.is_international, u.nationality || null, u.international_id || null, u.original_club || null, !!u.email_verified
+              !!u.is_international, u.nationality || null, u.international_id || null, u.original_club || null, !!u.email_verified,
+              u.discipline_categories || null
             ]
           );
           results.created++;
@@ -4085,7 +4146,12 @@ app.get('/api/challenges/:id/ranking', authenticateToken, async (req, res) => {
         case 'Sfida Handicap (Bonus Categoria)':
           // Best score + bonus based on category
           // Ecc: +0, 1: +1, 2: +2, 3: +3
-          const bonusMap: Record<string, number> = { 'Eccellenza': 0, 'Prima': 1, 'Seconda': 2, 'Terza': 3 };
+          const bonusMap: Record<string, number> = { 
+            'E': 0, 'Eccellenza': 0, 
+            '1*': 1, 'Prima': 1, 
+            '2*': 2, 'Seconda': 2, 
+            '3*': 3, 'Terza': 3 
+          };
           const bonus = bonusMap[stats.category] || 0;
           value = stats.bestScore + bonus;
           break;

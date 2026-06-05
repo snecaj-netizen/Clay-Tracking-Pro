@@ -24,13 +24,14 @@ interface EventResultsManagerProps {
 }
 
 const normalizeCategory = (catStr: any): string => {
-  if (!catStr) return 'Seconda';
+  if (!catStr) return '2*';
   const upper = catStr.toString().toUpperCase().trim();
-  if (upper === 'ECCELLENZA' || upper === 'E') return 'Eccellenza';
-  if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª') return 'Prima';
-  if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª') return 'Seconda';
-  if (upper.includes('TERZA') || upper === '3' || upper === '3^' || upper === '3*' || upper === '3ª') return 'Terza';
-  return 'Seconda';
+  if (upper === 'CACCIATORE') return 'Cacciatore';
+  if (upper === 'ECCELLENZA' || upper === 'E') return 'E';
+  if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª' || upper === '1°') return '1*';
+  if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª' || upper === '2°') return '2*';
+  if (upper.includes('TERZA') || upper === '3' || upper === '3^' || upper === '3*' || upper === '3ª' || upper === '3°') return '3*';
+  return '2*';
 };
 
 const normalizeQualification = (qualStr: any): string => {
@@ -133,7 +134,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         const email = row.email || (foundUser ? (foundUser.email || '') : '');
         const society = row.society || (foundUser ? (foundUser.society || '') : '') || event.location || '';
         const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
-        const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : (row.category && row.category !== 'Seconda' ? row.category : normalizeCategory(foundUser ? (foundUser.category || 'Seconda') : 'Seconda'));
+        const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(row.category || (foundUser ? foundUser.category : '2*'));
         const qualification = row.qualification || normalizeQualification(foundUser ? (foundUser.qualification || '') : '');
 
         // Check if shooters or codes are missing, similar to initial mapping
@@ -306,7 +307,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       'Nome *': 'Mario',
       'Email *': 'mario.rossi@example.com',
       'Società': event.location || 'Società Esempio',
-      'Categoria *': 'Seconda',
+      'Categoria *': '2*',
       'Qualifica': 'Lady',
       'PETT': '1'
     };
@@ -407,7 +408,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           const email = rawEmail || (foundUser ? foundUser.email : '');
           const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
           const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
-          const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : 'Seconda'));
+          const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
           const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
 
           const errors: string[] = [];
