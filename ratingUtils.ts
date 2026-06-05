@@ -4,12 +4,17 @@ export const getCategoryForDiscipline = (user: User, discipline: Discipline): st
   if (user.is_cacciatore) return undefined;
   if (!user.discipline_categories) return undefined;
 
-  const acronym = DISCIPLINE_TO_ACRONYM[discipline];
-  if (!acronym) return undefined;
-  
-  let targetAcronyms = [acronym.toUpperCase()];
-  if (acronym.toUpperCase() === 'PC') {
+  let targetAcronyms: string[] = [];
+  const discStr = String(discipline).toUpperCase();
+  if (discipline === Discipline.DCK || discStr.includes('DCK') || discStr.includes('DOPPIETTO')) {
     targetAcronyms = ['PC', 'CK'];
+  } else {
+    const acronym = DISCIPLINE_TO_ACRONYM[discipline];
+    if (!acronym) return undefined;
+    targetAcronyms = [acronym.toUpperCase()];
+    if (acronym.toUpperCase() === 'PC') {
+      targetAcronyms = ['PC', 'CK'];
+    }
   }
 
   // Format: DT:3 EL:3 FO:3 FU:3 PC:3 SK:3 SP:3 TA:3 TC:3

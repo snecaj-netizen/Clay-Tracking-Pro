@@ -152,7 +152,14 @@ const Dashboard: React.FC<DashboardProps> = ({
             <h3 className="text-4xl font-black text-white">{compStats?.count || 0}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl border-l-4 border-l-orange-600">
-            <p className="text-slate-500 text-xs font-bold mb-1 uppercase tracking-wider">{t('race_average')} /25</p>
+            <p className="text-slate-500 text-xs font-bold mb-1 uppercase tracking-wider">
+              {t('race_average')} {
+                competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0)
+                  .every(c => c.discipline === Discipline.DCK)
+                  ? '/50'
+                  : '/25'
+              }
+            </p>
             <h3 className="text-4xl font-black text-orange-500">{compStats?.avg.toFixed(2) || '0.00'}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-600 shadow-xl relative group">
@@ -177,7 +184,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                     {compStats.bestPlacementComp.name}
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {t('average')}: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> /25
+                    {t('average')}: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> {
+                      (compStats.bestPlacementComp.discipline === Discipline.DCK)
+                        ? '/50'
+                        : '/25'
+                    }
                   </p>
                 </div>
               </div>
@@ -220,7 +231,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <h3 className={`text-4xl font-black ${r.isProvvisorio ? 'text-slate-400' : 'text-amber-500'}`}>
                         {r.rating.toFixed(2)}
                       </h3>
-                      <span className="text-sm font-bold text-slate-500">/25</span>
+                      <span className="text-sm font-bold text-slate-500">
+                        /{r.discipline === Discipline.DCK ? '50' : '25'}
+                      </span>
                     </div>
                   </div>
                   <div className="text-right">

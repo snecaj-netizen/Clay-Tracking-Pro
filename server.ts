@@ -58,6 +58,11 @@ function getCategoryForDisciplineBackend(disciplineCategories: string | null | u
   
   let acronyms: string[] = [];
   if (
+    upperDisc.includes('DOPPIETTO') || 
+    upperDisc.includes('DCK')
+  ) {
+    acronyms = ['CK', 'CS', 'PC'];
+  } else if (
     (upperDisc.includes('SPORTING') && upperDisc.includes('COMPAK')) || 
     upperDisc.includes('CK') || 
     upperDisc.includes('CS') || 

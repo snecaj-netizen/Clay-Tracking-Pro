@@ -525,7 +525,9 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                         <span className={`text-4xl font-black ${bestRating.isProvvisorio ? 'text-slate-500' : 'text-amber-500'}`}>
                           {bestRating.rating.toFixed(2)}
                         </span>
-                        <span className="text-xs font-bold text-slate-500">/25</span>
+                        <span className="text-xs font-bold text-slate-500">
+                          /{bestRating.discipline === Discipline.DCK ? '50' : '25'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border ${bestRating.isProvvisorio ? 'bg-slate-800 text-slate-500 border-slate-700' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
@@ -649,6 +651,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                                 <span className="text-xl font-black text-orange-500">
                                   {avg.toFixed(2)}
                                 </span>
+                                <span className="text-slate-600 font-bold text-[10px]">/ {tps}</span>
                               </div>
                             </div>
                             <div className="text-right">
