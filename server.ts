@@ -1537,41 +1537,6 @@ app.post('/api/ai/generate', authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post('/api/ai/weather', authenticateToken, async (req: any, res) => {
-  const { location, date } = req.body;
-  
-  if (!location || !date) {
-    return res.status(400).json({ error: 'Location and date are required' });
-  }
-
-  try {
-    const response = await callGeminiWithRetry(async (ai) => {
-      return await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: `Qual era (o sarà) il meteo a ${location} il giorno ${date}? 
-                   Fornisci i dati in formato JSON: temp (numero intero Celsius) e 
-                   condition (una tra: 'sole', 'nuvole', 'pioggia', 'vento', 'neve', 'temporale').`,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              temp: { type: Type.INTEGER, description: "Temperatura in gradi Celsius" },
-              condition: { type: Type.STRING, description: "Condizione meteo semplificata" }
-            },
-            required: ["temp", "condition"]
-          }
-        }
-      });
-    });
-
-    res.json(JSON.parse(response.text || '{}'));
-  } catch (err: any) {
-    console.error('AI Weather Error:', err);
-    res.status(500).json({ error: `Errore Meteo AI: ${err.message}` });
-  }
-});
 
 // Push Notifications Routes
 app.get('/api/vapidPublicKey', (req, res) => {
@@ -7887,13 +7852,14 @@ app.post('/api/admin/parse-pdf', authenticateToken, async (req: any, res) => {
 Il PDF rappresenta la classifica di una gara. Analizza attentamente tutta la classifica (comprese eventuali righe divise, testi concatenati, ecc.) ed estrai le informazioni per ciascun tiratore.
 
 Regole fondamentali di estrazione:
-1. Per ciascun tiratore inserisci un record separato.
-2. Identifica la stringa col nome del tiratore e codice:
+1. ORDINE: Estrai i tiratori mantenendo rigorosamente l'ordine del PDF. Inserisci il campo 'rank' corrispondente alla posizione numerica nella classifica del PDF.
+2. Per ciascun tiratore inserisci un record separato.
+3. Identifica la stringa col nome del tiratore e codice:
    La struttura tipica è: COGNOME NOME<br>CODICETIRATORE (es. "IESCE MARIO<br>IMM80LT02" o "IESCE MARIO IMM80LT02").
    - Il Cognome (surname) deve essere ricavato in formato con prima lettera maiuscola, es. "Iesce".
    - Il Nome (name) deve essere ricavato in formato con prima lettera maiuscola, es. "Mario".
    - Il Codice Tiratore (shooterCode) è la stringa alfanumerica di 9 caratteri dopo il tag <br> o spazio, ad esempio "IMM80LT02".
-3. Identifica la Categoria, Qualifica e Preferenza Classifica:
+4. Identifica la Categoria, Qualifica e Preferenza Classifica:
    - Formato tipico: un numero e un eventuale codice (come "1<br>" o "2<br>SE").
    - Se c'è solo un numero seguito da <br> o nulla (es. "1<br>"), significa che gareggia per Categoria "1*". Quindi imposta 'category' = '1*', 'qualification' = '', e 'rankingPreference' = 'categoria'.
    - Se c'è un numero seguito dal codice qualifica (es. "2<br>SE"), significa che la categoria è "2*", la qualifica è "SE", e gareggia per Qualifica. Quindi imposta 'category' = '2*', 'qualification' = 'Senior' (o la decodifica opportuna), e 'rankingPreference' = 'qualifica'.
@@ -7906,14 +7872,14 @@ Regole fondamentali di estrazione:
      - 'SG' -> 'Settore Giovanile'
      - 'PT' o 'PR' o 'PA' -> 'Paralimpici'
    - Se trovi altre diciture o codici, decodificali opportunamente (es. "Ecc" o "E" -> "E", "Cacc" -> "Cacciatore").
-4. Serie e punteggi:
+5. Serie e punteggi:
    - Trova i punteggi delle serie. Solitamente indicati sotto le colonne "S.1", "S.2", "S.3"... o come sequenza di numeri di serie per tiratore.
    - Restituisci sotto forma di array di interi chiamato "scores". L'array deve avere lunghezza esattamente pari a ${numSeries || 4} serie. Adatta i valori di conseguenza o riempi con 0 se mancanti.
-5. Spareggio / Shoot-off:
+6. Spareggio / Shoot-off:
    - Se presente il punteggio dello spareggio (shoot-off / spareggio / barrage) o indicazioni di barrage, impostalo in "shootOff" come intero, altrimenti impostalo a null.
-5. Premi (awarded):
+7. Premi (awarded):
    - Nella colonna "Pos" (Posizione), se accanto al numero c'è una "P" (es.  "1P"), significa che il tiratore è andato a premio. Imposta "awarded" a true. Altrimenti false.
-6. Società (society):
+8. Società (society):
    - Se presente la società sportiva di appartenenza, estraila in "society" (es. "A.S.D. T.A.V. ...").
    
 RISPETTA TASSATIVAMENTE lo schema JSON specificato per l'output. Non aggiungere spiegazioni o testo, fornisci solo l'array JSON valido.`
@@ -7929,6 +7895,7 @@ RISPETTA TASSATIVAMENTE lo schema JSON specificato per l'output. Non aggiungere 
             items: {
               type: Type.OBJECT,
               properties: {
+                rank: { type: Type.INTEGER, description: "The rank/position in the PDF, used to maintain order." },
                 surname: { type: Type.STRING },
                 name: { type: Type.STRING },
                 shooterCode: { type: Type.STRING },
@@ -7943,7 +7910,7 @@ RISPETTA TASSATIVAMENTE lo schema JSON specificato per l'output. Non aggiungere 
                 awarded: { type: Type.BOOLEAN, description: "True if position has 'P' (e.g., 1P), false otherwise." },
                 rankingPreference: { type: Type.STRING, description: "Must be 'categoria' or 'qualifica'" },
               },
-              required: ["surname", "name", "shooterCode", "category", "rankingPreference", "scores", "awarded"]
+              required: ["rank", "surname", "name", "shooterCode", "category", "rankingPreference", "scores", "awarded"]
             }
           }
         }

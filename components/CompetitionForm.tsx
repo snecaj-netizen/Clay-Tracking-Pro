@@ -189,7 +189,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   // Weather states
   const [weatherTemp, setWeatherTemp] = useState<number | undefined>(data?.weather?.temp);
   const [weatherIcon, setWeatherIcon] = useState<string | undefined>(data?.weather?.icon);
-  const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+
 
   const isTraining = eventType === 'Allenamento';
   const isMultiDayEligible = totalTargets >= 200;
@@ -268,58 +268,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     }
   }, [eventType, totalTargets, discipline, scores.length, isTraining]);
 
-  const fetchWeatherWithAI = async () => {
-    let currentLocation = location;
-    if (!currentLocation) {
-      const userLocation = prompt("Inserisci il luogo (es. Roma, Milano, TAV Concaverde) per recuperare il meteo:");
-      if (!userLocation || !userLocation.trim()) {
-        alert("Luogo necessario per recuperare il meteo.");
-        return;
-      }
-      currentLocation = userLocation.trim();
-      setLocation(currentLocation);
-    }
 
-    if (!date) {
-      alert("Inserisci prima la data per recuperare il meteo.");
-      return;
-    }
-
-    setIsFetchingWeather(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) throw new Error('Sessione scaduta');
-
-      const response = await fetch('/api/ai/weather', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ location: currentLocation, date })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Errore nel recupero del meteo");
-      }
-      
-      const data = await response.json();
-      setWeatherTemp(data.temp);
-      
-      const mappedIcon = WEATHER_OPTIONS.find(o => 
-        data.condition.toLowerCase().includes(o.label.toLowerCase()) || 
-        o.label.toLowerCase().includes(data.condition.toLowerCase())
-      )?.icon || 'fa-cloud';
-      
-      setWeatherIcon(mappedIcon);
-    } catch (error: any) {
-      console.error("Error fetching weather:", error);
-      alert(error.message || "Impossibile recuperare il meteo automaticamente.");
-    } finally {
-      setIsFetchingWeather(false);
-    }
-  };
 
   const handleScoreChange = (index: number, value: string) => {
     const num = parseInt(value) || 0;
@@ -728,17 +677,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center justify-between">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block mb-2">
             Meteo
-            <button 
-              type="button" 
-              onClick={fetchWeatherWithAI} 
-              disabled={isFetchingWeather}
-              className="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-orange-500 border border-orange-500/20 disabled:opacity-50"
-            >
-              {isFetchingWeather ? <i className="fas fa-spinner fa-spin mr-1"></i> : <i className="fas fa-magic mr-1"></i>} 
-              RECUPERA CON AI
-            </button>
           </label>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative w-full sm:w-1/3">

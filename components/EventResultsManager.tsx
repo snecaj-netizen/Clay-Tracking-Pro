@@ -360,117 +360,119 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           throw new Error("Il server non ha restituito un array di tiratori.");
         }
         
-        const parsed: any[] = parsedRaw.map((raw: any, index: number) => {
-          const finalShooterCode = (raw.shooterCode || '').trim().toUpperCase();
-          const rawSurname = (raw.surname || '').trim();
-          const rawName = (raw.name || '').trim();
-          const rawEmail = (raw.email || '').trim();
-          const rawSociety = (raw.society || '').trim();
-          const rawCategory = (raw.category || '').trim();
-          const rawQualification = (raw.qualification || '').trim();
-          const bibNumber = raw.bibNumber || '';
-          const awarded = !!raw.awarded;
-          
-          const rankingPreference: 'categoria' | 'qualifica' = (raw.rankingPreference || '').toString().toLowerCase().trim() === 'qualifica' ? 'qualifica' : 'categoria';
+        const parsed: any[] = parsedRaw
+          .sort((a, b) => (a.rank || 0) - (b.rank || 0))
+          .map((raw: any, index: number) => {
+            const finalShooterCode = (raw.shooterCode || '').trim().toUpperCase();
+            const rawSurname = (raw.surname || '').trim();
+            const rawName = (raw.name || '').trim();
+            const rawEmail = (raw.email || '').trim();
+            const rawSociety = (raw.society || '').trim();
+            const rawCategory = (raw.category || '').trim();
+            const rawQualification = (raw.qualification || '').trim();
+            const bibNumber = raw.bibNumber || '';
+            const awarded = !!raw.awarded;
+            
+            const rankingPreference: 'categoria' | 'qualifica' = (raw.rankingPreference || '').toString().toLowerCase().trim() === 'qualifica' ? 'qualifica' : 'categoria';
 
-          const scores: number[] = Array.isArray(raw.scores) ? raw.scores.map((s: any) => parseInt(s) || 0) : [];
-          // pad or trim to numSeries
-          while (scores.length < numSeries) scores.push(0);
-          scores.splice(numSeries);
+            const scores: number[] = Array.isArray(raw.scores) ? raw.scores.map((s: any) => parseInt(s) || 0) : [];
+            // pad or trim to numSeries
+            while (scores.length < numSeries) scores.push(0);
+            scores.splice(numSeries);
 
-          const shootOff = 0;
+            const shootOff = 0;
 
-          let userId: number | undefined;
-          let userFound = false;
-          let foundUser: any = null;
+            let userId: number | undefined;
+            let userFound = false;
+            let foundUser: any = null;
 
-          if (finalShooterCode) {
-            foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === finalShooterCode.toUpperCase().trim());
-            if (foundUser) {
-              userId = foundUser.id;
-              userFound = true;
+            if (finalShooterCode) {
+              foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === finalShooterCode.toUpperCase().trim());
+              if (foundUser) {
+                userId = foundUser.id;
+                userFound = true;
+              }
             }
-          }
 
-          if (!userFound && rawSurname && rawName) {
-            foundUser = users.find(u => 
-              u.surname?.toLowerCase().trim() === rawSurname.toLowerCase().trim() && 
-              u.name?.toLowerCase().trim() === rawName.toLowerCase().trim()
-            );
-            if (foundUser) {
-              userId = foundUser.id;
-              userFound = true;
+            if (!userFound && rawSurname && rawName) {
+              foundUser = users.find(u => 
+                u.surname?.toLowerCase().trim() === rawSurname.toLowerCase().trim() && 
+                u.name?.toLowerCase().trim() === rawName.toLowerCase().trim()
+              );
+              if (foundUser) {
+                userId = foundUser.id;
+                userFound = true;
+              }
             }
-          }
 
-          // Resolve final values using found user or raw parsed values
-          const resolvedShooterCode = finalShooterCode || (foundUser ? foundUser.shooter_code : '');
-          const surname = rawSurname || (foundUser ? foundUser.surname : '');
-          const name = rawName || (foundUser ? foundUser.name : '');
-          const email = rawEmail || (foundUser ? foundUser.email : '');
-          const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
-          
-          const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
-          const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
-          const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
+            // Resolve final values using found user or raw parsed values
+            const resolvedShooterCode = finalShooterCode || (foundUser ? foundUser.shooter_code : '');
+            const surname = rawSurname || (foundUser ? foundUser.surname : '');
+            const name = rawName || (foundUser ? foundUser.name : '');
+            const email = rawEmail || (foundUser ? foundUser.email : '');
+            const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
+            
+            const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
+            const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
+            const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
 
-          const errors: string[] = [];
-          
-          if (!resolvedShooterCode && !userFound) {
-            errors.push("Codice Tiratore mancante");
-          } else if (resolvedShooterCode && resolvedShooterCode.length < 5) {
-            errors.push("Codice Tiratore troppo corto");
-          }
-
-          if (!surname) errors.push("Cognome mancante");
-          if (!name) errors.push("Nome mancante");
-
-          scores.forEach((s, sI) => {
-            if (s < 0 || s > targetsPerSeries) {
-              errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${targetsPerSeries})`);
+            const errors: string[] = [];
+            
+            if (!resolvedShooterCode && !userFound) {
+              errors.push("Codice Tiratore mancante");
+            } else if (resolvedShooterCode && resolvedShooterCode.length < 5) {
+              errors.push("Codice Tiratore troppo corto");
             }
-          });
 
-          if (!userFound) {
-            errors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
-          }
+            if (!surname) errors.push("Cognome mancante");
+            if (!name) errors.push("Nome mancante");
 
-          if (userFound) {
-            const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
-            if (hasExisting) {
-              const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
-              if (existingResult) {
-                const existingScoresString = Array.isArray(existingResult.scores) ? existingResult.scores.join(',') : '';
-                const currentScoresString = scores.join(',');
-                if (existingScoresString !== currentScoresString) {
-                  errors.push(`Variazione: Punteggio esistente nel database è diverso (${existingScoresString.replace(/,/g, '/')}) rispetto all'importato (${currentScoresString.replace(/,/g, '/')}). Se salvato, aggiornerà il database.`);
-                } else {
-                  errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+            scores.forEach((s, sI) => {
+              if (s < 0 || s > targetsPerSeries) {
+                errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${targetsPerSeries})`);
+              }
+            });
+
+            if (!userFound) {
+              errors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
+            }
+
+            if (userFound) {
+              const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
+              if (hasExisting) {
+                const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
+                if (existingResult) {
+                  const existingScoresString = Array.isArray(existingResult.scores) ? existingResult.scores.join(',') : '';
+                  const currentScoresString = scores.join(',');
+                  if (existingScoresString !== currentScoresString) {
+                    errors.push(`Variazione: Punteggio esistente nel database è diverso (${existingScoresString.replace(/,/g, '/')}) rispetto all'importato (${currentScoresString.replace(/,/g, '/')}). Se salvato, aggiornerà il database.`);
+                  } else {
+                    errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+                  }
                 }
               }
             }
-          }
 
-          return {
-            index,
-            shooterCode: resolvedShooterCode ? resolvedShooterCode.toUpperCase() : '',
-            surname,
-            name,
-            email,
-            society,
-            category,
-            qualification,
-            bibNumber,
-            scores,
-            shootOff,
-            rankingPreference,
-            awarded,
-            errors,
-            userFound,
-            userId,
-            isValid: errors.filter(e => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).length === 0
-          };
-        });
+            return {
+              index,
+              shooterCode: resolvedShooterCode ? resolvedShooterCode.toUpperCase() : '',
+              surname,
+              name,
+              email,
+              society,
+              category,
+              qualification,
+              bibNumber,
+              scores,
+              shootOff,
+              rankingPreference,
+              awarded,
+              errors,
+              userFound,
+              userId,
+              isValid: errors.filter(e => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).length === 0
+            };
+          });
 
         setParsedRows(parsed);
         
@@ -968,7 +970,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
     // Update detailed scores: first 'clampedScore' are hits, rest are misses (zeros)
     const newDetailed = [...detailedScores];
-    newDetailed[idx] = Array(targetsPerSeries).fill(false).map((_, i) => i < clampedScore);
+    newDetailed[idx] = Array(targetsPerSeries).fill(false).map((_, i) => i >= (targetsPerSeries - clampedScore));
     setDetailedScores(newDetailed);
   };
 
