@@ -2265,13 +2265,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           {/* Results Table Section */}
           <div className={`w-full ${(readOnly || event.status === 'validated' || parsedRows.length > 0) ? 'md:w-full' : 'md:w-2/3'} p-4 sm:p-6 md:overflow-y-auto bg-slate-950 [.light-theme_&]:bg-white shrink-0 md:shrink transition-colors`}>
             {parsedRows.length > 0 ? (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="space-y-4 bg-white p-6 sm:p-8 rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-xl transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div>
-                    <h3 className="text-xl font-black text-white [.light-theme_&]:text-slate-900 uppercase tracking-tight leading-none">
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
                       {t('excel_import_preview_title')}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-2">
+                    <p className="text-xs text-slate-500 mt-2 font-medium">
                       Rivedi i dati caricati dall'Excel. Correggi eventuali errori o registra i tiratori mancanti direttamente prima di salvare i risultati in database.
                     </p>
                   </div>
@@ -2279,7 +2279,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     <button
                       type="button"
                       onClick={() => setParsedRows([])}
-                      className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider transition-all"
+                      className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all"
                     >
                       {t('back_to_results')}
                     </button>
@@ -2295,21 +2295,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/45 custom-scrollbar">
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50 custom-scrollbar">
                   <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead>
-                      <tr className="border-b border-slate-700 text-[10px] uppercase tracking-widest text-slate-200 bg-slate-800">
-                        <th className="p-3 font-black text-center w-12 text-slate-300">Stato</th>
-                        <th className="p-3 font-black text-slate-300">Tiratore</th>
-                        <th className="p-3 font-black text-center text-slate-300">Codice</th>
-                        <th className="p-3 font-black text-center text-slate-300">Email</th>
-                        <th className="p-3 font-black text-slate-300">Società / Categoria / Qualifica</th>
+                      <tr className="border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-700 bg-slate-100">
+                        <th className="p-3 font-black text-center w-12 text-slate-500">Stato</th>
+                        <th className="p-3 font-black text-slate-500">Tiratore</th>
+                        <th className="p-3 font-black text-center text-slate-500">Codice</th>
+                        <th className="p-3 font-black text-center text-slate-500">Email</th>
+                        <th className="p-3 font-black text-slate-500">Società / Categoria / Qualifica</th>
                         {Array.from({ length: Math.ceil((event.targets || 100) / targetsPerSeries) }).map((_, i) => (
-                          <th key={i} className="p-3 font-black text-center w-14 text-slate-300 font-bold">S{i + 1}</th>
+                          <th key={i} className="p-3 font-black text-center w-14 text-slate-500 font-bold">S{i + 1}</th>
                         ))}
-                        <th className="p-3 font-black text-center w-14 text-slate-300">Shoot-Off</th>
-                        <th className="p-3 font-black text-center w-20 text-slate-300 font-bold">Preferenza</th>
-                        <th className="p-3 font-black text-center w-36 text-slate-300">Azioni</th>
+                        <th className="p-3 font-black text-center w-14 text-slate-500">Shoot-Off</th>
+                        <th className="p-3 font-black text-center w-20 text-slate-500 font-bold">Preferenza</th>
+                        <th className="p-3 font-black text-center w-36 text-slate-500">Azioni</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2319,46 +2319,46 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         const hasWarnings = row.errors.some((e: string) => e.startsWith("ATTENZIONE:"));
                         
                         return (
-                          <tr key={idx} className={`border-b border-slate-700 hover:bg-slate-800/50 transition-colors ${hasErrors ? 'bg-red-500/10' : hasVariation ? 'bg-amber-500/5 border-l-2 border-l-amber-550' : ''}`}>
+                          <tr key={idx} className={`border-b border-slate-200 hover:bg-slate-100/50 transition-colors ${hasErrors ? 'bg-red-500/5' : hasVariation ? 'bg-amber-500/5 border-l-2 border-l-amber-500' : ''}`}>
                             <td className="p-3 text-center">
                               {hasErrors ? (
-                                <i className="fas fa-exclamation-circle text-red-500 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).join('\n')}></i>
+                                <i className="fas fa-exclamation-circle text-red-600 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).join('\n')}></i>
                               ) : hasVariation ? (
-                                <i className="fas fa-sync text-amber-500 text-base animate-pulse" title={row.errors.join('\n')}></i>
+                                <i className="fas fa-sync text-amber-600 text-base animate-pulse" title={row.errors.join('\n')}></i>
                               ) : hasWarnings ? (
-                                <i className="fas fa-exclamation-triangle text-amber-500 text-base" title={row.errors.join('\n')}></i>
+                                <i className="fas fa-exclamation-triangle text-amber-600 text-base" title={row.errors.join('\n')}></i>
                               ) : (
-                                <i className="fas fa-check-circle text-green-500 text-base"></i>
+                                <i className="fas fa-check-circle text-green-600 text-base"></i>
                               )}
                             </td>
                             <td className="p-3">
-                              <div className={`font-black text-white text-xs ${hasVariation ? 'underline decoration-amber-500 decoration-2 underline-offset-4' : ''}`}>{row.surname} {row.name}</div>
+                              <div className={`font-black text-slate-900 text-xs ${hasVariation ? 'underline decoration-amber-500 decoration-2 underline-offset-4' : ''}`}>{row.surname} {row.name}</div>
                               {row.errors.length > 0 && (
                                 <div className="mt-1 space-y-0.5">
                                   {row.errors.map((err: string, eIdx: number) => (
-                                    <div key={eIdx} className={`text-[9px] font-medium leading-none ${err.startsWith("ATTENZIONE:") ? 'text-amber-500 font-bold' : err.startsWith("Variazione:") ? 'text-amber-400 font-black' : 'text-red-500'}`}>
+                                    <div key={eIdx} className={`text-[9.5px] font-bold leading-none ${err.startsWith("ATTENZIONE:") ? 'text-amber-700' : err.startsWith("Variazione:") ? 'text-amber-800 font-black' : 'text-red-700'}`}>
                                       • {err}
                                     </div>
                                   ))}
                                 </div>
                               )}
                             </td>
-                            <td className="p-3 text-center font-mono text-xs text-slate-400 font-bold">{row.shooterCode}</td>
-                            <td className="p-3 text-center text-xs text-slate-400">{row.email}</td>
+                            <td className="p-3 text-center font-mono text-xs text-slate-600 font-bold">{row.shooterCode}</td>
+                            <td className="p-3 text-center text-xs text-slate-500">{row.email}</td>
                             <td className="p-3 text-xs">
-                              <div className="text-slate-300">{row.society}</div>
+                              <div className="text-slate-800 font-bold">{row.society}</div>
                               <div className="flex gap-1 mt-1">
-                                <span className="px-1.5 py-0.5 rounded bg-slate-850 text-orange-400 border border-slate-800 text-[9px] font-bold">{row.category}</span>
+                                <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100 text-[9px] font-black">{row.category}</span>
                                 {row.qualification && (
-                                  <span className="px-1.5 py-0.5 rounded bg-slate-850 text-indigo-400 border border-slate-800 text-[9px] font-bold">{row.qualification}</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 text-[9px] font-black">{row.qualification}</span>
                                 )}
                               </div>
                             </td>
                             {row.scores.map((s: number, sIdx: number) => (
-                              <td key={sIdx} className="p-3 text-center font-bold text-sm text-white">{s}</td>
+                              <td key={sIdx} className="p-3 text-center font-black text-sm text-slate-950">{s}</td>
                             ))}
-                            <td className="p-3 text-center font-bold text-sm text-amber-500">{row.shootOff !== null && row.shootOff !== undefined ? row.shootOff : 0}</td>
-                            <td className="p-3 text-center text-[10px] font-bold uppercase text-slate-500">
+                            <td className="p-3 text-center font-black text-sm text-amber-600">{row.shootOff !== null && row.shootOff !== undefined ? row.shootOff : 0}</td>
+                            <td className="p-3 text-center text-[10px] font-black uppercase text-slate-500">
                               {row.rankingPreference === 'qualifica' ? 'Qualifica' : 'Categoria'}
                             </td>
                             <td className="p-3 text-center">
@@ -2367,10 +2367,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                   <button
                                     type="button"
                                     onClick={() => handleCreateUserInline(idx)}
-                                    className="px-2 py-1 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-blue-500/30 transition-all flex items-center gap-1"
+                                    className="px-2.5 py-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-blue-200 transition-all flex items-center gap-1 shadow-sm"
                                     title="Registra Tiratore a database con questi dati Excel"
                                   >
-                                    <i className="fas fa-user-plus"></i>
+                                    <i className="fas fa-user-plus text-[9px]"></i>
                                     <span>Crea</span>
                                   </button>
                                 )}
@@ -2380,7 +2380,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                     setParsedRows(prev => prev.filter((_, i) => i !== idx));
                                     triggerToast("Riga rimossa dall'importazione.", "info");
                                   }}
-                                  className="px-2 py-1 rounded bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-red-500/30 transition-all flex items-center gap-1"
+                                  className="px-2.5 py-1.5 rounded bg-red-50 text-red-600 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-red-200 transition-all flex items-center gap-1 shadow-sm"
                                   title="Escludi questa riga dall'importazione"
                                 >
                                   <i className="fas fa-trash text-[8px]"></i>
