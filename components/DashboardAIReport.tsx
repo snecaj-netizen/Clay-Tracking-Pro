@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Competition, Discipline, getSeriesLayout } from '../types';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -12,24 +11,8 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
   const { t } = useLanguage();
   const [report, setReport] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [needsKey, setNeedsKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-
-  const checkAndOpenKeySelector = async () => {
-    const aiStudio = (window as any).aistudio;
-    if (aiStudio) {
-      try {
-        await aiStudio.openSelectKey();
-        setNeedsKey(false);
-        generateReport();
-      } catch (err) {
-        console.error("Error opening key selector:", err);
-      }
-    } else {
-      alert(t('api_key_selector_env_error'));
-    }
-  };
 
   const generateReport = async (signal?: AbortSignal) => {
     // Filtriamo solo le gare (non allenamenti) concluse
@@ -41,45 +24,12 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
     }
 
     setLoading(true);
-    setNeedsKey(false);
     setError(null);
     
     try {
-      let apiKey = '';
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          const res = await fetch('/api/gemini-key', {
-            headers: { 'Authorization': `Bearer ${token}` },
-            signal
-          });
-          if (res.ok) {
-            const data = await res.json();
-            apiKey = data.key;
-          }
-        }
-      } catch (e: any) {
-        if (e.name === 'AbortError') return;
-        console.error("Failed to fetch API key from server", e);
-      }
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Sessione scaduta');
 
-      if (signal?.aborted) return;
-
-      if (!apiKey) {
-        const rawKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-        apiKey = typeof rawKey === 'string' ? rawKey.trim() : rawKey;
-      } else {
-        apiKey = apiKey.trim();
-      }
-      
-      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-        setNeedsKey(true);
-        setLoading(false);
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      
       // Sort and take last 10 completed competitions
       const lastComps = [...completedComps]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -103,26 +53,32 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
         ${t('ai_analyst_prompt_suffix')}
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt }),
+        signal
       });
 
-      if (signal?.aborted) return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || t('report_generation_error'));
+      }
 
-      if (response.text) {
-        setReport(response.text);
+      const data = await response.json();
+
+      if (data.text) {
+        setReport(data.text);
       } else {
         setError(t('report_generation_error'));
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error("Error generating report:", err);
-      if (err.message && err.message.includes("API key not valid")) {
-        setNeedsKey(true);
-      } else {
-        setError(t('generic_generation_error'));
-      }
+      setError(err.message || t('generic_generation_error'));
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -134,7 +90,7 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
     const controller = new AbortController();
     // Generate report automatically if we have completed competitions, no report yet, and the panel is open
     const completedComps = competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0);
-    if (isOpen && completedComps.length > 0 && !report && !loading && !needsKey && !error) {
+    if (isOpen && completedComps.length > 0 && !report && !loading && !error) {
       generateReport(controller.signal);
     }
     return () => controller.abort();
@@ -184,21 +140,7 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
 
       {isOpen && (
         <div className="relative z-10 mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
-          {needsKey ? (
-            <div className="bg-slate-950/50 p-6 rounded-2xl border border-orange-500/30 text-center">
-              <i className="fas fa-key text-orange-500 text-3xl mb-3"></i>
-              <h4 className="text-white font-bold mb-2">{t('api_key_required')}</h4>
-              <p className="text-sm text-slate-400 mb-4">
-                {t('api_key_desc')}
-              </p>
-              <button 
-                onClick={checkAndOpenKeySelector}
-                className="bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-6 rounded-xl transition-all shadow-lg active:scale-95 text-sm"
-              >
-                {t('select_api_key')}
-              </button>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="bg-red-950/30 p-4 rounded-xl border border-red-900/50 text-red-400 text-sm flex items-start gap-3">
               <i className="fas fa-exclamation-triangle mt-0.5"></i>
               <p>{error}</p>

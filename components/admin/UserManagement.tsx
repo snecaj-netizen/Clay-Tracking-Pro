@@ -221,6 +221,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create' | 'conflict'>('all');
   const [pendingCategoryUpdates, setPendingCategoryUpdates] = useState<any[] | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [successPopupDetails, setSuccessPopupDetails] = useState<any | null>(null);
 
   const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
 
@@ -293,6 +294,52 @@ const UserManagement: React.FC<UserManagementProps> = ({
       });
 
       if (!res.ok) throw new Error(t('save_error_msg'));
+      
+      if (editingUser) {
+        const changesList: any[] = [];
+        if (name !== (editingUser.name || '')) {
+          changesList.push({ label: 'Nome', old: editingUser.name || 'Nessuno', new: name || 'Nessuno' });
+        }
+        if (surname !== (editingUser.surname || '')) {
+          changesList.push({ label: 'Cognome', old: editingUser.surname || 'Nessuno', new: surname || 'Nessuno' });
+        }
+        if (email !== (editingUser.email || '')) {
+          changesList.push({ label: 'Email', old: editingUser.email || 'Nessuna', new: email || 'Nessuna' });
+        }
+        if (role !== (editingUser.role || '')) {
+          changesList.push({ label: 'Ruolo', old: editingUser.role || 'Nessuno', new: role || 'Nessuno' });
+        }
+        if (category !== (editingUser.category || '')) {
+          changesList.push({ label: 'Categoria', old: editingUser.category || 'Nessuna', new: category || 'Nessuna' });
+        }
+        if (qualification !== (editingUser.qualification || '')) {
+          changesList.push({ label: 'Qualifica', old: editingUser.qualification || 'Nessuna', new: qualification || 'Nessuna' });
+        }
+        if (society !== (editingUser.society || '')) {
+          changesList.push({ label: 'Società', old: editingUser.society || 'Nessuna', new: society || 'Nessuna' });
+        }
+        if (shooterCode !== (editingUser.shooter_code || '')) {
+          changesList.push({ label: 'Codice Tiratore', old: editingUser.shooter_code || 'Nessuno', new: shooterCode || 'Nessuno' });
+        }
+        if (phone !== (editingUser.phone || '')) {
+          changesList.push({ label: 'Telefono', old: editingUser.phone || 'Nessuno', new: phone || 'Nessuno' });
+        }
+        if (birthDate !== (editingUser.birth_date || '')) {
+          const oldFormatted = editingUser.birth_date ? new Date(editingUser.birth_date).toLocaleDateString() : 'Nessuna';
+          const newFormatted = birthDate ? new Date(birthDate).toLocaleDateString() : 'Nessuna';
+          changesList.push({ label: 'Data di Nascita', old: oldFormatted, new: newFormatted });
+        }
+        if (isCacciatore !== !!editingUser.is_cacciatore) {
+          changesList.push({ label: 'Cacciatore', old: editingUser.is_cacciatore ? 'Sì' : 'No', new: isCacciatore ? 'Sì' : 'No' });
+        }
+
+        setSuccessPopupDetails({
+          userName: `${name} ${surname}`.trim() || email,
+          changes: changesList
+        });
+      } else {
+        triggerToast(t('save_success_msg') || 'Utente creato con successo', 'success');
+      }
       
       setEditingUser(null);
       setShowUserForm(false);
@@ -1081,6 +1128,69 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <div className="flex gap-3 shrink-0">
                <button onClick={() => setPendingCategoryUpdates(null)} className="flex-1 bg-slate-800 text-white font-black py-3 rounded-xl">Annulla</button>
                <button onClick={handleConfirmUpdateCategories} className="flex-1 bg-orange-600 text-white font-black py-3 rounded-xl">Conferma Aggiornamento</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {successPopupDetails && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1300] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/20 rounded-[2.5rem] p-6 sm:p-8 w-full max-w-md shadow-[0_0_50px_rgba(16,185,129,0.15)] animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+                <i className="fas fa-check-circle text-2xl"></i>
+              </div>
+              <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                {language === 'it' ? 'Modifica Completata' : 'Update Successful'}
+              </h3>
+              <p className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-bold">
+                {successPopupDetails.userName}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar my-2 space-y-3 pr-1">
+              <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                {language === 'it' ? 'Dettaglio variazioni:' : 'Changes details:'}
+              </p>
+              
+              {successPopupDetails.changes.length === 0 ? (
+                <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-2xl text-center">
+                  <p className="text-xs text-slate-400">
+                    {language === 'it' ? 'Nessun campo modificato.' : 'No fields changed.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {successPopupDetails.changes.map((ch: any, i: number) => (
+                    <div key={i} className="bg-slate-950/60 border border-slate-900 rounded-2xl p-3 flex flex-col gap-1.5 hover:border-slate-800 transition-colors">
+                      <div className="flex justify-between items-center text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                        <span>{ch.label}</span>
+                      </div>
+                      <div className="grid grid-cols-11 gap-1 items-center text-xs">
+                        <div className="col-span-5 text-slate-400 font-medium line-through bg-red-950/10 border border-red-500/10 px-2 py-1 rounded-lg truncate text-center" title={ch.old}>
+                          {ch.old}
+                        </div>
+                        <div className="col-span-1 text-center text-slate-600">
+                          <i className="fas fa-arrow-right text-[10px]"></i>
+                        </div>
+                        <div className="col-span-5 text-emerald-400 font-bold bg-emerald-950/20 border border-emerald-500/10 px-2 py-1 rounded-lg truncate text-center" title={ch.new}>
+                          {ch.new}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-800 shrink-0">
+              <button 
+                onClick={() => setSuccessPopupDetails(null)} 
+                className="w-full bg-emerald-600/95 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl transition-all uppercase text-xs tracking-widest active:scale-[0.98] shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20"
+              >
+                {language === 'it' ? 'Chiudi e continua' : 'Close and continue'}
+              </button>
             </div>
           </div>
         </div>,

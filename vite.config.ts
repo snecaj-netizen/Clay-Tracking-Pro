@@ -58,7 +58,9 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         outDir: 'dist',
-        chunkSizeWarningLimit: 1500
+        emptyOutDir: true,
+        chunkSizeWarningLimit: 1500,
+        reportCompressedSize: false
       },
       resolve: {
         alias: {

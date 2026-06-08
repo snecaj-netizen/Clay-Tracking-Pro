@@ -37,13 +37,13 @@ const normalizeCategory = (catStr: any): string => {
 const normalizeQualification = (qualStr: any): string => {
   if (!qualStr) return '';
   const upper = qualStr.toString().toUpperCase().trim();
-  if (upper.includes('LAD')) return 'Lady';
-  if (upper.includes('SETT') || upper.includes('GIOV')) return 'Settore Giovanile';
-  if (upper.includes('JUN')) return 'Junior';
-  if (upper.includes('VET')) return 'Veterani';
-  if (upper.includes('MAS')) return 'Master';
-  if (upper.includes('PARAL') || upper.includes('PARA')) return 'Paralimpici';
-  if (upper.includes('SEN') || upper.includes('SR')) return 'Senior';
+  if (upper === 'LA' || upper.includes('LAD')) return 'Lady';
+  if (upper === 'SG' || upper.includes('SETT') || upper.includes('GIOV')) return 'Settore Giovanile';
+  if (upper === 'JU' || upper.includes('JUN')) return 'Junior';
+  if (upper === 'VE' || upper.includes('VET')) return 'Veterani';
+  if (upper === 'MA' || upper.includes('MAS')) return 'Master';
+  if (upper === 'PT' || upper === 'PR' || upper === 'PA' || upper.includes('PARAL') || upper.includes('PARA')) return 'Paralimpici';
+  if (upper === 'SE' || upper.includes('SEN') || upper.includes('SR')) return 'Senior';
   return '';
 };
 
@@ -71,6 +71,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [parsedRows, setParsedRows] = useState<any[]>([]);
+  const [showImportPanel, setShowImportPanel] = useState(false);
   
   const layoutInfo = useMemo(() => getSeriesLayout(event.discipline as Discipline), [event.discipline]);
   const targetsPerSeries = useMemo(() => {
@@ -325,6 +326,196 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     triggerToast("Template scaricato con successo!", "success");
   };
 
+  const handleUploadPDFResults = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const base64Data = (evt.target?.result as string).split(',')[1];
+        const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+
+        const res = await fetch('/api/admin/parse-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            pdfBase64: base64Data,
+            numSeries,
+            targetsPerSeries,
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Errore durante l'analisi del PDF.");
+        }
+
+        const parsedRaw = await res.json();
+        if (!Array.isArray(parsedRaw)) {
+          throw new Error("Il server non ha restituito un array di tiratori.");
+        }
+        
+        const parsed: any[] = parsedRaw.map((raw: any, index: number) => {
+          const finalShooterCode = (raw.shooterCode || '').trim().toUpperCase();
+          const rawSurname = (raw.surname || '').trim();
+          const rawName = (raw.name || '').trim();
+          const rawEmail = (raw.email || '').trim();
+          const rawSociety = (raw.society || '').trim();
+          const rawCategory = (raw.category || '').trim();
+          const rawQualification = (raw.qualification || '').trim();
+          const bibNumber = raw.bibNumber || '';
+          const awarded = !!raw.awarded;
+          
+          const rankingPreference: 'categoria' | 'qualifica' = (raw.rankingPreference || '').toString().toLowerCase().trim() === 'qualifica' ? 'qualifica' : 'categoria';
+
+          const scores: number[] = Array.isArray(raw.scores) ? raw.scores.map((s: any) => parseInt(s) || 0) : [];
+          // pad or trim to numSeries
+          while (scores.length < numSeries) scores.push(0);
+          scores.splice(numSeries);
+
+          const shootOff = 0;
+
+          let userId: number | undefined;
+          let userFound = false;
+          let foundUser: any = null;
+
+          if (finalShooterCode) {
+            foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === finalShooterCode.toUpperCase().trim());
+            if (foundUser) {
+              userId = foundUser.id;
+              userFound = true;
+            }
+          }
+
+          if (!userFound && rawSurname && rawName) {
+            foundUser = users.find(u => 
+              u.surname?.toLowerCase().trim() === rawSurname.toLowerCase().trim() && 
+              u.name?.toLowerCase().trim() === rawName.toLowerCase().trim()
+            );
+            if (foundUser) {
+              userId = foundUser.id;
+              userFound = true;
+            }
+          }
+
+          // Resolve final values using found user or raw parsed values
+          const resolvedShooterCode = finalShooterCode || (foundUser ? foundUser.shooter_code : '');
+          const surname = rawSurname || (foundUser ? foundUser.surname : '');
+          const name = rawName || (foundUser ? foundUser.name : '');
+          const email = rawEmail || (foundUser ? foundUser.email : '');
+          const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
+          
+          const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
+          const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
+          const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
+
+          const errors: string[] = [];
+          
+          if (!resolvedShooterCode && !userFound) {
+            errors.push("Codice Tiratore mancante");
+          } else if (resolvedShooterCode && resolvedShooterCode.length < 5) {
+            errors.push("Codice Tiratore troppo corto");
+          }
+
+          if (!surname) errors.push("Cognome mancante");
+          if (!name) errors.push("Nome mancante");
+
+          scores.forEach((s, sI) => {
+            if (s < 0 || s > targetsPerSeries) {
+              errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${targetsPerSeries})`);
+            }
+          });
+
+          if (!userFound) {
+            errors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
+          }
+
+          if (userFound) {
+            const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
+            if (hasExisting) {
+              const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
+              if (existingResult) {
+                const existingScoresString = Array.isArray(existingResult.scores) ? existingResult.scores.join(',') : '';
+                const currentScoresString = scores.join(',');
+                if (existingScoresString !== currentScoresString) {
+                  errors.push(`Variazione: Punteggio esistente nel database è diverso (${existingScoresString.replace(/,/g, '/')}) rispetto all'importato (${currentScoresString.replace(/,/g, '/')}). Se salvato, aggiornerà il database.`);
+                } else {
+                  errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+                }
+              }
+            }
+          }
+
+          return {
+            index,
+            shooterCode: resolvedShooterCode ? resolvedShooterCode.toUpperCase() : '',
+            surname,
+            name,
+            email,
+            society,
+            category,
+            qualification,
+            bibNumber,
+            scores,
+            shootOff,
+            rankingPreference,
+            awarded,
+            errors,
+            userFound,
+            userId,
+            isValid: errors.filter(e => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).length === 0
+          };
+        });
+
+        setParsedRows(parsed);
+        
+        // Aggregate awards
+        const newPrizeSettings = [...prizeSettings];
+        let awardsAdded = 0;
+        parsed.forEach(row => {
+            if (row.awarded) {
+                const type = (row.rankingPreference || '').toString().toLowerCase().trim() === 'qualifica' ? 'qualifica' : 'categoria';
+                const name = type === 'qualifica' ? row.qualification : row.category;
+                
+                if (!name) {
+                    console.warn("Skipping award due to missing name for type:", type, row);
+                    return;
+                }
+                
+                const existingSetting = newPrizeSettings.find(s => s.type === type && s.name === name);
+                if (existingSetting) {
+                    existingSetting.count = (existingSetting.count || 0) + 1;
+                } else {
+                    newPrizeSettings.push({ type: type as any, name, count: 1 });
+                }
+                awardsAdded++;
+            }
+        });
+        if (awardsAdded > 0) {
+            setPrizeSettings(newPrizeSettings);
+            triggerToast(`File PDF analizzato: ${parsed.length} tiratori estratti e ${awardsAdded} premi assegnati. Controlla la tabella di convalida e la configurazione premi.`, "success");
+        } else {
+            triggerToast(`File PDF analizzato: ${parsed.length} tiratori estratti. Controlla la tabella di convalida.`, "success");
+        }
+      } catch (err: any) {
+        triggerToast(`Errore durante l'analisi del file PDF: ${err.message}`, "error");
+      } finally {
+        setLoading(false);
+        e.target.value = '';
+      }
+    };
+    reader.onerror = () => {
+      triggerToast("Errore di caricamento del file PDF.", "error");
+      setLoading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleUploadExcelResults = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -375,8 +566,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             scores.push(isNaN(scoreNum) ? 0 : scoreNum);
           }
 
-          const rawOff = getVal(['shootoff', 'shoot-off', 'spareggio']);
-          const shootOff = rawOff ? (parseInt(rawOff) || null) : null;
+          const shootOff = 0;
 
           let userId: number | undefined;
           let userFound = false;
@@ -440,7 +630,16 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           if (userFound) {
             const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
             if (hasExisting) {
-              errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+              const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
+              if (existingResult) {
+                const existingScoresString = Array.isArray(existingResult.scores) ? existingResult.scores.join(',') : '';
+                const currentScoresString = scores.join(',');
+                if (existingScoresString !== currentScoresString) {
+                  errors.push(`Variazione: Punteggio esistente nel database è diverso (${existingScoresString.replace(/,/g, '/')}) rispetto all'importato (${currentScoresString.replace(/,/g, '/')}). Se salvato, aggiornerà il database.`);
+                } else {
+                  errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+                }
+              }
             }
           }
 
@@ -499,7 +698,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
 
   const handleSaveAllExcelResults = async () => {
-    const rowsWithCriticalErrors = parsedRows.filter(r => r.errors.some(e => !e.startsWith("ATTENZIONE:")));
+    const rowsWithCriticalErrors = parsedRows.filter(r => r.errors.some(e => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")));
     
     if (rowsWithCriticalErrors.length > 0) {
       triggerToast("Risolvi gli errori dei tiratori prima di procedere con il salvataggio dei risultati.", "error");
@@ -511,15 +710,28 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     let failCount = 0;
 
     for (const row of parsedRows) {
+      if (row.errors.some((e: string) => e.startsWith("ATTENZIONE:"))) {
+        continue;
+      }
+      
       const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
       const totalScore = row.scores.reduce((a: number, b: number) => a + b, 0);
       const totalTargetsVal = event.targets || 100;
       const averagePerSeries = totalScore / numSeries;
 
       const detailed: boolean[][] = row.scores.map((score: number) => {
+        const numMisses = targetsPerSeries - score;
+        const missIndices = new Set<number>();
+        // Slide misses based on the row index to preserve relative rankings under countback sorting
+        const rowIndex = typeof row.index === 'number' ? row.index : 0;
+        for (let m = 0; m < numMisses; m++) {
+          missIndices.add((m + rowIndex) % targetsPerSeries);
+        }
         const arr = Array(targetsPerSeries).fill(false);
-        for (let i = 0; i < score; i++) {
-          arr[i] = true;
+        for (let i = 0; i < targetsPerSeries; i++) {
+          if (!missIndices.has(i)) {
+            arr[i] = true;
+          }
         }
         return arr;
       });
@@ -1222,10 +1434,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     const isRestrictedCategory = (cat: string | null | undefined) => {
       if (!cat) return false;
       const c = cat.toLowerCase().trim();
-      return c === 'eccellenza' || c === '1' || c === '1°' || c === '1a' || c === '1^' || c === '1*';
+      return (
+        c === 'eccellenza' ||
+        c === 'e' ||
+        c === '1' ||
+        c === '1°' ||
+        c === '1a' ||
+        c === '1^' ||
+        c === '1*' ||
+        c.includes('eccellenza') ||
+        c.includes('prima')
+      );
     };
 
-    const ranking = Array.from(societyMap.entries()).map(([societyName, shooters]) => {
+    const ranking = Array.from(societyMap.entries())
+      .filter(([_, shooters]) => shooters.length >= 3)
+      .map(([societyName, shooters]) => {
       // Sort shooters by score descending
       const sortedShooters = [...shooters].sort(sortResults);
       
@@ -1603,31 +1827,64 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             <div className="w-full md:w-1/3 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-slate-800 md:overflow-y-auto bg-slate-900/50 shrink-0 md:shrink">
               {/* Excel Import/Export for Admin */}
               {user?.role === 'admin' && (
-                <div className="mb-6 p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-2xl space-y-2 shadow-inner">
-                  <div className="flex items-center gap-2 text-emerald-400">
-                    <i className="fas fa-file-excel text-sm"></i>
-                    <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Importazione Excel</h4>
-                  </div>
-                  <div className="flex flex-col gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleDownloadExcelTemplate}
-                      className="px-3 py-2 rounded-xl bg-slate-700/50 border border-slate-600 hover:border-emerald-500/50 text-white hover:text-emerald-300 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
-                    >
-                      <i className="fas fa-download text-xs"></i>
-                      <span>{t('download_template_excel')}</span>
-                    </button>
-                    <label className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-emerald-500/20 w-full">
-                      <i className="fas fa-upload text-xs"></i>
-                      <span>{t('upload_results_excel')}</span>
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        onChange={handleUploadExcelResults}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
+                <div className="mb-6 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImportPanel(!showImportPanel)}
+                    className={`w-full px-4 py-3 rounded-2xl border flex items-center justify-between transition-all font-bold uppercase text-[10px] tracking-widest ${
+                      showImportPanel
+                        ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400 hover:bg-emerald-950/60 shadow-inner'
+                        : 'bg-slate-850 border-slate-700/50 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-950/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-file-import text-xs"></i>
+                      <span>Importazione Classifica Gara</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 text-[9px]">
+                      <span>{showImportPanel ? 'Nascondi' : 'Mostra'}</span>
+                      <i className={`fas ${showImportPanel ? 'fa-chevron-up' : 'fa-chevron-down'} text-[8px]`}></i>
+                    </div>
+                  </button>
+
+                  {showImportPanel && (
+                    <div className="p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-2xl space-y-2 shadow-inner animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex items-center gap-2 text-emerald-400">
+                        <i className="fas fa-file-import text-sm"></i>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Opzioni Importatore</h4>
+                      </div>
+                      <div className="flex flex-col gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleDownloadExcelTemplate}
+                          className="px-3 py-2 rounded-xl bg-slate-700/50 border border-slate-600 hover:border-emerald-500/50 text-white hover:text-emerald-300 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
+                        >
+                          <i className="fas fa-download text-xs"></i>
+                          <span>{t('download_template_excel')}</span>
+                        </button>
+                        <label className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-emerald-500/20 w-full">
+                          <i className="fas fa-upload text-xs"></i>
+                          <span>{t('upload_results_excel')}</span>
+                          <input
+                            type="file"
+                            accept=".xlsx, .xls"
+                            onChange={handleUploadExcelResults}
+                            className="hidden"
+                          />
+                        </label>
+                        <label className="px-3 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-orange-600/20 w-full">
+                          <i className="fas fa-file-pdf text-xs"></i>
+                          <span>Carica PDF Gestgare</span>
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={handleUploadPDFResults}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2028,7 +2285,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     </button>
                     <button
                       type="button"
-                      disabled={saving || parsedRows.some(r => r.errors.some((e: string) => !e.startsWith("ATTENZIONE:")))}
+                      disabled={saving || parsedRows.some(r => r.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")))}
                       onClick={handleSaveAllExcelResults}
                       className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2"
                     >
@@ -2057,14 +2314,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                     </thead>
                     <tbody>
                       {parsedRows.map((row, idx) => {
-                        const hasErrors = row.errors.some((e: string) => !e.startsWith("ATTENZIONE:"));
+                        const hasErrors = row.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:"));
+                        const hasVariation = row.errors.some((e: string) => e.startsWith("Variazione:"));
                         const hasWarnings = row.errors.some((e: string) => e.startsWith("ATTENZIONE:"));
                         
                         return (
-                          <tr key={idx} className={`border-b border-slate-700 hover:bg-slate-800/50 transition-colors ${hasErrors ? 'bg-red-500/10' : ''}`}>
+                          <tr key={idx} className={`border-b border-slate-700 hover:bg-slate-800/50 transition-colors ${hasErrors ? 'bg-red-500/10' : hasVariation ? 'bg-amber-500/5 border-l-2 border-l-amber-550' : ''}`}>
                             <td className="p-3 text-center">
                               {hasErrors ? (
-                                <i className="fas fa-exclamation-circle text-red-500 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:")).join('\n')}></i>
+                                <i className="fas fa-exclamation-circle text-red-500 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).join('\n')}></i>
+                              ) : hasVariation ? (
+                                <i className="fas fa-sync text-amber-500 text-base animate-pulse" title={row.errors.join('\n')}></i>
                               ) : hasWarnings ? (
                                 <i className="fas fa-exclamation-triangle text-amber-500 text-base" title={row.errors.join('\n')}></i>
                               ) : (
@@ -2072,11 +2332,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               )}
                             </td>
                             <td className="p-3">
-                              <div className="font-black text-white text-xs">{row.surname} {row.name}</div>
+                              <div className={`font-black text-white text-xs ${hasVariation ? 'underline decoration-amber-500 decoration-2 underline-offset-4' : ''}`}>{row.surname} {row.name}</div>
                               {row.errors.length > 0 && (
                                 <div className="mt-1 space-y-0.5">
                                   {row.errors.map((err: string, eIdx: number) => (
-                                    <div key={eIdx} className={`text-[9px] font-medium leading-none ${err.startsWith("ATTENZIONE:") ? 'text-amber-500 font-bold' : 'text-red-500'}`}>
+                                    <div key={eIdx} className={`text-[9px] font-medium leading-none ${err.startsWith("ATTENZIONE:") ? 'text-amber-500 font-bold' : err.startsWith("Variazione:") ? 'text-amber-400 font-black' : 'text-red-500'}`}>
                                       • {err}
                                     </div>
                                   ))}
@@ -2097,7 +2357,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             {row.scores.map((s: number, sIdx: number) => (
                               <td key={sIdx} className="p-3 text-center font-bold text-sm text-white">{s}</td>
                             ))}
-                            <td className="p-3 text-center font-bold text-sm text-amber-500">{row.shootOff || '-'}</td>
+                            <td className="p-3 text-center font-bold text-sm text-amber-500">{row.shootOff !== null && row.shootOff !== undefined ? row.shootOff : 0}</td>
                             <td className="p-3 text-center text-[10px] font-bold uppercase text-slate-500">
                               {row.rankingPreference === 'qualifica' ? 'Qualifica' : 'Categoria'}
                             </td>
@@ -2271,6 +2531,23 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Regolamento Classifica Società */}
+                  <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl text-xs text-slate-400 flex items-start gap-3 shadow-lg backdrop-blur-sm">
+                    <div className="w-8 h-8 rounded-lg bg-orange-600/10 text-orange-500 flex items-center justify-center border border-orange-500/20 shrink-0">
+                      <i className="fas fa-info-circle text-sm"></i>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-200 uppercase tracking-widest text-[10px] mb-1">
+                        {language === 'it' ? 'Regolamento Classifica Società TAV' : 'TAV Club Ranking Policy'}
+                      </p>
+                      <p className="leading-relaxed">
+                        {language === 'it' 
+                          ? 'I punteggi societari sono calcolati sommando i 3 migliori risultati dei tiratori appartenenti alla stessa società. È consentito al massimo un solo tiratore di categoria Eccellenza (E) o 1ª Categoria (1*). Le categorie inferiori (2ª, 3ª, ecc.) possono sostituire i tiratori delle categorie superiori se ottengono un punteggio migliore.'
+                          : 'Club scores are calculated by summing the top 3 results of shooters from the same club. A maximum of one shooter from the "Eccellenza" (E) or "1ª Categoria" (1*) category is allowed per team. Shooters from lower categories can replace higher ones if they achieve a better score.'}
+                      </p>
+                    </div>
+                  </div>
+
                   {societyRanking.map((soc, idx) => (
                     <div key={soc.societyName} className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
                       <div className="flex items-center justify-between p-4 bg-slate-800/50">

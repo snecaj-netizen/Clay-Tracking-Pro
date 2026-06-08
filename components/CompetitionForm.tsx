@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout, SocietyEvent } from '../types';
-import { GoogleGenAI, Type } from "@google/genai";
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import { handleNetworkError } from './ConnectionStatus';
@@ -288,55 +287,24 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
     setIsFetchingWeather(true);
     try {
-      let apiKey = '';
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          const res = await fetch('/api/gemini-key', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            apiKey = data.key;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch API key from server", e);
-      }
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Sessione scaduta');
 
-      if (!apiKey) {
-        const rawKey = process.env.GEMINI_API_KEY;
-        apiKey = typeof rawKey === 'string' ? rawKey.trim() : rawKey;
-      } else {
-        apiKey = apiKey.trim();
-      }
-      
-      if (!apiKey || apiKey === 'undefined') throw new Error("API Key missing");
-
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: `Qual era (o sarà) il meteo a ${currentLocation} il giorno ${date}? 
-                   Fornisci i dati in formato JSON: temp (numero intero Celsius) e 
-                   condition (una tra: 'sole', 'nuvole', 'pioggia', 'vento', 'neve', 'temporale').`,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              temp: { type: Type.INTEGER, description: "Temperatura in gradi Celsius" },
-              condition: { type: Type.STRING, description: "Condizione meteo semplificata" }
-            },
-            required: ["temp", "condition"]
-          }
-        }
+      const response = await fetch('/api/ai/weather', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ location: currentLocation, date })
       });
 
-      const text = response.text;
-      if (!text) throw new Error("No response from AI");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Errore nel recupero del meteo");
+      }
       
-      const data = JSON.parse(text);
+      const data = await response.json();
       setWeatherTemp(data.temp);
       
       const mappedIcon = WEATHER_OPTIONS.find(o => 
@@ -345,9 +313,9 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       )?.icon || 'fa-cloud';
       
       setWeatherIcon(mappedIcon);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching weather:", error);
-      alert("Impossibile recuperare il meteo automaticamente.");
+      alert(error.message || "Impossibile recuperare il meteo automaticamente.");
     } finally {
       setIsFetchingWeather(false);
     }

@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Competition, Cartridge, Discipline, CompetitionLevel } from '../types';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -26,7 +25,6 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [needsKey, setNeedsKey] = useState(false);
   const [coachStatus, setCoachStatus] = useState<'idle' | 'thinking'>('idle');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -40,13 +38,12 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   };
 
   useEffect(() => {
-    // Only scroll if there's more than one message (i.e., after initial greeting)
     if (messages.length > 1) {
       scrollToBottom(true);
     }
   }, [messages]);
 
-  // Initial greeting and analysis
+  // Initial greeting
   useEffect(() => {
     if (messages.length === 0 && competitions.length > 0) {
       const initialGreeting = async () => {
@@ -79,37 +76,6 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
     }
   }, [competitions.length, user?.name, user?.role]);
 
-  const checkAndOpenKeySelector = async () => {
-    const aiStudio = (window as any).aistudio;
-    if (aiStudio) {
-      try {
-        await aiStudio.openSelectKey();
-        setNeedsKey(false);
-      } catch (err) {
-        console.error("Error opening key selector:", err);
-      }
-    }
-  };
-
-  const getApiKey = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        const res = await fetch('/api/gemini-key', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          return data.key;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to fetch API key from server", e);
-    }
-    const rawKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-    return typeof rawKey === 'string' ? rawKey.trim() : rawKey;
-  };
-
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
@@ -119,26 +85,19 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
       timestamp: new Date()
     };
 
+    const currentHistory = [...messages];
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
     setCoachStatus('thinking');
 
     try {
-      const apiKey = await getApiKey();
-      
-      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-        setNeedsKey(true);
-        setLoading(false);
-        setCoachStatus('idle');
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Sessione scaduta');
       
       const isSociety = user?.role === 'society';
       
-      // Prepare context - Filter out trainings for society
+      // Prepare context
       const filteredComps = isSociety 
         ? competitions.filter(c => c.discipline !== Discipline.TRAINING && c.level !== CompetitionLevel.TRAINING)
         : competitions;
@@ -148,7 +107,7 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
 
       const lastComps = [...filteredComps]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 30); // More data for society
+        .slice(0, 30);
 
       const context = isSociety 
         ? t('ai_coach_sys_society')
@@ -171,26 +130,32 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
             }).join('\n'))
             .replace('{{cartridges}}', cartridges.map(c => `- ${c.producer} ${c.model} (${c.leadNumber}), Qta: ${c.quantity}`).join('\n'));
 
-      const chat = ai.chats.create({
-        model: "gemini-3-flash-preview",
-        config: {
-          systemInstruction: context,
+      const response = await fetch('/api/coach/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        history: messages.map(m => ({
-          role: m.role,
-          parts: [{ text: m.text }]
-        }))
+        body: JSON.stringify({
+          message: userMessage.text,
+          history: currentHistory.map(m => ({
+            role: m.role,
+            parts: [{ text: m.text }]
+          })),
+          systemInstruction: context
+        })
       });
 
-      const response = await chat.sendMessage({
-        message: userMessage.text,
-      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Errore nella comunicazione con il coach');
+      }
 
-      const modelText = response.text;
+      const data = await response.json();
       
       setMessages(prev => [...prev, {
         role: 'model',
-        text: modelText || t('coach_error_no_response'),
+        text: data.text || t('coach_error_no_response'),
         timestamp: new Date()
       }]);
 
@@ -198,7 +163,7 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
       console.error("Coach Error:", error);
       setMessages(prev => [...prev, {
         role: 'model',
-        text: t('coach_error_generic'),
+        text: error.message || t('coach_error_generic'),
         timestamp: new Date()
       }]);
     } finally {
@@ -241,15 +206,6 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
             </p>
           </div>
         </div>
-        
-        {needsKey && (
-          <button 
-            onClick={checkAndOpenKeySelector}
-            className="bg-orange-600/10 hover:bg-orange-600/20 text-orange-500 border border-orange-500/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all"
-          >
-            <i className="fas fa-key sm:mr-2"></i> <span className="hidden sm:inline">{t('configure_api')}</span>
-          </button>
-        )}
       </div>
 
       {/* Chat Area */}

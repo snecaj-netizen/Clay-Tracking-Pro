@@ -12,6 +12,78 @@ import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import webpush from 'web-push';
 import cron from 'node-cron';
+import { GoogleGenAI, Type } from '@google/genai';
+
+let aiInstance: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required but missing. Please configure it in your Settings.');
+    }
+    aiInstance = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+  }
+  return aiInstance;
+}
+
+async function callGeminiWithRetry(
+  apiCall: (ai: GoogleGenAI) => Promise<any>,
+  maxRetries = 5,
+  initialDelay = 2000
+) {
+  let lastError;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const ai = getGeminiClient();
+      return await apiCall(ai);
+    } catch (err: any) {
+      lastError = err;
+      const errorMessage = typeof err === 'string' ? err : (err.message || '');
+      const errorCode = err.status || (err.error && err.error.code);
+      
+      const isRetryable = 
+        errorMessage.includes('503') || 
+        errorMessage.includes('429') || 
+        errorMessage.includes('UNAVAILABLE') ||
+        errorCode === 503 || 
+        errorCode === 429;
+      
+      if (isRetryable && i < maxRetries - 1) {
+        // Calculate exponential backoff
+        let waitTime = initialDelay * Math.pow(2, i);
+        
+        // Try to extract recommended retry delay from error message (e.g. "retry in 7.7s")
+        const retryMatch = errorMessage.match(/retry in ([\d\.]+)s/);
+        if (retryMatch) {
+          const seconds = parseFloat(retryMatch[1]);
+          waitTime = Math.max(waitTime, Math.ceil(seconds * 1000) + 1000);
+        }
+
+        // Check for structured RetryInfo in error details
+        if (err.error?.details) {
+          const retryInfo = err.error.details.find((d: any) => d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo');
+          if (retryInfo?.retryDelay) {
+            const seconds = parseFloat(retryInfo.retryDelay.replace('s', ''));
+            waitTime = Math.max(waitTime, Math.ceil(seconds * 1000) + 1000);
+          }
+        }
+
+        console.warn(`Gemini API error (retryable): ${errorMessage}. Waiting ${waitTime}ms before retry ${i + 2}/${maxRetries}...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
 
 // import { createServer as createViteServer } from 'vite'; // Removed top-level import
 
@@ -1414,8 +1486,91 @@ app.get('/api/app-version', (req, res) => {
   });
 });
 
-app.get('/api/gemini-key', authenticateToken, (req, res) => {
-  res.json({ key: process.env.GEMINI_API_KEY || '' });
+app.post('/api/coach/chat', authenticateToken, async (req: any, res) => {
+  const { message, history, systemInstruction } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({ error: 'Messaggio mancante' });
+  }
+
+  try {
+    const response = await callGeminiWithRetry(async (ai) => {
+      const chat = ai.chats.create({
+        model: "gemini-3.5-flash",
+        config: {
+          systemInstruction: systemInstruction,
+        },
+        history: history || []
+      });
+      return await chat.sendMessage({ message });
+    });
+
+    res.json({ text: response.text });
+  } catch (err: any) {
+    console.error('Coach API Error:', err);
+    res.status(500).json({ error: `Errore del Coach: ${err.message}` });
+  }
+});
+
+app.post('/api/ai/generate', authenticateToken, async (req: any, res) => {
+  let { prompt, model = "gemini-3.5-flash" } = req.body;
+  if (model === "gemini-1.5-flash" || model === "gemini-flash-latest") {
+    model = "gemini-3.5-flash";
+  }
+  
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt mancante' });
+  }
+
+  try {
+    const response = await callGeminiWithRetry(async (ai) => {
+      return await ai.models.generateContent({
+        model: model,
+        contents: prompt
+      });
+    });
+
+    res.json({ text: response.text });
+  } catch (err: any) {
+    console.error('AI Generate Error:', err);
+    res.status(500).json({ error: `Errore AI: ${err.message}` });
+  }
+});
+
+app.post('/api/ai/weather', authenticateToken, async (req: any, res) => {
+  const { location, date } = req.body;
+  
+  if (!location || !date) {
+    return res.status(400).json({ error: 'Location and date are required' });
+  }
+
+  try {
+    const response = await callGeminiWithRetry(async (ai) => {
+      return await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: `Qual era (o sarà) il meteo a ${location} il giorno ${date}? 
+                   Fornisci i dati in formato JSON: temp (numero intero Celsius) e 
+                   condition (una tra: 'sole', 'nuvole', 'pioggia', 'vento', 'neve', 'temporale').`,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              temp: { type: Type.INTEGER, description: "Temperatura in gradi Celsius" },
+              condition: { type: Type.STRING, description: "Condizione meteo semplificata" }
+            },
+            required: ["temp", "condition"]
+          }
+        }
+      });
+    });
+
+    res.json(JSON.parse(response.text || '{}'));
+  } catch (err: any) {
+    console.error('AI Weather Error:', err);
+    res.status(500).json({ error: `Errore Meteo AI: ${err.message}` });
+  }
 });
 
 // Push Notifications Routes
@@ -7709,6 +7864,98 @@ app.delete('/api/cartridges/:id', authenticateToken, async (req: any, res) => {
   } catch (err: any) {
     console.error('DELETE cartridge error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/parse-pdf', authenticateToken, async (req: any, res) => {
+  const { pdfBase64, numSeries, targetsPerSeries } = req.body;
+  if (!pdfBase64) {
+    return res.status(400).json({ error: "Dati PDF base64 mancanti" });
+  }
+
+  try {
+    const response = await callGeminiWithRetry(async (ai) => {
+      const pdfPart = {
+        inlineData: {
+          mimeType: "application/pdf",
+          data: pdfBase64,
+        }
+      };
+
+      const textPart = {
+        text: `Sei un sistema esperto deputato all'estrazione di dati strutturati da report PDF generati dal software gestionale Gestgare per gare FITAV (Federazione Italiana Tiro a Volo).
+Il PDF rappresenta la classifica di una gara. Analizza attentamente tutta la classifica (comprese eventuali righe divise, testi concatenati, ecc.) ed estrai le informazioni per ciascun tiratore.
+
+Regole fondamentali di estrazione:
+1. Per ciascun tiratore inserisci un record separato.
+2. Identifica la stringa col nome del tiratore e codice:
+   La struttura tipica è: COGNOME NOME<br>CODICETIRATORE (es. "IESCE MARIO<br>IMM80LT02" o "IESCE MARIO IMM80LT02").
+   - Il Cognome (surname) deve essere ricavato in formato con prima lettera maiuscola, es. "Iesce".
+   - Il Nome (name) deve essere ricavato in formato con prima lettera maiuscola, es. "Mario".
+   - Il Codice Tiratore (shooterCode) è la stringa alfanumerica di 9 caratteri dopo il tag <br> o spazio, ad esempio "IMM80LT02".
+3. Identifica la Categoria, Qualifica e Preferenza Classifica:
+   - Formato tipico: un numero e un eventuale codice (come "1<br>" o "2<br>SE").
+   - Se c'è solo un numero seguito da <br> o nulla (es. "1<br>"), significa che gareggia per Categoria "1*". Quindi imposta 'category' = '1*', 'qualification' = '', e 'rankingPreference' = 'categoria'.
+   - Se c'è un numero seguito dal codice qualifica (es. "2<br>SE"), significa che la categoria è "2*", la qualifica è "SE", e gareggia per Qualifica. Quindi imposta 'category' = '2*', 'qualification' = 'Senior' (o la decodifica opportuna), e 'rankingPreference' = 'qualifica'.
+   - Decodifica i codici delle qualifiche in italiano:
+     - 'SE' o 'SEN' o 'SR' -> 'Senior'
+     - 'MA' o 'MAS' -> 'Master'
+     - 'VE' o 'VET' -> 'Veterani'
+     - 'JU' o 'JUN' -> 'Junior'
+     - 'LA' o 'LAD' -> 'Lady'
+     - 'SG' -> 'Settore Giovanile'
+     - 'PT' o 'PR' o 'PA' -> 'Paralimpici'
+   - Se trovi altre diciture o codici, decodificali opportunamente (es. "Ecc" o "E" -> "E", "Cacc" -> "Cacciatore").
+4. Serie e punteggi:
+   - Trova i punteggi delle serie. Solitamente indicati sotto le colonne "S.1", "S.2", "S.3"... o come sequenza di numeri di serie per tiratore.
+   - Restituisci sotto forma di array di interi chiamato "scores". L'array deve avere lunghezza esattamente pari a ${numSeries || 4} serie. Adatta i valori di conseguenza o riempi con 0 se mancanti.
+5. Spareggio / Shoot-off:
+   - Se presente il punteggio dello spareggio (shoot-off / spareggio / barrage) o indicazioni di barrage, impostalo in "shootOff" come intero, altrimenti impostalo a null.
+5. Premi (awarded):
+   - Nella colonna "Pos" (Posizione), se accanto al numero c'è una "P" (es.  "1P"), significa che il tiratore è andato a premio. Imposta "awarded" a true. Altrimenti false.
+6. Società (society):
+   - Se presente la società sportiva di appartenenza, estraila in "society" (es. "A.S.D. T.A.V. ...").
+   
+RISPETTA TASSATIVAMENTE lo schema JSON specificato per l'output. Non aggiungere spiegazioni o testo, fornisci solo l'array JSON valido.`
+      };
+
+      return await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: [textPart, pdfPart],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                surname: { type: Type.STRING },
+                name: { type: Type.STRING },
+                shooterCode: { type: Type.STRING },
+                society: { type: Type.STRING, description: "Name of the shooting club/society if available" },
+                category: { type: Type.STRING },
+                qualification: { type: Type.STRING, description: "Normalized qualification like 'Senior', 'Master', 'Lady' or empty string if none." },
+                scores: {
+                  type: Type.ARRAY,
+                  items: { type: Type.INTEGER }
+                },
+                shootOff: { type: Type.INTEGER, description: "Shoot-off score if present, otherwise null." },
+                awarded: { type: Type.BOOLEAN, description: "True if position has 'P' (e.g., 1P), false otherwise." },
+                rankingPreference: { type: Type.STRING, description: "Must be 'categoria' or 'qualifica'" },
+              },
+              required: ["surname", "name", "shooterCode", "category", "rankingPreference", "scores", "awarded"]
+            }
+          }
+        }
+      });
+    });
+
+    const parsedText = response.text || "[]";
+    const parsedData = JSON.parse(parsedText);
+    res.json(parsedData);
+  } catch (err: any) {
+    console.error('PDF parsing error:', err);
+    res.status(500).json({ error: `Errore durante l'elaborazione del PDF con Gemini: ${err.message}` });
   }
 });
 

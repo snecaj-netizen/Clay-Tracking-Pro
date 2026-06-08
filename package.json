@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
+    "postbuild": "ls -R dist && echo 'Build verification passed'",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
@@ -44,12 +45,13 @@
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-pwa": "^1.2.0",
     "web-push": "^3.6.7",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/compression": "^1.8.1",
@@ -61,7 +63,6 @@
     "@types/react-dom": "^19.2.3",
     "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.1",
-    "esbuild": "^0.28.0"
+    "@typescript-eslint/parser": "^8.57.1"
   }
 }

@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Competition, Discipline, getSeriesLayout } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -12,23 +11,6 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
   const { t } = useLanguage();
   const [advice, setAdvice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [needsKey, setNeedsKey] = useState(false);
-
-  const checkAndOpenKeySelector = async () => {
-    const aiStudio = (window as any).aistudio;
-    if (aiStudio) {
-      try {
-        await aiStudio.openSelectKey();
-        setNeedsKey(false);
-        // After selection, we try to get advice again
-        getCoachAdvice();
-      } catch (err) {
-        console.error("Error opening key selector:", err);
-      }
-    } else {
-      alert(t('api_key_selector_env_error'));
-    }
-  };
 
   const getCoachAdvice = async (signal?: AbortSignal) => {
     // Includiamo sia le gare concluse che quelle future/in corso
@@ -40,44 +22,10 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
     }
 
     setLoading(true);
-    setNeedsKey(false);
     
     try {
-      // Access API key from server first, fallback to env variables
-      let apiKey = '';
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          const res = await fetch('/api/gemini-key', {
-            headers: { 'Authorization': `Bearer ${token}` },
-            signal
-          });
-          if (res.ok) {
-            const data = await res.json();
-            apiKey = data.key;
-          }
-        }
-      } catch (e: any) {
-        if (e.name === 'AbortError') return;
-        console.error("Failed to fetch API key from server", e);
-      }
-
-      if (signal?.aborted) return;
-
-      if (!apiKey) {
-        const rawKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-        apiKey = typeof rawKey === 'string' ? rawKey.trim() : rawKey;
-      } else {
-        apiKey = apiKey.trim();
-      }
-      
-      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-        setNeedsKey(true);
-        setLoading(false);
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Sessione scaduta');
       
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
@@ -121,15 +69,23 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
         ${t('ai_coach_format_note')}
       `;
 
-      // Using gemini-3-flash-preview as per guidelines
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt }),
+        signal
       });
 
-      if (signal?.aborted) return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || t('ai_coach_generic_error'));
+      }
 
-      const text = response.text;
+      const data = await response.json();
+      const text = data.text;
       if (!text) {
         throw new Error(t('ai_coach_no_response_error'));
       }
@@ -138,17 +94,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
     } catch (error: any) {
       if (error.name === 'AbortError') return;
       console.error("Gemini Coach Error Details:", error);
-      let userMessage = t('ai_coach_generic_error');
-      
-      if (error.message?.includes("API Key")) {
-        userMessage = t('ai_coach_config_error');
-      } else if (error.message?.includes("model")) {
-        userMessage = t('ai_coach_model_error');
-      } else {
-        userMessage = `${t('error_label')}: ${error.message || t('connection_failed')}`;
-      }
-      
-      setAdvice(userMessage);
+      setAdvice(`${t('error_label')}: ${error.message || t('connection_failed')}`);
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -170,22 +116,7 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
           <h3 className="text-xl font-black text-white tracking-tight uppercase">{t('ai_coach_title')}</h3>
         </div>
 
-        {needsKey ? (
-          <div className="flex flex-col items-start gap-4 animate-in fade-in duration-500">
-            <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-2xl">
-              <p className="text-orange-200 text-xs font-bold mb-1 uppercase tracking-tight">{t('api_key_required')}</p>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                {t('ai_coach_config_desc')}
-              </p>
-            </div>
-            <button 
-              onClick={checkAndOpenKeySelector}
-              className="bg-orange-600 hover:bg-orange-500 text-white font-black py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2"
-            >
-              <i className="fas fa-key"></i> {t('ai_coach_config_btn')}
-            </button>
-          </div>
-        ) : advice ? (
+        {advice ? (
           <div className="space-y-4 animate-in fade-in duration-700">
             <div className="prose prose-invert prose-orange max-w-none text-slate-300 whitespace-pre-line text-sm leading-relaxed">
               {advice}
