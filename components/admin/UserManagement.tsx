@@ -720,7 +720,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             society: row.Società || row.society,
             shooter_code: row['Codice Tiratore'] || row.shooter_code,
             discipline_categories: row['Discipline Categories'] || row.discipline_categories,
-            birth_date: parseExcelDate(row['Data di Nascita'] || row.birth_date),
+            birth_date: parseExcelDate(row['Data di Nascita (YYYY-MM-DD)'] || row['Data di Nascita'] || row.birth_date || row.birthDate),
             phone: row.Telefono || row.phone
           }));
 
