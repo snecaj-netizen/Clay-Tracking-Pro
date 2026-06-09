@@ -116,7 +116,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-clay-tracker';
 const normalizeCategoryBackend = (catStr: any): string => {
   if (!catStr) return '2*';
   const upper = catStr.toString().toUpperCase().trim();
-  if (upper === 'CACCIATORE') return 'Cacciatore';
+  if (upper === 'CACCIATORE' || upper === 'CACC' || upper === 'CA' || upper.startsWith('CACC')) return 'Cacciatore';
   if (upper === 'ECCELLENZA' || upper === 'E') return 'E';
   if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª' || upper === '1°') return '1*';
   if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª' || upper === '2°') return '2*';

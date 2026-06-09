@@ -1,7 +1,7 @@
 import { Competition, Discipline, User, DISCIPLINE_TO_ACRONYM } from './types';
 
-export const getCategoryForDiscipline = (user: User, discipline: Discipline): string | undefined => {
-  if (user.is_cacciatore) return undefined;
+export const getCategoryForDiscipline = (user: User | undefined | null, discipline: Discipline): string | undefined => {
+  if (!user || user.is_cacciatore) return undefined;
   if (!user.discipline_categories) return undefined;
 
   let targetAcronyms: string[] = [];

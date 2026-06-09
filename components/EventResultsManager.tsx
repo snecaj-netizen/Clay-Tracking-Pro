@@ -26,7 +26,7 @@ interface EventResultsManagerProps {
 const normalizeCategory = (catStr: any): string => {
   if (!catStr) return '2*';
   const upper = catStr.toString().toUpperCase().trim();
-  if (upper === 'CACCIATORE') return 'Cacciatore';
+  if (upper === 'CACCIATORE' || upper === 'CACC' || upper === 'CA' || upper.startsWith('CACC')) return 'Cacciatore';
   if (upper === 'ECCELLENZA' || upper === 'E') return 'E';
   if (upper.includes('PRIMA') || upper === '1' || upper === '1^' || upper === '1*' || upper === '1ª' || upper === '1°') return '1*';
   if (upper.includes('SECONDA') || upper === '2' || upper === '2^' || upper === '2*' || upper === '2ª' || upper === '2°') return '2*';
@@ -72,6 +72,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [searchTerm, setSearchTerm] = useState('');
   const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [showImportPanel, setShowImportPanel] = useState(false);
+  const [importErrorDetail, setImportErrorDetail] = useState<string | null>(null);
   
   const layoutInfo = useMemo(() => getSeriesLayout(event.discipline as Discipline), [event.discipline]);
   const targetsPerSeries = useMemo(() => {
@@ -505,6 +506,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             triggerToast(`File PDF analizzato: ${parsed.length} tiratori estratti. Controlla la tabella di convalida.`, "success");
         }
       } catch (err: any) {
+        setImportErrorDetail(err.message || "Errore di analisi del file PDF.");
         triggerToast(`Errore durante l'analisi del file PDF: ${err.message}`, "error");
       } finally {
         setLoading(false);
@@ -668,6 +670,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         setParsedRows(parsed);
         triggerToast(`File Excel analizzato: ${parsed.length} righe caricate. Controlla la tabella di convalida.`, "success");
       } catch (err: any) {
+        setImportErrorDetail(err.message || "Errore di analisi del file Excel.");
         triggerToast(`Errore durante l'analisi del file Excel: ${err.message}`, "error");
       } finally {
         setLoading(false);
@@ -2960,6 +2963,64 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           }}
         />
       )}
+
+      {/* Import Error Modal */}
+      <AnimatePresence>
+        {importErrorDetail && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1070] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl flex flex-col overflow-hidden shadow-2xl p-6 relative text-left"
+            >
+              <div className="flex items-center gap-4 text-red-500 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-xl shrink-0">
+                  <i className="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase tracking-wider">Errore Importazione</h3>
+                  <p className="text-xs text-slate-400 mt-1">L'operazione non è andata a buon fine</p>
+                </div>
+              </div>
+              
+              <div className="mb-6 border-t border-slate-800/50 pt-4">
+                <p className="text-sm text-slate-300 mb-3">Si è verificato il seguente errore durante l'elaborazione del documento:</p>
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    value={importErrorDetail}
+                    className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 font-mono text-xs focus:outline-none focus:border-red-500 resize-none select-text"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(importErrorDetail);
+                      triggerToast("Errore copiato negli appunti!", "success");
+                    }}
+                    className="absolute bottom-2 right-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                  >
+                    <i className="fas fa-copy mr-1"></i> Copia Errore
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setImportErrorDetail(null)}
+                  className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-widest transition-all"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>,
     document.body
   );
