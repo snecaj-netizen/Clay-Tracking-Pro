@@ -28,7 +28,7 @@ interface GarePageProps {
   onRefresh?: () => void;
 }
 
-type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'attivazione';
+type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione';
 
 const GarePage: React.FC<GarePageProps> = ({
   user, token, societies, events, userRegistrations = [], onParticipate, onCreateTeam, onEditRegistration,
@@ -36,9 +36,9 @@ const GarePage: React.FC<GarePageProps> = ({
   onCreateEventTrigger, onToggleFAB, onTabChange, onSocietyClick, onRefresh
 }) => {
   const { triggerConfirm, triggerToast } = useUI();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('eventi');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | 'portal'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | 'portal' | 'attivazione'>('list');
   const [showFilters, setShowFilters] = useState(false);
   const [exportTrigger, setExportTrigger] = useState(0);
   const [importTrigger, setImportTrigger] = useState(0);
@@ -46,6 +46,7 @@ const GarePage: React.FC<GarePageProps> = ({
   const [filterSociety, setFilterSociety] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
+  const [filterActivation, setFilterActivation] = useState('');
   const [direction, setDirection] = useState(0);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +70,6 @@ const GarePage: React.FC<GarePageProps> = ({
     tabs.push('iscrizione');
     tabs.push('risultati');
     if (user?.role === 'admin' || user?.role === 'society') tabs.push('gestione');
-    if (user?.role === 'admin') tabs.push('attivazione');
     return tabs;
   }, [user?.role]);
 
@@ -167,16 +167,14 @@ const GarePage: React.FC<GarePageProps> = ({
                activeTab === 'le-tue-gare' ? t('your_competitions_title') : 
                activeTab === 'iscrizione' ? t('tab_registration') : 
                activeTab === 'risultati' ? t('tab_results') : 
-               activeTab === 'gestione' ? t('tab_management') : 
-               activeTab === 'attivazione' ? t('tab_activation') : t('races_plural')}
+               activeTab === 'gestione' ? t('tab_management') : t('races_plural')}
             </h2>
             <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">
               {activeTab === 'eventi' ? t('events_desc') : 
                activeTab === 'le-tue-gare' ? (user?.role === 'society' ? t('society_monitoring_desc') : t('managed_races_society_desc')) : 
                activeTab === 'iscrizione' ? t('open_registrations_desc') : 
                activeTab === 'risultati' ? t('results_desc') : 
-               activeTab === 'gestione' ? t('management_panel_desc') : 
-               activeTab === 'attivazione' ? t('activation_desc') : ''}
+               activeTab === 'gestione' ? t('management_panel_desc') : ''}
             </p>
           </div>
           <div className="flex gap-2">
@@ -204,7 +202,6 @@ const GarePage: React.FC<GarePageProps> = ({
                  tab === 'iscrizione' ? t('tab_registration') : 
                  tab === 'risultati' ? t('tab_results') : 
                  tab === 'gestione' ? t('tab_management') : 
-                 tab === 'attivazione' ? t('tab_activation') : 
                  tab === 'le-tue-gare' ? t('your_competitions_title') : tab}
               </button>
             ))}
@@ -212,7 +209,7 @@ const GarePage: React.FC<GarePageProps> = ({
         </div>
 
         {/* Action Buttons Row */}
-        {activeTab !== 'attivazione' && (
+        {true && (
           <div className="flex items-center justify-between gap-2 pt-1">
             <div className="flex items-center gap-2">
               <button 
@@ -268,14 +265,14 @@ const GarePage: React.FC<GarePageProps> = ({
 
         {/* Filters Section (Sticky) */}
         <AnimatePresence>
-          {showFilters && activeTab !== 'attivazione' && (
+          {showFilters && (
             <motion.div 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               className="relative z-50"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 pb-1">
+              <div className={`grid grid-cols-1 ${user?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 pt-2 pb-1`}>
                 <div className="space-y-1 relative z-30">
                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('society_tav_label')}</label>
                   <SocietySearch 
@@ -320,10 +317,31 @@ const GarePage: React.FC<GarePageProps> = ({
                     </div>
                   </div>
                 </div>
+                {user?.role === 'admin' && (
+                  <div className="space-y-1 relative z-10">
+                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      {language === 'it' ? 'Stato Attivazione' : 'Activation Status'}
+                    </label>
+                    <div className="relative group">
+                      <select 
+                        value={filterActivation} 
+                        onChange={e => setFilterActivation(e.target.value)} 
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all appearance-none"
+                      >
+                        <option value="">{language === 'it' ? 'Tutte' : 'All'}</option>
+                        <option value="activated">{language === 'it' ? 'Attivate' : 'Activated'}</option>
+                        <option value="to_activate">{language === 'it' ? 'Da attivare' : 'To activate'}</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <i className="fas fa-chevron-down text-[8px]"></i>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end pb-1">
                 <button 
-                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
+                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); setFilterActivation(''); }}
                   className="text-[9px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
                 >
                   {t('reset_filters')}
@@ -367,6 +385,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterDisciplineChange={setFilterDiscipline}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
+                filterActivation={filterActivation}
+                onFilterActivationChange={setFilterActivation}
                 hideViewSwitcher={true}
                 hideHeader={true}
                 appSettings={appSettings}
@@ -403,6 +423,8 @@ const GarePage: React.FC<GarePageProps> = ({
                   onFilterDisciplineChange={setFilterDiscipline}
                   filterMonth={filterMonth}
                   onFilterMonthChange={setFilterMonth}
+                  filterActivation={filterActivation}
+                  onFilterActivationChange={setFilterActivation}
                   appSettings={appSettings}
                   onToggleFAB={onToggleFAB}
                   newEventTrigger={newEventTrigger}
@@ -438,6 +460,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterDisciplineChange={setFilterDiscipline}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
+                filterActivation={filterActivation}
+                onFilterActivationChange={setFilterActivation}
                 filterRegistrationOpen={true}
                 appSettings={appSettings}
                 isSubPage={true}
@@ -467,6 +491,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterDisciplineChange={setFilterDiscipline}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
+                filterActivation={filterActivation}
+                onFilterActivationChange={setFilterActivation}
                 appSettings={appSettings}
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
@@ -496,19 +522,13 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterDisciplineChange={setFilterDiscipline}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
+                filterActivation={filterActivation}
+                onFilterActivationChange={setFilterActivation}
                 appSettings={appSettings}
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
                 onRefresh={onRefresh}
               />
-            )}
-
-            {activeTab === 'attivazione' && user?.role === 'admin' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4">
-                <EventControlManager 
-                  token={token} 
-                />
-              </div>
             )}
           </motion.div>
         </AnimatePresence>

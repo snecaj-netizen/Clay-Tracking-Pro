@@ -12,6 +12,7 @@ import CompetitionShareCard from './CompetitionShareCard';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { compressImage } from '../lib/imageCompressor';
+import { EventControlManager } from './EventControlManager';
 
 interface EventsManagerProps {
   user: any;
@@ -24,7 +25,7 @@ interface EventsManagerProps {
   restrictToSociety?: boolean;
   initialEventId?: string | null;
   onInitialEventHandled?: () => void;
-  initialViewMode?: 'list' | 'calendar' | 'results' | 'managed';
+  initialViewMode?: 'list' | 'calendar' | 'results' | 'managed' | 'portal' | 'attivazione';
   onInitialViewModeHandled?: () => void;
   hideViewSwitcher?: boolean;
   filterRegistrationOpen?: boolean;
@@ -33,8 +34,8 @@ interface EventsManagerProps {
   isSubPage?: boolean;
   hideHeader?: boolean;
   initialEvents?: SocietyEvent[];
-  viewMode?: 'list' | 'calendar' | 'results' | 'managed' | 'portal';
-  onViewModeChange?: (mode: 'list' | 'calendar' | 'results' | 'managed' | 'portal') => void;
+  viewMode?: 'list' | 'calendar' | 'results' | 'managed' | 'portal' | 'attivazione';
+  onViewModeChange?: (mode: 'list' | 'calendar' | 'results' | 'managed' | 'portal' | 'attivazione') => void;
   showFilters?: boolean;
   onShowFiltersChange?: (show: boolean) => void;
   onExportExcel?: () => void;
@@ -49,6 +50,8 @@ interface EventsManagerProps {
   onFilterDisciplineChange?: (val: string) => void;
   filterMonth?: string;
   onFilterMonthChange?: (val: string) => void;
+  filterActivation?: string;
+  onFilterActivationChange?: (val: string) => void;
   onSocietyClick?: (name: string) => void;
   onRefresh?: () => void;
 }
@@ -235,6 +238,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   filterSociety: externalFilterSociety, onFilterSocietyChange,
   filterDiscipline: externalFilterDiscipline, onFilterDisciplineChange,
   filterMonth: externalFilterMonth, onFilterMonthChange,
+  filterActivation: externalFilterActivation, onFilterActivationChange,
   onSocietyClick,
   onRefresh
 }) => {
@@ -244,7 +248,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const [loading, setLoading] = useState(!initialEvents || initialEvents.length === 0);
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<SocietyEvent | null>(null);
-  const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | 'portal'>(initialViewMode as any);
+  const [internalViewMode, setInternalViewMode] = useState<'list' | 'calendar' | 'results' | 'managed' | 'portal' | 'attivazione'>(initialViewMode as any);
   const viewMode = externalViewMode || internalViewMode;
   const setViewMode = onViewModeChange || setInternalViewMode;
 
@@ -307,6 +311,10 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const filterMonth = externalFilterMonth !== undefined ? externalFilterMonth : internalFilterMonth;
   const setFilterMonth = onFilterMonthChange || setInternalFilterMonth;
 
+  const [internalFilterActivation, setInternalFilterActivation] = useState('');
+  const filterActivation = externalFilterActivation !== undefined ? externalFilterActivation : internalFilterActivation;
+  const setFilterActivation = onFilterActivationChange || setInternalFilterActivation;
+
   useEffect(() => {
     if (filterMonth) {
       const [year, month] = filterMonth.split('-').map(Number);
@@ -319,7 +327,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     }
   }, [filterMonth]);
   
-  const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '';
+  const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '' || filterActivation !== '';
 
   const monthOptions = React.useMemo(() => {
     const options = [];
@@ -454,6 +462,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
         if (ev.start_date.slice(0, 7) !== filterMonth) return false;
       }
+      if (user?.role === 'admin' && filterActivation) {
+        const isActivated = !!ev.is_management_enabled;
+        if (filterActivation === 'activated' && !isActivated) return false;
+        if (filterActivation === 'to_activate' && isActivated) return false;
+      }
       if (filterRegistrationOpen) {
         if (!ev.is_management_enabled) return false;
         
@@ -506,7 +519,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       // If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, filterSociety, filterDiscipline, filterMonth, restrictToSociety, user, nextUpcomingEventId, viewMode, hasSocietaAccess, hasTiratoriAccess, filterRegistrationOpen]);
+  }, [events, filterSociety, filterDiscipline, filterMonth, filterActivation, restrictToSociety, user, nextUpcomingEventId, viewMode, hasSocietaAccess, hasTiratoriAccess, filterRegistrationOpen]);
 
   const managedEvents = React.useMemo(() => {
     console.log('EventsManager: Calculating managedEvents', { user, eventsCount: events.length });
@@ -541,6 +554,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       if (filterMonth) {
         // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
         if (ev.start_date.slice(0, 7) !== filterMonth) return false;
+      }
+      if (user?.role === 'admin' && filterActivation) {
+        const isActivated = !!ev.is_management_enabled;
+        if (filterActivation === 'activated' && !isActivated) return false;
+        if (filterActivation === 'to_activate' && isActivated) return false;
       }
       if (filterRegistrationOpen && !ev.is_management_enabled) return false;
 
@@ -582,7 +600,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       // 4. If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterRegistrationOpen]);
+  }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterActivation, filterRegistrationOpen]);
 
   const portalEvents = React.useMemo(() => {
     return managedEvents.filter(ev => ev.is_public);
@@ -668,6 +686,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 </span>
               )}
             </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setViewMode('attivazione')} 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'attivazione' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <i className="fas fa-toggle-on"></i> {t('tab_activation')}
+                {events.filter(e => e.is_management_enabled).length > 0 && (
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'attivazione' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                    {events.filter(e => e.is_management_enabled).length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -856,6 +887,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   };
 
   const renderPortalView = () => {
+    const isAdmin = user?.role === 'admin';
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex flex-col gap-4 mb-6">
@@ -900,6 +932,19 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 </span>
               )}
             </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setViewMode('attivazione')} 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'attivazione' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <i className="fas fa-toggle-on"></i> {t('tab_activation')}
+                {events.filter(e => e.is_management_enabled).length > 0 && (
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'attivazione' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                    {events.filter(e => e.is_management_enabled).length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -2165,7 +2210,12 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           document.body
         )}
 
-        {viewMode === 'managed' ? (
+        {viewMode === 'attivazione' ? (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {renderResultsHeader()}
+            <EventControlManager token={token} hideHeader={true} />
+          </div>
+        ) : viewMode === 'managed' ? (
           renderManagedView()
         ) : viewMode === 'portal' ? (
           renderPortalView()

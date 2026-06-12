@@ -6,14 +6,16 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface EventControlManagerProps {
   token: string;
+  hideHeader?: boolean;
 }
 
-export const EventControlManager: React.FC<EventControlManagerProps> = ({ token }) => {
+export const EventControlManager: React.FC<EventControlManagerProps> = ({ token, hideHeader = false }) => {
   const { triggerToast, triggerConfirm } = useUI();
   const { t, language } = useLanguage();
   const [events, setEvents] = useState<SocietyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'activated' | 'to_activate'>('all');
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchEvents = async () => {
@@ -103,10 +105,16 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
   };
 
   const filteredEvents = useMemo(() => {
-    const filtered = events.filter(ev => 
+    let filtered = events.filter(ev => 
       ev.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ev.location.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (statusFilter === 'activated') {
+      filtered = filtered.filter(ev => ev.is_management_enabled);
+    } else if (statusFilter === 'to_activate') {
+      filtered = filtered.filter(ev => !ev.is_management_enabled);
+    }
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -121,24 +129,28 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
     pastEvents.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
     return [...futureEvents, ...pastEvents];
-  }, [events, searchTerm]);
+  }, [events, searchTerm, statusFilter]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg">
-              <Settings2 className="w-5 h-5" />
-            </div>
-            {t('activation_title')}
-          </h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">
-            {t('activation_subtitle')}
-          </p>
-        </div>
+        {!hideHeader ? (
+          <div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-600/20 text-orange-500 flex items-center justify-center text-lg">
+                <Settings2 className="w-5 h-5" />
+              </div>
+              {t('activation_title')}
+            </h2>
+            <p className="text-slate-500 text-sm font-medium mt-1">
+              {t('activation_subtitle')}
+            </p>
+          </div>
+        ) : (
+          <div></div>
+        )}
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto ml-auto">
           <div className="bg-slate-900/60 p-1 rounded-xl border border-slate-800 flex items-center shrink-0">
             <div className="px-3 py-1 border-r border-slate-800">
               <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none">{t('total')}</p>
@@ -158,15 +170,32 @@ export const EventControlManager: React.FC<EventControlManagerProps> = ({ token 
             </button>
           </div>
 
-          <div className="relative w-full md:w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input 
-            type="text"
-            placeholder={t('search_event_society_placeholder')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors text-white"
-            />
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative w-full md:w-52">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors text-white appearance-none cursor-pointer pr-10"
+              >
+                <option value="all">{language === 'it' ? 'Tutti gli stati' : 'All statuses'}</option>
+                <option value="activated">{language === 'it' ? 'Attive' : 'Activated'}</option>
+                <option value="to_activate">{language === 'it' ? 'Da attivare' : 'To activate'}</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <i className="fas fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                type="text"
+                placeholder={t('search_event_society_placeholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors text-white"
+              />
+            </div>
           </div>
         </div>
       </div>
