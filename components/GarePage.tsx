@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import EventsManager from './EventsManager';
+import { RegionalChampionships } from './admin/RegionalChampionships';
 import { EventControlManager } from './EventControlManager';
 import { motion, AnimatePresence } from 'motion/react';
 import SocietySearch from './SocietySearch';
@@ -28,7 +29,7 @@ interface GarePageProps {
   onRefresh?: () => void;
 }
 
-type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione';
+type TabType = 'eventi' | 'le-tue-gare' | 'iscrizione' | 'risultati' | 'gestione' | 'regionali';
 
 const GarePage: React.FC<GarePageProps> = ({
   user, token, societies, events, userRegistrations = [], onParticipate, onCreateTeam, onEditRegistration,
@@ -69,7 +70,10 @@ const GarePage: React.FC<GarePageProps> = ({
     if (user?.role === 'society') tabs.push('le-tue-gare');
     tabs.push('iscrizione');
     tabs.push('risultati');
-    if (user?.role === 'admin' || user?.role === 'society') tabs.push('gestione');
+    if (user?.role === 'admin' || user?.role === 'society') {
+      tabs.push('gestione');
+      if (user?.role === 'admin') tabs.push('regionali');
+    }
     return tabs;
   }, [user?.role]);
 
@@ -202,6 +206,7 @@ const GarePage: React.FC<GarePageProps> = ({
                  tab === 'iscrizione' ? t('tab_registration') : 
                  tab === 'risultati' ? t('tab_results') : 
                  tab === 'gestione' ? t('tab_management') : 
+                 tab === 'regionali' ? 'Regionali' :
                  tab === 'le-tue-gare' ? t('your_competitions_title') : tab}
               </button>
             ))}
@@ -528,6 +533,13 @@ const GarePage: React.FC<GarePageProps> = ({
                 isSubPage={true}
                 onSocietyClick={onSocietyClick}
                 onRefresh={onRefresh}
+              />
+            )}
+
+            {activeTab === 'regionali' && (
+              <RegionalChampionships 
+                user={user}
+                token={token}
               />
             )}
           </motion.div>

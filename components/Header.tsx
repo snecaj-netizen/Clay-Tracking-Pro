@@ -121,6 +121,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
     { id: 'gare', label: t('events'), icon: 'fa-calendar-alt' },
     { id: 'la-mia-societa', label: t('managed_races'), icon: 'fa-building' },
     { id: 'societies', label: t('societies'), icon: 'fa-shield-alt' },
+    { id: 'admin', label: t('admin_panel') || 'Pannello Admin', icon: 'fa-users-cog' },
   ] : [
     { id: 'home', label: t('home'), icon: 'fa-home' },
     { id: 'le-tue-gare', label: t('your_results'), icon: 'fa-list-ul' },
@@ -398,6 +399,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLogout, user
                         </button>
                         {user?.role === 'admin' && (
                           <>
+                            {/* Admin panel was here */}
                             <button 
                               onClick={() => { onNavigate('admin-control'); setIsProfileOpen(false); }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-orange-600 hover:text-white transition-colors"

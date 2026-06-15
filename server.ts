@@ -1121,6 +1121,31 @@ const initDB = async () => {
     await pool.query("ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS original_registration_day TEXT").catch(() => {});
     await pool.query("ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS original_shooting_session TEXT").catch(() => {});
 
+    // Create regional championships table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS regional_championships (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        year INTEGER NOT NULL,
+        season TEXT NOT NULL,
+        region TEXT NOT NULL,
+        discipline TEXT NOT NULL,
+        trial1_name TEXT,
+        trial1_event_id TEXT,
+        trial2_name TEXT,
+        trial2_event_id TEXT,
+        trial3_name TEXT,
+        trial3_event_id TEXT,
+        trial4_name TEXT,
+        trial4_event_id TEXT,
+        is_visible BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `).catch((err) => {
+      console.error("Error creating regional_championships table:", err);
+    });
+    await pool.query("ALTER TABLE regional_championships ADD COLUMN IF NOT EXISTS is_visible BOOLEAN DEFAULT true").catch(() => {});
+
     // Initialize VAPID keys
     try {
       const { rows: vapidRows } = await pool.query("SELECT * FROM vapid_keys WHERE id = 1");
@@ -1937,7 +1962,10 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     // Look up by either email OR shooter_code (which becomes the primary unique identifier)
     const { rows } = await pool.query(
-      "SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(shooter_code) = LOWER($1)", 
+      `SELECT u.*, s.region as society_region 
+       FROM users u 
+       LEFT JOIN societies s ON LOWER(TRIM(u.society)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(u.society)) = LOWER(TRIM(s.code))
+       WHERE LOWER(u.email) = LOWER($1) OR LOWER(u.shooter_code) = LOWER($1)`, 
       [email]
     );
 
@@ -2006,6 +2034,7 @@ app.post('/api/auth/login', async (req, res) => {
         category: user.category, 
         qualification: user.qualification, 
         society: user.society, 
+        society_region: user.society_region || null,
         shooter_code: user.shooter_code, 
         avatar: user.avatar, 
         birth_date: user.birth_date, 
@@ -2030,7 +2059,13 @@ app.post('/api/auth/login', async (req, res) => {
 });
 app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const result = await pool.query(
+      `SELECT u.*, s.region as society_region 
+       FROM users u 
+       LEFT JOIN societies s ON LOWER(TRIM(u.society)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(u.society)) = LOWER(TRIM(s.code)) 
+       WHERE u.id = $1`, 
+      [req.user.id]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
@@ -2044,6 +2079,7 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
       category: user.category,
       qualification: user.qualification,
       society: user.society,
+      society_region: user.society_region || null,
       shooter_code: user.shooter_code,
       avatar: user.avatar,
       birth_date: user.birth_date,
@@ -4743,11 +4779,12 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
   try {
     // 1. Fetch regular events with result count
     let eventQuery = `
-      SELECT e.*, 
+      SELECT e.*, s.region as society_region,
       (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = '${req.user.id}') > 0 as is_registered
       FROM events e
+      LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(e.location)) = LOWER(TRIM(s.code))
     `;
     let eventParams: any[] = [];
 
@@ -4755,19 +4792,24 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
       // Admin sees all
     } else if (req.user.role === 'society') {
       // Society sees their own, public, and those they created
-      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica' OR created_by = $2";
+      eventQuery += " WHERE e.location = $1 OR e.visibility = 'Pubblica' OR e.created_by = $2";
       eventParams.push(req.user.society, req.user.id);
     } else {
       // User sees their society's, public, and those they created
-      eventQuery += " WHERE location = $1 OR visibility = 'Pubblica' OR created_by = $2";
+      eventQuery += " WHERE e.location = $1 OR e.visibility = 'Pubblica' OR e.created_by = $2";
       eventParams.push(req.user.society || '', req.user.id);
     }
 
     const { rows: events } = await pool.query(eventQuery, eventParams);
     console.log('API: /api/events fetched events count:', events.length, 'for user:', req.user.email, 'role:', req.user.role);
 
+    const mappedEvents = events.map((ev: any) => ({
+      ...ev,
+      region: ev.region || ev.society_region
+    }));
+
     // 4. Combine and sort
-    const allEvents = [...events].sort((a, b) => {
+    const allEvents = [...mappedEvents].sort((a, b) => {
       return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
     });
 
@@ -7637,6 +7679,549 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
     res.json({ success: true, rowCount: result.rowCount });
   } catch (err: any) {
     console.error('DELETE competition error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Regional Championships Routes
+app.get('/api/regional-championships', authenticateToken, async (req: any, res) => {
+  try {
+    let query = 'SELECT * FROM regional_championships';
+    if (req.user.role !== 'admin') {
+      query += ' WHERE is_visible = true';
+    }
+    query += ' ORDER BY year DESC, name ASC';
+    const { rows } = await pool.query(query);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/regional-championships', authenticateToken, async (req: any, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo gli amministratori possono gestire i campionati regionali.' });
+    }
+    const { id, name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id } = req.body;
+    const rcId = id || 'rc_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    await pool.query(
+      `INSERT INTO regional_championships (id, name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [rcId, name, parseInt(year) || new Date().getFullYear(), season, region, discipline, trial1_name || null, trial1_event_id || null, trial2_name || null, trial2_event_id || null, trial3_name || null, trial3_event_id || null, trial4_name || null, trial4_event_id || null]
+    );
+    res.json({ success: true, id: rcId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/regional-championships/:id', authenticateToken, async (req: any, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo gli amministratori possono gestire i campionati regionali.' });
+    }
+    const { name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id } = req.body;
+    await pool.query(
+      `UPDATE regional_championships 
+       SET name=$1, year=$2, season=$3, region=$4, discipline=$5, 
+           trial1_name=$6, trial1_event_id=$7, 
+           trial2_name=$8, trial2_event_id=$9, 
+           trial3_name=$10, trial3_event_id=$11, 
+           trial4_name=$12, trial4_event_id=$13
+       WHERE id=$14`,
+      [name, parseInt(year) || new Date().getFullYear(), season, region, discipline, trial1_name || null, trial1_event_id || null, trial2_name || null, trial2_event_id || null, trial3_name || null, trial3_event_id || null, trial4_name || null, trial4_event_id || null, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/regional-championships/:id/toggle-visibility', authenticateToken, async (req: any, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo gli amministratori possono gestire i campionati regionali.' });
+    }
+    const { is_visible } = req.body;
+    await pool.query(
+      `UPDATE regional_championships SET is_visible=$1 WHERE id=$2`,
+      [is_visible, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/regional-championships/:id', authenticateToken, async (req: any, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo gli amministratori possono gestire i campionati regionali.' });
+    }
+    await pool.query('DELETE FROM regional_championships WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req: any, res) => {
+  try {
+    const champRes = await pool.query('SELECT * FROM regional_championships WHERE id = $1', [req.params.id]);
+    if (champRes.rows.length === 0) return res.status(404).json({ error: 'Campionato non trovato.' });
+    const rc = champRes.rows[0];
+
+    // Fetch ALL users and join their society to check their region
+    let shootersQuery = `
+      SELECT u.id, u.name, u.surname, u.shooter_code, u.category, u.qualification, u.society, s.region as society_region
+      FROM users u
+      LEFT JOIN societies s ON LOWER(TRIM(u.society)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(u.society)) = LOWER(TRIM(s.code))
+      WHERE u.role != 'society'
+    `;
+    let shootersParams: any[] = [];
+    if (rc.region !== 'Tutte' && rc.region !== '') {
+      shootersQuery += ` AND s.region IS NOT NULL AND LOWER(TRIM(s.region)) = LOWER(TRIM($1))`;
+      shootersParams.push(rc.region);
+    }
+    const shootersRes = await pool.query(shootersQuery, shootersParams);
+    const shooters = shootersRes.rows;
+
+    // Fetch ALL active competitions of this discipline
+    const compsRes = await pool.query(`
+      SELECT c.*, u.name as "userName", u.surname as "userSurname", u.shooter_code as "shooterCode"
+      FROM competitions c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.totalscore > 0
+    `);
+
+    const cleanDisc = (str: string) => {
+      return (str || '')
+        .toLowerCase()
+        .replace(/\s*\(.*?\)\s*/g, '') // Rimuove sigle tra parentesi tipo (CK) o (FO)
+        .trim();
+    };
+
+    const targetDisciplineClean = cleanDisc(rc.discipline);
+    const competitions = compsRes.rows.filter((c: any) => {
+      const dbDisciplineClean = cleanDisc(c.discipline);
+      return dbDisciplineClean === targetDisciplineClean ||
+             dbDisciplineClean.includes(targetDisciplineClean) ||
+             targetDisciplineClean.includes(dbDisciplineClean) ||
+             (targetDisciplineClean === 'percorso di caccia' && dbDisciplineClean === 'sporting') ||
+             (targetDisciplineClean === 'sporting' && dbDisciplineClean === 'percorso di caccia');
+    });
+
+    const isTrialMatch = (comp: any, trialName: string | null, trialEventId: string | null) => {
+      if (trialEventId && comp.event_id === trialEventId) return true;
+      if (!trialName) return false;
+      const compName = (comp.name || '').toLowerCase().trim();
+      const tName = trialName.toLowerCase().trim();
+      const compLocation = (comp.location || '').toLowerCase().trim();
+      if (compName === tName || compLocation === tName || compName.includes(tName) || tName.includes(compName)) return true;
+
+      const normalize = (str: string) => {
+        return str
+          .replace(/[°ªº\.\-\,\/]/g, ' ')
+          .replace(/\b(1a|1o|1°|1st|prima|1ª|1º)\b/gi, '1')
+          .replace(/\b(2a|2o|2°|2nd|seconda|2ª|2º)\b/gi, '2')
+          .replace(/\b(3a|3o|3°|3rd|terza|3ª|3º)\b/gi, '3')
+          .replace(/\b(4a|4o|4°|4th|quarta|4ª|4º)\b/gi, '4')
+          .replace(/\btav\b/gi, '')
+          .replace(/\basd\b/gi, '')
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(word => word.length > 1);
+      };
+
+      const compTokens = normalize(compName);
+      const trialTokens = normalize(tName);
+      const locTokens = normalize(compLocation);
+
+      if (compTokens.length === 0 || trialTokens.length === 0) return false;
+
+      const getNumber = (tokens: string[]) => tokens.find(t => ['1', '2', '3', '4'].includes(t));
+      const compNum = getNumber(compTokens);
+      const trialNum = getNumber(trialTokens);
+
+      if (compNum && trialNum && compNum !== trialNum) return false;
+
+      const intersection = compTokens.filter(t => trialTokens.includes(t));
+      const locIntersection = locTokens.filter(t => trialTokens.includes(t));
+      const totalMatchCount = new Set([...intersection, ...locIntersection]).size;
+
+      const minTokensToMatch = Math.min(compTokens.length, 3);
+      if (totalMatchCount >= minTokensToMatch) {
+         return true;
+      }
+      return false;
+    };
+
+    const shooterTrials = new Map();
+
+    shooters.forEach((s: any) => {
+      const userComps = competitions.filter((c: any) => c.user_id === s.id);
+      let score1: number | null = null;
+      let score2: number | null = null;
+      let score3: number | null = null;
+      let score4: number | null = null;
+      const matchedComps: any[] = [];
+      const matchedCompIds = new Set<string>();
+
+      // A helper to match specific trial
+      const checkMatch = (comp: any, trialName: string | null, trialEventId: string | null) => {
+        // If event_id is specified, strictly require matching event_id
+        if (trialEventId) {
+          return comp.event_id === trialEventId;
+        }
+        // Otherwise use name fuzzy match
+        return isTrialMatch(comp, trialName, trialEventId);
+      };
+
+      // Match Trial 1
+      userComps.forEach((c: any) => {
+        if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial1_name, rc.trial1_event_id)) {
+          if (score1 === null || c.totalscore > score1) score1 = c.totalscore;
+          matchedCompIds.add(c.id);
+          matchedComps.push(c);
+        }
+      });
+
+      // Match Trial 2
+      userComps.forEach((c: any) => {
+        if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial2_name, rc.trial2_event_id)) {
+          if (score2 === null || c.totalscore > score2) score2 = c.totalscore;
+          matchedCompIds.add(c.id);
+          matchedComps.push(c);
+        }
+      });
+
+      // Match Trial 3
+      userComps.forEach((c: any) => {
+        if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial3_name, rc.trial3_event_id)) {
+          if (score3 === null || c.totalscore > score3) score3 = c.totalscore;
+          matchedCompIds.add(c.id);
+          matchedComps.push(c);
+        }
+      });
+
+      // Match Trial 4
+      userComps.forEach((c: any) => {
+        if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial4_name, rc.trial4_event_id)) {
+          if (score4 === null || c.totalscore > score4) score4 = c.totalscore;
+          matchedCompIds.add(c.id);
+          matchedComps.push(c);
+        }
+      });
+
+      // Sort matchedComps chronologically (by date) to lock first choice
+      matchedComps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const firstComp = matchedComps.length > 0 ? matchedComps[0] : null;
+
+      shooterTrials.set(s.id, {
+        trial1: score1,
+        trial2: score2,
+        trial3: score3,
+        trial4: score4,
+        firstComp
+      });
+    });
+
+    const shooterClassification = new Map();
+    shooters.forEach((s: any) => {
+      const tr = shooterTrials.get(s.id);
+      let mode: 'categoria' | 'qualifica' = 'categoria';
+      let value: string = s.category || 'Terza';
+
+      if (tr && tr.firstComp) {
+        const pref = tr.firstComp.ranking_preference || tr.firstComp.ranking_preference_override || 'categoria';
+        if (pref === 'qualifica') {
+          mode = 'qualifica';
+          value = tr.firstComp.qualification_at_time || s.qualification || 'Senior';
+        } else {
+          mode = 'categoria';
+          value = tr.firstComp.category_at_time || s.category || 'Terza';
+        }
+      } else {
+        mode = 'categoria';
+        value = s.category || 'Terza';
+      }
+      shooterClassification.set(s.id, { mode, value });
+    });
+
+    const maxScoresCategory: { [trial: string]: { [cat: string]: number } } = { t1: {}, t2: {}, t3: {}, t4: {} };
+    const maxScoresQualification: { [trial: string]: { [qual: string]: number } } = { t1: {}, t2: {}, t3: {}, t4: {} };
+
+    shooters.forEach((s: any) => {
+      const tr = shooterTrials.get(s.id);
+      const cls = shooterClassification.get(s.id);
+      if (!tr || !cls) return;
+      const { mode, value } = cls;
+
+      const checkMax = (trialKey: 'trial1' | 'trial2' | 'trial3' | 'trial4', maxDictKey: 't1' | 't2' | 't3' | 't4') => {
+        const score = tr[trialKey];
+        if (score !== null) {
+          if (mode === 'categoria') {
+            const currentMax = maxScoresCategory[maxDictKey][value] || 0;
+            if (score > currentMax) maxScoresCategory[maxDictKey][value] = score;
+          } else {
+            const currentMax = maxScoresQualification[maxDictKey][value] || 0;
+            if (score > currentMax) maxScoresQualification[maxDictKey][value] = score;
+          }
+        }
+      };
+
+      checkMax('trial1', 't1');
+      checkMax('trial2', 't2');
+      checkMax('trial3', 't3');
+      checkMax('trial4', 't4');
+    });
+
+    const shooterPenalties = shooters.map((s: any) => {
+      const tr = shooterTrials.get(s.id)!;
+      const cls = shooterClassification.get(s.id)!;
+      const { mode, value } = cls;
+
+      const getPenalty = (score: number | null, maxScores: { [key: string]: number }) => {
+        if (score === null) return null;
+        const maxScore = maxScores[value] || score;
+        return Math.max(0, maxScore - score);
+      };
+
+      const p1 = getPenalty(tr.trial1, maxScoresCategory.t1);
+      const p2 = getPenalty(tr.trial2, maxScoresCategory.t2);
+      const p3 = getPenalty(tr.trial3, maxScoresCategory.t3);
+      const p4 = getPenalty(tr.trial4, maxScoresCategory.t4);
+
+      const p1q = getPenalty(tr.trial1, maxScoresQualification.t1);
+      const p2q = getPenalty(tr.trial2, maxScoresQualification.t2);
+      const p3q = getPenalty(tr.trial3, maxScoresQualification.t3);
+      const p4q = getPenalty(tr.trial4, maxScoresQualification.t4);
+
+      const actualP1 = mode === 'categoria' ? p1 : p1q;
+      const actualP2 = mode === 'categoria' ? p2 : p2q;
+      const actualP3 = mode === 'categoria' ? p3 : p3q;
+      const actualP4 = mode === 'categoria' ? p4 : p4q;
+
+      const penaltiesList = [actualP1, actualP2, actualP3, actualP4].filter((p): p is number => p !== null);
+      const participatedCount = penaltiesList.length;
+      let totalPenalties = 0;
+      let discardedTrialIdx: number | null = null;
+      const isClassified = participatedCount >= (rc.season === 'Invernale' ? 2 : 3);
+
+      if (isClassified) {
+        if ((rc.season === 'Invernale' && participatedCount === 3) || participatedCount === 4) {
+          const maxP = Math.max(...penaltiesList);
+          totalPenalties = penaltiesList.reduce((acc, p) => acc + p, 0) - maxP;
+          if (actualP1 === maxP) discardedTrialIdx = 1;
+          else if (actualP2 === maxP) discardedTrialIdx = 2;
+          else if (actualP3 === maxP) discardedTrialIdx = 3;
+          else if (actualP4 === maxP) discardedTrialIdx = 4;
+        } else {
+          totalPenalties = penaltiesList.reduce((acc, p) => acc + p, 0);
+        }
+      } else {
+        totalPenalties = penaltiesList.reduce((acc, p) => acc + p, 0);
+      }
+
+      const totalTargetsHit = [tr.trial1, tr.trial2, tr.trial3, tr.trial4]
+        .filter((t): t is number => t !== null)
+        .reduce((acc, t) => acc + t, 0);
+
+      return {
+        shooterId: s.id,
+        name: s.name,
+        surname: s.surname,
+        shooter_code: s.shooter_code,
+        society: s.society,
+        society_region: s.society_region,
+        classificationMode: mode,
+        classificationValue: value,
+        trialScores: {
+          trial1: tr.trial1,
+          trial2: tr.trial2,
+          trial3: tr.trial3,
+          trial4: tr.trial4
+        },
+        trialPenalties: {
+          trial1: actualP1,
+          trial2: actualP2,
+          trial3: actualP3,
+          trial4: actualP4
+        },
+        participatedCount,
+        totalPenalties,
+        discardedTrialIdx,
+        isClassified,
+        totalTargetsHit
+      };
+    });
+
+    const groupedRankings: { [groupKey: string]: any[] } = {};
+    shooterPenalties.forEach((sp: any) => {
+      // Include any shooter with at least 1 trial to be shown in intermediate rankings
+      if (sp.participatedCount === 0) return;
+      const key = `${sp.classificationMode}_${sp.classificationValue}`;
+      if (!groupedRankings[key]) groupedRankings[key] = [];
+      groupedRankings[key].push(sp);
+    });
+
+    Object.keys(groupedRankings).forEach((key) => {
+      groupedRankings[key].sort((a, b) => {
+        // 1. Sort by qualification status first (classified shooters with >= 3 trials at the top)
+        if (a.isClassified !== b.isClassified) {
+          return a.isClassified ? -1 : 1;
+        }
+        // 2. Sort by how many trials they completed (descending so they compare on equal footing)
+        if (a.participatedCount !== b.participatedCount) {
+          return b.participatedCount - a.participatedCount;
+        }
+        // 3. Sort by total penalties (ascending)
+        if (a.totalPenalties !== b.totalPenalties) {
+          return a.totalPenalties - b.totalPenalties;
+        }
+        // 4. Sort by total targets hit (descending)
+        return b.totalTargetsHit - a.totalTargetsHit;
+      });
+      groupedRankings[key].forEach((sp, idx) => {
+        sp.position = idx + 1;
+      });
+    });
+
+    const uniqueSocieties = [...new Set(shooters.map((s: any) => s.society).filter((soc): soc is string => !!soc))];
+    const dL = rc.discipline.toLowerCase();
+    const topN = (dL.includes('fossa') || dL.includes('trap')) ? 6 : 3;
+
+    const societyTrials: { [society: string]: { [trial: string]: { score: number, shooters: any[] } | null } } = {};
+    uniqueSocieties.forEach((soc) => {
+      societyTrials[soc] = { trial1: null, trial2: null, trial3: null, trial4: null };
+
+      const calculateSocietyTrial = (trialKey: 'trial1' | 'trial2' | 'trial3' | 'trial4') => {
+        const activeShooters = shooterPenalties.filter((sp) => sp.society === soc && sp.trialScores[trialKey] !== null);
+        if (activeShooters.length === 0) return null;
+
+        activeShooters.sort((a, b) => b.trialScores[trialKey]! - a.trialScores[trialKey]!);
+        const topShooters = activeShooters.slice(0, topN);
+        const sumOfScores = topShooters.reduce((acc, s) => acc + s.trialScores[trialKey]!, 0);
+
+        return {
+          score: sumOfScores,
+          shooters: topShooters.map(s => ({ id: s.shooterId, name: s.name, surname: s.surname, score: s.trialScores[trialKey] }))
+        };
+      };
+
+      societyTrials[soc].trial1 = calculateSocietyTrial('trial1');
+      societyTrials[soc].trial2 = calculateSocietyTrial('trial2');
+      societyTrials[soc].trial3 = calculateSocietyTrial('trial3');
+      societyTrials[soc].trial4 = calculateSocietyTrial('trial4');
+    });
+
+    const maxSocietyScores = { trial1: 0, trial2: 0, trial3: 0, trial4: 0 };
+    uniqueSocieties.forEach((soc) => {
+      ['trial1', 'trial2', 'trial3', 'trial4'].forEach((tKey) => {
+        const sTrial = societyTrials[soc][tKey];
+        if (sTrial && sTrial.score > maxSocietyScores[tKey as 'trial1' | 'trial2' | 'trial3' | 'trial4']) {
+          maxSocietyScores[tKey as 'trial1' | 'trial2' | 'trial3' | 'trial4'] = sTrial.score;
+        }
+      });
+    });
+
+    const societyPenalties = uniqueSocieties.map((soc) => {
+      const st = societyTrials[soc];
+      const getSocPenalty = (trialKey: 'trial1' | 'trial2' | 'trial3' | 'trial4') => {
+        const run = st[trialKey];
+        if (!run) return null;
+        return Math.max(0, maxSocietyScores[trialKey] - run.score);
+      };
+
+      const p1 = getSocPenalty('trial1');
+      const p2 = getSocPenalty('trial2');
+      const p3 = getSocPenalty('trial3');
+      const p4 = getSocPenalty('trial4');
+
+      const pList = [p1, p2, p3, p4].filter((p): p is number => p !== null);
+      const participatedCount = pList.length;
+      const isClassified = participatedCount >= (rc.season === 'Invernale' ? 2 : 3);
+      let totalPenalties = 0;
+      let discardedTrialIdx: number | null = null;
+
+      if (isClassified) {
+        if ((rc.season === 'Invernale' && participatedCount === 3) || participatedCount === 4) {
+          const maxP = Math.max(...pList);
+          totalPenalties = pList.reduce((acc, p) => acc + p, 0) - maxP;
+          if (p1 === maxP) discardedTrialIdx = 1;
+          else if (p2 === maxP) discardedTrialIdx = 2;
+          else if (p3 === maxP) discardedTrialIdx = 3;
+          else if (p4 === maxP) discardedTrialIdx = 4;
+        } else {
+          totalPenalties = pList.reduce((acc, p) => acc + p, 0);
+        }
+      } else {
+        totalPenalties = pList.reduce((acc, p) => acc + p, 0);
+      }
+
+      const totalScoreSum = [st.trial1, st.trial2, st.trial3, st.trial4]
+        .filter((t): t is { score: number, shooters: any[] } => t !== null)
+        .reduce((acc, t) => acc + t.score, 0);
+
+      return {
+        societyName: soc,
+        trialScores: {
+          trial1: st.trial1 ? st.trial1.score : null,
+          trial2: st.trial2 ? st.trial2.score : null,
+          trial3: st.trial3 ? st.trial3.score : null,
+          trial4: st.trial4 ? st.trial4.score : null
+        },
+        trialPenalties: {
+          trial1: p1,
+          trial2: p2,
+          trial3: p3,
+          trial4: p4
+        },
+        participatedCount,
+        totalPenalties,
+        discardedTrialIdx,
+        isClassified,
+        totalScoreSum,
+        position: undefined as number | undefined
+      };
+    });
+
+    const classifiedSocieties = societyPenalties.filter(sp => sp.participatedCount >= 1);
+    classifiedSocieties.sort((a, b) => {
+      // 1. Sort by qualification status first (classified societies with >= 3 trials at the top)
+      if (a.isClassified !== b.isClassified) {
+        return a.isClassified ? -1 : 1;
+      }
+      // 2. Sort by how many trials they completed (descending so they compare on equal footing)
+      if (a.participatedCount !== b.participatedCount) {
+        return b.participatedCount - a.participatedCount;
+      }
+      // 3. Sort by total penalties (ascending)
+      if (a.totalPenalties !== b.totalPenalties) {
+        return a.totalPenalties - b.totalPenalties;
+      }
+      // 4. Sort by total score sum (descending)
+      return b.totalScoreSum - a.totalScoreSum;
+    });
+    classifiedSocieties.forEach((sp, idx) => {
+      sp.position = idx + 1;
+    });
+
+    res.json({
+      championship: rc,
+      scoreMaxes: {
+        category: maxScoresCategory,
+        qualification: maxScoresQualification,
+        society: maxSocietyScores
+      },
+      shooters: shooterPenalties,
+      groupedRankings,
+      societies: societyPenalties,
+      classifiedSocieties
+    });
+  } catch (err: any) {
+    console.error('Error in RC ranking:', err);
     res.status(500).json({ error: err.message });
   }
 });

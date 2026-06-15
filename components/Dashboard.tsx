@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { Competition, Discipline } from '../types';
 import StatsCharts from './StatsCharts';
 import ShareCard from './ShareCard';
@@ -32,6 +33,185 @@ const Dashboard: React.FC<DashboardProps> = ({
   const { t, language } = useLanguage();
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
+  // Regional Championships Dashboard standings state
+  const [regionalStandings, setRegionalStandings] = useState<any[]>([]);
+  const [isRegLoading, setIsRegLoading] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token || !user) return;
+
+    const fetchRegionalStandings = async () => {
+      setIsRegLoading(true);
+      try {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const res = await fetch('/api/regional-championships', { headers });
+        if (res.ok) {
+          const champs = await res.json();
+          // Filter championships where region matches user registered region or is 'Tutte' AND is_visible is true
+          const matchingChamps = champs.filter((c: any) => 
+            (c.is_visible !== false) && (c.region === 'Tutte' || c.region === user?.society_region)
+          );
+          
+          if (matchingChamps.length === 0) {
+            setRegionalStandings([]);
+            setIsRegLoading(false);
+            return;
+          }
+
+          const standingsPromises = matchingChamps.map(async (c: any) => {
+            const rRes = await fetch(`/api/regional-championships/${c.id}/ranking`, { headers });
+            if (rRes.ok) {
+              const rData = await rRes.json();
+              // Find our shooter
+              const myStanding = rData.shooters?.find((s: any) => 
+                (user?.shooter_code && s.shooter_code === user.shooter_code) ||
+                (s.surname?.toLowerCase() === user?.surname?.toLowerCase() && s.name?.toLowerCase() === user?.name?.toLowerCase())
+              );
+              return {
+                championship: c,
+                myStanding: myStanding || null,
+                allRankingData: rData
+              };
+            }
+            return null;
+          });
+
+          const results = await Promise.all(standingsPromises);
+          setRegionalStandings(results.filter(Boolean));
+        }
+      } catch (err) {
+        console.error('Error fetching regional standings on dashboard:', err);
+      } finally {
+        setIsRegLoading(false);
+      }
+    };
+
+    fetchRegionalStandings();
+  }, [user]);
+
+  const handleDownloadDashboardExcel = (rankingData: any) => {
+    if (!rankingData) return;
+    try {
+      const champ = rankingData.championship || {};
+      const wb = XLSX.utils.book_new();
+
+      const shootersRaw = (rankingData.shooters || []).filter((s: any) => (s.participatedCount || 0) > 0);
+      const sortedShooters = [...shootersRaw].sort((a, b) => {
+        const modeA = a.classificationMode || '';
+        const modeB = b.classificationMode || '';
+        if (modeA !== modeB) return modeA.localeCompare(modeB);
+
+        const valA = a.classificationValue || '';
+        const valB = b.classificationValue || '';
+        if (valA !== valB) return valA.localeCompare(valB);
+
+        const isClassifiedA = !!a.isClassified;
+        const isClassifiedB = !!b.isClassified;
+        
+        // New tie-breaker: first by total penalties ascending
+        if (a.totalPenalties !== b.totalPenalties) return (a.totalPenalties || 0) - (b.totalPenalties || 0);
+        
+        // Then by trial 4 score descending
+        const trial4A = a.trialScores?.trial4 || 0;
+        const trial4B = b.trialScores?.trial4 || 0;
+        if (trial4B !== trial4A) return trial4B - trial4A;
+
+        if (isClassifiedA && isClassifiedB) return (a.position || 999) - (b.position || 999);
+        if (isClassifiedA && !isClassifiedB) return -1;
+        if (!isClassifiedA && isClassifiedB) return 1;
+
+        return (b.totalTargetsHit || 0) - (a.totalTargetsHit || 0);
+      });
+
+      const shootersRows = sortedShooters.map(s => {
+        const tScores = s.trialScores || {};
+        const tPenalties = s.trialPenalties || {};
+
+        return {
+          'Posizione': s.position ? `${s.position}°` : 'Non Classificato (NC)',
+          'Cognome': s.surname || '',
+          'Nome': s.name || '',
+          'Codice FITAV': s.shooter_code || '',
+          'Società Tesseramento': s.society || '',
+          'Regione': s.society_region || '',
+          'Tipo Classifica': s.classificationMode === 'categoria' ? 'Categoria' : 'Qualifica',
+          'Categoria / Qualifica': s.classificationValue || '',
+          'Penalità Totali': s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
+          'Piattelli Totali Colpiti': s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
+          'Prove Effettuate': s.participatedCount || 0,
+          'Prova 1 Punteggio': tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '',
+          'Prova 1 Penalità': tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '',
+          'Prova 1 Scartata': s.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
+          'Prova 2 Punteggio': tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '',
+          'Prova 2 Penalità': tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '',
+          'Prova 2 Scartata': s.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
+          'Prova 3 Punteggio': tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '',
+          'Prova 3 Penalità': tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '',
+          'Prova 3 Scartata': s.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
+          'Prova 4 Punteggio': tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '',
+          'Prova 4 Penalità': tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '',
+          'Prova 4 Scartata': s.discardedTrialIdx === 4 ? 'SÌ' : 'NO',
+        };
+      });
+
+      const wsShooters = XLSX.utils.json_to_sheet(shootersRows);
+      XLSX.utils.book_append_sheet(wb, wsShooters, 'Classifica Tiratori');
+
+      const societiesRaw = (rankingData.classifiedSocieties || []).filter((s: any) => (s.participatedCount || 0) > 0);
+      const unsocRaw = (rankingData.societies || []).filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0);
+      const sortedSocieties = [...societiesRaw, ...unsocRaw];
+
+      const societiesRows = sortedSocieties.map(soc => {
+        const tScores = soc.trialScores || {};
+        const tPenalties = soc.trialPenalties || {};
+
+        return {
+          'Posizione': soc.position ? `${soc.position}°` : 'Non Classificata (NC)',
+          'Società TAV': soc.societyName || '',
+          'Penalità Totali': soc.totalPenalties !== undefined && soc.totalPenalties !== null ? soc.totalPenalties : 0,
+          'Punti Totali Colpiti (Squadra)': soc.totalScoreSum !== undefined && soc.totalScoreSum !== null ? soc.totalScoreSum : 0,
+          'Prove Effettuate': soc.participatedCount || 0,
+          'Prova 1 Punteggio': tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '',
+          'Prova 1 Penalità': tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '',
+          'Prova 1 Scartata': soc.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
+          'Prova 2 Punteggio': tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '',
+          'Prova 2 Penalità': tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '',
+          'Prova 2 Scartata': soc.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
+          'Prova 3 Punteggio': tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '',
+          'Prova 3 Penalità': tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '',
+          'Prova 3 Scartata': soc.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
+          'Prova 4 Punteggio': tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '',
+          'Prova 4 Penalità': tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '',
+          'Prova 4 Scartata': soc.discardedTrialIdx === 4 ? 'SÌ' : 'NO',
+        };
+      });
+
+      const wsSocieties = XLSX.utils.json_to_sheet(societiesRows);
+      XLSX.utils.book_append_sheet(wb, wsSocieties, 'Classifica Società');
+
+      const fileName = `${(champ.name || 'Campionato_Regionale').replace(/\s+/g, '_')}_Classifica.xlsx`;
+      
+      try {
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch (writeErr) {
+        console.error("Blob download failed on Dashboard, trying simple XLSX.writeFile:", writeErr);
+        XLSX.writeFile(wb, fileName);
+      }
+    } catch (err) {
+      console.error('Error generating Excel file on dashboard:', err);
+    }
+  };
+
   // Filtriamo solo le gare REALI (punteggio > 0) per le statistiche
   const upcomingCompetitions = React.useMemo(() => {
     const now = new Date();
@@ -272,6 +452,167 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* 1.7 Classifiche Regionali FITAV */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 ml-2">
+          <i className="fas fa-trophy text-orange-500 animate-pulse"></i>
+          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Campionati Regionali Tesserato</h2>
+        </div>
+
+        {isRegLoading ? (
+          <div className="flex flex-col items-center justify-center p-8 bg-slate-900 border border-slate-800 rounded-2xl space-y-2">
+            <i className="fas fa-spinner fa-spin text-orange-500 text-lg"></i>
+            <span className="text-[10px] text-slate-500 font-black uppercase tracking-wider">Caricamento classifiche regionali...</span>
+          </div>
+        ) : regionalStandings.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {regionalStandings.map((stand, idx) => {
+              const rc = stand.championship;
+              const mine = stand.myStanding;
+              const allData = stand.allRankingData;
+              const keyGroup = mine ? `${mine.classificationMode}_${mine.classificationValue}` : '';
+              const groupShoot = keyGroup ? (allData.groupedRankings?.[keyGroup] || []) : [];
+
+              return (
+                <div key={rc.id} className="bg-slate-900 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-orange-600/5 rounded-full blur-2xl"></div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[8px] font-black uppercase bg-orange-600/25 text-orange-400 px-2 py-0.5 rounded border border-orange-500/25">
+                          {rc.season === 'Invernale' ? '❄️ Invernale' : '☀️ Estivo'}
+                        </span>
+                        <span className="text-[8px] font-mono text-slate-500">{rc.year}</span>
+                      </div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider">{rc.name}</h4>
+                      <span className="text-[9px] font-medium text-slate-500">{rc.discipline}</span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        console.log('Dashboard Excel button clicked, data:', allData);
+                        handleDownloadDashboardExcel(allData);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600/15 hover:bg-emerald-600 border border-emerald-500/20 text-emerald-400 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 relative z-10"
+                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    >
+                      <i className="fas fa-file-excel pointer-events-none"></i>
+                      XLSX
+                    </button>
+                  </div>
+
+                  {mine ? (
+                    <div className="space-y-4 pt-2">
+                      {/* My standing badge display */}
+                      <div className="bg-gradient-to-r from-orange-600/10 to-transparent border border-orange-500/20 p-3.5 rounded-xl">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Il Tuo Posizionamento</p>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="text-2xl font-black text-white">
+                            {mine.position ? `${mine.position}°` : '---'}{' '}
+                            <span className="text-xs text-orange-400 uppercase font-bold">In Classifica</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-500">
+                            ({mine.classificationMode === 'categoria' ? 'Cat.' : 'Qual.'} {mine.classificationValue})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-400 font-mono">
+                          <span>Penalità: <b className="text-orange-500 font-bold">{mine.totalPenalties}</b></span>
+                          <span>Centrati: <b className="text-slate-300 font-bold">{mine.totalTargetsHit}</b></span>
+                          <span>Prove: <b className="text-slate-300 font-bold">{mine.participatedCount}/4</b></span>
+                        </div>
+                      </div>
+
+                      {!mine.isClassified && mine.participatedCount > 0 && (
+                        <div className="bg-orange-950/25 border border-orange-500/10 p-2.5 rounded-xl">
+                          <p className="text-[8.5px] text-orange-400 font-bold leading-normal uppercase">
+                            ⚙️ Classifica Provvisoria
+                          </p>
+                          <p className="text-[8px] text-slate-400 mt-0.5 leading-relaxed">
+                            Sei presente in classifica provvisoria. Devi disputare almeno <b>3 prove</b> per qualificarti a quella finale.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Display podium snippet of my group */}
+                      {groupShoot.length > 0 && (
+                        <div className="bg-slate-950/40 border border-slate-800 p-3 rounded-xl">
+                          <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-2">Podio Attuale {mine.classificationValue}</span>
+                          <div className="space-y-1.5">
+                            {groupShoot.slice(0, 3).map((sh: any, shIdx: number) => {
+                              const isMe = sh.shooterId === mine.shooterId;
+                              return (
+                                <div key={sh.shooterId} className={`flex items-center justify-between text-[10px] p-1.5 rounded ${isMe ? 'bg-orange-600/15 border border-orange-500/25 font-bold' : ''}`}>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono">{shIdx === 0 ? '🥇' : shIdx === 1 ? '🥈' : '🥉'}</span>
+                                    <span className={isMe ? 'text-orange-400' : 'text-slate-300'}>{sh.surname} {sh.name}</span>
+                                    {isMe && <span className="text-[7px] font-black uppercase bg-orange-600 text-white px-1 rounded">Tu</span>}
+                                  </div>
+                                  <span className="font-mono text-slate-400">{sh.totalPenalties} pen.</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Trials brief */}
+                      <div className="grid grid-cols-4 gap-1.5 text-center text-[9px] font-mono">
+                        {[1, 2, 3, 4].map(trialIdx => {
+                          const scr = mine.trialScores[`trial${trialIdx}` as keyof typeof mine.trialScores];
+                          const pen = mine.trialPenalties[`trial${trialIdx}` as keyof typeof mine.trialPenalties];
+                          const disc = mine.discardedTrialIdx === trialIdx;
+
+                          return (
+                            <div key={trialIdx} className="bg-slate-950/50 p-1.5 rounded border border-slate-850">
+                              <span className="text-[8px] text-slate-500 block">P{trialIdx}</span>
+                              {scr !== null ? (
+                                <div className={disc ? 'line-through text-slate-600' : ''}>
+                                  <span className="text-slate-300 bold block">{scr}</span>
+                                  <span className="text-[8px] text-slate-500">({pen}p)</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-600">-</span>
+                              )}
+                              {disc && <span className="text-[7px] text-red-500 font-bold uppercase block scale-90">Scarto</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-950/20 border-2 border-dashed border-slate-800/85 p-6 rounded-xl text-center space-y-2">
+                      <i className="fas fa-exclamation-triangle text-slate-600 text-xs"></i>
+                      <p className="text-[10px] text-slate-400 leading-relaxed font-bold">Non qualificat{user?.gender === 'F' ? 'a' : 'o'}</p>
+                      <p className="text-[9px] text-slate-500 leading-snug">
+                        Devi disputare almeno 3 prove per qualificarti. Finora hai registrato prove regionali non collegate o non caricate.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-slate-900 border border-slate-800/60 p-8 rounded-2xl text-center space-y-3 shadow-md">
+            <div className="bg-slate-950 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-slate-600 border border-slate-800">
+              <i className="fas fa-award text-base text-slate-500"></i>
+            </div>
+            <div>
+              <p className="text-xs font-black text-white uppercase tracking-wider">Nessun Campionato Attivo</p>
+              <p className="text-[10px] text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                Non sono presenti campionati regionali configurati per la tua regione (<span className="text-orange-400 font-bold">{user?.society_region || 'Nessuna regione configurata'}</span>).
+              </p>
+              {!user?.society_region && (
+                <p className="text-[9.5px] text-slate-500 mt-2">
+                  💡 Configura la tua regione nella scheda <b>Profilo</b> per visualizzare i campionati del tuo comprensorio.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* 2. Statistiche Allenamento */}
       <div className="space-y-4">

@@ -13,6 +13,7 @@ import UserManagement from './admin/UserManagement';
 import ResultsManagement from './admin/ResultsManagement';
 import SocietyManagement from './admin/SocietyManagement';
 import TeamManagement from './admin/TeamManagement';
+import { RegionalChampionships } from './admin/RegionalChampionships';
 import { Competition, Cartridge, CartridgeType, AppData, User } from '../types';
 import { AdminProvider, useAdmin } from '../contexts/AdminContext';
 import { useUI } from '../contexts/UIContext';
@@ -20,7 +21,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { compressImage } from '../lib/imageCompressor';
 import { generatePortalFlyer } from '../lib/pdfUtils';
 
-type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications' | 'event-control';
+type Tab = 'users' | 'settings' | 'profile' | 'team' | 'results' | 'event-results' | 'societies' | 'events' | 'halloffame' | 'notifications' | 'event-control' | 'regional-championships';
 
 interface AdminPanelProps {
   user: any;
@@ -304,6 +305,18 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
         fetchUsers();
       }
 
+      // Determine the region of the newly selected society
+      let matchingSocietyRegion = currentUser?.society_region;
+      if (societies && Array.isArray(societies)) {
+        const matchingSoc = societies.find((s: any) => 
+          s.name?.toLowerCase().trim() === profileSociety?.toLowerCase().trim() ||
+          s.code?.toLowerCase().trim() === profileSociety?.toLowerCase().trim()
+        );
+        if (matchingSoc) {
+          matchingSocietyRegion = matchingSoc.region;
+        }
+      }
+
       if (onUserUpdate) {
         onUserUpdate({
           ...currentUser,
@@ -313,6 +326,7 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
           category: profileCategory,
           qualification: profileQualification,
           society: profileSociety,
+          society_region: matchingSocietyRegion,
           shooter_code: profileShooterCode,
           avatar: profileAvatar,
           birth_date: profileBirthDate,
@@ -471,6 +485,14 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                 </button>
               </>
             )}
+            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+              <button 
+                onClick={() => { setActiveTab('regional-championships'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'regional-championships' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <i className="fas fa-trophy text-orange-500"></i> Campionati Regionali
+              </button>
+            )}
             <button 
               onClick={() => { setActiveTab('profile'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
@@ -561,6 +583,14 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
                 className={`flex-1 min-w-[100px] py-2 px-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <i className="fas fa-users mr-1 lg:mr-2"></i> <span className="hidden md:inline">{currentUser?.role === 'society' ? t('your_shooters') : (currentUser?.role === 'admin' ? t('user_management_label') : t('users'))}</span><span className="md:hidden">{currentUser?.role === 'society' ? t('shooter_short') : (currentUser?.role === 'admin' ? t('gest_ut_short') : t('ut_short'))}</span>
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || currentUser?.role === 'society') && (
+              <button 
+                onClick={() => { setActiveTab('regional-championships'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`flex-1 min-w-[100px] py-2 px-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'regional-championships' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <i className="fas fa-trophy mr-1 lg:mr-2 text-orange-500"></i> <span className="hidden md:inline">Regionali</span><span className="md:hidden">Regionali</span>
               </button>
             )}
             <button 
@@ -1151,6 +1181,11 @@ const AdminPanelInner: React.FC<AdminPanelProps> = ({
             }}
           />
         </div>
+      ) : activeTab === 'regional-championships' ? (
+        <RegionalChampionships 
+          user={currentUser}
+          token={token}
+        />
       ) : activeTab === 'results' ? (
         <ResultsManagement 
           currentUser={currentUser}

@@ -89,6 +89,7 @@ const translations: Translations = {
   'update_profile': { it: 'Aggiorna Profilo', en: 'Update Profile' },
   'warehouse': { it: 'Magazzino', en: 'Warehouse' },
   'admin_role': { it: 'Amministratore', en: 'Administrator' },
+  'admin_panel': { it: 'Pannello Amministratore', en: 'Admin Panel' },
   'society_role': { it: 'Società', en: 'Club' },
   'shooter_role': { it: 'Tiratore', en: 'Shooter' },
   'close_menu': { it: 'CHIUDI', en: 'CLOSE' },
