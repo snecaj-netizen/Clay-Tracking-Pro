@@ -111,10 +111,17 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       }
 
       try {
+        const lightweightEvents = evData.map((e: any) => ({
+          id: e.id,
+          name: e.name,
+          location: e.location,
+          discipline: e.discipline,
+          date: e.date
+        }));
         sessionStorage.setItem('clay_tracker_champs_list', JSON.stringify(champsData));
-        sessionStorage.setItem('clay_tracker_champs_events', JSON.stringify(evData));
+        sessionStorage.setItem('clay_tracker_champs_events', JSON.stringify(lightweightEvents));
       } catch (e) {
-        console.error('Error caching championships data:', e);
+        console.warn('Unable to cache championships data in sessionStorage due to storage limits or restrictions:', e);
       }
     } catch (err) {
       console.error('Error loading regional championships data:', err);
