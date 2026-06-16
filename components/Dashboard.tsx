@@ -33,61 +33,80 @@ const Dashboard: React.FC<DashboardProps> = ({
   const { t, language } = useLanguage();
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
-  // Regional Championships Dashboard standings state
-  const [regionalStandings, setRegionalStandings] = useState<any[]>([]);
+  // Regional Championships Dashboard standings state with Session Storage caching
+  const [regionalStandings, setRegionalStandings] = useState<any[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('clay_tracker_regional_standings');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [isRegLoading, setIsRegLoading] = useState(false);
 
-  useEffect(() => {
+  const fetchRegionalStandings = async (forceRefetch = false) => {
     const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token || !user) return;
 
-    const fetchRegionalStandings = async () => {
-      setIsRegLoading(true);
-      try {
-        const headers = { 'Authorization': `Bearer ${token}` };
-        const res = await fetch('/api/regional-championships', { headers });
-        if (res.ok) {
-          const champs = await res.json();
-          // Filter championships where region matches user registered region or is 'Tutte' AND is_visible is true
-          const matchingChamps = champs.filter((c: any) => 
-            (c.is_visible !== false) && (c.region === 'Tutte' || c.region === user?.society_region)
-          );
-          
-          if (matchingChamps.length === 0) {
-            setRegionalStandings([]);
-            setIsRegLoading(false);
-            return;
-          }
+    // Skip auto-fetching if cached data exists and we are not forcing a refresh
+    if (!forceRefetch && regionalStandings.length > 0) {
+      return;
+    }
 
-          const standingsPromises = matchingChamps.map(async (c: any) => {
-            const rRes = await fetch(`/api/regional-championships/${c.id}/ranking`, { headers });
-            if (rRes.ok) {
-              const rData = await rRes.json();
-              // Find our shooter
-              const myStanding = rData.shooters?.find((s: any) => 
-                (user?.shooter_code && s.shooter_code === user.shooter_code) ||
-                (s.surname?.toLowerCase() === user?.surname?.toLowerCase() && s.name?.toLowerCase() === user?.name?.toLowerCase())
-              );
-              return {
-                championship: c,
-                myStanding: myStanding || null,
-                allRankingData: rData
-              };
-            }
-            return null;
-          });
-
-          const results = await Promise.all(standingsPromises);
-          setRegionalStandings(results.filter(Boolean));
+    setIsRegLoading(true);
+    try {
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const res = await fetch('/api/regional-championships', { headers });
+      if (res.ok) {
+        const champs = await res.json();
+        // Filter championships where region matches user registered region or is 'Tutte' AND is_visible is true
+        const matchingChamps = champs.filter((c: any) => 
+          (c.is_visible !== false) && (c.region === 'Tutte' || c.region === user?.society_region)
+        );
+        
+        if (matchingChamps.length === 0) {
+          setRegionalStandings([]);
+          sessionStorage.removeItem('clay_tracker_regional_standings');
+          setIsRegLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error('Error fetching regional standings on dashboard:', err);
-      } finally {
-        setIsRegLoading(false);
-      }
-    };
 
-    fetchRegionalStandings();
+        const standingsPromises = matchingChamps.map(async (c: any) => {
+          const rRes = await fetch(`/api/regional-championships/${c.id}/ranking`, { headers });
+          if (rRes.ok) {
+            const rData = await rRes.json();
+            // Find our shooter
+            const myStanding = rData.shooters?.find((s: any) => 
+              (user?.shooter_code && s.shooter_code === user.shooter_code) ||
+              (s.surname?.toLowerCase() === user?.surname?.toLowerCase() && s.name?.toLowerCase() === user?.name?.toLowerCase())
+            );
+            return {
+              championship: c,
+              myStanding: myStanding || null,
+              allRankingData: rData
+            };
+          }
+          return null;
+        });
+
+        const results = await Promise.all(standingsPromises);
+        const filteredResults = results.filter(Boolean);
+        setRegionalStandings(filteredResults);
+        try {
+          sessionStorage.setItem('clay_tracker_regional_standings', JSON.stringify(filteredResults));
+        } catch (e) {
+          console.error('Error saving standings cache:', e);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching regional standings on dashboard:', err);
+    } finally {
+      setIsRegLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRegionalStandings(false);
   }, [user]);
 
   const handleDownloadDashboardExcel = (rankingData: any) => {
@@ -96,98 +115,258 @@ const Dashboard: React.FC<DashboardProps> = ({
       const champ = rankingData.championship || {};
       const wb = XLSX.utils.book_new();
 
-      const shootersRaw = (rankingData.shooters || []).filter((s: any) => (s.participatedCount || 0) > 0);
-      const sortedShooters = [...shootersRaw].sort((a, b) => {
-        const modeA = a.classificationMode || '';
-        const modeB = b.classificationMode || '';
-        if (modeA !== modeB) return modeA.localeCompare(modeB);
+      // --- SHEET 1: EXPERTLY FORMATTED SHOOTERS CHAMPIONSHIP BY CATEGORY / QUALIFICATION ---
+      const sortedGroupKeys = Object.keys(rankingData.groupedRankings || {}).sort();
+      
+      const champInfoRows = [
+        ['🏆 CAMPIONATO REGIONALE - CLASSIFICA DETTAGLIATA INDIVIDUALE'],
+        [champ.name || ''],
+        [],
+        ['Disciplina F.I.T.A.V.:', champ.discipline || '', 'Regione:', champ.region || '', 'Anno:', champ.year || ''],
+        ['Regolamento Campionato:', 'Sono necessarie almeno 3 prove su 4 per il computo finale. Nel caso si effettuino tutte e 4 le prove, la prova peggiore (penalità più alta) viene scartata.'],
+        [],
+        []
+      ];
 
-        const valA = a.classificationValue || '';
-        const valB = b.classificationValue || '';
-        if (valA !== valB) return valA.localeCompare(valB);
+      const shootersBodyRows: any[] = [];
 
-        const isClassifiedA = !!a.isClassified;
-        const isClassifiedB = !!b.isClassified;
+      sortedGroupKeys.forEach((groupKey) => {
+        const shootersInGroup = rankingData.groupedRankings[groupKey] || [];
+        if (shootersInGroup.length === 0) return;
         
-        // New tie-breaker: first by total penalties ascending
-        if (a.totalPenalties !== b.totalPenalties) return (a.totalPenalties || 0) - (b.totalPenalties || 0);
+        const [mode, value] = groupKey.split('_');
+        const modeLabel = mode === 'categoria' ? 'CATEGORIA' : 'QUALIFICA';
         
-        // Then by trial 4 score descending
-        const trial4A = a.trialScores?.trial4 || 0;
-        const trial4B = b.trialScores?.trial4 || 0;
-        if (trial4B !== trial4A) return trial4B - trial4A;
+        // Visual Section Header for group
+        shootersBodyRows.push([]);
+        shootersBodyRows.push([`⭐ ${modeLabel}: ${value.toUpperCase()} (Tesserati Classificati: ${shootersInGroup.length})`]);
+        shootersBodyRows.push([
+          'Posizione',
+          'Cognome',
+          'Nome',
+          'Codice FITAV',
+          'Società Tesseramento',
+          'Regione',
+          'Penalità Totali',
+          'Piattelli Totali Colpiti',
+          'Prove Effettuate',
+          'Prova 1 Punteggio',
+          'Prova 1 Penalità',
+          'Prova 1 Scartata',
+          'Prova 2 Punteggio',
+          'Prova 2 Penalità',
+          'Prova 2 Scartata',
+          'Prova 3 Punteggio',
+          'Prova 3 Penalità',
+          'Prova 3 Scartata',
+          'Prova 4 Punteggio',
+          'Prova 4 Penalità',
+          'Prova 4 Scartata'
+        ]);
 
-        if (isClassifiedA && isClassifiedB) return (a.position || 999) - (b.position || 999);
-        if (isClassifiedA && !isClassifiedB) return -1;
-        if (!isClassifiedA && isClassifiedB) return 1;
+        // Add shooters rows in this specific category / qualification
+        shootersInGroup.forEach((s: any) => {
+          const tScores = s.trialScores || {};
+          const tPenalties = s.trialPenalties || {};
 
-        return (b.totalTargetsHit || 0) - (a.totalTargetsHit || 0);
+          shootersBodyRows.push([
+            s.position ? `${s.position}°` : 'Non Classificato (NC)',
+            s.surname || '',
+            s.name || '',
+            s.shooter_code || '',
+            s.society || '',
+            s.society_region || '',
+            s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
+            s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
+            s.participatedCount || 0,
+            tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '-',
+            tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '-',
+            s.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
+            tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '-',
+            tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '-',
+            s.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
+            tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '-',
+            tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '-',
+            s.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
+            tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '-',
+            tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '-',
+            s.discardedTrialIdx === 4 ? 'SÌ' : 'NO'
+          ]);
+        });
+
+        shootersBodyRows.push([]); // separation spacer
       });
 
-      const shootersRows = sortedShooters.map(s => {
-        const tScores = s.trialScores || {};
-        const tPenalties = s.trialPenalties || {};
+      // Include also non-classified shooters (NC) with less than 3 trials
+      const unclassifiedSec = rankingData.shooters ? rankingData.shooters.filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0) : [];
+      if (unclassifiedSec.length > 0) {
+        shootersBodyRows.push([]);
+        shootersBodyRows.push([`⚠️ TESSERATI NON CLASSIFICATI (Meno di 3 prove completate)`]);
+        shootersBodyRows.push([
+          'Posizione',
+          'Cognome',
+          'Nome',
+          'Codice FITAV',
+          'Società Tesseramento',
+          'Regione',
+          'Tipo Classifica',
+          'Categoria / Qualifica',
+          'Penalità Totali',
+          'Piattelli Totali Colpiti',
+          'Prove Effettuate',
+          'Prova 1 Punteggio',
+          'Prova 1 Penalità',
+          'Prova 2 Punteggio',
+          'Prova 2 Penalità',
+          'Prova 3 Punteggio',
+          'Prova 3 Penalità',
+          'Prova 4 Punteggio',
+          'Prova 4 Penalità'
+        ]);
 
-        return {
-          'Posizione': s.position ? `${s.position}°` : 'Non Classificato (NC)',
-          'Cognome': s.surname || '',
-          'Nome': s.name || '',
-          'Codice FITAV': s.shooter_code || '',
-          'Società Tesseramento': s.society || '',
-          'Regione': s.society_region || '',
-          'Tipo Classifica': s.classificationMode === 'categoria' ? 'Categoria' : 'Qualifica',
-          'Categoria / Qualifica': s.classificationValue || '',
-          'Penalità Totali': s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
-          'Piattelli Totali Colpiti': s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
-          'Prove Effettuate': s.participatedCount || 0,
-          'Prova 1 Punteggio': tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '',
-          'Prova 1 Penalità': tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '',
-          'Prova 1 Scartata': s.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
-          'Prova 2 Punteggio': tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '',
-          'Prova 2 Penalità': tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '',
-          'Prova 2 Scartata': s.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
-          'Prova 3 Punteggio': tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '',
-          'Prova 3 Penalità': tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '',
-          'Prova 3 Scartata': s.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
-          'Prova 4 Punteggio': tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '',
-          'Prova 4 Penalità': tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '',
-          'Prova 4 Scartata': s.discardedTrialIdx === 4 ? 'SÌ' : 'NO',
-        };
-      });
+        unclassifiedSec.forEach((s: any) => {
+          const tScores = s.trialScores || {};
+          const tPenalties = s.trialPenalties || {};
 
-      const wsShooters = XLSX.utils.json_to_sheet(shootersRows);
+          shootersBodyRows.push([
+            'Non Classificato (NC)',
+            s.surname || '',
+            s.name || '',
+            s.shooter_code || '',
+            s.society || '',
+            s.society_region || '',
+            s.classificationMode === 'categoria' ? 'Categoria' : 'Qualifica',
+            s.classificationValue || '',
+            s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
+            s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
+            s.participatedCount || 0,
+            tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '-',
+            tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '-',
+            tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '-',
+            tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '-',
+            tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '-',
+            tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '-',
+            tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '-',
+            tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '-'
+          ]);
+        });
+      }
+
+      const allShooterAoARows = [...champInfoRows, ...shootersBodyRows];
+      const wsShooters = XLSX.utils.aoa_to_sheet(allShooterAoARows);
+
+      // Set spacious custom column widths to prevent truncation "###"
+      wsShooters['!cols'] = [
+        { wch: 20 }, // Posizione
+        { wch: 18 }, // Cognome
+        { wch: 18 }, // Nome
+        { wch: 15 }, // Codice FITAV
+        { wch: 30 }, // Società
+        { wch: 12 }, // Regione
+        { wch: 16 }, // Penalità o Tipo
+        { wch: 22 }, // Piattelli o Cat/Qual
+        { wch: 16 }, // Prove
+        { wch: 18 }, // Prova 1 Punteggio
+        { wch: 16 }, // Prova 1 Penalità
+        { wch: 16 }, // Prova 1 Scartata
+        { wch: 18 }, // Prova 2 Punteggio
+        { wch: 16 }, // Prova 2 Penalità
+        { wch: 16 }, // Prova 2 Scartata
+        { wch: 18 }, // Prova 3 Punteggio
+        { wch: 16 }, // Prova 3 Penalità
+        { wch: 16 }, // Prova 3 Scartata
+        { wch: 18 }, // Prova 4 Punteggio
+        { wch: 16 }, // Prova 4 Penalità
+        { wch: 16 }  // Prova 4 Scartata
+      ];
+
       XLSX.utils.book_append_sheet(wb, wsShooters, 'Classifica Tiratori');
+
+      // --- SHEET 2: SOCIETIES RANKING ---
+      const socInfoRows = [
+        ['🏆 CAMPIONATO REGIONALE - CLASSIFICA SOCIETÀ TAV'],
+        [champ.name || ''],
+        [],
+        ['Disciplina F.I.T.A.V.:', champ.discipline || '', 'Regione:', champ.region || '', 'Anno:', champ.year || ''],
+        ['Regolamento Società:', `Somma dei punteggi dei migliori ${(champ.discipline || '').toLowerCase().includes('fossa') || (champ.discipline || '').toLowerCase().includes('trap') ? '6' : '3'} tiratori di ciascuna associazione per singola prova regionale.`],
+        [],
+        []
+      ];
 
       const societiesRaw = (rankingData.classifiedSocieties || []).filter((s: any) => (s.participatedCount || 0) > 0);
       const unsocRaw = (rankingData.societies || []).filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0);
       const sortedSocieties = [...societiesRaw, ...unsocRaw];
 
-      const societiesRows = sortedSocieties.map(soc => {
+      const socBodyRows: any[] = [];
+      socBodyRows.push([
+        'Posizione',
+        'Società TAV',
+        'Penalità Totali',
+        'Punti Totali Colpiti (Squadra)',
+        'Prove Effettuate',
+        'Prova 1 Punteggio',
+        'Prova 1 Penalità',
+        'Prova 1 Scartata',
+        'Prova 2 Punteggio',
+        'Prova 2 Penalità',
+        'Prova 2 Scartata',
+        'Prova 3 Punteggio',
+        'Prova 3 Penalità',
+        'Prova 3 Scartata',
+        'Prova 4 Punteggio',
+        'Prova 4 Penalità',
+        'Prova 4 Scartata'
+      ]);
+
+      sortedSocieties.forEach(soc => {
         const tScores = soc.trialScores || {};
         const tPenalties = soc.trialPenalties || {};
 
-        return {
-          'Posizione': soc.position ? `${soc.position}°` : 'Non Classificata (NC)',
-          'Società TAV': soc.societyName || '',
-          'Penalità Totali': soc.totalPenalties !== undefined && soc.totalPenalties !== null ? soc.totalPenalties : 0,
-          'Punti Totali Colpiti (Squadra)': soc.totalScoreSum !== undefined && soc.totalScoreSum !== null ? soc.totalScoreSum : 0,
-          'Prove Effettuate': soc.participatedCount || 0,
-          'Prova 1 Punteggio': tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '',
-          'Prova 1 Penalità': tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '',
-          'Prova 1 Scartata': soc.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
-          'Prova 2 Punteggio': tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '',
-          'Prova 2 Penalità': tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '',
-          'Prova 2 Scartata': soc.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
-          'Prova 3 Punteggio': tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '',
-          'Prova 3 Penalità': tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '',
-          'Prova 3 Scartata': soc.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
-          'Prova 4 Punteggio': tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '',
-          'Prova 4 Penalità': tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '',
-          'Prova 4 Scartata': soc.discardedTrialIdx === 4 ? 'SÌ' : 'NO',
-        };
+        socBodyRows.push([
+          soc.position ? `${soc.position}°` : 'Non Classificata (NC)',
+          soc.societyName || '',
+          soc.totalPenalties !== undefined && soc.totalPenalties !== null ? soc.totalPenalties : 0,
+          soc.totalScoreSum !== undefined && soc.totalScoreSum !== null ? soc.totalScoreSum : 0,
+          soc.participatedCount || 0,
+          tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '-',
+          tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '-',
+          soc.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
+          tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '-',
+          tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '-',
+          soc.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
+          tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '-',
+          tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '-',
+          soc.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
+          tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '-',
+          tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '-',
+          soc.discardedTrialIdx === 4 ? 'SÌ' : 'NO'
+        ]);
       });
 
-      const wsSocieties = XLSX.utils.json_to_sheet(societiesRows);
+      const allSocAoARows = [...socInfoRows, ...socBodyRows];
+      const wsSocieties = XLSX.utils.aoa_to_sheet(allSocAoARows);
+
+      // Set nice column widths for sheet 2
+      wsSocieties['!cols'] = [
+        { wch: 22 }, // Posizione
+        { wch: 32 }, // Società TAV
+        { wch: 16 }, // Penalità Totali
+        { wch: 30 }, // Punti Totali Colpiti (Squadra)
+        { wch: 16 }, // Prove Effettuate
+        { wch: 18 }, // Prova 1 Punteggio
+        { wch: 16 }, // Prova 1 Penalità
+        { wch: 16 }, // Prova 1 Scartata
+        { wch: 18 }, // Prova 2 Punteggio
+        { wch: 16 }, // Prova 2 Penalità
+        { wch: 16 }, // Prova 2 Scartata
+        { wch: 18 }, // Prova 3 Punteggio
+        { wch: 16 }, // Prova 3 Penalità
+        { wch: 16 }, // Prova 3 Scartata
+        { wch: 18 }, // Prova 4 Punteggio
+        { wch: 16 }, // Prova 4 Penalità
+        { wch: 16 }  // Prova 4 Scartata
+      ];
+
       XLSX.utils.book_append_sheet(wb, wsSocieties, 'Classifica Società');
 
       const fileName = `${(champ.name || 'Campionato_Regionale').replace(/\s+/g, '_')}_Classifica.xlsx`;
@@ -455,9 +634,20 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* 1.7 Classifiche Regionali FITAV */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 ml-2">
-          <i className="fas fa-trophy text-orange-500 animate-pulse"></i>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Campionati Regionali Tesserato</h2>
+        <div className="flex items-center justify-between ml-2">
+          <div className="flex items-center gap-2">
+            <i className="fas fa-trophy text-orange-500 animate-pulse"></i>
+            <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Campionati Regionali Tesserato</h2>
+          </div>
+          <button
+            onClick={() => fetchRegionalStandings(true)}
+            disabled={isRegLoading}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-[10px] font-black uppercase text-slate-400 hover:text-white rounded-lg transition disabled:opacity-50 shadow-sm"
+            title="Aggiorna Classifiche"
+          >
+            <i className={`fas fa-sync-alt ${isRegLoading ? 'fa-spin text-orange-500' : ''}`}></i>
+            <span>Aggiorna</span>
+          </button>
         </div>
 
         {isRegLoading ? (

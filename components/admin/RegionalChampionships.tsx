@@ -76,22 +76,45 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     'Double Trap', 'Elica', 'Percorso di Caccia'
   ];
 
-  // Load championships and events
-  const loadData = async () => {
+  // Load championships and events with cache fallback
+  const loadData = async (forceRefetch = false) => {
+    if (!forceRefetch) {
+      try {
+        const cachedChamps = sessionStorage.getItem('clay_tracker_champs_list');
+        const cachedEvents = sessionStorage.getItem('clay_tracker_champs_events');
+        if (cachedChamps && cachedEvents) {
+          setChampionships(JSON.parse(cachedChamps));
+          setEvents(JSON.parse(cachedEvents));
+          return;
+        }
+      } catch (e) {
+        console.error('Error reading championships cache:', e);
+      }
+    }
+
     setIsLoading(true);
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
       
       const chRes = await fetch('/api/regional-championships', { headers });
+      let champsData = [];
       if (chRes.ok) {
-        const data = await chRes.json();
-        setChampionships(data);
+        champsData = await chRes.json();
+        setChampionships(champsData);
       }
 
       const evRes = await fetch('/api/events', { headers });
+      let evData = [];
       if (evRes.ok) {
-        const evData = await evRes.json();
+        evData = await evRes.json();
         setEvents(evData);
+      }
+
+      try {
+        sessionStorage.setItem('clay_tracker_champs_list', JSON.stringify(champsData));
+        sessionStorage.setItem('clay_tracker_champs_events', JSON.stringify(evData));
+      } catch (e) {
+        console.error('Error caching championships data:', e);
       }
     } catch (err) {
       console.error('Error loading regional championships data:', err);
@@ -102,7 +125,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
   };
 
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, [token]);
 
   // Load ranking for a specific championship
@@ -207,7 +230,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
           });
           if (res.ok) {
             triggerToast('Campionato regionale eliminato con successo', 'success');
-            loadData();
+            loadData(true);
           } else {
             triggerToast('Errore durante l\'eliminazione', 'error');
           }
@@ -234,7 +257,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       if (!response.ok) throw new Error('Failed to toggle visibility');
       
       triggerToast('Visibilità aggiornata con successo', 'success');
-      loadData();
+      loadData(true);
     } catch (err) {
       console.error(err);
       triggerToast('Errore durante l\'aggiornamento della visibilità', 'error');
@@ -279,7 +302,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       if (res.ok) {
         triggerToast(editingId ? 'Campionato aggiornato' : 'Campionato creato', 'success');
         setIsFormOpen(false);
-        loadData();
+        loadData(true);
       } else {
         const errorData = await res.json();
         triggerToast(errorData.error || 'Errore nel salvataggio', 'error');
@@ -297,101 +320,258 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       const champ = rankingData.championship || {};
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Shooters Ranking
-      // Sort shooters by category, qualification and position
-      const shootersRaw = (rankingData.shooters || []).filter((s: any) => (s.participatedCount || 0) > 0);
-      const sortedShooters = [...shootersRaw].sort((a, b) => {
-        const modeA = a.classificationMode || '';
-        const modeB = b.classificationMode || '';
-        if (modeA !== modeB) return modeA.localeCompare(modeB);
+      // --- SHEET 1: EXPERTLY FORMATTED SHOOTERS CHAMPIONSHIP BY CATEGORY / QUALIFICATION ---
+      const sortedGroupKeys = Object.keys(rankingData.groupedRankings || {}).sort();
+      
+      const champInfoRows = [
+        ['🏆 CAMPIONATO REGIONALE - CLASSIFICA DETTAGLIATA INDIVIDUALE'],
+        [champ.name || ''],
+        [],
+        ['Disciplina F.I.T.A.V.:', champ.discipline || '', 'Regione:', champ.region || '', 'Anno:', champ.year || ''],
+        ['Regolamento Campionato:', 'Sono necessarie almeno 3 prove su 4 per il computo finale. Nel caso si effettuino tutte e 4 le prove, la prova peggiore (penalità più alta) viene scartata.'],
+        [],
+        []
+      ];
 
-        const valA = a.classificationValue || '';
-        const valB = b.classificationValue || '';
-        if (valA !== valB) return valA.localeCompare(valB);
+      const shootersBodyRows: any[] = [];
 
-        const isClassifiedA = !!a.isClassified;
-        const isClassifiedB = !!b.isClassified;
-
-        // New tie-breaker: first by total penalties ascending
-        if (a.totalPenalties !== b.totalPenalties) return (a.totalPenalties || 0) - (b.totalPenalties || 0);
+      sortedGroupKeys.forEach((groupKey) => {
+        const shootersInGroup = rankingData.groupedRankings[groupKey] || [];
+        if (shootersInGroup.length === 0) return;
         
-        // Then by trial 4 score descending
-        const trial4A = a.trialScores?.trial4 || 0;
-        const trial4B = b.trialScores?.trial4 || 0;
-        if (trial4B !== trial4A) return trial4B - trial4A;
+        const [mode, value] = groupKey.split('_');
+        const modeLabel = mode === 'categoria' ? 'CATEGORIA' : 'QUALIFICA';
+        
+        // Visual Section Header for group
+        shootersBodyRows.push([]);
+        shootersBodyRows.push([`⭐ ${modeLabel}: ${value.toUpperCase()} (Tesserati Classificati: ${shootersInGroup.length})`]);
+        shootersBodyRows.push([
+          'Posizione',
+          'Cognome',
+          'Nome',
+          'Codice FITAV',
+          'Società Tesseramento',
+          'Regione',
+          'Penalità Totali',
+          'Piattelli Totali Colpiti',
+          'Prove Effettuate',
+          'Prova 1 Punteggio',
+          'Prova 1 Penalità',
+          'Prova 1 Scartata',
+          'Prova 2 Punteggio',
+          'Prova 2 Penalità',
+          'Prova 2 Scartata',
+          'Prova 3 Punteggio',
+          'Prova 3 Penalità',
+          'Prova 3 Scartata',
+          'Prova 4 Punteggio',
+          'Prova 4 Penalità',
+          'Prova 4 Scartata'
+        ]);
 
-        if (isClassifiedA && isClassifiedB) return (a.position || 999) - (b.position || 999);
-        if (isClassifiedA && !isClassifiedB) return -1;
-        if (!isClassifiedA && isClassifiedB) return 1;
+        // Add shooters rows in this specific category / qualification
+        shootersInGroup.forEach((s: any) => {
+          const tScores = s.trialScores || {};
+          const tPenalties = s.trialPenalties || {};
 
-        return (b.totalTargetsHit || 0) - (a.totalTargetsHit || 0);
+          shootersBodyRows.push([
+            s.position ? `${s.position}°` : 'Non Classificato (NC)',
+            s.surname || '',
+            s.name || '',
+            s.shooter_code || '',
+            s.society || '',
+            s.society_region || '',
+            s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
+            s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
+            s.participatedCount || 0,
+            tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '-',
+            tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '-',
+            s.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
+            tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '-',
+            tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '-',
+            s.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
+            tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '-',
+            tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '-',
+            s.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
+            tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '-',
+            tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '-',
+            s.discardedTrialIdx === 4 ? 'SÌ' : 'NO'
+          ]);
+        });
+
+        shootersBodyRows.push([]); // separation spacer
       });
 
-      const shootersRows = sortedShooters.map(s => {
-        const tScores = s.trialScores || {};
-        const tPenalties = s.trialPenalties || {};
+      // Include also non-classified shooters (NC) with less than 3 trials
+      const unclassifiedSec = rankingData.shooters ? rankingData.shooters.filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0) : [];
+      if (unclassifiedSec.length > 0) {
+        shootersBodyRows.push([]);
+        shootersBodyRows.push([`⚠️ TESSERATI NON CLASSIFICATI (Meno di 3 prove completate)`]);
+        shootersBodyRows.push([
+          'Posizione',
+          'Cognome',
+          'Nome',
+          'Codice FITAV',
+          'Società Tesseramento',
+          'Regione',
+          'Tipo Classifica',
+          'Categoria / Qualifica',
+          'Penalità Totali',
+          'Piattelli Totali Colpiti',
+          'Prove Effettuate',
+          'Prova 1 Punteggio',
+          'Prova 1 Penalità',
+          'Prova 2 Punteggio',
+          'Prova 2 Penalità',
+          'Prova 3 Punteggio',
+          'Prova 3 Penalità',
+          'Prova 4 Punteggio',
+          'Prova 4 Penalità'
+        ]);
 
-        return {
-          'Posizione': s.position ? `${s.position}°` : 'Non Classificato (NC)',
-          'Cognome': s.surname || '',
-          'Nome': s.name || '',
-          'Codice FITAV': s.shooter_code || '',
-          'Società Tesseramento': s.society || '',
-          'Regione': s.society_region || '',
-          'Tipo Classifica': s.classificationMode === 'categoria' ? 'Categoria' : 'Qualifica',
-          'Categoria / Qualifica': s.classificationValue || '',
-          'Penalità Totali': s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
-          'Piattelli Totali Colpiti': s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
-          'Prove Effettuate': s.participatedCount || 0,
-          'Prova 1 Punteggio': tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '',
-          'Prova 1 Penalità': tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '',
-          'Prova 1 Scartata': s.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
-          'Prova 2 Punteggio': tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '',
-          'Prova 2 Penalità': tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '',
-          'Prova 2 Scartata': s.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
-          'Prova 3 Punteggio': tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '',
-          'Prova 3 Penalità': tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '',
-          'Prova 3 Scartata': s.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
-          'Prova 4 Punteggio': tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '',
-          'Prova 4 Penalità': tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '',
-          'Prova 4 Scartata': s.discardedTrialIdx === 4 ? 'SÌ' : 'NO',
-        };
-      });
+        unclassifiedSec.forEach((s: any) => {
+          const tScores = s.trialScores || {};
+          const tPenalties = s.trialPenalties || {};
 
-      const wsShooters = XLSX.utils.json_to_sheet(shootersRows);
+          shootersBodyRows.push([
+            'Non Classificato (NC)',
+            s.surname || '',
+            s.name || '',
+            s.shooter_code || '',
+            s.society || '',
+            s.society_region || '',
+            s.classificationMode === 'categoria' ? 'Categoria' : 'Qualifica',
+            s.classificationValue || '',
+            s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties : 0,
+            s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit : 0,
+            s.participatedCount || 0,
+            tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '-',
+            tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '-',
+            tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '-',
+            tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '-',
+            tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '-',
+            tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '-',
+            tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '-',
+            tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '-'
+          ]);
+        });
+      }
+
+      const allShooterAoARows = [...champInfoRows, ...shootersBodyRows];
+      const wsShooters = XLSX.utils.aoa_to_sheet(allShooterAoARows);
+
+      // Set spacious custom column widths to prevent truncation "###"
+      wsShooters['!cols'] = [
+        { wch: 20 }, // Posizione
+        { wch: 18 }, // Cognome
+        { wch: 18 }, // Nome
+        { wch: 15 }, // Codice FITAV
+        { wch: 30 }, // Società
+        { wch: 12 }, // Regione
+        { wch: 16 }, // Penalità o Tipo
+        { wch: 22 }, // Piattelli o Cat/Qual
+        { wch: 16 }, // Prove
+        { wch: 18 }, // Prova 1 Punteggio
+        { wch: 16 }, // Prova 1 Penalità
+        { wch: 16 }, // Prova 1 Scartata
+        { wch: 18 }, // Prova 2 Punteggio
+        { wch: 16 }, // Prova 2 Penalità
+        { wch: 16 }, // Prova 2 Scartata
+        { wch: 18 }, // Prova 3 Punteggio
+        { wch: 16 }, // Prova 3 Penalità
+        { wch: 16 }, // Prova 3 Scartata
+        { wch: 18 }, // Prova 4 Punteggio
+        { wch: 16 }, // Prova 4 Penalità
+        { wch: 16 }  // Prova 4 Scartata
+      ];
+
       XLSX.utils.book_append_sheet(wb, wsShooters, 'Classifica Tiratori');
 
-      // Sheet 2: Societies Ranking
+      // --- SHEET 2: SOCIETIES RANKING ---
+      const socInfoRows = [
+        ['🏆 CAMPIONATO REGIONALE - CLASSIFICA SOCIETÀ TAV'],
+        [champ.name || ''],
+        [],
+        ['Disciplina F.I.T.A.V.:', champ.discipline || '', 'Regione:', champ.region || '', 'Anno:', champ.year || ''],
+        ['Regolamento Società:', `Somma dei punteggi dei migliori ${(champ.discipline || '').toLowerCase().includes('fossa') || (champ.discipline || '').toLowerCase().includes('trap') ? '6' : '3'} tiratori di ciascuna associazione per singola prova regionale.`],
+        [],
+        []
+      ];
+
       const societiesRaw = (rankingData.classifiedSocieties || []).filter((s: any) => (s.participatedCount || 0) > 0);
       const unsocRaw = (rankingData.societies || []).filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0);
       const sortedSocieties = [...societiesRaw, ...unsocRaw];
 
-      const societiesRows = sortedSocieties.map(soc => {
+      const socBodyRows: any[] = [];
+      socBodyRows.push([
+        'Posizione',
+        'Società TAV',
+        'Penalità Totali',
+        'Punti Totali Colpiti (Squadra)',
+        'Prove Effettuate',
+        'Prova 1 Punteggio',
+        'Prova 1 Penalità',
+        'Prova 1 Scartata',
+        'Prova 2 Punteggio',
+        'Prova 2 Penalità',
+        'Prova 2 Scartata',
+        'Prova 3 Punteggio',
+        'Prova 3 Penalità',
+        'Prova 3 Scartata',
+        'Prova 4 Punteggio',
+        'Prova 4 Penalità',
+        'Prova 4 Scartata'
+      ]);
+
+      sortedSocieties.forEach(soc => {
         const tScores = soc.trialScores || {};
         const tPenalties = soc.trialPenalties || {};
 
-        return {
-          'Posizione': soc.position ? `${soc.position}°` : 'Non Classificata (NC)',
-          'Società TAV': soc.societyName || '',
-          'Penalità Totali': soc.totalPenalties !== undefined && soc.totalPenalties !== null ? soc.totalPenalties : 0,
-          'Punti Totali Colpiti (Squadra)': soc.totalScoreSum !== undefined && soc.totalScoreSum !== null ? soc.totalScoreSum : 0,
-          'Prove Effettuate': soc.participatedCount || 0,
-          'Prova 1 Punteggio': tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '',
-          'Prova 1 Penalità': tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '',
-          'Prova 1 Scartata': soc.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
-          'Prova 2 Punteggio': tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '',
-          'Prova 2 Penalità': tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '',
-          'Prova 2 Scartata': soc.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
-          'Prova 3 Punteggio': tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '',
-          'Prova 3 Penalità': tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '',
-          'Prova 3 Scartata': soc.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
-          'Prova 4 Punteggio': tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '',
-          'Prova 4 Penalità': tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '',
-          'Prova 4 Scartata': soc.discardedTrialIdx === 4 ? 'SÌ' : 'NO',
-        };
+        socBodyRows.push([
+          soc.position ? `${soc.position}°` : 'Non Classificata (NC)',
+          soc.societyName || '',
+          soc.totalPenalties !== undefined && soc.totalPenalties !== null ? soc.totalPenalties : 0,
+          soc.totalScoreSum !== undefined && soc.totalScoreSum !== null ? soc.totalScoreSum : 0,
+          soc.participatedCount || 0,
+          tScores.trial1 !== undefined && tScores.trial1 !== null ? tScores.trial1 : '-',
+          tPenalties.trial1 !== undefined && tPenalties.trial1 !== null ? tPenalties.trial1 : '-',
+          soc.discardedTrialIdx === 1 ? 'SÌ' : 'NO',
+          tScores.trial2 !== undefined && tScores.trial2 !== null ? tScores.trial2 : '-',
+          tPenalties.trial2 !== undefined && tPenalties.trial2 !== null ? tPenalties.trial2 : '-',
+          soc.discardedTrialIdx === 2 ? 'SÌ' : 'NO',
+          tScores.trial3 !== undefined && tScores.trial3 !== null ? tScores.trial3 : '-',
+          tPenalties.trial3 !== undefined && tPenalties.trial3 !== null ? tPenalties.trial3 : '-',
+          soc.discardedTrialIdx === 3 ? 'SÌ' : 'NO',
+          tScores.trial4 !== undefined && tScores.trial4 !== null ? tScores.trial4 : '-',
+          tPenalties.trial4 !== undefined && tPenalties.trial4 !== null ? tPenalties.trial4 : '-',
+          soc.discardedTrialIdx === 4 ? 'SÌ' : 'NO'
+        ]);
       });
 
-      const wsSocieties = XLSX.utils.json_to_sheet(societiesRows);
+      const allSocAoARows = [...socInfoRows, ...socBodyRows];
+      const wsSocieties = XLSX.utils.aoa_to_sheet(allSocAoARows);
+
+      // Set nice column widths for sheet 2
+      wsSocieties['!cols'] = [
+        { wch: 22 }, // Posizione
+        { wch: 32 }, // Società TAV
+        { wch: 16 }, // Penalità Totali
+        { wch: 30 }, // Punti Totali Colpiti (Squadra)
+        { wch: 16 }, // Prove Effettuate
+        { wch: 18 }, // Prova 1 Punteggio
+        { wch: 16 }, // Prova 1 Penalità
+        { wch: 16 }, // Prova 1 Scartata
+        { wch: 18 }, // Prova 2 Punteggio
+        { wch: 16 }, // Prova 2 Penalità
+        { wch: 16 }, // Prova 2 Scartata
+        { wch: 18 }, // Prova 3 Punteggio
+        { wch: 16 }, // Prova 3 Penalità
+        { wch: 16 }, // Prova 3 Scartata
+        { wch: 18 }, // Prova 4 Punteggio
+        { wch: 16 }, // Prova 4 Penalità
+        { wch: 16 }  // Prova 4 Scartata
+      ];
+
       XLSX.utils.book_append_sheet(wb, wsSocieties, 'Classifica Società');
 
       // Save file
@@ -548,15 +728,19 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                       </div>
 
                       {/* Display Podium for Group if exists at least one */}
-                      <div className="p-4 bg-gradient-to-b from-slate-950/80 to-slate-900/20 border-b border-slate-800 flex justify-center items-end py-8 gap-3 sm:gap-6">
+                      <div className="p-4 bg-gradient-to-b from-slate-950/90 to-slate-900/40 border-b border-slate-800/85 flex justify-center items-end py-8 gap-3 sm:gap-6">
                         {/* 2nd Place */}
                         {top2 && (
                           <div className="flex flex-col items-center">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">{top2.surname} {top2.name.substring(0, 1)}.</span>
-                            <span className="text-[8px] font-mono text-slate-500 mb-1 line-clamp-1 max-w-[80px]">{top2.society}</span>
-                            <span className="text-[9px] font-bold text-orange-400 flex items-center mb-1">{top2.totalPenalties} <span className="text-[7px] text-slate-500 ml-1">pen.</span></span>
-                            <div className="w-14 sm:w-20 bg-slate-800 border border-slate-700 rounded-t-lg h-14 flex items-center justify-center shadow-lg">
-                              <span className="text-sm font-black font-mono text-slate-400">2°</span>
+                            <span className="text-[11px] font-extrabold text-slate-100 uppercase tracking-wider text-center drop-shadow-md">{top2.surname} {top2.name.substring(0, 1)}.</span>
+                            <span className="text-[9px] font-semibold text-slate-300 mb-1 line-clamp-1 max-w-[90px] text-center drop-shadow">{top2.society}</span>
+                            <span className="text-xs font-black text-slate-100 bg-slate-850 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1 mb-1 shadow-sm">
+                              <span className="text-orange-400">{top2.totalPenalties}</span>
+                              <span className="text-[8px] text-slate-400 font-normal uppercase">pen.</span>
+                            </span>
+                            <div className="w-14 sm:w-20 bg-gradient-to-t from-slate-850 to-slate-700/80 border border-slate-500/60 rounded-t-lg h-14 flex items-center justify-center shadow-lg relative overflow-hidden group">
+                              <span className="text-sm font-black font-mono text-slate-100 drop-shadow-md">2°</span>
+                              <div className="absolute inset-0 bg-white/5 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </div>
                           </div>
                         )}
@@ -564,12 +748,16 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                         {/* 1st Place */}
                         {top1 && (
                           <div className="flex flex-col items-center">
-                            <Trophy className="w-5 h-5 text-yellow-500 animate-pulse mb-1" />
-                            <span className="text-[11px] font-black text-white uppercase tracking-wider text-center">{top1.surname} {top1.name.substring(0, 1)}.</span>
-                            <span className="text-[8px] font-mono text-slate-400 mb-1 line-clamp-1 max-w-[100px]">{top1.society}</span>
-                            <span className="text-xs font-black text-yellow-500 flex items-center mb-1">{top1.totalPenalties} <span className="text-[8px] text-slate-500 ml-1">pen.</span></span>
-                            <div className="w-16 sm:w-24 bg-gradient-to-t from-slate-850 to-slate-800 border-2 border-yellow-500/50 rounded-t-lg h-20 flex items-center justify-center shadow-2xl relative">
-                              <span className="text-lg font-black font-mono text-yellow-400">1°</span>
+                            <Trophy className="w-5 h-5 text-yellow-400 animate-bounce mb-1 drop-shadow-[0_2px_8px_rgba(234,179,8,0.3)]" />
+                            <span className="text-xs font-black text-yellow-500 uppercase tracking-wider text-center drop-shadow-md">{top1.surname} {top1.name.substring(0, 1)}.</span>
+                            <span className="text-[9px] font-extrabold text-yellow-100/90 mb-1 line-clamp-1 max-w-[110px] text-center drop-shadow">{top1.society}</span>
+                            <span className="text-xs font-black text-slate-100 bg-yellow-950/60 px-2 py-0.5 rounded border border-yellow-500/40 flex items-center gap-1 mb-1 shadow-[0_0_10px_rgba(234,179,8,0.15)]">
+                              <span className="text-yellow-400">{top1.totalPenalties}</span>
+                              <span className="text-[8px] text-yellow-300/80 font-normal uppercase">pen.</span>
+                            </span>
+                            <div className="w-16 sm:w-24 bg-gradient-to-t from-yellow-950/90 to-amber-600/95 border-2 border-yellow-400 rounded-t-lg h-20 flex items-center justify-center shadow-2xl relative overflow-hidden group">
+                              <span className="text-lg font-black font-mono text-yellow-200 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">1°</span>
+                              <div className="absolute inset-0 bg-white/10 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </div>
                           </div>
                         )}
@@ -577,11 +765,15 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                         {/* 3rd Place */}
                         {top3 && (
                           <div className="flex flex-col items-center">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">{top3.surname} {top3.name.substring(0, 1)}.</span>
-                            <span className="text-[8px] font-mono text-slate-500 mb-1 line-clamp-1 max-w-[80px]">{top3.society}</span>
-                            <span className="text-[9px] font-bold text-orange-400 flex items-center mb-1">{top3.totalPenalties} <span className="text-[7px] text-slate-500 ml-1">pen.</span></span>
-                            <div className="w-14 sm:w-20 bg-slate-800 border border-slate-700 rounded-t-lg h-10 flex items-center justify-center shadow-lg">
-                              <span className="text-sm font-black font-mono text-slate-500/80">3°</span>
+                            <span className="text-[11px] font-extrabold text-orange-100 uppercase tracking-wider text-center drop-shadow-md">{top3.surname} {top3.name.substring(0, 1)}.</span>
+                            <span className="text-[9px] font-semibold text-orange-300 mb-1 line-clamp-1 max-w-[90px] text-center drop-shadow">{top3.society}</span>
+                            <span className="text-xs font-black text-slate-100 bg-orange-950/40 px-2 py-0.5 rounded border border-orange-900/55 flex items-center gap-1 mb-1 shadow-sm">
+                              <span className="text-orange-400">{top3.totalPenalties}</span>
+                              <span className="text-[8px] text-orange-300 font-normal uppercase">pen.</span>
+                            </span>
+                            <div className="w-14 sm:w-20 bg-gradient-to-t from-amber-950/80 to-amber-800/85 border border-amber-600/60 rounded-t-lg h-10 flex items-center justify-center shadow-lg relative overflow-hidden group">
+                              <span className="text-sm font-black font-mono text-orange-300 drop-shadow-md">3°</span>
+                              <div className="absolute inset-0 bg-white/5 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </div>
                           </div>
                         )}
