@@ -1146,6 +1146,23 @@ const initDB = async () => {
     });
     await pool.query("ALTER TABLE regional_championships ADD COLUMN IF NOT EXISTS is_visible BOOLEAN DEFAULT true").catch(() => {});
 
+    // Create friendly challenges table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS friendly_challenges (
+        id TEXT PRIMARY KEY,
+        creator_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        discipline TEXT NOT NULL,
+        location TEXT NOT NULL,
+        group_by_category BOOLEAN DEFAULT false,
+        shooters TEXT NOT NULL,
+        status TEXT DEFAULT 'completed',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `).catch((err) => {
+      console.error("Error creating friendly_challenges table:", err);
+    });
+
     // Initialize VAPID keys
     try {
       const { rows: vapidRows } = await pool.query("SELECT * FROM vapid_keys WHERE id = 1");
@@ -4185,6 +4202,146 @@ app.delete('/api/admin/challenges/:id', authenticateToken, requireAdminOrSociety
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Friendly Challenges ("Sfide tra Amici") Routes
+app.get('/api/shooters-list', authenticateToken, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, name, surname, category, qualification, society, shooter_code, email FROM users WHERE role != 'society' ORDER BY surname, name"
+    );
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/friendly-challenges', authenticateToken, async (req: any, res) => {
+  try {
+    const userFullName = `${req.user.surname || ''} ${req.user.name || ''}`.trim().toLowerCase();
+    const userNameFull = `${req.user.name || ''} ${req.user.surname || ''}`.trim().toLowerCase();
+
+    const { rows } = await pool.query("SELECT * FROM friendly_challenges ORDER BY created_at DESC");
+    
+    const userChallenges = rows.filter(r => {
+      if (r.creator_id === req.user.id) return true;
+      try {
+        const shooters = JSON.parse(r.shooters || '[]');
+        return shooters.some((s: any) => 
+          (s.id && String(s.id) === String(req.user.id)) ||
+          (s.name && (
+            s.name.toLowerCase().includes(userFullName) || 
+            s.name.toLowerCase().includes(userNameFull) || 
+            userFullName.includes(s.name.toLowerCase()) ||
+            userNameFull.includes(s.name.toLowerCase())
+          ))
+        );
+      } catch (err) {
+        return false;
+      }
+    });
+
+    res.json(userChallenges);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/friendly-challenges', authenticateToken, async (req: any, res) => {
+  const { name, discipline, location, group_by_category, shooters, status } = req.body;
+  
+  if (!name || !discipline || !shooters) {
+    return res.status(400).json({ error: 'Name, discipline, and shooters are required.' });
+  }
+
+  const id = Math.random().toString(36).substr(2, 9);
+  try {
+    await pool.query(
+      `INSERT INTO friendly_challenges (id, creator_id, name, discipline, location, group_by_category, shooters, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        id, 
+        req.user.id, 
+        name, 
+        discipline, 
+        location || 'Campo Privato', 
+        group_by_category || false, 
+        JSON.stringify(shooters), 
+        status || 'completed'
+      ]
+    );
+    res.json({ id, success: true });
+  } catch (err: any) {
+    console.error('Error creating friendly challenge:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/friendly-challenges/:id', authenticateToken, async (req: any, res) => {
+  const { name, discipline, location, group_by_category, shooters, status } = req.body;
+  try {
+    const { rows } = await pool.query("SELECT creator_id, shooters FROM friendly_challenges WHERE id = $1", [req.params.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Sfida non trovata' });
+    }
+
+    const challenge = rows[0];
+    const isCreator = challenge.creator_id === req.user.id;
+    
+    // Check if participant is editing scores
+    let isParticipant = false;
+    try {
+      const existingShooters = JSON.parse(challenge.shooters || '[]');
+      isParticipant = existingShooters.some((s: any) => s.id && String(s.id) === String(req.user.id));
+    } catch (e) {}
+
+    if (!isCreator && !isParticipant && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Non hai l\'autorizzazione per aggiornare questa sfida.' });
+    }
+
+    await pool.query(
+      `UPDATE friendly_challenges 
+       SET name = COALESCE($1, name), 
+           discipline = COALESCE($2, discipline), 
+           location = COALESCE($3, location), 
+           group_by_category = COALESCE($4, group_by_category), 
+           shooters = COALESCE($5, shooters), 
+           status = COALESCE($6, status) 
+       WHERE id = $7`,
+      [
+        name, 
+        discipline, 
+        location, 
+        group_by_category !== undefined ? group_by_category : null, 
+        shooters ? JSON.stringify(shooters) : null, 
+        status, 
+        req.params.id
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Error updating friendly challenge:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/friendly-challenges/:id', authenticateToken, async (req: any, res) => {
+  try {
+    const { rows } = await pool.query("SELECT creator_id FROM friendly_challenges WHERE id = $1", [req.params.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Sfida non trovata' });
+    }
+
+    if (rows[0].creator_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo l\'ideatore della sfida può eliminarla.' });
+    }
+
+    await pool.query("DELETE FROM friendly_challenges WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

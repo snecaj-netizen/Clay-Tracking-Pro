@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import HistoryList from './HistoryList';
 import Dashboard from './Dashboard';
 import AICoachPage from './AICoachPage';
+import FriendlyChallenges from './FriendlyChallenges';
 import { useLanguage } from '../contexts/LanguageContext';
 
 import { useUI } from '../contexts/UIContext';
@@ -21,16 +22,27 @@ interface LeTueGarePageProps {
   onSocietyClick: (name: string) => void;
   onNavigate: (view: any, tab?: string) => void;
   onTabChange?: (tab: string) => void;
+  initialTab?: string;
 }
 
 const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   user, token, competitions, events, societies, cartridges,
   onDeleteCompetition, onEditCompetition, onUpdateCompetition,
-  onSocietyClick, onNavigate, onTabChange
+  onSocietyClick, onNavigate, onTabChange, initialTab
 }) => {
   const { t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
-  const [activeTab, setActiveTab] = useState<'history' | 'report' | 'coach'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'report' | 'challenges' | 'coach'>(
+    (initialTab === 'history' || initialTab === 'report' || initialTab === 'challenges' || initialTab === 'coach') 
+      ? initialTab 
+      : 'history'
+  );
+
+  useEffect(() => {
+    if (initialTab && (initialTab === 'history' || initialTab === 'report' || initialTab === 'challenges' || initialTab === 'coach')) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [showFilters, setShowFilters] = useState(false);
   const [filterLocation, setFilterLocation] = useState('ALL');
@@ -53,15 +65,15 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   }, [activeTab]);
 
   const availableTabs = useMemo(() => {
-    const tabs: ('history' | 'report' | 'coach')[] = [];
+    const tabs: ('history' | 'report' | 'challenges' | 'coach')[] = [];
     if (user?.role !== 'society') {
-      tabs.push('history', 'report');
+      tabs.push('history', 'report', 'challenges');
     }
     tabs.push('coach');
     return tabs;
   }, [user]);
 
-  const handleTabChange = (newTab: 'history' | 'report' | 'coach') => {
+  const handleTabChange = (newTab: 'history' | 'report' | 'challenges' | 'coach') => {
     const currentIndex = availableTabs.indexOf(activeTab);
     const nextIndex = availableTabs.indexOf(newTab);
     setDirection(nextIndex > currentIndex ? 1 : -1);
@@ -116,7 +128,7 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
               onClick={() => handleTabChange(tab)} 
               className={`flex-1 min-w-[100px] py-2 rounded-lg text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-widest ${activeTab === tab ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
             >
-              {tab === 'history' ? t('competitions_trainings_tab') : tab === 'report' ? t('report_tab') : t('coach_ai_tab')}
+              {tab === 'history' ? t('competitions_trainings_tab') : tab === 'report' ? t('report_tab') : tab === 'challenges' ? 'Sfide tra Amici' : t('coach_ai_tab')}
             </button>
           ))}
         </div>
@@ -196,6 +208,10 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
                 onCoachClick={() => handleTabChange('coach')}
                 onNavigate={onNavigate}
               />
+            )}
+
+            {activeTab === 'challenges' && user?.role !== 'society' && (
+              <FriendlyChallenges user={user} token={token} societies={societies} />
             )}
 
             {activeTab === 'coach' && (

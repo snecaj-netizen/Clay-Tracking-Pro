@@ -476,6 +476,7 @@ const translations: Translations = {
   'results_races_tab': { it: 'RISULTATI GARE', en: 'COMPETITION RESULTS' },
   'hall_of_fame_tab_label': { it: 'HALL OF FAME', en: 'HALL OF FAME' },
   'coach_ai_tab_label': { it: 'COACH AI', en: 'COACH AI' },
+  'challenges_tab_label': { it: 'Sfide tra Amici', en: 'Friendly Challenges' },
   'shooters_stats': { it: 'Tiratori', en: 'Shooters' },
   'teams_stats': { it: 'Squadre', en: 'Teams' },
   'install_guide_title': { it: 'Guida all\'installazione', en: 'Installation Guide' },

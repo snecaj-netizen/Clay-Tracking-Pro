@@ -1031,6 +1031,7 @@ const App: React.FC = () => {
                 onSocietyClick={handleSocietyClick}
                 onNavigate={handleNavigate}
                 onTabChange={setLeTueGareTab}
+                initialTab={leTueGareTab}
               />
             </div>
           )}
