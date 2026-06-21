@@ -569,6 +569,18 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
     return groups;
   };
 
+  const visibleChallenges = challenges.filter(c => {
+    if (user?.role === 'admin') return true;
+    if (c.creator_id === user?.id) return true;
+    return c.shooters?.some(s => {
+      if (s.id === user?.id) return true;
+      const sName = s.name.toLowerCase().trim();
+      const uFullName1 = `${user?.surname || ''} ${user?.name || ''}`.toLowerCase().trim();
+      const uFullName2 = `${user?.name || ''} ${user?.surname || ''}`.toLowerCase().trim();
+      return sName === uFullName1 || sName === uFullName2;
+    });
+  });
+
   return (
     <div className="space-y-4">
       {/* HEADER BAR */}
@@ -629,7 +641,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                 <i className="fas fa-circle-notch fa-spin text-orange-500 text-2xl"></i>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">Caricamento sfide...</p>
               </div>
-            ) : challenges.length === 0 ? (
+            ) : visibleChallenges.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 bg-slate-950 border border-slate-900 rounded-3xl text-center space-y-4">
                 <div className="w-14 h-14 bg-slate-900 border border-slate-800 flex items-center justify-center rounded-2xl text-slate-400">
                   <i className="fas fa-bullseye text-2xl text-slate-600"></i>
@@ -649,7 +661,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {challenges.map((c) => {
+                {visibleChallenges.map((c) => {
                   const isOngoing = c.status === 'ongoing';
                   const totalShooters = c.shooters?.length || 0;
                   const isCreator = c.creator_id === user.id;
