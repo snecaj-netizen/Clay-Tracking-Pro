@@ -591,7 +591,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
             Sfide tra Amici
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Tieni traccia delle sfide in tempo reale sul tavolo da tiro con i tuoi amici e compagni.
+            Tieni traccia in tempo reale delle sfide con i tuoi amici.
           </p>
         </div>
         {viewState === 'list' && (
