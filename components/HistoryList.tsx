@@ -884,6 +884,23 @@ const HistoryList: React.FC<HistoryListProps> = ({
               </button>
             </div>
           </div>
+
+          { (filterDiscipline !== 'ALL' || filterLocation !== 'ALL' || filterStatus !== 'ALL' || sortOrder !== 'ASC') && (
+            <div className="mt-4 pt-4 border-t border-slate-800/80 flex justify-end">
+              <button
+                onClick={() => {
+                  setFilterDiscipline('ALL');
+                  setFilterLocation('ALL');
+                  setFilterStatus('ALL');
+                  setSortOrder('ASC');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-850 hover:text-white text-slate-400 border border-slate-800 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all cursor-pointer"
+              >
+                <i className="fas fa-sync-alt text-orange-500"></i>
+                {t('reset_filters') || 'Resetta Filtri'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

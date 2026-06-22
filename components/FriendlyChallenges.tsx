@@ -98,6 +98,47 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
   const [activeTargetIdx, setActiveTargetIdx] = useState(0);
   const [manualInputVal, setManualInputVal] = useState<string | null>(null);
 
+  const navigateToViewState = (newState: 'list' | 'create' | 'shoot' | 'results', replace: boolean = false) => {
+    if (newState === viewState) return;
+
+    const currentHistState = window.history.state || {};
+    
+    if (newState === 'list') {
+      if (currentHistState && currentHistState.challengeViewState) {
+        window.history.back();
+      } else {
+        setViewState('list');
+      }
+    } else {
+      const updatedState = {
+        ...currentHistState,
+        challengeViewState: newState
+      };
+      if (replace) {
+        window.history.replaceState(updatedState, '');
+      } else {
+        window.history.pushState(updatedState, '');
+      }
+      setViewState(newState);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view === 'le-tue-gare' && event.state.tab === 'challenges') {
+        const challengeState = event.state.challengeViewState || 'list';
+        setViewState(challengeState);
+      } else if (!event.state || event.state.view !== 'le-tue-gare') {
+        setViewState('list');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   // Load challenges and registered shooters
   const loadChallenges = async () => {
     setIsLoading(true);
@@ -202,7 +243,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
         setSelectedChallenge(newChallengeObj);
         setActiveShooterIdx(0);
         setActiveTargetIdx(0);
-        setViewState('shoot');
+        navigateToViewState('shoot', true);
         triggerToast('Sfida creata con successo! Inizia a sparare 🎯', 'success');
         
         // Reset creating form state
@@ -500,7 +541,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
 
           if (res.ok) {
             setSelectedChallenge(challengeCopy);
-            setViewState('results');
+            navigateToViewState('results', true);
             setResultsRoundFilter('global'); // default to global standings
             triggerToast('Sfida conclusa con successo! Classifica staccata 🏆', 'success');
             loadChallenges();
@@ -596,7 +637,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
         </div>
         {viewState === 'list' && (
           <button
-            onClick={() => setViewState('create')}
+            onClick={() => navigateToViewState('create')}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black uppercase text-[10px] tracking-wider rounded-xl shadow-lg shadow-orange-950/20 hover:opacity-90 active:scale-95 transition"
           >
             <i className="fas fa-plus"></i>
@@ -611,11 +652,11 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                   'Abbandona Pedana',
                   'Vuoi tornare alle sfide? I risultati parziali sono salvati nel server.',
                   () => {
-                    setViewState('list');
+                    navigateToViewState('list');
                   }
                 );
               } else {
-                setViewState('list');
+                navigateToViewState('list');
               }
             }}
             className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 font-bold text-xs rounded-xl transition"
@@ -653,7 +694,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                   </p>
                 </div>
                 <button
-                  onClick={() => setViewState('create')}
+                  onClick={() => navigateToViewState('create')}
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-orange-500 text-[10px] uppercase font-black tracking-wider rounded-xl transition"
                 >
                   Nuova sfida in batteria
@@ -682,7 +723,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                         setSelectedChallenge(c);
                         setActiveShooterIdx(0);
                         setActiveTargetIdx(0);
-                        setViewState(isOngoing ? 'shoot' : 'results');
+                        navigateToViewState(isOngoing ? 'shoot' : 'results');
                       }}
                       className="p-5 bg-slate-950 border border-slate-900/80 hover:border-slate-800 rounded-2xl cursor-pointer hover:shadow-xl transition-all relative flex flex-col justify-between space-y-4"
                     >
@@ -906,7 +947,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-900">
                 <button
                   type="button"
-                  onClick={() => setViewState('list')}
+                  onClick={() => navigateToViewState('list')}
                   className="px-4 py-2 text-slate-500 hover:text-white font-bold text-xs"
                 >
                   Annulla
@@ -1231,7 +1272,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                     () => {
                       const copy = { ...selectedChallenge, status: 'ongoing' as const };
                       setSelectedChallenge(copy);
-                      setViewState('shoot');
+                      navigateToViewState('shoot');
                       handleUpdateChallengeOnServer(copy);
                     }
                   );

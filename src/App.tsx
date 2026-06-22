@@ -235,6 +235,30 @@ const App: React.FC = () => {
   };
 
   const [leTueGareTab, setLeTueGareTab] = useState('history');
+
+  const handleLeTueGareTabChange = useCallback((tab: string) => {
+    setLeTueGareTab(tab);
+    if (window.history.state && window.history.state.view === 'le-tue-gare') {
+      const updatedState = {
+        ...window.history.state,
+        tab: tab
+      };
+      
+      const newUrl = `/le-tue-gare?tab=${tab}`;
+      window.history.replaceState(updatedState, '', newUrl);
+      
+      setHistoryStack(prev => {
+        const index = window.history.state.index;
+        if (index !== undefined && index >= 0 && index < prev.length) {
+          const newStack = [...prev];
+          newStack[index] = { ...newStack[index], tab };
+          return newStack;
+        }
+        return prev;
+      });
+    }
+  }, []);
+
   const [gareCreateEvent, setGareCreateEvent] = useState<number>(0);
   
   // Handle deep links from notifications and browser history
@@ -1030,7 +1054,7 @@ const App: React.FC = () => {
                 onUpdateCompetition={saveCompetition}
                 onSocietyClick={handleSocietyClick}
                 onNavigate={handleNavigate}
-                onTabChange={setLeTueGareTab}
+                onTabChange={handleLeTueGareTabChange}
                 initialTab={leTueGareTab}
               />
             </div>
