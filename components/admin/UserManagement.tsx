@@ -218,7 +218,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState<any | null>(null);
   const [validationRows, setValidationRows] = useState<any[] | null>(null);
-  const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create' | 'conflict'>('all');
+  const [importFilterTab, setImportFilterTab] = useState<'all' | 'update' | 'create' | 'conflict' | 'lady'>('all');
   const [pendingCategoryUpdates, setPendingCategoryUpdates] = useState<any[] | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [successPopupDetails, setSuccessPopupDetails] = useState<any | null>(null);
@@ -2101,6 +2101,24 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   {validationRows.filter((v: any) => v.state === 'conflict_omonimia').length}
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setImportFilterTab('lady')}
+                className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  importFilterTab === 'lady'
+                    ? 'border-pink-500/50 bg-pink-500/10 text-pink-400 shadow-[0_0_15px_rgba(236,72,153,0.1)]'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-pink-500/30 hover:text-pink-400/80'
+                }`}
+              >
+                <i className="fas fa-venus text-pink-400"></i>
+                <span>Lady</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  importFilterTab === 'lady' ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter((v: any) => v.user?.qualification === 'LAD').length}
+                </span>
+              </button>
             </div>
 
             {/* Scrollable validation list */}
@@ -2110,7 +2128,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   importFilterTab === 'all' || 
                   (importFilterTab === 'update' && v.decisionAction === 'update') || 
                   (importFilterTab === 'create' && v.decisionAction === 'create') ||
-                  (importFilterTab === 'conflict' && v.state === 'conflict_omonimia');
+                  (importFilterTab === 'conflict' && v.state === 'conflict_omonimia') ||
+                  (importFilterTab === 'lady' && v.user?.qualification === 'LAD');
 
                 if (!matchesFilter) return null;
 
@@ -2182,7 +2201,14 @@ const UserManagement: React.FC<UserManagementProps> = ({
                       ) : (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div>
-                            <p className="text-sm font-black text-white italic">{v.user.name} {v.user.surname}</p>
+                            <p className="text-sm font-black text-white italic flex items-center gap-2">
+                              {v.user.name} {v.user.surname}
+                              {v.user.qualification === 'LAD' && (
+                                <span className="inline-flex items-center gap-1 bg-pink-500/10 text-pink-400 border border-pink-500/30 font-black uppercase text-[9px] tracking-wider px-2 py-0.5 rounded-md shadow-[0_0_10px_rgba(236,72,153,0.1)] animate-pulse">
+                                  <i className="fas fa-venus text-[10px]"></i> Qualifica Lady
+                                </span>
+                              )}
+                            </p>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-slate-400">
                               <span><i className="fas fa-envelope text-slate-600 mr-1"></i> {v.user.email}</span>
                               {v.user.shooter_code && <span><i className="fas fa-id-card text-slate-600 mr-1 font-mono"></i> <span className="uppercase">{v.user.shooter_code}</span></span>}

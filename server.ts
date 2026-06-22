@@ -546,9 +546,37 @@ process.on('uncaughtException', (err) => {
   // but in this env it might be better to keep it alive if possible
 });
 
-// Helper to calculate qualification based on age
-const getAutoQualification = (birthDate: string | null, currentQual: string | null): string | null => {
-  if (currentQual === 'LAD') return 'LAD';
+// Elite Italian female names list for automatic Lady qualification detection
+const ITA_FEMALE_NAMES = new Set([
+  'gloria', 'giulia', 'maria', 'fiammetta', 'francesca', 'anna', 'sara', 'laura', 'chiara', 'elena', 
+  'silvia', 'silvana', 'federica', 'valentina', 'alice', 'beatrice', 'monica', 'giorgia', 'marta', 'elisa', 'alessia', 
+  'sofia', 'gaia', 'aurora', 'emma', 'martina', 'camilla', 'lucrezia', 'ludovica', 'greta', 'noemi', 
+  'eleonora', 'rossella', 'claudia', 'lucia', 'rita', 'teresa', 'angela', 'antonella', 'donatella', 
+  'patrizia', 'stefania', 'paola', 'barbara', 'simona', 'daniela', 'roberta', 'cristina', 'sabrina', 
+  'alessandra', 'valeria', 'letizia', 'caterina', 'giovanna', 'irene', 'lisa', 'michela', 'nadia', 
+  'rachele', 'sonia', 'tamara', 'tatiana', 'veronica', 'viviana', 'adele', 'agnese', 'alba', 'amalia', 
+  'ambra', 'anita', 'arianna', 'asia', 'carla', 'carlotta', 'carmen', 'carolina', 'cecilia', 'celeste', 
+  'cinzia', 'clara', 'clelia', 'clotilde', 'costanza', 'dahlia', 'debora', 'deborah', 'dely', 'delys', 
+  'diana', 'diletta', 'elisabetta', 'elvira', 'emilia', 'emily', 'enrica', 'ester', 'evelina', 'fabiana', 
+  'filomena', 'flavia', 'flora', 'gabriella', 'graziella', 'gemma', 'gessica', 'gianna', 'gilda', 'ginevra', 'gioia', 
+  'giuseppina', 'ilenia', 'ilaria', 'imma', 'immacolata', 'iris', 'isabella', 'jessica', 'lara', 
+  'lavinia', 'leda', 'lia', 'lidia', 'liliana', 'linda', 'loredana', 'lorena', 'lorella', 'luana', 
+  'luciana', 'luisa', 'maddalena', 'manuela', 'mara', 'marcella', 'margherita', 'marianna', 'marica', 
+  'marina', 'marinella', 'marisa', 'marzia', 'maura', 'melania', 'melissa', 'michela', 'milena', 'olga', 'pamela', 
+  'raffaella', 'rebecca', 'rosa', 'rosanna', 'rosaria', 'rosemary', 'rossana', 'sabina', 'sandra', 
+  'sarah', 'selene', 'serena', 'stella', 'susanna', 'tania', 'tiziana', 'vanessa', 'viola', 'violante', 
+  'virginia', 'asya', 'cloe', 'sole', 'nives', 'matilde', 'matilda', 'carola', 'loretta', 'fiorella', 'assunta', 'vanna'
+]);
+
+const isFemaleName = (name: string | null | undefined): boolean => {
+  if (!name) return false;
+  const parts = name.toLowerCase().split(/[\s'-]+/);
+  return parts.some(part => ITA_FEMALE_NAMES.has(part));
+};
+
+// Helper to calculate qualification based on age and name
+const getAutoQualification = (birthDate: string | null, currentQual: string | null, name?: string | null): string | null => {
+  if (currentQual === 'LAD' || isFemaleName(name)) return 'LAD';
   if (!birthDate) return currentQual;
   const birthDateObj = new Date(birthDate);
   const birthYear = birthDateObj.getFullYear();
@@ -1270,9 +1298,9 @@ const initDB = async () => {
 
     // Migration: Update qualifications for existing users based on birth_date
     try {
-      const { rows: existingUsers } = await pool.query("SELECT id, birth_date, qualification FROM users WHERE birth_date IS NOT NULL AND birth_date != ''");
+      const { rows: existingUsers } = await pool.query("SELECT id, birth_date, qualification, name FROM users WHERE (birth_date IS NOT NULL AND birth_date != '') OR (name IS NOT NULL AND name != '')");
       for (const u of existingUsers) {
-        const newQual = getAutoQualification(u.birth_date, u.qualification);
+        const newQual = getAutoQualification(u.birth_date, u.qualification, u.name);
         if (newQual !== u.qualification) {
           await pool.query("UPDATE users SET qualification = $1 WHERE id = $2", [newQual, u.id]);
         }
@@ -1894,7 +1922,7 @@ app.post('/api/auth/register', async (req, res) => {
     const userLanguage = language || (!!is_international ? 'en' : 'it');
     
     if (!finalQualification && birth_date) {
-        finalQualification = getAutoQualification(birth_date, null);
+        finalQualification = getAutoQualification(birth_date, null, name);
     }
 
     const resolvedSociety = !!is_international ? 'International Shooters' : finalSociety;
@@ -2126,7 +2154,7 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
     shotgun_brand, shotgun_model, cartridge_brand, cartridge_model
   } = req.body;
   
-  const finalQualification = getAutoQualification(birth_date, qualification);
+  const finalQualification = getAutoQualification(birth_date, qualification, name);
 
   try {
     const existingUserRes = await pool.query("SELECT email_verified FROM users WHERE id = $1", [req.user.id]);
@@ -2732,7 +2760,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   let finalShooterCode = shooter_code;
   let finalSociety = society;
   let finalCategory = category;
-  let finalQualification = getAutoQualification(birth_date, qualification);
+  let finalQualification = getAutoQualification(birth_date, qualification, name);
 
   if (!!is_cacciatore) {
     if (!finalShooterCode) {
@@ -2859,7 +2887,7 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
           societyName = req.user.society;
         }
 
-        const finalQual = getAutoQualification(u.birth_date, u.qualification);
+        const finalQual = getAutoQualification(u.birth_date, u.qualification, u.name);
 
         // Cerchiamo corrispondenza per email nel database dei nostri utenti
         const { rows: matchesByEmail } = await client.query("SELECT * FROM users WHERE email = $1", [u.email]);
@@ -2871,11 +2899,18 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
           matchesByCode = rows;
         }
 
-        // 1. Stesso codice tiratore -> Identità certa, è lo stesso utente, si aggiorna.
+        // 1. Stesso codice tiratore -> Identità certa, è lo stesso utente.
         if (matchesByCode.length > 0) {
           const existing = matchesByCode[0];
+          const needsLadyUpgrade = (finalQual === 'LAD' && existing.qualification !== 'LAD');
+          const msg = needsLadyUpgrade 
+            ? `Tiratore esistente (${u.shooter_code}). Profilo salvaguardato, verrà aggiornata solo la qualifica Lady.`
+            : `Tiratore esistente (${u.shooter_code}). Profilo salvaguardato (nessuna modifica).`;
           validatedUsers.push({
-            user: { ...u, society: societyName, qualification: finalQual },
+            user: {
+              ...existing,
+              qualification: needsLadyUpgrade ? 'LAD' : existing.qualification
+            },
             existing: { 
               id: existing.id, 
               name: existing.name, 
@@ -2891,7 +2926,7 @@ app.post('/api/admin/users/import/validate', authenticateToken, requireAdminOrSo
             },
             state: 'update',
             method: 'code',
-            message: `Tiratore individuato tramite Codice Tiratore (${u.shooter_code}).`
+            message: msg
           });
         }
         // 2. Stessa email ma codice tiratore assente o diverso -> Conflitto di omonimia potenziale!
@@ -3065,7 +3100,7 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
           societyName = req.user.society;
         }
 
-        const finalQual = getAutoQualification(u.birth_date, u.qualification);
+        const finalQual = getAutoQualification(u.birth_date, u.qualification, u.name);
 
         let existingUserObj: any = null;
         let matchedByShooterCode = false;
@@ -3097,6 +3132,30 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
 
         if (existingUserObj) {
           const old = existingUserObj;
+
+          // If the user already exists (matched by shooter_code), skip profile replacement to avoid losing
+          // any custom changes, except that we allow updating qualification to 'LAD' if they match female names
+          if (matchedByShooterCode) {
+            const needsLadyUpgrade = (finalQual === 'LAD' && old.qualification !== 'LAD');
+            if (needsLadyUpgrade) {
+              await client.query("UPDATE users SET qualification = 'LAD' WHERE id = $1", [old.id]);
+              results.updated++;
+              updatedDetails.push({
+                name: old.name,
+                surname: old.surname,
+                email: old.email,
+                changes: [`Qualifica: '${old.qualification || "Nessuna"}' ➔ 'LAD' (Lady auto-aggiornamento)`]
+              });
+            } else {
+              updatedDetails.push({
+                name: old.name,
+                surname: old.surname,
+                email: old.email,
+                changes: ["Profilo già esistente salvaguardato (nessuna modifica)"]
+              });
+            }
+            continue; // Proceed to next import item
+          }
           
           // Verifica se la password è stata cambiata rispetto al default iniziale impostato
           // (ovvero se la password NON coincide con il codice tiratore, 'ClayTracker123!', o 'Password123!')
@@ -3255,7 +3314,7 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
     shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories
   } = req.body;
   
-  const finalQualification = getAutoQualification(birth_date, qualification);
+  const finalQualification = getAutoQualification(birth_date, qualification, name);
 
   const finalRole = role || 'user';
   if ((finalRole === 'user' || finalRole === 'society') && !shooter_code) {
