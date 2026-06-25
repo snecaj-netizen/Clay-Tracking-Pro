@@ -381,7 +381,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             while (scores.length < numSeries) scores.push(0);
             scores.splice(numSeries);
 
-            const shootOff = 0;
+            const shootOffRaw = raw.shootOff !== undefined && raw.shootOff !== null
+              ? raw.shootOff
+              : (raw.shoot_off !== undefined && raw.shoot_off !== null ? raw.shoot_off : null);
+            const shootOff = shootOffRaw !== null ? (parseInt(shootOffRaw) || 0) : null;
 
             let userId: number | undefined;
             let userFound = false;
@@ -559,6 +562,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           const rawCategory = getVal(['categoria', 'category', 'class']);
           const rawQualification = getVal(['qualifica', 'qualification']);
           const bibNumber = getVal(['pett', 'pettorale', 'bib']);
+          const rawDisciplineCategories = getVal(['disciplinecategories', 'discipline_categories', 'discipline_category', 'discipline', 'specialita', 'discipline_categories']);
           
           const rawPref = getVal(['preferenza', 'preferenzaclassifica', 'rankingpreference']);
           const rankingPreference: 'categoria' | 'qualifica' = (rawPref.toLowerCase().includes('qual') || rawPref.toLowerCase() === 'qualifica') ? 'qualifica' : 'categoria';
@@ -570,7 +574,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             scores.push(isNaN(scoreNum) ? 0 : scoreNum);
           }
 
-          const shootOff = 0;
+          const shootOffVal = getVal(['shootoff', 'shoot-off', 'shoot_off', 'spareggio', 'barrage', 'so', 'shoff', 's-o']);
+          const shootOff = shootOffVal !== '' ? (parseInt(shootOffVal) || 0) : null;
 
           let userId: number | undefined;
           let userFound = false;
@@ -656,6 +661,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             society,
             category,
             qualification,
+            disciplineCategories: rawDisciplineCategories || (foundUser ? foundUser.discipline_categories : ''),
             bibNumber,
             scores,
             shootOff,
@@ -695,7 +701,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       society: row.society ? row.society.trim() : '',
       shooterCode: row.shooterCode ? row.shooterCode.toUpperCase().trim() : '',
       category: row.category || '',
-      qualification: row.qualification || ''
+      qualification: row.qualification || '',
+      disciplineCategories: row.disciplineCategories || ''
     };
 
     setQuickAddInitialDetails(initialDetails);

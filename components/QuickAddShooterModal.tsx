@@ -18,6 +18,7 @@ interface QuickAddShooterModalProps {
     shooterCode?: string;
     category?: string;
     qualification?: string;
+    disciplineCategories?: string;
   };
 }
 
@@ -45,6 +46,7 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
   const [shooterCode, setShooterCode] = useState(initialDetails?.shooterCode || '');
   const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
+  const [disciplineCategories, setDisciplineCategories] = useState(initialDetails?.disciplineCategories || '');
   const [loading, setLoading] = useState(false);
   const [isCacciatore, setIsCacciatore] = useState(initialCac);
 
@@ -83,7 +85,8 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
       is_cacciatore: isCacciatore,
       password: password || shooterCode || undefined,
       birth_date: birthDate || undefined,
-      phone: phone || undefined
+      phone: phone || undefined,
+      discipline_categories: isCacciatore ? undefined : (disciplineCategories.trim() || undefined)
     };
 
     try {
@@ -260,6 +263,23 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
               </div>
             </div>
+
+            {/* Row 6: Discipline Categories */}
+            {!isCacciatore && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Discipline Categories</label>
+                <input 
+                  type="text" 
+                  value={disciplineCategories} 
+                  onChange={e => setDisciplineCategories(e.target.value)} 
+                  placeholder="es. FO:E FO:1* SK:3*" 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" 
+                />
+                <span className="text-[9px] text-slate-500 font-medium leading-none block mt-1 ml-1">
+                  Specifica le categorie per disciplina separate da spazio (es. FO:E FO:1* SK:3*) per assegnare correttamente le classifiche per questa gara.
+                </span>
+              </div>
+            )}
 
             <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm py-4 border-t border-slate-800 mt-8 flex justify-end gap-3 shrink-0">
               <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">
