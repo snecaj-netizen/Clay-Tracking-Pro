@@ -278,9 +278,11 @@ const App: React.FC = () => {
             newView = 'gare';
           }
   
-          if (newView === 'la-mia-societa' && tab) {
+          if ((newView === 'la-mia-societa' || newView === 'admin') && tab) {
             setInitialAdminTab(tab);
           } else if (newView === 'la-mia-societa' && user?.role === 'society') {
+            setInitialAdminTab('users');
+          } else if (newView === 'admin' && user?.role === 'admin') {
             setInitialAdminTab('users');
           } else if (newView === 'admin-events') {
             setInitialAdminTab('event-results');
@@ -340,11 +342,13 @@ const App: React.FC = () => {
           if (id) {
             setInitialEventId(id);
           }
-        } else if (path === '/la-mia-societa') {
-          setView('la-mia-societa');
+        } else if (path === '/la-mia-societa' || path === '/admin') {
+          setView(path === '/admin' ? 'admin' : 'la-mia-societa');
           const tab = searchParams.get('tab');
           if (tab) {
             setInitialAdminTab(tab);
+          } else if (path === '/admin') {
+            setInitialAdminTab('users');
           }
         } else if (path === '/profile') {
           setView('profile');
@@ -817,10 +821,12 @@ const App: React.FC = () => {
       tab = 'profile';
     }
 
-    if (newView === 'la-mia-societa' && tab) {
+    if ((newView === 'la-mia-societa' || newView === 'admin') && tab) {
       setInitialAdminTab(tab);
     } else if (newView === 'la-mia-societa' && user?.role === 'society') {
       setInitialAdminTab('results');
+    } else if (newView === 'admin' && user?.role === 'admin') {
+      setInitialAdminTab('users');
     } else if (newView === 'admin-events') {
       setInitialAdminTab('event-results');
       setInitialEventViewMode('managed');
@@ -867,6 +873,7 @@ const App: React.FC = () => {
     if (newView === 'le-tue-gare') newUrl = '/le-tue-gare';
     if (newView === 'admin-events') newUrl = '/admin/events';
     if (newView === 'admin-control') newUrl = '/admin/control';
+    if (newView === 'admin') newUrl = tab ? `/admin?tab=${tab}` : '/admin';
     if (newView === 'gare') newUrl = tab ? `/gare?tab=${tab}` : '/gare';
     if (newView === 'la-mia-societa') newUrl = tab ? `/la-mia-societa?tab=${tab}` : '/la-mia-societa';
     if (newView === 'public-portal') newUrl = '/portal';

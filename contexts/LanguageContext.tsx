@@ -84,6 +84,7 @@ const translations: Translations = {
   'your_shooters': { it: 'I tuoi Tiratori', en: 'Your Shooters' },
   'shooter_management': { it: 'Gestione Tiratori', en: 'Shooter Management' },
   'user_management_label': { it: 'Gestione Utenti', en: 'User Management' },
+  'user_management_desc': { it: 'Gestione profili, ruoli e abilitazioni utenti', en: 'Manage profiles, roles, and user approvals' },
   'profile_data': { it: 'Dati Profilo', en: 'Profile Data' },
   'guide_faq': { it: 'Guida & FAQ', en: 'Guide & FAQ' },
   'update_profile': { it: 'Aggiorna Profilo', en: 'Update Profile' },

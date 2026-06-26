@@ -32,6 +32,15 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
       roles: ['society', 'admin']
     },
     {
+      id: 'la-mia-societa',
+      tab: 'users',
+      label: t('user_management_label') || 'Gestione Utenti',
+      icon: 'fa-users-cog',
+      color: 'bg-teal-600',
+      description: t('user_management_desc') || 'Gestione profili, ruoli e abilitazioni utenti',
+      roles: ['admin']
+    },
+    {
       id: 'le-tue-gare',
       tab: 'history',
       label: t('register_your_race') || 'Le tue gare e risultati',
