@@ -115,7 +115,7 @@ const UserRow = React.memo(({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span>{u.name} {u.surname}</span>
+            <span className="text-xs uppercase font-semibold">{u.name} {u.surname}</span>
           </div>
         </div>
       </td>

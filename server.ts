@@ -659,6 +659,14 @@ const initDB = async () => {
       console.log("Columns already exist or error adding them");
     }
 
+    try {
+      await pool.query("UPDATE users SET name = UPPER(TRIM(name)), surname = UPPER(TRIM(surname)) WHERE name != UPPER(TRIM(name)) OR surname != UPPER(TRIM(surname))");
+      await pool.query("UPDATE users SET society = UPPER(TRIM(society)) WHERE society IS NOT NULL AND society != UPPER(TRIM(society))");
+      await pool.query("UPDATE societies SET name = UPPER(TRIM(name)) WHERE name != UPPER(TRIM(name))");
+    } catch (e) {
+      console.log("Error during name uppercase normalization:", e);
+    }
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS login_logs (
         id SERIAL PRIMARY KEY,
@@ -1925,7 +1933,11 @@ app.post('/api/auth/register', async (req, res) => {
         finalQualification = getAutoQualification(birth_date, null, name);
     }
 
-    const resolvedSociety = !!is_international ? 'International Shooters' : finalSociety;
+    const resolvedSociety = !!is_international ? 'INTERNATIONAL SHOOTERS' : (finalSociety || null);
+    const upperName = name ? name.toUpperCase().trim() : "";
+    const upperSurname = surname ? surname.toUpperCase().trim() : "";
+    const upperSociety = resolvedSociety ? resolvedSociety.toUpperCase().trim() : null;
+    const upperOriginalClub = original_club ? original_club.toUpperCase().trim() : null;
 
     await pool.query(
       `INSERT INTO users (
@@ -1936,15 +1948,15 @@ app.post('/api/auth/register', async (req, res) => {
         verification_token, email_verified, language
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
       [
-        name, surname, email, hash, 'user', 
+        upperName, upperSurname, email, hash, 'user', 
         birth_date || null, phone || null, 'active',
-        !!is_international, !!is_cacciatore, nationality || null, international_id || null, original_club || null,
-        resolvedSociety || null, finalShooterCode || null, finalQualification || null, finalCategory || null,
+        !!is_international, !!is_cacciatore, nationality || null, international_id || null, upperOriginalClub,
+        upperSociety, finalShooterCode || null, finalQualification || null, finalCategory || null,
         verificationToken, false, userLanguage
       ]
     );
 
-    await sendVerificationEmail(email, name || 'Tiratore', verificationToken, req.get('host'), userLanguage);
+    await sendVerificationEmail(email, upperName || 'Tiratore', verificationToken, req.get('host'), userLanguage);
 
     res.json({ success: true });
   } catch (err: any) {
@@ -2155,6 +2167,10 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   } = req.body;
   
   const finalQualification = getAutoQualification(birth_date, qualification, name);
+  const upperName = name ? name.toUpperCase().trim() : "";
+  const upperSurname = surname ? surname.toUpperCase().trim() : "";
+  const upperSociety = society ? society.toUpperCase().trim() : null;
+  const upperOriginalClub = original_club ? original_club.toUpperCase().trim() : null;
 
   try {
     const existingUserRes = await pool.query("SELECT email_verified FROM users WHERE id = $1", [req.user.id]);
@@ -2173,10 +2189,10 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           shotgun_brand = $18, shotgun_model = $19, cartridge_brand = $20, cartridge_model = $21
         WHERE id = $12`,
         [
-          name, surname, email, hash, category, finalQualification, 
-          society, shooter_code, avatar, birth_date || null, phone || null, 
+          upperName, upperSurname, email, hash, category, finalQualification, 
+          upperSociety, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
-          nationality || null, international_id || null, original_club || null,
+          nationality || null, international_id || null, upperOriginalClub,
           targetEmailVerified, language || 'it',
           shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
         ]
@@ -2191,10 +2207,10 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
           shotgun_brand = $17, shotgun_model = $18, cartridge_brand = $19, cartridge_model = $20
         WHERE id = $11`,
         [
-          name, surname, email, category, finalQualification, 
-          society, shooter_code, avatar, birth_date || null, phone || null, 
+          upperName, upperSurname, email, category, finalQualification, 
+          upperSociety, shooter_code, avatar, birth_date || null, phone || null, 
           req.user.id,
-          nationality || null, international_id || null, original_club || null,
+          nationality || null, international_id || null, upperOriginalClub,
           targetEmailVerified, language || 'it',
           shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null
         ]
@@ -2758,7 +2774,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   } = req.body;
   
   let finalShooterCode = shooter_code;
-  let finalSociety = society;
+  let finalSociety = society ? society.toUpperCase().trim() : null;
   let finalCategory = category;
   let finalQualification = getAutoQualification(birth_date, qualification, name);
 
@@ -2768,7 +2784,7 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
       finalShooterCode = `CAC-${rand}`;
     }
     if (!finalSociety) {
-      finalSociety = 'Cacciatori';
+      finalSociety = 'CACCIATORI';
     }
     if (!finalCategory) {
       finalCategory = 'Cacciatore';
@@ -2808,12 +2824,16 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(actualPassword, salt);
 
+  const upperName = name ? name.toUpperCase().trim() : "";
+  const upperSurname = surname ? surname.toUpperCase().trim() : "";
+  const upperOriginalClub = original_club ? original_club.toUpperCase().trim() : null;
+
   try {
     const { rows } = await pool.query(
       "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, avatar, birth_date, phone, status, is_international, is_cacciatore, nationality, international_id, original_club, email_verified, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id",
       [
-        name, surname, email, hash, finalRole, finalCategory, finalQualification, finalSociety, finalShooterCode, avatar || null, birth_date || null, phone || null, 'active',
-        !!is_international, !!is_cacciatore, nationality || null, international_id || null, original_club || null, !!email_verified,
+        upperName, upperSurname, email, hash, finalRole, finalCategory, finalQualification, finalSociety, finalShooterCode, avatar || null, birth_date || null, phone || null, 'active',
+        !!is_international, !!is_cacciatore, nationality || null, international_id || null, upperOriginalClub, !!email_verified,
         shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null, discipline_categories || null
       ]
     );
@@ -2827,14 +2847,14 @@ app.post('/api/admin/users', authenticateToken, requireAdminOrSociety, async (re
     sendPushNotification([], 
       { it: "Nuovo Utente Registrato", en: "New User Registered" },
       { 
-        it: `È stato aggiunto un nuovo tiratore: ${name} ${surname} da parte di ${creatorNameObj.it}.`,
-        en: `A new shooter has been added: ${name} ${surname} by ${creatorNameObj.en}.`
+        it: `È stato aggiunto un nuovo tiratore: ${upperName} ${upperSurname} da parte di ${creatorNameObj.it}.`,
+        en: `A new shooter has been added: ${upperName} ${upperSurname} by ${creatorNameObj.en}.`
       }, 
       `/admin?tab=users`
     );
 
     res.json({ 
-      id: newUserId, name, surname, email, role: role || 'user', category: finalCategory, qualification: finalQualification, society: finalSociety, shooter_code: finalShooterCode, avatar, birth_date, phone, status: 'active',
+      id: newUserId, name: upperName, surname: upperSurname, email, role: role || 'user', category: finalCategory, qualification: finalQualification, society: finalSociety, shooter_code: finalShooterCode, avatar, birth_date, phone, status: 'active',
       shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, discipline_categories
     });
   } catch (err: any) {
@@ -3070,6 +3090,11 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
       } else {
         u = item;
       }
+
+      if (u.name) u.name = u.name.toUpperCase().trim();
+      if (u.surname) u.surname = u.surname.toUpperCase().trim();
+      if (u.society) u.society = u.society.toUpperCase().trim();
+      if (u.original_club) u.original_club = u.original_club.toUpperCase().trim();
 
       if (!u.shooter_code) {
         results.errors++;
@@ -3336,6 +3361,11 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
     }
   }
 
+  const upperName = name ? name.toUpperCase().trim() : "";
+  const upperSurname = surname ? surname.toUpperCase().trim() : "";
+  const upperSociety = society ? society.toUpperCase().trim() : null;
+  const upperOriginalClub = original_club ? original_club.toUpperCase().trim() : null;
+
   try {
     const userCheck = await pool.query("SELECT role, society, email_verified FROM users WHERE id = $1", [req.params.id]);
     if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -3363,8 +3393,8 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       await pool.query(
         "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, password = $5, category = $6, qualification = $7, society = $8, shooter_code = $9, avatar = $10, birth_date = $11, phone = $12, status = $13, is_international = $14, is_cacciatore = $25, nationality = $15, international_id = $16, original_club = $17, email_verified = $18, language = $20, shotgun_brand = $21, shotgun_model = $22, cartridge_brand = $23, cartridge_model = $24, discipline_categories = $26 WHERE id = $19",
         [
-          name, surname, email, role, hash, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
-          !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
+          upperName, upperSurname, email, role, hash, category, finalQualification, upperSociety, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
+          !!is_international, nationality || null, international_id || null, upperOriginalClub, targetEmailVerified,
           req.params.id, language || 'it',
           shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null,
           !!is_cacciatore, discipline_categories || null
@@ -3374,8 +3404,8 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       await pool.query(
         "UPDATE users SET name = $1, surname = $2, email = $3, role = $4, category = $5, qualification = $6, society = $7, shooter_code = $8, avatar = $9, birth_date = $10, phone = $11, status = $12, is_international = $13, is_cacciatore = $24, nationality = $14, international_id = $15, original_club = $16, email_verified = $17, language = $19, shotgun_brand = $20, shotgun_model = $21, cartridge_brand = $22, cartridge_model = $23, discipline_categories = $25 WHERE id = $18",
         [
-          name, surname, email, role, category, finalQualification, society, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
-          !!is_international, nationality || null, international_id || null, original_club || null, targetEmailVerified,
+          upperName, upperSurname, email, role, category, finalQualification, upperSociety, shooter_code, avatar || null, birth_date || null, phone || null, status || 'active',
+          !!is_international, nationality || null, international_id || null, upperOriginalClub, targetEmailVerified,
           req.params.id, language || 'it',
           shotgun_brand || null, shotgun_model || null, cartridge_brand || null, cartridge_model || null,
           !!is_cacciatore, discipline_categories || null
@@ -3388,8 +3418,8 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
       sendPushNotification([], 
         { it: "Utente Modificato", en: "User Modified" },
         { 
-          it: `La società ${req.user.society} ha modificato i dati dell'utente: ${name} ${surname}.`,
-          en: `The society ${req.user.society} has modified the following user: ${name} ${surname}.`
+          it: `La società ${req.user.society} ha modificato i dati dell'utente: ${upperName} ${upperSurname}.`,
+          en: `The society ${req.user.society} has modified the following user: ${upperName} ${upperSurname}.`
         }, 
         `/admin?tab=users`
       );
@@ -3927,10 +3957,12 @@ app.post('/api/admin/societies', authenticateToken, requireAdmin, async (req, re
     return res.status(400).json({ error: 'Nome e Codice Società sono obbligatori' });
   }
 
+  const upperName = name ? name.toUpperCase().trim() : "";
+
   try {
     const { rows } = await pool.query(
       "INSERT INTO societies (name, code, email, address, city, region, zip_code, phone, mobile, website, contact_name, logo, opening_hours, disciplines, lat, lng, google_maps_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id",
-      [name, code, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null]
+      [upperName, code, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null]
     );
     res.json(rows[0]);
   } catch (err: any) {
@@ -3945,20 +3977,22 @@ app.put('/api/admin/societies/:id', authenticateToken, requireAdminOrSociety, as
     return res.status(400).json({ error: 'Nome e Codice Società sono obbligatori' });
   }
 
+  const upperName = name ? name.toUpperCase().trim() : "";
+
   try {
     if (req.user.role === 'society') {
       const { rows } = await pool.query("SELECT name FROM societies WHERE id = $1", [req.params.id]);
       if (rows.length === 0 || rows[0].name !== req.user.society) {
         return res.status(403).json({ error: 'Access denied' });
       }
-      if (name !== req.user.society) {
+      if (upperName !== req.user.society) {
         return res.status(403).json({ error: 'Cannot change society name' });
       }
     }
 
     await pool.query(
       "UPDATE societies SET name = $1, code = $2, email = $3, address = $4, city = $5, region = $6, zip_code = $7, phone = $8, mobile = $9, website = $10, contact_name = $11, logo = $12, opening_hours = $13, disciplines = $14, lat = $15, lng = $16, google_maps_link = $17 WHERE id = $18",
-      [name, code, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null, req.params.id]
+      [upperName, code, email || null, address, city, region, zip_code, phone, mobile, website, contact_name, logo || null, opening_hours || null, disciplines || null, lat || null, lng || null, google_maps_link || null, req.params.id]
     );
     res.json({ success: true });
   } catch (err: any) {
@@ -3990,6 +4024,8 @@ app.post('/api/admin/societies/import', authenticateToken, requireAdmin, async (
         results.errors++;
         continue;
       }
+
+      s.name = s.name.toUpperCase().trim();
 
       try {
         // Find society by code

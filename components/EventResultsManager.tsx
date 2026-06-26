@@ -602,10 +602,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
           // Resolve values based on existing user or raw values from Excel
           const finalShooterCode = shooterCode || (foundUser ? foundUser.shooter_code : '');
-          const surname = rawSurname || (foundUser ? foundUser.surname : '');
-          const name = rawName || (foundUser ? foundUser.name : '');
+          const surname = (rawSurname || (foundUser ? foundUser.surname : '')).toUpperCase().trim();
+          const name = (rawName || (foundUser ? foundUser.name : '')).toUpperCase().trim();
           const email = rawEmail || (foundUser ? foundUser.email : '');
-          const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
+          const society = (rawSociety || (foundUser ? foundUser.society : '') || event.location || '').toUpperCase().trim();
           const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
           const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
           const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
