@@ -194,12 +194,17 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
     return end < today;
   });
 
+  const normalizeRegion = (r: string) => {
+    if (!r) return '';
+    return r.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  };
+
   const filterEvents = (eventList: SocietyEvent[]) => {
     return eventList.filter(event => {
       const matchesSearch = event.name.toLowerCase().includes(search.toLowerCase()) || 
                             event.location.toLowerCase().includes(search.toLowerCase()) ||
                             (event.region && event.region.toLowerCase().includes(search.toLowerCase()));
-      const matchesRegion = selectedRegion === '' || event.region === selectedRegion;
+      const matchesRegion = selectedRegion === '' || normalizeRegion(event.region) === normalizeRegion(selectedRegion);
       const matchesDiscipline = selectedDiscipline === '' || event.discipline === selectedDiscipline;
       return matchesSearch && matchesRegion && matchesDiscipline;
     });
