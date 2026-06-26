@@ -600,8 +600,23 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-slate-900/20 rounded-3xl p-12 text-center border border-slate-800/50">
-                    <p className="text-slate-500 italic text-sm">{t('no_events')}</p>
+                  <div className="bg-slate-900/20 [.light-theme_&]:bg-slate-100/50 rounded-3xl p-12 text-center border border-slate-800/50 [.light-theme_&]:border-slate-200 max-w-xl mx-auto flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-slate-800/30 [.light-theme_&]:bg-slate-200/50 flex items-center justify-center text-slate-500 mb-2">
+                      <i className="fas fa-calendar-times text-2xl"></i>
+                    </div>
+                    <p className="text-slate-400 [.light-theme_&]:text-slate-600 font-bold uppercase tracking-wider text-sm">
+                      {t('no_active_races')}
+                    </p>
+                    <p className="text-slate-500 [.light-theme_&]:text-slate-500 text-xs leading-relaxed max-w-sm">
+                      {t('check_past_races_msg')}
+                    </p>
+                    <button 
+                      onClick={() => setViewMode('past')}
+                      className="mt-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
+                    >
+                      <i className="fas fa-history"></i>
+                      {t('view_past_events')}
+                    </button>
                   </div>
                 )}
               </section>
