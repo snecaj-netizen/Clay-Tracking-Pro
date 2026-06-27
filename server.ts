@@ -5031,12 +5031,13 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
   try {
     // 1. Fetch regular events with result count
     let eventQuery = `
-      SELECT e.*, s.region as society_region,
+      SELECT DISTINCT ON (e.id) e.*, s.region as society_region,
       (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = '${req.user.id}') > 0 as is_registered
       FROM events e
       LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(e.location)) = LOWER(TRIM(s.code))
+      ORDER BY e.id
     `;
     let eventParams: any[] = [];
 

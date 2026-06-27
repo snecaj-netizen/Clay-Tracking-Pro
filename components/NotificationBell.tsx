@@ -95,7 +95,9 @@ export default function NotificationBell({ token, onToggle }: NotificationBellPr
         setGlobalNotificationEnabled(data.global_enabled);
       }
     } catch (err) {
-      console.error('Error fetching settings:', err);
+      if (err instanceof Error && err.message !== 'Failed to fetch') {
+        console.error('Error fetching settings:', err);
+      }
     }
   };
 
