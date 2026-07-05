@@ -5029,6 +5029,21 @@ app.put('/api/teams/:teamId/members/:userId/score', authenticateToken, requireAd
 // Events Routes
 app.get('/api/events', authenticateToken, async (req: any, res) => {
   try {
+    if (req.query.lightweight === 'true') {
+      let eventQuery = `
+        SELECT e.id, e.name, e.location, e.discipline, e.start_date, e.end_date, e.status
+        FROM events e
+      `;
+      let eventParams: any[] = [];
+      if (req.user.role !== 'admin') {
+        eventQuery += " WHERE e.location = $1 OR e.visibility = 'Pubblica' OR e.created_by = $2";
+        eventParams.push(req.user.role === 'society' ? req.user.society : (req.user.society || ''), req.user.id);
+      }
+      eventQuery += " ORDER BY e.start_date DESC";
+      const { rows: events } = await pool.query(eventQuery, eventParams);
+      return res.json(events);
+    }
+
     // 1. Fetch regular events with result count
     let eventQuery = `
       SELECT DISTINCT ON (e.id) e.*, s.region as society_region,

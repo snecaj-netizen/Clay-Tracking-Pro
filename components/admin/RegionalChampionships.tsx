@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   Trophy, 
   Award, 
@@ -18,10 +20,62 @@ import {
   Eye,
   EyeOff,
   FileSpreadsheet,
+  FileText,
   Search
 } from 'lucide-react';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+
+const formatDateStr = (dateStr: any) => {
+  if (!dateStr) return '---';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('it-IT');
+};
+
+const formatEventDates = (startDate: any, endDate: any, singleDate?: any) => {
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+  const fallback = singleDate ? new Date(singleDate) : null;
+
+  const isValidDate = (d: Date | null) => d && !isNaN(d.getTime());
+
+  if (isValidDate(start) && isValidDate(end)) {
+    if (start!.toDateString() === end!.toDateString()) {
+      return start!.toLocaleDateString('it-IT');
+    }
+    
+    const startStr = start!.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+    const endStr = end!.toLocaleDateString('it-IT');
+    
+    if (start!.getFullYear() === end!.getFullYear()) {
+      return `${startStr} - ${endStr}`;
+    } else {
+      return `${start!.toLocaleDateString('it-IT')} - ${endStr}`;
+    }
+  }
+
+  if (isValidDate(start)) {
+    return start!.toLocaleDateString('it-IT');
+  }
+  if (isValidDate(end)) {
+    return end!.toLocaleDateString('it-IT');
+  }
+  if (isValidDate(fallback)) {
+    return fallback!.toLocaleDateString('it-IT');
+  }
+
+  return startDate || endDate || singleDate || '---';
+};
+
+const isEventDisputed = (ev: any) => {
+  if (!ev) return false;
+  if (ev.status === 'completed' || ev.status === 'closed') return true;
+  const dateStr = ev.end_date || ev.start_date || ev.date;
+  if (!dateStr) return false;
+  const evDate = new Date(dateStr);
+  evDate.setHours(23, 59, 59, 999);
+  return evDate < new Date();
+};
 
 interface RegionalChampionshipsProps {
   user: any;
@@ -83,9 +137,14 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
         const cachedChamps = sessionStorage.getItem('clay_tracker_champs_list');
         const cachedEvents = sessionStorage.getItem('clay_tracker_champs_events');
         if (cachedChamps && cachedEvents) {
-          setChampionships(JSON.parse(cachedChamps));
-          setEvents(JSON.parse(cachedEvents));
-          return;
+          const parsedEvents = JSON.parse(cachedEvents);
+          const hasStatusField = Array.isArray(parsedEvents) && (parsedEvents.length === 0 || ('start_date' in parsedEvents[0] && 'status' in parsedEvents[0]));
+          if (hasStatusField) {
+            setChampionships(JSON.parse(cachedChamps));
+            setEvents(parsedEvents);
+            setIsLoading(false);
+            return;
+          }
         }
       } catch (e) {
         console.error('Error reading championships cache:', e);
@@ -103,7 +162,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
         setChampionships(champsData);
       }
 
-      const evRes = await fetch('/api/events', { headers });
+      const evRes = await fetch('/api/events?lightweight=true', { headers });
       let evData = [];
       if (evRes.ok) {
         evData = await evRes.json();
@@ -116,7 +175,10 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
           name: e.name,
           location: e.location,
           discipline: e.discipline,
-          date: e.date
+          date: e.start_date,
+          start_date: e.start_date,
+          end_date: e.end_date,
+          status: e.status
         }));
         sessionStorage.setItem('clay_tracker_champs_list', JSON.stringify(champsData));
         sessionStorage.setItem('clay_tracker_champs_events', JSON.stringify(lightweightEvents));
@@ -608,6 +670,249 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     }
   };
 
+  const downloadPDF = () => {
+    if (!rankingData) return;
+
+    try {
+      const rc = rankingData.championship || {};
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Header block
+      doc.setFillColor(15, 23, 42); // slate-900 (brand dark)
+      doc.rect(0, 0, pageWidth, 40, 'F');
+
+      // Top branding banner
+      doc.setFillColor(234, 88, 12); // orange-600 accent bar
+      doc.rect(0, 38, pageWidth, 2, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CLAY PERFORMANCE', pageWidth / 2, 13, { align: 'center' });
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('CLASSIFICA CAMPIONATO REGIONALE', pageWidth / 2, 20, { align: 'center' });
+
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text((rc.name || '').toUpperCase(), pageWidth / 2, 30, { align: 'center' });
+
+      let currentY = 48;
+
+      // Event Info Box
+      doc.setTextColor(51, 65, 85); // slate-700
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Disciplina FITAV:', 15, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(rc.discipline || 'N/D', 42, currentY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Regione:', 115, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(rc.region || 'N/D', 132, currentY);
+
+      currentY += 5;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Anno:', 15, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text((rc.year || '').toString(), 42, currentY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Regolamento:', 115, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Scarto della prova peggiore su 4 totali (min 3 gare)', 138, currentY);
+
+      currentY += 12;
+
+      // Individual Classifications grouped by category/qualification
+      const sortedGroupKeys = Object.keys(rankingData.groupedRankings || {}).sort();
+
+      sortedGroupKeys.forEach((groupKey) => {
+        const shootersInGroup = rankingData.groupedRankings[groupKey] || [];
+        if (shootersInGroup.length === 0) return;
+
+        const [mode, value] = groupKey.split('_');
+        const modeLabel = mode === 'categoria' ? 'CATEGORIA' : 'QUALIFICA';
+        const groupTitle = `${modeLabel}: ${value.toUpperCase()}`;
+
+        if (currentY > 240) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(234, 88, 12); // orange-600
+        doc.text(groupTitle, 15, currentY);
+        currentY += 4;
+
+        const headers = [['Pos', 'Tiratore', 'Società Tesseramento', 'Pen. Tot', 'Pr 1', 'Pr 2', 'Pr 3', 'Pr 4', 'Hits Tot']];
+
+        const body = shootersInGroup.map((s: any) => {
+          const formatTrial = (idx: number) => {
+            const scoreKey = `trial${idx}` as keyof typeof s.trialScores;
+            const penaltyKey = `trial${idx}` as keyof typeof s.trialPenalties;
+            const score = s.trialScores[scoreKey];
+            const penalty = s.trialPenalties[penaltyKey];
+
+            if (score === null || score === undefined) return '-';
+            
+            const isDiscarded = s.discardedTrialIdx === idx;
+            let text = `${score} (${penalty}p)`;
+            if (isDiscarded) {
+              text += '*';
+            }
+            return text;
+          };
+
+          const posStr = s.position ? `${s.position}°` : 'NC';
+          const shooterName = `${s.surname || ''} ${s.name || ''}${s.shooter_code ? `\n(${s.shooter_code})` : ''}`;
+
+          return [
+            posStr,
+            shooterName,
+            s.society || '---',
+            s.totalPenalties !== undefined && s.totalPenalties !== null ? s.totalPenalties.toString() : '0',
+            formatTrial(1),
+            formatTrial(2),
+            formatTrial(3),
+            formatTrial(4),
+            s.totalTargetsHit !== undefined && s.totalTargetsHit !== null ? s.totalTargetsHit.toString() : '0'
+          ];
+        });
+
+        autoTable(doc, {
+          startY: currentY,
+          head: headers,
+          body: body,
+          theme: 'striped',
+          headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
+          bodyStyles: { fontSize: 7, valign: 'middle' },
+          columnStyles: {
+            0: { cellWidth: 10, halign: 'center' }, // Pos
+            1: { cellWidth: 35 }, // Tiratore
+            2: { cellWidth: 'auto' }, // Società
+            3: { cellWidth: 14, halign: 'center', fontStyle: 'bold' }, // Pen. Tot
+            4: { cellWidth: 16, halign: 'center' }, // Pr 1
+            5: { cellWidth: 16, halign: 'center' }, // Pr 2
+            6: { cellWidth: 16, halign: 'center' }, // Pr 3
+            7: { cellWidth: 16, halign: 'center' }, // Pr 4
+            8: { cellWidth: 14, halign: 'center' }  // Hits Tot
+          },
+          margin: { left: 15, right: 15 },
+          didDrawPage: (data: any) => {
+            currentY = data.cursor.y + 12;
+          }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+      });
+
+      // Societies Section
+      const societiesRaw = (rankingData.classifiedSocieties || []).filter((s: any) => (s.participatedCount || 0) > 0);
+      const unsocRaw = (rankingData.societies || []).filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0);
+      const sortedSocieties = [...societiesRaw, ...unsocRaw];
+
+      if (sortedSocieties.length > 0) {
+        if (currentY > 230) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(234, 88, 12); // orange-600
+        doc.text('CLASSIFICA SOCIETÀ TAV', 15, currentY);
+        currentY += 4;
+
+        const headers = [['Pos', 'Associazione TAV', 'Penalità Totali', 'Punti Totali', 'Prove', 'Pr 1', 'Pr 2', 'Pr 3', 'Pr 4']];
+
+        const body = sortedSocieties.map((soc: any) => {
+          const formatTrial = (idx: number) => {
+            const scoreKey = `trial${idx}` as keyof typeof soc.trialScores;
+            const penaltyKey = `trial${idx}` as keyof typeof soc.trialPenalties;
+            const score = soc.trialScores[scoreKey];
+            const penalty = soc.trialPenalties[penaltyKey];
+
+            if (score === null || score === undefined) return '-';
+            
+            const isDiscarded = soc.discardedTrialIdx === idx;
+            let text = `${score} (${penalty}p)`;
+            if (isDiscarded) {
+              text += '*';
+            }
+            return text;
+          };
+
+          const posStr = soc.position ? `${soc.position}°` : 'NC';
+
+          return [
+            posStr,
+            soc.societyName || '---',
+            soc.totalPenalties !== undefined && soc.totalPenalties !== null ? soc.totalPenalties.toString() : '0',
+            soc.totalScoreSum !== undefined && soc.totalScoreSum !== null ? soc.totalScoreSum.toString() : '0',
+            (soc.participatedCount || 0).toString(),
+            formatTrial(1),
+            formatTrial(2),
+            formatTrial(3),
+            formatTrial(4)
+          ];
+        });
+
+        autoTable(doc, {
+          startY: currentY,
+          head: headers,
+          body: body,
+          theme: 'striped',
+          headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8 },
+          bodyStyles: { fontSize: 7, valign: 'middle' },
+          columnStyles: {
+            0: { cellWidth: 10, halign: 'center' }, // Pos
+            1: { cellWidth: 'auto' }, // Società
+            2: { cellWidth: 22, halign: 'center', fontStyle: 'bold' }, // Pen. Tot
+            3: { cellWidth: 20, halign: 'center' }, // Punti Tot
+            4: { cellWidth: 14, halign: 'center' }, // Prove
+            5: { cellWidth: 16, halign: 'center' }, // Pr 1
+            6: { cellWidth: 16, halign: 'center' }, // Pr 2
+            7: { cellWidth: 16, halign: 'center' }, // Pr 3
+            8: { cellWidth: 16, halign: 'center' }  // Pr 4
+          },
+          margin: { left: 15, right: 15 },
+          didDrawPage: (data: any) => {
+            currentY = data.cursor.y + 12;
+          }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      // Footer and Page numbers
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184); // slate-400
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Pagina ${i} di ${totalPages} - Classifica Campionato Regionale - Clay Performance`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      }
+
+      const safeChampName = (rc.name || 'Campionato_Regionale').replace(/\s+/g, '_');
+      doc.save(`${safeChampName}_Classifica.pdf`);
+      triggerToast('Classifica scaricata in formato PDF con successo', 'success');
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      triggerToast('Errore nella generazione della classifica PDF', 'error');
+    }
+  };
+
   // Helper render for premium card
   const formatSeason = (season: string) => {
     return season === 'Invernale' ? '❄️ Invernale' : '☀️ Estiva';
@@ -666,6 +971,14 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
               <FileSpreadsheet className="w-4 h-4" />
               Scarica Classifica Excel
             </button>
+            <button 
+              onClick={downloadPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-rose-500/10 cursor-pointer active:scale-95"
+              style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+            >
+              <FileText className="w-4 h-4" />
+              Scarica Classifica PDF
+            </button>
           </div>
         </div>
 
@@ -681,21 +994,47 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
         </div>
 
         {/* THE TRIALS MAP */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((trialIdx) => {
+        <div className={`grid gap-4 ${
+          rc.season === 'Estivo' 
+            ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' 
+            : 'grid-cols-1 sm:grid-cols-3'
+        }`}>
+          {[1, 2, 3, 4].filter(idx => rc.season === 'Estivo' || idx <= 3).map((trialIdx) => {
             const trialName = rc[`trial${trialIdx}_name` as keyof typeof rc];
             const trialEvId = rc[`trial${trialIdx}_event_id` as keyof typeof rc];
             const evObj = [t1Obj, t2Obj, t3Obj, t4Obj][trialIdx - 1];
+            const isDisputed = isEventDisputed(evObj);
 
             return (
-              <div key={trialIdx} className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl flex items-start gap-3">
-                <span className="p-2 bg-slate-800 rounded-lg text-xs font-mono font-black text-slate-400">{trialIdx}°</span>
-                <div className="space-y-1">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Regionale - Prova {trialIdx}</span>
-                  <p className="text-[11px] font-bold text-slate-200 line-clamp-1">{trialName || 'Non Configurato'}</p>
+              <div 
+                key={trialIdx} 
+                className={`border p-3.5 rounded-xl flex items-start gap-3.5 transition-all ${
+                  isDisputed 
+                    ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.04)]' 
+                    : 'bg-slate-900/60 border-slate-800'
+                }`}
+              >
+                <span className={`p-2.5 rounded-lg text-xs font-mono font-black shrink-0 ${
+                  isDisputed ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                }`}>{trialIdx}°</span>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`text-[9px] font-black uppercase tracking-wider block ${
+                      isDisputed ? 'text-emerald-400' : 'text-slate-500'
+                    }`}>Regionale - Prova {trialIdx}</span>
+                    {isDisputed && (
+                      <span className="text-[7px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded">Disputata</span>
+                    )}
+                  </div>
+                  <p className={`text-xs font-bold leading-snug break-words ${
+                    isDisputed ? 'text-emerald-100' : 'text-slate-200'
+                  }`}>{trialName || 'Non Configurato'}</p>
                   {evObj && (
-                    <span className="text-[9px] font-mono text-slate-500 block">
-                      📍 {evObj.location} | {new Date(evObj.date).toLocaleDateString('it-IT')}
+                    <span className={`text-[10px] font-mono block leading-normal ${
+                      isDisputed ? 'text-emerald-400/90' : 'text-slate-400'
+                    }`}>
+                      📍 {evObj.location} <br />
+                      📅 {formatEventDates(evObj.start_date, evObj.end_date, evObj.date)}
                     </span>
                   )}
                 </div>
@@ -1296,7 +1635,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                                     </div>
                                     <div className="text-[10px] text-slate-500 font-medium flex items-center justify-between">
                                       <span>📍 {e.location || 'N/A'}</span>
-                                      <span>📅 {new Date(e.date).toLocaleDateString('it-IT')}</span>
+                                      <span>📅 {formatEventDates(e.start_date, e.end_date, e.date)}</span>
                                     </div>
                                   </button>
                                 );
