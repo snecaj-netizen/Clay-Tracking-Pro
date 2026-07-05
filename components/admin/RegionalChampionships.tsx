@@ -1010,29 +1010,27 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                 key={trialIdx} 
                 className={`border p-3.5 rounded-xl flex items-start gap-3.5 transition-all ${
                   isDisputed 
-                    ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.04)]' 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.03)]' 
                     : 'bg-slate-900/60 border-slate-800'
                 }`}
               >
-                <span className={`p-2.5 rounded-lg text-xs font-mono font-black shrink-0 ${
-                  isDisputed ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-800 text-slate-400'
-                }`}>{trialIdx}°</span>
+                <span className="p-2.5 rounded-lg text-xs font-mono font-black shrink-0 bg-slate-800 text-slate-400">
+                  {trialIdx}°
+                </span>
                 <div className="space-y-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={`text-[9px] font-black uppercase tracking-wider block ${
-                      isDisputed ? 'text-emerald-400' : 'text-slate-500'
-                    }`}>Regionale - Prova {trialIdx}</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider block text-slate-500">
+                      Regionale - Prova {trialIdx}
+                    </span>
                     {isDisputed && (
                       <span className="text-[7px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded">Disputata</span>
                     )}
                   </div>
-                  <p className={`text-xs font-bold leading-snug break-words ${
-                    isDisputed ? 'text-emerald-100' : 'text-slate-200'
-                  }`}>{trialName || 'Non Configurato'}</p>
+                  <p className="text-xs font-bold leading-snug break-words text-slate-200">
+                    {trialName || 'Non Configurato'}
+                  </p>
                   {evObj && (
-                    <span className={`text-[10px] font-mono block leading-normal ${
-                      isDisputed ? 'text-emerald-400/90' : 'text-slate-400'
-                    }`}>
+                    <span className="text-[10px] font-mono block leading-normal text-slate-400">
                       📍 {evObj.location} <br />
                       📅 {formatEventDates(evObj.start_date, evObj.end_date, evObj.date)}
                     </span>
