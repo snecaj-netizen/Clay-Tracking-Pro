@@ -56,6 +56,50 @@ interface EventsManagerProps {
   onRefresh?: () => void;
 }
 
+const EventsSkeleton = () => {
+  return (
+    <div className="space-y-6 animate-pulse pt-4">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-900/50">
+        <div className="space-y-2">
+          <div className="h-6 w-48 bg-slate-800/60 rounded-xl"></div>
+          <div className="h-3.5 w-64 bg-slate-800/40 rounded-lg"></div>
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="h-9 w-24 bg-slate-800/50 rounded-xl"></div>
+          <div className="h-9 w-28 bg-slate-800/50 rounded-xl"></div>
+        </div>
+      </div>
+
+      {/* Events Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="bg-slate-950/40 border border-slate-900 rounded-2xl p-4 flex flex-col h-full min-h-[160px] relative overflow-hidden">
+            {/* Badges/Tags placeholders */}
+            <div className="flex gap-2 mb-3.5">
+              <div className="h-4 w-14 bg-slate-800/60 rounded-md"></div>
+              <div className="h-4 w-12 bg-slate-800/40 rounded-md"></div>
+              <div className="h-4 w-10 bg-slate-800/30 rounded-md"></div>
+            </div>
+            
+            {/* Title & Location placeholders */}
+            <div className="space-y-2.5 mb-4">
+              <div className="h-5 w-5/6 bg-slate-800/50 rounded-lg"></div>
+              <div className="h-3 w-1/2 bg-slate-800/30 rounded"></div>
+            </div>
+
+            {/* Bottom Row */}
+            <div className="border-t border-slate-900 pt-3 mt-auto flex items-center justify-between">
+              <div className="h-3 w-28 bg-slate-800/40 rounded"></div>
+              <div className="h-4 w-12 bg-slate-800/50 rounded-md"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const EventCard = React.memo(({ 
   ev, 
   user, 
@@ -1586,7 +1630,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     );
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-500"><i className="fas fa-spinner fa-spin text-2xl"></i></div>;
+  if (loading) return <EventsSkeleton />;
 
   const renderCalendarView = () => {
     const today = new Date().toISOString().split('T')[0];

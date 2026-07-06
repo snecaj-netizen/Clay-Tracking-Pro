@@ -1074,6 +1074,7 @@ const App: React.FC = () => {
                 onNavigate={handleNavigate}
                 onTabChange={handleLeTueGareTabChange}
                 initialTab={leTueGareTab}
+                loading={loading}
               />
             </div>
           )}

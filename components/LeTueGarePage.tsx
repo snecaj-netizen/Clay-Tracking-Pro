@@ -23,12 +23,78 @@ interface LeTueGarePageProps {
   onNavigate: (view: any, tab?: string) => void;
   onTabChange?: (tab: string) => void;
   initialTab?: string;
+  loading?: boolean;
 }
+
+const LeTueGareSkeleton = () => {
+  return (
+    <div className="space-y-4 animate-pulse pt-2">
+      {/* Sticky Header Skeleton Section */}
+      <div className="bg-slate-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 space-y-3 border-b border-slate-900/50 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div className="h-6 w-40 bg-slate-800/60 rounded-lg"></div>
+          <div className="flex gap-2">
+            <div className="h-9 w-14 bg-slate-800/40 rounded-lg"></div>
+            <div className="h-9 w-14 bg-slate-800/40 rounded-lg"></div>
+          </div>
+        </div>
+        
+        {/* Tab switcher skeleton */}
+        <div className="h-10 bg-slate-900 rounded-xl border border-slate-800/60"></div>
+        
+        {/* Action row skeleton */}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <div className="h-8 w-24 bg-slate-800/40 rounded-xl"></div>
+          <div className="h-8 w-24 bg-slate-800/40 rounded-xl"></div>
+        </div>
+      </div>
+
+      {/* List of competition card skeletons */}
+      <div className="space-y-4 pt-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 flex flex-col sm:flex-row justify-between gap-4 relative overflow-hidden">
+            <div className="flex-1 min-w-0 space-y-3">
+              {/* Badges/Tags */}
+              <div className="flex gap-2">
+                <div className="h-4 w-12 bg-slate-800/50 rounded"></div>
+                <div className="h-4 w-16 bg-slate-800/40 rounded"></div>
+                <div className="h-4 w-10 bg-slate-800/30 rounded"></div>
+              </div>
+              
+              {/* Competition Title */}
+              <div className="h-5 w-2/3 bg-slate-800/50 rounded-lg"></div>
+              
+              {/* Location marker and name */}
+              <div className="h-3 w-1/3 bg-slate-800/30 rounded"></div>
+              
+              {/* Mini Cartridge details tag */}
+              <div className="flex gap-1.5 pt-1">
+                <div className="h-6 w-32 bg-slate-800/20 rounded-lg border border-slate-900"></div>
+              </div>
+            </div>
+            
+            {/* Right scores/details block */}
+            <div className="flex flex-col items-start sm:items-end justify-between shrink-0 gap-2">
+              {/* Date */}
+              <div className="h-3.5 w-24 bg-slate-800/40 rounded"></div>
+              
+              {/* Score indicator */}
+              <div className="flex items-baseline gap-1.5 mt-auto">
+                <div className="h-7 w-12 bg-slate-800/60 rounded-lg"></div>
+                <div className="h-4 w-10 bg-slate-800/30 rounded"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
   user, token, competitions, events, societies, cartridges,
   onDeleteCompetition, onEditCompetition, onUpdateCompetition,
-  onSocietyClick, onNavigate, onTabChange, initialTab
+  onSocietyClick, onNavigate, onTabChange, initialTab, loading = false
 }) => {
   const { t } = useLanguage();
   const { triggerConfirm, triggerToast } = useUI();
@@ -96,6 +162,10 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
     
     return { totalGare, totalRotti, media };
   }, [competitions]);
+
+  if (loading) {
+    return <LeTueGareSkeleton />;
+  }
 
   return (
     <div className="space-y-4">

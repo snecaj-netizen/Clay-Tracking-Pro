@@ -678,9 +678,24 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
             className="space-y-4"
           >
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 bg-slate-950 border border-slate-900 rounded-3xl space-y-3">
-                <i className="fas fa-circle-notch fa-spin text-orange-500 text-2xl"></i>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">Caricamento sfide...</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="p-5 bg-slate-950 border border-slate-900/80 rounded-2xl flex flex-col justify-between space-y-4 min-h-[140px]">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 w-full">
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-1/2 bg-slate-800 rounded"></div>
+                          <div className="h-4 w-16 bg-slate-800/50 rounded-full"></div>
+                        </div>
+                        <div className="h-3 w-1/3 bg-slate-800/30 rounded"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-900 pt-3">
+                      <div className="h-3.5 w-24 bg-slate-800/40 rounded"></div>
+                      <div className="h-4 w-10 bg-slate-800/50 rounded"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : visibleChallenges.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 bg-slate-950 border border-slate-900 rounded-3xl text-center space-y-4">
