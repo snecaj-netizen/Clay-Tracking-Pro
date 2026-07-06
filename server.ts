@@ -196,6 +196,34 @@ transporter.verify((error, success) => {
   }
 });
 
+const getMailFrom = () => {
+  const fromEnv = process.env.SMTP_FROM;
+  if (!fromEnv) return 'Clay Performance <no-reply@clay-performance.it>';
+  
+  // If it's something like "Name (email)", let's format it to "Name <email>"
+  const parenMatch = fromEnv.match(/^([^(]+)\(([^)]+)\)$/);
+  if (parenMatch) {
+    const name = parenMatch[1].trim();
+    const email = parenMatch[2].trim();
+    return `"${name}" <${email}>`;
+  }
+  
+  // If it doesn't have '<' or '(' but has an '@', we can use it as-is or wrap it.
+  if (!fromEnv.includes('<') && fromEnv.includes('@')) {
+    const emailMatch = fromEnv.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (emailMatch) {
+      const email = emailMatch[1];
+      const name = fromEnv.replace(email, '').trim();
+      if (name) {
+        return `"${name}" <${email}>`;
+      }
+      return email;
+    }
+  }
+  
+  return fromEnv;
+};
+
 const sendVerificationEmail = async (email: string, name: string, token: string, host?: string, lang: string = 'it') => {
   if (!process.env.SMTP_HOST) {
     console.warn('⚠️ SMTP configuration missing. Verification email not sent.');
@@ -221,7 +249,7 @@ const sendVerificationEmail = async (email: string, name: string, token: string,
     : 'Se non hai richiesto tu questa iscrizione, puoi ignorare questa email.';
 
   const mailOptions = {
-    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    from: getMailFrom(),
     to: email,
     subject: subject,
     html: `
@@ -295,7 +323,7 @@ const sendRegistrationEmail = async (email: string, name: string, eventName: str
     : 'Questa è una comunicazione automatica, si prega di non rispondere a questa email.';
 
   const mailOptions = {
-    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    from: getMailFrom(),
     to: email,
     subject: subject,
     html: `
@@ -391,7 +419,7 @@ const sendRegistrationModifiedEmail = async (email: string, name: string, eventN
     : 'Questa è una comunicazione automatica, si prega di non rispondere a questa email.';
 
   const mailOptions = {
-    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    from: getMailFrom(),
     to: email,
     subject: subject,
     html: `
@@ -474,7 +502,7 @@ const sendUnregistrationEmail = async (email: string, name: string, eventName: s
     : 'Questa è una comunicazione automatica, si prega di non rispondere a questa email.';
 
   const mailOptions = {
-    from: process.env.SMTP_FROM || 'Clay Performance <no-reply@clay-performance.it>',
+    from: getMailFrom(),
     to: email,
     subject: subject,
     html: `
@@ -1946,7 +1974,7 @@ app.post('/api/auth/register', async (req, res) => {
         is_international, is_cacciatore, nationality, international_id, original_club,
         society, shooter_code, qualification, category,
         verification_token, email_verified, language
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
       [
         upperName, upperSurname, email, hash, 'user', 
         birth_date || null, phone || null, 'active',
