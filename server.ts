@@ -8401,7 +8401,14 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
 
         return {
           score: sumOfScores,
-          shooters: selectedShooters.map(s => ({ id: s.shooterId, name: s.name, surname: s.surname, score: s.trialScores[trialKey] }))
+          shooters: selectedShooters.map(s => ({
+            id: s.shooterId,
+            name: s.name,
+            surname: s.surname,
+            score: s.trialScores[trialKey],
+            category: s.classificationValue,
+            mode: s.classificationMode
+          }))
         };
       };
 
@@ -8466,6 +8473,12 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
           trial2: st.trial2 ? st.trial2.score : null,
           trial3: st.trial3 ? st.trial3.score : null,
           trial4: st.trial4 ? st.trial4.score : null
+        },
+        trialDetails: {
+          trial1: st.trial1 ? st.trial1.shooters : [],
+          trial2: st.trial2 ? st.trial2.shooters : [],
+          trial3: st.trial3 ? st.trial3.shooters : [],
+          trial4: st.trial4 ? st.trial4.shooters : []
         },
         trialPenalties: {
           trial1: p1,

@@ -93,6 +93,12 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
   const [selectedChampId, setSelectedChampId] = useState<string | null>(null);
   const [rankingData, setRankingData] = useState<any | null>(null);
   const [isRankingLoading, setIsRankingLoading] = useState(false);
+  const [selectedTrialDetails, setSelectedTrialDetails] = useState<{
+    societyName: string;
+    trialLabel: string;
+    score: number;
+    shooters: any[];
+  } | null>(null);
   
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -1277,11 +1283,24 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                             <td className="py-2.5 px-2 text-center font-black text-orange-400">{soc.totalPenalties}</td>
 
                             {/* Render Trial 1 */}
-                            <td className="py-2.5 px-2 text-center font-mono">
+                            <td 
+                              className={`py-2.5 px-2 text-center font-mono ${soc.trialScores.trial1 !== null ? 'cursor-pointer hover:bg-slate-800/30 rounded transition-colors' : ''}`}
+                              onClick={() => {
+                                if (soc.trialScores.trial1 !== null) {
+                                  setSelectedTrialDetails({
+                                    societyName: soc.societyName,
+                                    trialLabel: rc.trial1_name || '1° Prova',
+                                    score: soc.trialScores.trial1,
+                                    shooters: soc.trialDetails?.trial1 || []
+                                  });
+                                }
+                              }}
+                              title={soc.trialScores.trial1 !== null ? "Clicca per visualizzare i dettagli dei tiratori" : undefined}
+                            >
                               {soc.trialScores.trial1 !== null ? (
                                 <div className={`${soc.discardedTrialIdx === 1 ? 'line-through text-slate-500' : ''}`}>
-                                  <span className="font-semibold text-slate-300">{soc.trialScores.trial1}</span>
-                                  <span className="text-[9px] text-slate-500 ml-1">({soc.trialPenalties.trial1}p)</span>
+                                  <span className="font-semibold text-orange-400 hover:text-orange-300 underline decoration-dashed decoration-orange-500/40 underline-offset-2">{soc.trialScores.trial1}</span>
+                                  <span className="text-[9px] text-slate-400 ml-1">({soc.trialPenalties.trial1}p)</span>
                                   {soc.discardedTrialIdx === 1 && <span className="text-[8px] font-bold text-red-500 block">Scartata</span>}
                                 </div>
                               ) : (
@@ -1290,11 +1309,24 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                             </td>
 
                             {/* Render Trial 2 */}
-                            <td className="py-2.5 px-2 text-center font-mono">
+                            <td 
+                              className={`py-2.5 px-2 text-center font-mono ${soc.trialScores.trial2 !== null ? 'cursor-pointer hover:bg-slate-800/30 rounded transition-colors' : ''}`}
+                              onClick={() => {
+                                if (soc.trialScores.trial2 !== null) {
+                                  setSelectedTrialDetails({
+                                    societyName: soc.societyName,
+                                    trialLabel: rc.trial2_name || '2° Prova',
+                                    score: soc.trialScores.trial2,
+                                    shooters: soc.trialDetails?.trial2 || []
+                                  });
+                                }
+                              }}
+                              title={soc.trialScores.trial2 !== null ? "Clicca per visualizzare i dettagli dei tiratori" : undefined}
+                            >
                               {soc.trialScores.trial2 !== null ? (
                                 <div className={`${soc.discardedTrialIdx === 2 ? 'line-through text-slate-500' : ''}`}>
-                                  <span className="font-semibold text-slate-300">{soc.trialScores.trial2}</span>
-                                  <span className="text-[9px] text-slate-500 ml-1">({soc.trialPenalties.trial2}p)</span>
+                                  <span className="font-semibold text-orange-400 hover:text-orange-300 underline decoration-dashed decoration-orange-500/40 underline-offset-2">{soc.trialScores.trial2}</span>
+                                  <span className="text-[9px] text-slate-400 ml-1">({soc.trialPenalties.trial2}p)</span>
                                   {soc.discardedTrialIdx === 2 && <span className="text-[8px] font-bold text-red-500 block">Scartata</span>}
                                 </div>
                               ) : (
@@ -1303,11 +1335,24 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                             </td>
 
                             {/* Render Trial 3 */}
-                            <td className="py-2.5 px-2 text-center font-mono">
+                            <td 
+                              className={`py-2.5 px-2 text-center font-mono ${soc.trialScores.trial3 !== null ? 'cursor-pointer hover:bg-slate-800/30 rounded transition-colors' : ''}`}
+                              onClick={() => {
+                                if (soc.trialScores.trial3 !== null) {
+                                  setSelectedTrialDetails({
+                                    societyName: soc.societyName,
+                                    trialLabel: rc.trial3_name || '3° Prova',
+                                    score: soc.trialScores.trial3,
+                                    shooters: soc.trialDetails?.trial3 || []
+                                  });
+                                }
+                              }}
+                              title={soc.trialScores.trial3 !== null ? "Clicca per visualizzare i dettagli dei tiratori" : undefined}
+                            >
                               {soc.trialScores.trial3 !== null ? (
                                 <div className={`${soc.discardedTrialIdx === 3 ? 'line-through text-slate-500' : ''}`}>
-                                  <span className="font-semibold text-slate-300">{soc.trialScores.trial3}</span>
-                                  <span className="text-[9px] text-slate-500 ml-1">({soc.trialPenalties.trial3}p)</span>
+                                  <span className="font-semibold text-orange-400 hover:text-orange-300 underline decoration-dashed decoration-orange-500/40 underline-offset-2">{soc.trialScores.trial3}</span>
+                                  <span className="text-[9px] text-slate-400 ml-1">({soc.trialPenalties.trial3}p)</span>
                                   {soc.discardedTrialIdx === 3 && <span className="text-[8px] font-bold text-red-500 block">Scartata</span>}
                                 </div>
                               ) : (
@@ -1316,11 +1361,24 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                             </td>
 
                             {/* Render Trial 4 */}
-                            <td className="py-2.5 px-2 text-center font-mono">
+                            <td 
+                              className={`py-2.5 px-2 text-center font-mono ${soc.trialScores.trial4 !== null ? 'cursor-pointer hover:bg-slate-800/30 rounded transition-colors' : ''}`}
+                              onClick={() => {
+                                if (soc.trialScores.trial4 !== null) {
+                                  setSelectedTrialDetails({
+                                    societyName: soc.societyName,
+                                    trialLabel: rc.trial4_name || '4° Prova',
+                                    score: soc.trialScores.trial4,
+                                    shooters: soc.trialDetails?.trial4 || []
+                                  });
+                                }
+                              }}
+                              title={soc.trialScores.trial4 !== null ? "Clicca per visualizzare i dettagli dei tiratori" : undefined}
+                            >
                               {soc.trialScores.trial4 !== null ? (
                                 <div className={`${soc.discardedTrialIdx === 4 ? 'line-through text-slate-500' : ''}`}>
-                                  <span className="font-semibold text-slate-300">{soc.trialScores.trial4}</span>
-                                  <span className="text-[9px] text-slate-500 ml-1">({soc.trialPenalties.trial4}p)</span>
+                                  <span className="font-semibold text-orange-400 hover:text-orange-300 underline decoration-dashed decoration-orange-500/40 underline-offset-2">{soc.trialScores.trial4}</span>
+                                  <span className="text-[9px] text-slate-400 ml-1">({soc.trialPenalties.trial4}p)</span>
                                   {soc.discardedTrialIdx === 4 && <span className="text-[8px] font-bold text-red-500 block">Scartata</span>}
                                 </div>
                               ) : (
@@ -1349,6 +1407,98 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                     {s.surname} {s.name} ({s.participatedCount} prove)
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* --- POPUP DETTAGLI SQUADRA SOCIETÀ PER PROVA --- */}
+          {selectedTrialDetails && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/5 rounded-full blur-2xl"></div>
+
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div>
+                    <h4 className="text-xs font-black text-orange-400 uppercase tracking-widest">Dettaglio Punteggio</h4>
+                    <p className="text-[10px] font-bold text-white mt-0.5">{selectedTrialDetails.societyName}</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedTrialDetails(null)}
+                    className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded transition cursor-pointer"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850 flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Prova Selezionata</span>
+                      <p className="text-xs font-bold text-slate-300 mt-0.5">{selectedTrialDetails.trialLabel}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Punteggio Totale</span>
+                      <p className="text-lg font-black text-orange-500">{selectedTrialDetails.score}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-slate-500" /> Tiratori Contribuenti (Top {(rc.discipline || '').toLowerCase().includes('fossa') || (rc.discipline || '').toLowerCase().includes('trap') ? '6' : '3'})
+                    </p>
+
+                    {selectedTrialDetails.shooters.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic p-3 text-center bg-slate-950/30 rounded-lg">
+                        Nessun tiratore ha contribuito a questo punteggio per questa prova.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                        {selectedTrialDetails.shooters.map((s, idx) => (
+                          <div 
+                            key={s.id || idx} 
+                            className="bg-slate-950/40 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between hover:bg-slate-950/70 transition"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center font-mono text-[9px] font-bold">
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <span className="text-xs font-bold text-white uppercase">{s.surname} {s.name}</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  {s.category && (
+                                    <span className="text-[8px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700 px-1 py-0.2 rounded">
+                                      {s.category}
+                                    </span>
+                                  )}
+                                  {s.mode && (
+                                    <span className="text-[7.5px] text-slate-500 font-mono">
+                                      ({s.mode === 'categoria' ? 'Categoria' : 'Qualifica'})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-black text-orange-400">{s.score}</span>
+                              <span className="text-[8px] text-slate-500 block">centrati</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-800 flex justify-end">
+                  <button 
+                    onClick={() => setSelectedTrialDetails(null)}
+                    className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-wider rounded-lg transition cursor-pointer"
+                  >
+                    Chiudi
+                  </button>
+                </div>
               </div>
             </div>
           )}
