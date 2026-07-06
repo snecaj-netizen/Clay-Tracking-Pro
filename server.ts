@@ -810,6 +810,9 @@ const initDB = async () => {
       await pool.query("CREATE INDEX IF NOT EXISTS idx_challenges_society_id ON challenges(society_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_events_start_date ON events(start_date)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_societies_lower_name ON societies ((LOWER(TRIM(name))))");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_societies_lower_code ON societies ((LOWER(TRIM(code))))");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_events_lower_location ON events ((LOWER(TRIM(location))))");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_event_registrations_event_id ON event_registrations(event_id)");
       await pool.query("CREATE INDEX IF NOT EXISTS idx_event_registrations_user_id ON event_registrations(user_id)");
@@ -5077,24 +5080,25 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
       SELECT DISTINCT ON (e.id) e.*, s.region as society_region,
       (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count,
-      (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = '${req.user.id}') > 0 as is_registered
+      (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = $1) > 0 as is_registered
       FROM events e
       LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(e.location)) = LOWER(TRIM(s.code))
-      ORDER BY e.id
     `;
-    let eventParams: any[] = [];
+    let eventParams: any[] = [req.user.id];
 
     if (req.user.role === 'admin') {
       // Admin sees all
     } else if (req.user.role === 'society') {
       // Society sees their own, public, and those they created
-      eventQuery += " WHERE e.location = $1 OR e.visibility = 'Pubblica' OR e.created_by = $2";
+      eventQuery += " WHERE e.location = $2 OR e.visibility = 'Pubblica' OR e.created_by = $3";
       eventParams.push(req.user.society, req.user.id);
     } else {
       // User sees their society's, public, and those they created
-      eventQuery += " WHERE e.location = $1 OR e.visibility = 'Pubblica' OR e.created_by = $2";
+      eventQuery += " WHERE e.location = $2 OR e.visibility = 'Pubblica' OR e.created_by = $3";
       eventParams.push(req.user.society || '', req.user.id);
     }
+
+    eventQuery += " ORDER BY e.id";
 
     const { rows: events } = await pool.query(eventQuery, eventParams);
     console.log('API: /api/events fetched events count:', events.length, 'for user:', req.user.email, 'role:', req.user.role);

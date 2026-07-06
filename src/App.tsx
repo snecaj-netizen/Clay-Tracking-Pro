@@ -382,15 +382,37 @@ const App: React.FC = () => {
       // Refresh user profile asynchronously
       fetchUserProfile(signal);
 
-      // Start fetching all data in parallel
-      const dataPromises = [
-        fetch('/api/competitions', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/cartridges', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/societies', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/cartridge-types', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/events', { headers: { 'Authorization': `Bearer ${token}` }, signal }),
-        fetch('/api/user/registrations', { headers: { 'Authorization': `Bearer ${token}` }, signal })
-      ];
+      // Helper to fetch an endpoint and update state immediately upon arrival
+      const fetchAndSet = async (
+        url: string, 
+        setter: (val: any) => void, 
+        fallback: any = []
+      ) => {
+        try {
+          const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }, signal });
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+            setToken(null);
+            setUser(null);
+            setLoading(false);
+            return false;
+          }
+          if (res.ok) {
+            const data = await res.json();
+            setter(data);
+          } else {
+            setter(fallback);
+          }
+          return true;
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            console.error(`Error fetching ${url}:`, err);
+          }
+          setter(fallback);
+          return false;
+        }
+      };
 
       // If we are on home or public portal, we can stop "initial loading" state immediately
       // to let the UI respond faster, while data loads in background
@@ -398,38 +420,27 @@ const App: React.FC = () => {
         setLoading(false);
       }
 
-      const results = await Promise.allSettled(dataPromises);
-      
-      const responses = results.map(r => r.status === 'fulfilled' ? r.value : null);
-      const [compsRes, cartsRes, socsRes, cartTypesRes, eventsRes, userRegsRes] = responses;
-
-      if (compsRes?.status === 401 || compsRes?.status === 403) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        setToken(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // Process JSON responses
-      const jsonPromises = [
-        compsRes?.ok ? compsRes.json() : Promise.resolve([]),
-        cartsRes?.ok ? cartsRes.json() : Promise.resolve([]),
-        socsRes?.ok ? socsRes.json() : Promise.resolve([]),
-        cartTypesRes?.ok ? cartTypesRes.json() : Promise.resolve([]),
-        eventsRes?.ok ? eventsRes.json() : Promise.resolve([]),
-        userRegsRes?.ok ? userRegsRes.json() : Promise.resolve([])
+      // 1. Fetch critical data in parallel (needed for immediate views: competitions, events, and registrations)
+      const criticalPromises = [
+        fetchAndSet('/api/competitions', setCompetitions),
+        fetchAndSet('/api/events', setEvents),
+        fetchAndSet('/api/user/registrations', setUserRegistrations)
       ];
 
-      const [comps, carts, socs, types, evts, regs] = await Promise.all(jsonPromises);
+      // 2. Fetch non-critical secondary collections in the background
+      const backgroundPromises = [
+        fetchAndSet('/api/cartridges', setCartridges),
+        fetchAndSet('/api/societies', setSocieties),
+        fetchAndSet('/api/cartridge-types', setCartridgeTypes)
+      ];
 
-      setCompetitions(comps);
-      setCartridges(carts);
-      setSocieties(socs);
-      setCartridgeTypes(types);
-      setEvents(evts);
-      setUserRegistrations(regs);
+      // Wait for critical views data to finish loading and clear the main loader immediately
+      await Promise.allSettled(criticalPromises);
+      setLoading(false);
+
+      // Let the remaining background requests finish as they complete
+      await Promise.allSettled(backgroundPromises);
+
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       handleNetworkError(err, triggerToast);
