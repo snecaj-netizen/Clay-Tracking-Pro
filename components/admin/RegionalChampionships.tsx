@@ -1072,19 +1072,19 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                       </div>
 
                       {/* Display Podium for Group if exists at least one */}
-                      <div className="p-4 bg-gradient-to-b from-slate-950/90 to-slate-900/40 border-b border-slate-800/85 flex justify-center items-end py-8 gap-3 sm:gap-6">
+                      <div className="p-4 bg-white border-b border-slate-200 flex justify-center items-end py-8 gap-3 sm:gap-6">
                         {/* 2nd Place */}
                         {top2 && (
                           <div className="flex flex-col items-center">
-                            <span className="text-[11px] font-extrabold text-slate-100 uppercase tracking-wider text-center drop-shadow-md">{top2.surname} {top2.name.substring(0, 1)}.</span>
-                            <span className="text-[9px] font-semibold text-slate-300 mb-1 line-clamp-1 max-w-[90px] text-center drop-shadow">{top2.society}</span>
-                            <span className="text-xs font-black text-slate-100 bg-slate-850 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1 mb-1 shadow-sm">
-                              <span className="text-orange-400">{top2.totalPenalties}</span>
-                              <span className="text-[8px] text-slate-400 font-normal uppercase">pen.</span>
+                            <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center">{top2.surname} {top2.name.substring(0, 1)}.</span>
+                            <span className="text-[9px] font-semibold text-slate-500 mb-1 line-clamp-1 max-w-[90px] text-center">{top2.society}</span>
+                            <span className="text-xs font-black text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-300 flex items-center gap-1 mb-1 shadow-sm">
+                              <span className="text-orange-600">{top2.totalPenalties}</span>
+                              <span className="text-[8px] text-slate-500 font-normal uppercase">pen.</span>
                             </span>
-                            <div className="w-14 sm:w-20 bg-gradient-to-t from-slate-850 to-slate-700/80 border border-slate-500/60 rounded-t-lg h-14 flex items-center justify-center shadow-lg relative overflow-hidden group">
-                              <span className="text-sm font-black font-mono text-slate-100 drop-shadow-md">2°</span>
-                              <div className="absolute inset-0 bg-white/5 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                            <div className="w-14 sm:w-20 bg-gradient-to-t from-slate-200 to-slate-100 border border-slate-300 rounded-t-lg h-14 flex items-center justify-center shadow relative overflow-hidden group">
+                              <span className="text-sm font-black font-mono text-slate-700">2°</span>
+                              <div className="absolute inset-0 bg-white/40 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </div>
                           </div>
                         )}
@@ -1092,16 +1092,16 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                         {/* 1st Place */}
                         {top1 && (
                           <div className="flex flex-col items-center">
-                            <Trophy className="w-5 h-5 text-yellow-400 animate-bounce mb-1 drop-shadow-[0_2px_8px_rgba(234,179,8,0.3)]" />
-                            <span className="text-xs font-black text-yellow-500 uppercase tracking-wider text-center drop-shadow-md">{top1.surname} {top1.name.substring(0, 1)}.</span>
-                            <span className="text-[9px] font-extrabold text-yellow-100/90 mb-1 line-clamp-1 max-w-[110px] text-center drop-shadow">{top1.society}</span>
-                            <span className="text-xs font-black text-slate-100 bg-yellow-950/60 px-2 py-0.5 rounded border border-yellow-500/40 flex items-center gap-1 mb-1 shadow-[0_0_10px_rgba(234,179,8,0.15)]">
-                              <span className="text-yellow-400">{top1.totalPenalties}</span>
-                              <span className="text-[8px] text-yellow-300/80 font-normal uppercase">pen.</span>
+                            <Trophy className="w-5 h-5 text-amber-500 animate-bounce mb-1 drop-shadow-[0_2px_4px_rgba(245,158,11,0.2)]" />
+                            <span className="text-xs font-black text-amber-800 uppercase tracking-wider text-center">{top1.surname} {top1.name.substring(0, 1)}.</span>
+                            <span className="text-[9px] font-extrabold text-slate-500 mb-1 line-clamp-1 max-w-[110px] text-center">{top1.society}</span>
+                            <span className="text-xs font-black text-slate-800 bg-yellow-50 px-2 py-0.5 rounded border border-yellow-300 flex items-center gap-1 mb-1 shadow-sm">
+                              <span className="text-amber-600">{top1.totalPenalties}</span>
+                              <span className="text-[8px] text-amber-700 font-normal uppercase">pen.</span>
                             </span>
-                            <div className="w-16 sm:w-24 bg-gradient-to-t from-yellow-950/90 to-amber-600/95 border-2 border-yellow-400 rounded-t-lg h-20 flex items-center justify-center shadow-2xl relative overflow-hidden group">
-                              <span className="text-lg font-black font-mono text-yellow-200 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">1°</span>
-                              <div className="absolute inset-0 bg-white/10 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                            <div className="w-16 sm:w-24 bg-gradient-to-t from-yellow-200 to-amber-100 border-2 border-yellow-400 rounded-t-lg h-20 flex items-center justify-center shadow-md relative overflow-hidden group">
+                              <span className="text-lg font-black font-mono text-amber-800">1°</span>
+                              <div className="absolute inset-0 bg-white/40 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </div>
                           </div>
                         )}
@@ -1109,15 +1109,15 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                         {/* 3rd Place */}
                         {top3 && (
                           <div className="flex flex-col items-center">
-                            <span className="text-[11px] font-extrabold text-orange-100 uppercase tracking-wider text-center drop-shadow-md">{top3.surname} {top3.name.substring(0, 1)}.</span>
-                            <span className="text-[9px] font-semibold text-orange-300 mb-1 line-clamp-1 max-w-[90px] text-center drop-shadow">{top3.society}</span>
-                            <span className="text-xs font-black text-slate-100 bg-orange-950/40 px-2 py-0.5 rounded border border-orange-900/55 flex items-center gap-1 mb-1 shadow-sm">
-                              <span className="text-orange-400">{top3.totalPenalties}</span>
-                              <span className="text-[8px] text-orange-300 font-normal uppercase">pen.</span>
+                            <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center">{top3.surname} {top3.name.substring(0, 1)}.</span>
+                            <span className="text-[9px] font-semibold text-slate-500 mb-1 line-clamp-1 max-w-[90px] text-center">{top3.society}</span>
+                            <span className="text-xs font-black text-slate-800 bg-orange-50 px-2 py-0.5 rounded border border-orange-200 flex items-center gap-1 mb-1 shadow-sm">
+                              <span className="text-orange-600">{top3.totalPenalties}</span>
+                              <span className="text-[8px] text-slate-500 font-normal uppercase">pen.</span>
                             </span>
-                            <div className="w-14 sm:w-20 bg-gradient-to-t from-amber-950/80 to-amber-800/85 border border-amber-600/60 rounded-t-lg h-10 flex items-center justify-center shadow-lg relative overflow-hidden group">
-                              <span className="text-sm font-black font-mono text-orange-300 drop-shadow-md">3°</span>
-                              <div className="absolute inset-0 bg-white/5 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                            <div className="w-14 sm:w-20 bg-gradient-to-t from-orange-200 to-orange-100 border border-orange-300 rounded-t-lg h-10 flex items-center justify-center shadow relative overflow-hidden group">
+                              <span className="text-sm font-black font-mono text-orange-800">3°</span>
+                              <div className="absolute inset-0 bg-white/40 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                             </div>
                           </div>
                         )}

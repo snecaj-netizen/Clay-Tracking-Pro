@@ -8301,6 +8301,7 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         name: s.name,
         surname: s.surname,
         shooter_code: s.shooter_code,
+        category: s.category,
         society: s.society,
         society_region: s.society_region,
         classificationMode: mode,
@@ -8359,6 +8360,13 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
     const uniqueSocieties = [...new Set(shooters.map((s: any) => s.society).filter((soc): soc is string => !!soc))];
     const dL = rc.discipline.toLowerCase();
     const topN = (dL.includes('fossa') || dL.includes('trap')) ? 6 : 3;
+    const maxEP = (dL.includes('fossa') || dL.includes('trap')) ? 2 : 1;
+
+    const isEccellenzaOrPrima = (categoryValue: string | null) => {
+      if (!categoryValue) return false;
+      const cat = categoryValue.toLowerCase().trim();
+      return cat === 'e' || cat === 'eccellenza' || cat === '1*' || cat === '1' || cat === 'prima' || cat === 'prima categoria';
+    };
 
     const societyTrials: { [society: string]: { [trial: string]: { score: number, shooters: any[] } | null } } = {};
     uniqueSocieties.forEach((soc) => {
@@ -8369,12 +8377,31 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         if (activeShooters.length === 0) return null;
 
         activeShooters.sort((a, b) => b.trialScores[trialKey]! - a.trialScores[trialKey]!);
-        const topShooters = activeShooters.slice(0, topN);
-        const sumOfScores = topShooters.reduce((acc, s) => acc + s.trialScores[trialKey]!, 0);
+        
+        const selectedShooters: any[] = [];
+        let epCount = 0;
+
+        for (const shooter of activeShooters) {
+          if (selectedShooters.length >= topN) break;
+
+          const isEP = isEccellenzaOrPrima(shooter.category);
+          if (isEP) {
+            if (epCount < maxEP) {
+              selectedShooters.push(shooter);
+              epCount++;
+            }
+          } else {
+            selectedShooters.push(shooter);
+          }
+        }
+
+        const sumOfScores = selectedShooters.reduce((acc, s) => acc + s.trialScores[trialKey]!, 0);
+
+        if (selectedShooters.length < topN) return null;
 
         return {
           score: sumOfScores,
-          shooters: topShooters.map(s => ({ id: s.shooterId, name: s.name, surname: s.surname, score: s.trialScores[trialKey] }))
+          shooters: selectedShooters.map(s => ({ id: s.shooterId, name: s.name, surname: s.surname, score: s.trialScores[trialKey] }))
         };
       };
 
