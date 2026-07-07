@@ -457,9 +457,9 @@ const HistoryList: React.FC<HistoryListProps> = ({
                             key={i} 
                             onClick={() => setEditingSeries({ comp, index: i })}
                             className={`relative flex flex-col items-center bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-800/50 min-w-[42px] cursor-pointer hover:bg-slate-800/80 hover:border-orange-500/50 transition-all active:scale-95 group/series`}
-                            title={t('click_to_enter_result')}
+                            title={comp.seriesFields && comp.seriesFields[i] ? `Serie ${i+1} - Campo ${comp.seriesFields[i]}` : t('click_to_enter_result')}
                           >
-                            <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}</span>
+                            <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}{comp.seriesFields && comp.seriesFields[i] ? ` - C${comp.seriesFields[i]}` : ''}</span>
                             <span className={`text-sm font-black ${s === 25 ? 'text-orange-500' : s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
                             {hasDetails && <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-orange-500 rounded-full shadow-[0_0_5px_rgba(249,115,22,0.5)]"></div>}
                             {s === 25 && (

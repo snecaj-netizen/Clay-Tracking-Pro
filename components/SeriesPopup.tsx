@@ -42,6 +42,12 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
     }
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [field, setField] = useState<string>(() => {
+    if (competition.seriesFields && competition.seriesFields[seriesIndex]) {
+      return competition.seriesFields[seriesIndex];
+    }
+    return '';
+  });
 
   const handleDetailedScoreChange = (targetIdx: number) => {
     const newDetailed = [...detailedScore];
@@ -78,6 +84,12 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
       const updatedDetailedScores = competition.detailedScores ? [...competition.detailedScores] : Array(competition.scores.length).fill([]);
       updatedDetailedScores[seriesIndex] = detailedScore;
 
+      const updatedSeriesFields = competition.seriesFields ? [...competition.seriesFields] : Array(competition.scores.length).fill('');
+      while (updatedSeriesFields.length < competition.scores.length) {
+        updatedSeriesFields.push('');
+      }
+      updatedSeriesFields[seriesIndex] = field;
+
       const totalScore = updatedScores.reduce((a, b) => a + b, 0);
       const completedSeriesCount = updatedScores.filter(s => s > 0).length || 1;
       const averagePerSeries = totalScore / completedSeriesCount;
@@ -86,6 +98,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
         ...competition,
         scores: updatedScores,
         detailedScores: updatedDetailedScores,
+        seriesFields: updatedSeriesFields,
         totalScore,
         averagePerSeries
       };
@@ -113,17 +126,30 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
         </div>
 
         <div className="space-y-6 sm:space-y-5">
-          <div className="flex items-center justify-between bg-slate-950/50 p-4 sm:p-3 rounded-2xl sm:rounded-xl border border-slate-800/50">
-            <span className="text-xs sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('series_total_label')}</span>
-            <input 
-              type="number" 
-              min="0" 
-              max={targetsPerSeries} 
-              value={score} 
-              onChange={(e) => handleScoreChange(e.target.value)} 
-              onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
-              className="w-24 sm:w-20 bg-slate-900 border border-slate-700 rounded-xl sm:rounded-lg px-3 py-2 sm:py-1.5 text-center text-2xl sm:text-xl font-black text-white focus:border-orange-600 outline-none transition-all" 
-            />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex items-center justify-between bg-slate-950/50 p-4 sm:p-3 rounded-2xl sm:rounded-xl border border-slate-800/50">
+              <span className="text-xs sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('series_total_label')}</span>
+              <input 
+                type="number" 
+                min="0" 
+                max={targetsPerSeries} 
+                value={score} 
+                onChange={(e) => handleScoreChange(e.target.value)} 
+                onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
+                className="w-16 sm:w-14 bg-slate-900 border border-slate-700 rounded-xl sm:rounded-lg px-2 py-2 sm:py-1.5 text-center text-2xl sm:text-xl font-black text-white focus:border-orange-600 outline-none transition-all" 
+              />
+            </div>
+            <div className="flex items-center justify-between bg-slate-950/50 p-4 sm:p-3 rounded-2xl sm:rounded-xl border border-slate-800/50">
+              <span className="text-xs sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('field_number')}</span>
+              <input 
+                type="text" 
+                maxLength={10}
+                placeholder="Es: 1, A..."
+                value={field} 
+                onChange={(e) => setField(e.target.value)} 
+                className="w-20 sm:w-16 bg-slate-900 border border-slate-700 rounded-xl sm:rounded-lg px-2 py-2 sm:py-1.5 text-center text-base sm:text-sm font-bold text-slate-200 placeholder:text-slate-600 focus:text-white focus:border-orange-600 outline-none transition-all" 
+              />
+            </div>
           </div>
 
           <div className="space-y-4 sm:space-y-3">

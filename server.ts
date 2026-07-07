@@ -726,6 +726,7 @@ const initDB = async () => {
         seriesimages TEXT,
         usedcartridges TEXT,
         chokes TEXT,
+        series_fields TEXT,
         team_name TEXT,
         team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
         event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
@@ -750,6 +751,7 @@ const initDB = async () => {
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS society_at_time TEXT");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS ranking_preference TEXT DEFAULT 'categoria'");
       await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS ranking_preference_override TEXT");
+      await pool.query("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS series_fields TEXT");
     } catch (e) {
       console.log("Some columns might already exist or ALTER TABLE failed:", e);
     }
@@ -3844,6 +3846,7 @@ app.get('/api/admin/shooter-results/:userId', authenticateToken, requireAdminOrS
       scores: JSON.parse(row.scores),
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
+      seriesFields: row.series_fields ? JSON.parse(row.series_fields) : undefined,
       usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
       teamName: row.team_name,
       ranking_preference: row.ranking_preference
@@ -3950,6 +3953,7 @@ app.get('/api/admin/export-all', authenticateToken, requireAdmin, async (req, re
       scores: JSON.parse(row.scores),
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
+      seriesFields: row.series_fields ? JSON.parse(row.series_fields) : undefined,
       usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
       teamName: row.team_name
     }));
@@ -5727,6 +5731,7 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
       ...r,
       scores: r.scores ? (typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores) : [],
       detailedScores: r.detailedscores ? (typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores) : null,
+      seriesFields: r.series_fields ? (typeof r.series_fields === 'string' ? JSON.parse(r.series_fields) : r.series_fields) : null,
       weather: r.weather ? (typeof r.weather === 'string' ? JSON.parse(r.weather) : r.weather) : null,
       seriesImages: r.seriesimages ? (typeof r.seriesimages === 'string' ? JSON.parse(r.seriesimages) : r.seriesimages) : null,
       usedCartridges: r.usedcartridges ? (typeof r.usedcartridges === 'string' ? JSON.parse(r.usedcartridges) : r.usedcartridges) : null,
@@ -7438,7 +7443,7 @@ app.get('/api/public/events/:id/results', async (req, res) => {
          c.totalscore, c.totaltargets, c.averageperseries, c.position, c.cost, c.win, 
          c.notes, c.weather, c.scores, c.detailedscores, c.usedcartridges, c.chokes, 
          c.event_id, c.shoot_off, c.category_at_time, c.qualification_at_time, c.society_at_time, 
-         c.ranking_preference, c.ranking_preference_override, c.hidden_from_user, c.team_id, c.team_name,
+         c.ranking_preference, c.ranking_preference_override, c.hidden_from_user, c.team_id, c.team_name, c.series_fields,
          u.id as user_id, u.name as user_name, u.surname as user_surname, u.society, u.avatar
        FROM competitions c
        JOIN users u ON c.user_id = u.id
@@ -7451,7 +7456,8 @@ app.get('/api/public/events/:id/results', async (req, res) => {
     const parsedResults = results.map(r => ({
       ...r,
       scores: r.scores ? (typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores) : [],
-      detailedScores: r.detailedscores ? (typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores) : null
+      detailedScores: r.detailedscores ? (typeof r.detailedscores === 'string' ? JSON.parse(r.detailedscores) : r.detailedscores) : null,
+      seriesFields: r.series_fields ? (typeof r.series_fields === 'string' ? JSON.parse(r.series_fields) : r.series_fields) : null
     }));
 
     res.json(parsedResults);
@@ -7573,6 +7579,7 @@ app.get('/api/competitions', authenticateToken, async (req: any, res) => {
       scores: JSON.parse(row.scores),
       detailedScores: row.detailedscores ? JSON.parse(row.detailedscores) : undefined,
       seriesImages: row.seriesimages ? JSON.parse(row.seriesimages) : undefined,
+      seriesFields: row.series_fields ? JSON.parse(row.series_fields) : undefined,
       usedCartridges: row.usedcartridges ? JSON.parse(row.usedcartridges) : undefined,
       chokes: row.chokes ? JSON.parse(row.chokes) : undefined,
       userId: row.user_id,
@@ -7692,8 +7699,8 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
     }
 
     await pool.query(
-      `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, event_id, shoot_off, category_at_time, qualification_at_time, society_at_time, ranking_preference, ranking_preference_override, hidden_from_user, team_id, team_name) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, FALSE, $29, $30)
+      `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, event_id, shoot_off, category_at_time, qualification_at_time, society_at_time, ranking_preference, ranking_preference_override, hidden_from_user, team_id, team_name, series_fields) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, FALSE, $29, $30, $31)
        ON CONFLICT (id) DO UPDATE SET 
        user_id = EXCLUDED.user_id, name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, location = EXCLUDED.location, 
        discipline = EXCLUDED.discipline, level = EXCLUDED.level, totalscore = EXCLUDED.totalscore, totaltargets = EXCLUDED.totaltargets, 
@@ -7704,7 +7711,8 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
        qualification_at_time = EXCLUDED.qualification_at_time, society_at_time = EXCLUDED.society_at_time,
        ranking_preference = EXCLUDED.ranking_preference,
        ranking_preference_override = EXCLUDED.ranking_preference_override,
-       hidden_from_user = FALSE, team_id = EXCLUDED.team_id, team_name = EXCLUDED.team_name`,
+       hidden_from_user = FALSE, team_id = EXCLUDED.team_id, team_name = EXCLUDED.team_name,
+       series_fields = EXCLUDED.series_fields`,
       [
         finalId, targetUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
         c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -7719,7 +7727,8 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
         cat, qual, soc,
         c.ranking_preference || 'categoria',
         c.ranking_preference_override || null,
-        teamId, teamName
+        teamId, teamName,
+        c.seriesFields ? JSON.stringify(c.seriesFields) : null
       ]
     );
 
@@ -7788,7 +7797,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
     if (req.user.role === 'admin') {
       const finalUserId = c.userId || targetUserId;
       result = await pool.query(
-        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24, team_id=$25, team_name=$26 WHERE id=$27`,
+        `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24, team_id=$25, team_name=$26, series_fields=$27 WHERE id=$28`,
         [
           finalUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -7803,6 +7812,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
           teamId, teamName,
+          c.seriesFields ? JSON.stringify(c.seriesFields) : null,
           req.params.id
         ]
       );
@@ -7846,7 +7856,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       }
 
       result = await pool.query(
-        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25 WHERE id=$26`,
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25, series_fields=$26 WHERE id=$27`,
         [
           c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -7861,12 +7871,13 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
           teamId, teamName,
+          c.seriesFields ? JSON.stringify(c.seriesFields) : null,
           req.params.id
         ]
       );
     } else {
       result = await pool.query(
-        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25 WHERE id=$26 AND user_id=$27`,
+        `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25, series_fields=$26 WHERE id=$27 AND user_id=$28`,
         [
           c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
           c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -7881,6 +7892,7 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
           c.ranking_preference || 'categoria',
           c.ranking_preference_override || null,
           teamId, teamName,
+          c.seriesFields ? JSON.stringify(c.seriesFields) : null,
           req.params.id, req.user.id
         ]
       );
@@ -8895,10 +8907,10 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
       for (const c of competitions) {
         const userId = (req.user.role === 'admin' && c.userId) ? c.userId : req.user.id;
         await client.query(
-          `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, team_name, team_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          `INSERT INTO competitions (id, user_id, name, date, enddate, location, discipline, level, totalscore, totaltargets, averageperseries, position, cost, win, notes, weather, scores, detailedscores, seriesimages, usedcartridges, chokes, team_name, team_id, series_fields) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
            ON CONFLICT (id) DO UPDATE SET 
-           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21, team_name=$22, team_id=$23`,
+           name=$3, date=$4, enddate=$5, location=$6, discipline=$7, level=$8, totalscore=$9, totaltargets=$10, averageperseries=$11, position=$12, cost=$13, win=$14, notes=$15, weather=$16, scores=$17, detailedscores=$18, seriesimages=$19, usedcartridges=$20, chokes=$21, team_name=$22, team_id=$23, series_fields=$24`,
           [
             c.id, userId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
             c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
@@ -8909,7 +8921,8 @@ app.post('/api/import', authenticateToken, async (req: any, res) => {
             c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
             c.chokes ? JSON.stringify(c.chokes) : null,
             c.teamName || null,
-            c.teamId || null
+            c.teamId || null,
+            c.seriesFields ? JSON.stringify(c.seriesFields) : null
           ]
         );
       }

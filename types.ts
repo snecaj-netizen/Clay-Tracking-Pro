@@ -72,6 +72,7 @@ export interface Competition {
   scores: number[];
   detailedScores?: boolean[][]; // true = hit, false = miss
   seriesImages?: string[]; // array of base64 images or URLs for each series
+  seriesFields?: string[]; // array of layout/field names/numbers for each series
   totalScore: number;
   averagePerSeries: number;
   position?: number;

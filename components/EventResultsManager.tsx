@@ -2367,7 +2367,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               </div>
                             </td>
                             {row.scores.map((s: number, sIdx: number) => (
-                              <td key={sIdx} className="p-3 text-center font-black text-sm text-slate-950">{s}</td>
+                              <td key={sIdx} className="p-3 text-center font-black text-sm text-slate-950" title={row.seriesFields && row.seriesFields[sIdx] ? `Serie ${sIdx + 1} - Campo ${row.seriesFields[sIdx]}` : `Serie ${sIdx + 1}`}>{s}</td>
                             ))}
                             <td className="p-3 text-center font-black text-sm text-amber-600">{row.shootOff !== null && row.shootOff !== undefined ? row.shootOff : 0}</td>
                             <td className="p-3 text-center text-[10px] font-black uppercase text-slate-500">
@@ -2814,7 +2814,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                   return (
                                     <div key={sIdx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
                                       <div className="flex justify-between items-center px-1">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serie {sIdx + 1}</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                          Serie {sIdx + 1}{r.seriesFields && r.seriesFields[sIdx] ? ` - Campo ${r.seriesFields[sIdx]}` : ''}
+                                        </div>
                                         <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/{targetsPerSeries}</span></div>
                                       </div>
                                       <div className="flex flex-wrap gap-4 items-end">

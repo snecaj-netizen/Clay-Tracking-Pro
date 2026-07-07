@@ -63,6 +63,24 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const numSeries = Math.ceil(totalTargets / targetsPerSeries);
     return Array.from({ length: numSeries }, () => []);
   });
+  const [seriesFields, setSeriesFields] = useState<string[]>(() => {
+    if (data?.seriesFields) {
+      const seriesLayoutObj = getSeriesLayout(discipline);
+      const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+      const numSeries = Math.ceil(totalTargets / targetsPerSeries);
+      if (data.seriesFields.length === numSeries) return data.seriesFields;
+      const arr = Array(numSeries).fill('');
+      for (let i = 0; i < Math.min(data.seriesFields.length, numSeries); i++) {
+        arr[i] = data.seriesFields[i] || '';
+      }
+      return arr;
+    }
+    
+    const seriesLayoutObj = getSeriesLayout(discipline);
+    const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+    const numSeries = Math.ceil(totalTargets / targetsPerSeries);
+    return Array(numSeries).fill('');
+  });
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
   const [cartridgeSource, setCartridgeSource] = useState<'warehouse' | 'types'>('warehouse');
@@ -276,6 +294,13 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
           }
           return newDetailed;
         });
+        setSeriesFields(prev => {
+          const newFields = Array(numSeries).fill('');
+          for (let i = 0; i < Math.min(prev.length, numSeries); i++) {
+            newFields[i] = prev[i] || '';
+          }
+          return newFields;
+        });
       }
     }
   }, [eventType, totalTargets, discipline, scores.length, isTraining]);
@@ -402,6 +427,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       level,
       scores,
       detailedScores,
+      seriesFields,
       seriesImages,
       totalScore,
       averagePerSeries,
@@ -643,6 +669,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 if (scores.length > 1) {
                   setScores(scores.slice(0, -1));
                   setDetailedScores(detailedScores.slice(0, -1));
+                  setSeriesFields(seriesFields.slice(0, -1));
                 }
               }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">-</button>
               <div className="flex-[2] text-center text-3xl font-black text-white">{scores.length}</div>
@@ -650,6 +677,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 if (scores.length < 12) {
                   setScores([...scores, 0]);
                   setDetailedScores([...detailedScores, []]);
+                  setSeriesFields([...seriesFields, '']);
                 }
               }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-xl">+</button>
             </div>
@@ -916,7 +944,27 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
               )}
               <div className="bg-slate-950/30 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Serie {idx + 1}</span>
+                    <div className="flex items-center gap-1.5 ml-1">
+                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Campo:</span>
+                      <input 
+                        type="text" 
+                        maxLength={10}
+                        placeholder="Es: 1, A..."
+                        value={seriesFields[idx] || ''} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSeriesFields(prev => {
+                            const newFields = [...prev];
+                            newFields[idx] = val;
+                            return newFields;
+                          });
+                        }}
+                        className="w-24 bg-slate-900 border border-slate-800 rounded-lg px-2 py-0.5 text-left text-[10px] font-bold text-slate-300 focus:border-orange-600 focus:text-white outline-none transition-all" 
+                      />
+                    </div>
+                  </div>
                   <div className="flex items-center gap-3">
                   <input type="number" min="0" max={targetsPerSeries} value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
                   <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
