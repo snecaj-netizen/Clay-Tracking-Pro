@@ -32,23 +32,40 @@ import HomePage from '../components/HomePage';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// Lazy load heavy components
-const Dashboard = lazy(() => import('../components/Dashboard'));
-const CompetitionForm = lazy(() => import('../components/CompetitionForm'));
-const HistoryList = lazy(() => import('../components/HistoryList'));
-const Warehouse = lazy(() => import('../components/Warehouse'));
-const AdminPanel = lazy(() => import('../components/AdminPanel'));
-const EventsManager = lazy(() => import('../components/EventsManager'));
-const AICoachPage = lazy(() => import('../components/AICoachPage'));
-const LeTueGarePage = lazy(() => import('../components/LeTueGarePage'));
-const GarePage = lazy(() => import('../components/GarePage'));
-const LaMiaSocietaPage = lazy(() => import('../components/LaMiaSocietaPage'));
-const AdminPageView = lazy(() => import('../components/AdminPageView'));
-const SocietyDetailModal = lazy(() => import('../components/SocietyDetailModal'));
-const NotificationsPage = lazy(() => import('../components/NotificationsPage'));
-const EventRegistrationModal = lazy(() => import('../components/EventRegistrationModal').then(module => ({ default: module.EventRegistrationModal })));
-const NotificationsManager = lazy(() => import('../components/NotificationsManager'));
-const PublicPortal = lazy(() => import('../components/PublicPortal'));
+import DashboardComp from '../components/Dashboard';
+import CompetitionFormComp from '../components/CompetitionForm';
+import HistoryListComp from '../components/HistoryList';
+import WarehouseComp from '../components/Warehouse';
+import AdminPanelComp from '../components/AdminPanel';
+import EventsManagerComp from '../components/EventsManager';
+import AICoachPageComp from '../components/AICoachPage';
+import LeTueGarePageComp from '../components/LeTueGarePage';
+import GarePageComp from '../components/GarePage';
+import LaMiaSocietaPageComp from '../components/LaMiaSocietaPage';
+import AdminPageViewComp from '../components/AdminPageView';
+import SocietyDetailModalComp from '../components/SocietyDetailModal';
+import NotificationsPageComp from '../components/NotificationsPage';
+import { EventRegistrationModal as EventRegistrationModalComp } from '../components/EventRegistrationModal';
+import NotificationsManagerComp from '../components/NotificationsManager';
+import PublicPortalComp from '../components/PublicPortal';
+
+// Pre-resolve lazy components with in-memory bundled imports for offline reliability
+const Dashboard = reactLazy(() => Promise.resolve({ default: DashboardComp }));
+const CompetitionForm = reactLazy(() => Promise.resolve({ default: CompetitionFormComp }));
+const HistoryList = reactLazy(() => Promise.resolve({ default: HistoryListComp }));
+const Warehouse = reactLazy(() => Promise.resolve({ default: WarehouseComp }));
+const AdminPanel = reactLazy(() => Promise.resolve({ default: AdminPanelComp }));
+const EventsManager = reactLazy(() => Promise.resolve({ default: EventsManagerComp }));
+const AICoachPage = reactLazy(() => Promise.resolve({ default: AICoachPageComp }));
+const LeTueGarePage = reactLazy(() => Promise.resolve({ default: LeTueGarePageComp }));
+const GarePage = reactLazy(() => Promise.resolve({ default: GarePageComp }));
+const LaMiaSocietaPage = reactLazy(() => Promise.resolve({ default: LaMiaSocietaPageComp }));
+const AdminPageView = reactLazy(() => Promise.resolve({ default: AdminPageViewComp }));
+const SocietyDetailModal = reactLazy(() => Promise.resolve({ default: SocietyDetailModalComp }));
+const NotificationsPage = reactLazy(() => Promise.resolve({ default: NotificationsPageComp }));
+const EventRegistrationModal = reactLazy(() => Promise.resolve({ default: EventRegistrationModalComp }));
+const NotificationsManager = reactLazy(() => Promise.resolve({ default: NotificationsManagerComp }));
+const PublicPortal = reactLazy(() => Promise.resolve({ default: PublicPortalComp }));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">
@@ -131,7 +148,62 @@ const App: React.FC = () => {
     }
   }, [user?.is_international, user === null, language, setLanguage]);
   
-  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [competitionsRaw, setCompetitionsRaw] = useState<Competition[]>([]);
+  const [offlineSyncTrigger, setOfflineSyncTrigger] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const mergePendingOfflineActions = useCallback((allComps: Competition[]): Competition[] => {
+    try {
+      const pendingStr = localStorage.getItem('pending_offline_sync');
+      if (!pendingStr) return allComps;
+      const pending: any[] = JSON.parse(pendingStr);
+      
+      let merged = [...allComps];
+      
+      // 1. Process deletes
+      const deletedIds = new Set(
+        pending
+          .filter(item => item.type === 'delete_competition')
+          .map(item => item.payload.id)
+      );
+      if (deletedIds.size > 0) {
+        merged = merged.filter(c => !deletedIds.has(c.id));
+      }
+      
+      // 2. Process saves/edits
+      const saves = pending.filter(item => item.type === 'save_competition');
+      for (const saveAction of saves) {
+        const comp = saveAction.payload;
+        // Mark it as pending sync
+        const compWithPending = { ...comp, is_pending_sync: true };
+        
+        const existingIdx = merged.findIndex(c => c.id === comp.id);
+        if (existingIdx > -1) {
+          merged[existingIdx] = compWithPending;
+        } else {
+          merged.unshift(compWithPending);
+        }
+      }
+      
+      return merged;
+    } catch (e) {
+      console.error('Error merging pending offline actions:', e);
+      return allComps;
+    }
+  }, [offlineSyncTrigger]);
+
+  const competitions = useMemo(() => {
+    return mergePendingOfflineActions(competitionsRaw);
+  }, [competitionsRaw, mergePendingOfflineActions]);
+
+  const setCompetitions = useCallback((val: Competition[] | ((prev: Competition[]) => Competition[])) => {
+    setCompetitionsRaw(prev => {
+      const nextVal = typeof val === 'function' ? val(prev) : val;
+      return nextVal;
+    });
+  }, []);
+
   const [cartridges, setCartridges] = useState<Cartridge[]>([]);
   const [cartridgeTypes, setCartridgeTypes] = useState<CartridgeType[]>([]);
   const [societies, setSocieties] = useState<any[]>([]);
@@ -388,6 +460,22 @@ const App: React.FC = () => {
         setter: (val: any) => void, 
         fallback: any = []
       ) => {
+        const cacheKey = `cached_${url.replace(/\//g, '_')}`;
+
+        if (!navigator.onLine) {
+          try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+              setter(JSON.parse(cached));
+              return true;
+            }
+          } catch (e) {
+            console.error('Error reading cache:', e);
+          }
+          setter(fallback);
+          return false;
+        }
+
         try {
           const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }, signal });
           if (res.status === 401 || res.status === 403) {
@@ -401,15 +489,42 @@ const App: React.FC = () => {
           if (res.ok) {
             const data = await res.json();
             setter(data);
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(data));
+            } catch (e) {
+              console.warn('Could not cache data', e);
+            }
           } else {
+            try {
+              const cached = localStorage.getItem(cacheKey);
+              if (cached) {
+                setter(JSON.parse(cached));
+                return true;
+              }
+            } catch (e) {}
             setter(fallback);
           }
           return true;
         } catch (err: any) {
           if (err.name !== 'AbortError') {
-            console.error(`Error fetching ${url}:`, err);
+            let hasCache = false;
+            try {
+              const cached = localStorage.getItem(cacheKey);
+              if (cached) {
+                setter(JSON.parse(cached));
+                hasCache = true;
+              }
+            } catch (e) {}
+
+            if (!hasCache) {
+              console.warn(`Error fetching ${url} (no cache found):`, err);
+            } else {
+              console.warn(`Fetch to ${url} failed, successfully fell back to cached offline copy.`);
+            }
           }
-          setter(fallback);
+          if (err.name === 'AbortError') {
+            setter(fallback);
+          }
           return false;
         }
       };
@@ -450,14 +565,149 @@ const App: React.FC = () => {
     }
   }, [token, view, t, triggerToast, fetchUserProfile]);
 
+  const updatePendingCount = useCallback(() => {
+    try {
+      const pendingStr = localStorage.getItem('pending_offline_sync');
+      if (pendingStr) {
+        const pending = JSON.parse(pendingStr);
+        setPendingCount(pending.length);
+      } else {
+        setPendingCount(0);
+      }
+    } catch (e) {
+      setPendingCount(0);
+    }
+  }, []);
+
+  const triggerOfflineStateUpdate = useCallback(() => {
+    setOfflineSyncTrigger(prev => prev + 1);
+    updatePendingCount();
+  }, [updatePendingCount]);
+
+  const syncOfflineData = useCallback(async () => {
+    if (isSyncing || !navigator.onLine || !token) return;
+    
+    const pendingStr = localStorage.getItem('pending_offline_sync');
+    if (!pendingStr) return;
+    
+    let pending: any[] = [];
+    try {
+      pending = JSON.parse(pendingStr);
+    } catch (e) {
+      console.error('Error parsing pending sync queue:', e);
+      return;
+    }
+    
+    if (pending.length === 0) return;
+    
+    setIsSyncing(true);
+    triggerToast?.(t('syncing_data'), 'info');
+    
+    let processedIds: string[] = [];
+    let hasError = false;
+    
+    for (const item of pending) {
+      try {
+        if (item.type === 'save_competition') {
+          const comp = item.payload;
+          const isEdit = comp._isEdit || false;
+          
+          const cleanComp = { ...comp };
+          delete cleanComp._isEdit;
+          delete cleanComp.is_pending_sync;
+          
+          const method = isEdit ? 'PUT' : 'POST';
+          const endpoint = isEdit ? `/api/competitions/${comp.id}` : '/api/competitions';
+          
+          const res = await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(cleanComp)
+          });
+          
+          if (!res.ok) {
+            console.error('Error syncing competition:', await res.text());
+            hasError = true;
+            break;
+          }
+        } else if (item.type === 'delete_competition') {
+          const res = await fetch(`/api/competitions/${item.payload.id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (!res.ok) {
+            console.error('Error syncing competition deletion:', await res.text());
+            if (res.status !== 404) {
+              hasError = true;
+              break;
+            }
+          }
+        }
+        
+        processedIds.push(item.queueId);
+      } catch (err) {
+        console.error('Network error during offline sync:', err);
+        hasError = true;
+        break;
+      }
+    }
+    
+    if (processedIds.length > 0) {
+      const remaining = pending.filter(item => !processedIds.includes(item.queueId));
+      if (remaining.length === 0) {
+        localStorage.removeItem('pending_offline_sync');
+      } else {
+        localStorage.setItem('pending_offline_sync', JSON.stringify(remaining));
+      }
+    }
+    
+    setIsSyncing(false);
+    triggerOfflineStateUpdate();
+    
+    if (hasError) {
+      triggerToast?.(t('sync_error'), 'error');
+    } else if (processedIds.length > 0) {
+      triggerToast?.(t('sync_complete'), 'success');
+      fetchData();
+    }
+  }, [isSyncing, token, triggerToast, fetchData, t, triggerOfflineStateUpdate]);
+
+  useEffect(() => {
+    updatePendingCount();
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'pending_offline_sync') {
+        triggerOfflineStateUpdate();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [updatePendingCount, triggerOfflineStateUpdate]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      syncOfflineData();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [syncOfflineData]);
+
   useEffect(() => {
     const controller = new AbortController();
     if (token) {
       fetchData(controller.signal);
       
+      if (navigator.onLine) {
+        syncOfflineData();
+      }
+      
       // Auto-refresh main data every 2 minutes for general sync
       const intervalId = setInterval(() => {
         fetchData();
+        if (navigator.onLine) {
+          syncOfflineData();
+        }
       }, 120000);
 
       return () => {
@@ -467,7 +717,7 @@ const App: React.FC = () => {
     } else {
       setLoading(false);
     }
-  }, [token, fetchData]);
+  }, [token, fetchData, syncOfflineData]);
 
   useEffect(() => {
     if (view === 'le-tue-gare' && user?.role === 'society') {
@@ -601,6 +851,64 @@ const App: React.FC = () => {
     // Ensure the competition object has the correct ID
     const compToSave = { ...comp, id: compId };
 
+    if (!navigator.onLine) {
+      try {
+        const pendingStr = localStorage.getItem('pending_offline_sync') || '[]';
+        let pending: any[] = JSON.parse(pendingStr);
+        
+        // Save the isEdit status in the metadata
+        (compToSave as any)._isEdit = isEdit;
+        
+        // If editing an item that is already in the queue, update its payload
+        const existingIdx = pending.findIndex(item => item.type === 'save_competition' && item.payload.id === compId);
+        if (existingIdx > -1) {
+          pending[existingIdx].payload = compToSave;
+          pending[existingIdx].timestamp = Date.now();
+        } else {
+          pending.push({
+            queueId: generateUUID(),
+            type: 'save_competition',
+            payload: compToSave,
+            timestamp: Date.now()
+          });
+        }
+        localStorage.setItem('pending_offline_sync', JSON.stringify(pending));
+        
+        // Update local competitions state immediately
+        setCompetitions(prev => !isEdit ? [compToSave, ...prev] : prev.map(c => c.id === compToSave.id ? compToSave : c));
+        
+        // Update local cached competitions list so a reload has it
+        try {
+          const cacheKey = 'cached__api_competitions';
+          const cachedStr = localStorage.getItem(cacheKey);
+          if (cachedStr) {
+            const cached: Competition[] = JSON.parse(cachedStr);
+            const nextCached = !isEdit ? [compToSave, ...cached] : cached.map(c => c.id === compToSave.id ? compToSave : c);
+            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
+          }
+        } catch (e) {
+          console.error('Error updating cache:', e);
+        }
+        
+        // Success feedback
+        triggerToast(t('offline_saved'), 'success');
+        triggerOfflineStateUpdate();
+        
+        // Close form and redirect
+        if (view === 'new' || editingCompetition) {
+          setView(previousView || 'history');
+          setPreviousView(null);
+          setEditingCompetition(null);
+          setPrefillCompetition(null);
+        }
+      } catch (err) {
+        console.error('Error in offline save handler:', err);
+      } finally {
+        setIsSavingComp(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch(endpoint, {
         method,
@@ -615,6 +923,17 @@ const App: React.FC = () => {
           setCompetitions(prev => !isEdit ? [compToSave, ...prev] : prev.map(c => c.id === compToSave.id ? compToSave : c));
         }
         
+        // Update local cache
+        try {
+          const cacheKey = 'cached__api_competitions';
+          const cachedStr = localStorage.getItem(cacheKey);
+          if (cachedStr) {
+            const cached: Competition[] = JSON.parse(cachedStr);
+            const nextCached = !isEdit ? [compToSave, ...cached] : cached.map(c => c.id === compToSave.id ? compToSave : c);
+            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
+          }
+        } catch (e) {}
+
         // Show success toast
         triggerToast(isEdit ? t('comp_updated') : t('comp_saved'), 'success');
         
@@ -660,6 +979,53 @@ const App: React.FC = () => {
 
   const deleteCompetition = async (id: string) => {
     console.log('Attempting to delete competition with ID:', id);
+    
+    if (!navigator.onLine) {
+      try {
+        const pendingStr = localStorage.getItem('pending_offline_sync') || '[]';
+        let pending: any[] = JSON.parse(pendingStr);
+        
+        const saveActionIdx = pending.findIndex(item => item.type === 'save_competition' && item.payload.id === id);
+        
+        if (saveActionIdx > -1) {
+          // If it was newly created offline and is still pending sync, we can just remove its save action and not send anything to server!
+          pending.splice(saveActionIdx, 1);
+        } else {
+          // Otherwise, it exists on the server, so we must queue a delete action
+          pending.push({
+            queueId: generateUUID(),
+            type: 'delete_competition',
+            payload: { id },
+            timestamp: Date.now()
+          });
+        }
+        localStorage.setItem('pending_offline_sync', JSON.stringify(pending));
+        
+        // Update state
+        setCompetitions(prev => prev.filter(c => c.id !== id));
+        
+        // Update local cached competitions list so reload is in sync
+        try {
+          const cacheKey = 'cached__api_competitions';
+          const cachedStr = localStorage.getItem(cacheKey);
+          if (cachedStr) {
+            const cached: Competition[] = JSON.parse(cachedStr);
+            const nextCached = cached.filter(c => c.id !== id);
+            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
+          }
+        } catch (e) {
+          console.error('Error updating cache:', e);
+        }
+        
+        triggerToast?.(t('offline_deleted'), 'success');
+        triggerOfflineStateUpdate();
+        return true;
+      } catch (err) {
+        console.error('Error in offline delete handler:', err);
+        return false;
+      }
+    }
+
     try {
       const res = await fetch(`/api/competitions/${id}`, {
         method: 'DELETE',
@@ -668,6 +1034,18 @@ const App: React.FC = () => {
       console.log('Delete response status:', res.status);
       if (res.ok) {
         setCompetitions(prev => prev.filter(c => c.id !== id));
+        
+        // Update local cached competitions list
+        try {
+          const cacheKey = 'cached__api_competitions';
+          const cachedStr = localStorage.getItem(cacheKey);
+          if (cachedStr) {
+            const cached: Competition[] = JSON.parse(cachedStr);
+            const nextCached = cached.filter(c => c.id !== id);
+            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
+          }
+        } catch (e) {}
+
         return true;
       } else {
         const errorData = await res.json();
@@ -983,7 +1361,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50 flex flex-col overflow-x-hidden ${view === 'ai-coach' || view === 'home' ? 'pb-0' : 'pb-24 sm:pb-8'}`}>
-      <ConnectionStatus />
+      <ConnectionStatus pendingCount={pendingCount} isSyncing={isSyncing} onSync={syncOfflineData} />
       {view !== 'home' && (
         <Header 
           currentView={view} 

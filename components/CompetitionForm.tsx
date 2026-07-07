@@ -67,6 +67,18 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
   const [selectedUserId, setSelectedUserId] = useState<number>(data?.userId || currentUser?.id);
   const [cartridgeSource, setCartridgeSource] = useState<'warehouse' | 'types'>('warehouse');
   const [cartridgeSearch, setCartridgeSearch] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (currentUser?.role === 'admin' || currentUser?.role === 'society') {
@@ -600,13 +612,15 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campo / TAV</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+            Campo / TAV {!isOnline && <span className="text-orange-500 font-bold lowercase">({t('optional_offline')})</span>}
+          </label>
           <SocietySearch 
             value={location}
             onChange={setLocation}
             societies={societies}
             placeholder="Seleziona Campo / TAV..."
-            required
+            required={isOnline}
           />
           <p className="text-[10px] text-slate-500 italic">Se il campo non è in elenco, chiedi all'amministratore di aggiungerlo.</p>
         </div>

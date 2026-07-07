@@ -116,6 +116,7 @@ const translations: Translations = {
   'shooter': { it: 'Tiratore', en: 'Shooter' },
   'board_photo': { it: 'Foto Lavagna', en: 'Board Photo' },
   'training': { it: 'Allenamento', en: 'Training' },
+  'optional_offline': { it: 'opzionale offline', en: 'optional offline' },
   'regional': { it: 'Regionale', en: 'Regional' },
   'national': { it: 'Nazionale', en: 'National' },
   'international': { it: 'Internazionale', en: 'International' },
@@ -1229,7 +1230,16 @@ If they ask for training advice, suggest exercises based on their weaknesses eme
   'ai_coach_no_response_error': { it: 'Il coach non ha restituito alcun consiglio. Riprova.', en: 'The coach did not return any advice. Try again.' },
   'ai_coach_generic_error': { it: 'Impossibile connettersi al coach AI al momento.', en: 'Impossible to connect to the AI coach at the moment.' },
   'ai_coach_config_error': { it: 'Errore di configurazione: Chiave API mancante.', en: 'Configuration error: Missing API key.' },
-  'ai_coach_model_error': { it: 'Il modello AI non è al momento disponibile.', en: 'The AI model is not currently available.' }
+  'ai_coach_model_error': { it: 'Il modello AI non è al momento disponibile.', en: 'The AI model is not currently available.' },
+  'offline_saved': { it: 'Salvataggio offline riuscito. I dati verranno sincronizzati appena tornerà la connessione.', en: 'Saved offline. Data will sync as soon as connection is restored.' },
+  'offline_deleted': { it: 'Eliminato offline. L\'operazione verrà sincronizzata appena tornerà la connessione.', en: 'Deleted offline. The operation will sync as soon as connection is restored.' },
+  'syncing_data': { it: 'Sincronizzazione dati in corso...', en: 'Syncing offline data...' },
+  'sync_complete': { it: 'Sincronizzazione completata con successo!', en: 'Synchronization completed successfully!' },
+  'sync_error': { it: 'Errore durante la sincronizzazione dei dati.', en: 'Error during data synchronization.' },
+  'pending_sync_badge': { it: 'In attesa di sincronizzazione', en: 'Pending synchronization' },
+  'offline_banner_title': { it: 'Sei offline', en: 'You are offline' },
+  'offline_banner_desc': { it: 'Alcune operazioni verranno salvate localmente e sincronizzate automaticamente online.', en: 'Some operations will be saved locally and auto-synced when online.' },
+  'sync_now_btn': { it: 'Sincronizza Ora', en: 'Sync Now' }
 };
 
 interface LanguageContextType {
