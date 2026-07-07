@@ -155,7 +155,7 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
   } = useAdmin();
 
   const filteredSocieties = useMemo(() => {
-    return societies.filter(soc => {
+    const list = societies.filter(soc => {
       const term = societySearch.toLowerCase();
       const regionTerm = societyRegionSearch.toLowerCase();
       
@@ -169,7 +169,20 @@ const SocietyManagement: React.FC<SocietyManagementProps> = ({
         
       return matchesSearch && matchesRegion;
     });
-  }, [societies, societySearch, societyRegionSearch]);
+
+    if (currentUser?.society) {
+      const mySocLower = currentUser.society.trim().toLowerCase();
+      list.sort((a, b) => {
+        const isMySocA = a.name.trim().toLowerCase() === mySocLower || (a.code && a.code.trim().toLowerCase() === mySocLower);
+        const isMySocB = b.name.trim().toLowerCase() === mySocLower || (b.code && b.code.trim().toLowerCase() === mySocLower);
+        if (isMySocA && !isMySocB) return -1;
+        if (!isMySocA && isMySocB) return 1;
+        return 0;
+      });
+    }
+
+    return list;
+  }, [societies, societySearch, societyRegionSearch, currentUser]);
 
   const handleSocietyLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

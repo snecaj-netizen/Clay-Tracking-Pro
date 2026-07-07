@@ -933,6 +933,109 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     );
   }
 
+  // --- SKELETON LOADER FOR RANKINGS COMPUTATION ---
+  if (isRankingLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        {/* Header navigation skeleton */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 backdrop-blur">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="w-9 h-9 bg-slate-800 rounded-lg shrink-0" />
+            <div className="space-y-2 flex-1 sm:flex-initial">
+              <div className="flex gap-2">
+                <div className="w-16 h-3.5 bg-slate-800 rounded-full" />
+                <div className="w-16 h-3.5 bg-slate-800 rounded-full" />
+                <div className="w-10 h-3.5 bg-slate-800 rounded-full" />
+              </div>
+              <div className="w-48 h-4 bg-slate-800 rounded" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="w-36 h-8 bg-slate-800 rounded-lg" />
+            <div className="w-36 h-8 bg-slate-800 rounded-lg" />
+          </div>
+        </div>
+
+        {/* Info Box Skeleton */}
+        <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-xl space-y-2">
+          <div className="w-40 h-4 bg-slate-800 rounded" />
+          <div className="space-y-1.5 pt-1">
+            <div className="w-full h-3 bg-slate-800/60 rounded" />
+            <div className="w-5/6 h-3 bg-slate-800/60 rounded" />
+            <div className="w-4/5 h-3 bg-slate-800/60 rounded" />
+          </div>
+        </div>
+
+        {/* Trials Map Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3].map((idx) => (
+            <div key={idx} className="bg-slate-900/60 border border-slate-800 p-3.5 rounded-xl flex items-start gap-3.5">
+              <div className="w-9 h-9 bg-slate-800 rounded-lg shrink-0" />
+              <div className="space-y-2 flex-1">
+                <div className="w-24 h-2.5 bg-slate-800 rounded" />
+                <div className="w-full h-4 bg-slate-800 rounded" />
+                <div className="w-32 h-2.5 bg-slate-800/60 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Rankings Section Skeleton */}
+        <div className="space-y-4">
+          <div className="w-56 h-4 bg-slate-800 rounded" />
+          <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+            {/* Header */}
+            <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+              <div className="w-40 h-4 bg-slate-800 rounded" />
+              <div className="w-28 h-3 bg-slate-800 rounded" />
+            </div>
+
+            {/* Podium Skeleton */}
+            <div className="p-4 bg-slate-900/20 border-b border-slate-800/50 flex justify-center items-end py-8 gap-6">
+              {/* 2nd */}
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-16 h-3 bg-slate-800 rounded" />
+                <div className="w-12 h-2.5 bg-slate-800/60 rounded" />
+                <div className="w-12 h-4 bg-slate-800 rounded" />
+                <div className="w-16 bg-slate-800 rounded-t-lg h-10" />
+              </div>
+              {/* 1st */}
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-5 h-5 bg-amber-500/20 rounded-full" />
+                <div className="w-20 h-3 bg-slate-800 rounded" />
+                <div className="w-14 h-2.5 bg-slate-800/60 rounded" />
+                <div className="w-14 h-4 bg-slate-800 rounded" />
+                <div className="w-20 bg-slate-800 rounded-t-lg h-14" />
+              </div>
+              {/* 3rd */}
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-16 h-3 bg-slate-800 rounded" />
+                <div className="w-12 h-2.5 bg-slate-800/60 rounded" />
+                <div className="w-12 h-4 bg-slate-800 rounded" />
+                <div className="w-16 bg-slate-800 rounded-t-lg h-8" />
+              </div>
+            </div>
+
+            {/* Table skeleton */}
+            <div className="divide-y divide-slate-800/60">
+              {[1, 2, 3, 4, 5].map((idx) => (
+                <div key={idx} className="px-4 py-3.5 flex items-center gap-4">
+                  <div className="w-6 h-4 bg-slate-800 rounded shrink-0" />
+                  <div className="w-28 h-4 bg-slate-800 rounded" />
+                  <div className="w-40 h-4 bg-slate-800 rounded" />
+                  <div className="w-12 h-4 bg-slate-800 rounded ml-auto" />
+                  <div className="w-10 h-4 bg-slate-800 rounded" />
+                  <div className="w-10 h-4 bg-slate-800 rounded" />
+                  <div className="w-10 h-4 bg-slate-800 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // --- RENDERING DETAIL VIEW (RANKINGS & PODIUMS) ---
   if (selectedChampId && rankingData) {
     const rc = rankingData.championship;

@@ -112,7 +112,7 @@ const UpdateNotification: React.FC = () => {
           transition={{ type: 'spring', stiffness: 350, damping: 25 }}
           className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-96 z-[2000]"
         >
-          <div className="bg-slate-900 border border-orange-500/40 rounded-2xl p-4.5 shadow-2xl shadow-orange-950/40 backdrop-blur-xl relative overflow-hidden">
+          <div className="bg-slate-900 border border-orange-500/40 rounded-2xl p-5 shadow-2xl shadow-orange-950/40 backdrop-blur-xl relative overflow-hidden">
             {/* Soft decorative visual blob */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
             
