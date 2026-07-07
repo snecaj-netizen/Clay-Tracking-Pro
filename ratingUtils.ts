@@ -67,7 +67,10 @@ export const calculateRTE = (competitions: Competition[]): RTERating[] => {
   Object.entries(byDiscipline).forEach(([discipline, comps]) => {
     // Sort by average per series descending
     const sortedScores = comps
-      .map(c => c.averagePerSeries)
+      .map(c => {
+        const isDoppietto = c.discipline === Discipline.DCK || String(c.discipline).toUpperCase().includes('DOPPIETTO') || String(c.discipline).toUpperCase().includes('DCK');
+        return isDoppietto ? c.averagePerSeries / 2.0 : c.averagePerSeries;
+      })
       .sort((a, b) => b - a);
 
     const count = sortedScores.length;

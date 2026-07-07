@@ -370,7 +370,29 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Qualifica (FITASC)' : 'Qualification (FITASC)'}</label>
               <select required value={regData.qualification} onChange={e => setRegData({...regData, qualification: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all">
                 <option value="">{displayLang === 'it' ? 'Seleziona Qualifica' : 'Select Qualification'}</option>
-                {FITASC_QUALS.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
+                {FITASC_QUALS.map(q => {
+                  let localizedLabel = q.label;
+                  if (displayLang === 'it') {
+                    if (q.id === 'MAN') localizedLabel = 'MAN (Uomini)';
+                    else if (q.id === 'LAD') localizedLabel = 'LAD (Lady)';
+                    else if (q.id === 'JUN') localizedLabel = 'JUN (Junior / Settore Giovanile)';
+                    else if (q.id === 'SEN') localizedLabel = 'SEN (Senior)';
+                    else if (q.id === 'VET') localizedLabel = 'VET (Veterani)';
+                    else if (q.id === 'MAS') localizedLabel = 'MAS (Master)';
+                  } else {
+                    if (q.id === 'MAN') localizedLabel = 'MAN (Man)';
+                    else if (q.id === 'LAD') localizedLabel = 'LAD (Lady)';
+                    else if (q.id === 'JUN') localizedLabel = 'JUN (Junior)';
+                    else if (q.id === 'SEN') localizedLabel = 'SEN (Senior)';
+                    else if (q.id === 'VET') localizedLabel = 'VET (Veteran)';
+                    else if (q.id === 'MAS') localizedLabel = 'MAS (Master)';
+                  }
+                  return (
+                    <option key={q.id} value={q.id}>
+                      {localizedLabel}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

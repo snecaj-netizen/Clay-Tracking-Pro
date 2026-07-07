@@ -299,18 +299,6 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-                <i className="fas fa-calendar text-orange-500"></i>
-                {t('date')}
-              </label>
-              <input 
-                type="date" 
-                value={filterDate} 
-                onChange={(e) => handleFilterChange(setFilterDate)(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
                 <i className="fas fa-tag text-orange-500"></i>
                 {t('category')}
               </label>
@@ -321,10 +309,11 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">{t('all')}</option>
-                  <option value="E">{t('excellence')}</option>
-                  <option value="1*">1*</option>
-                  <option value="2*">2*</option>
-                  <option value="3*">3*</option>
+                  <option value="E">{language === 'it' ? 'E (Eccellenza)' : 'E (Excellence)'}</option>
+                  <option value="1*">{language === 'it' ? '1* (Prima)' : '1* (1st Class)'}</option>
+                  <option value="2*">{language === 'it' ? '2* (Seconda)' : '2* (2nd Class)'}</option>
+                  <option value="3*">{language === 'it' ? '3* (Terza)' : '3* (3rd Class)'}</option>
+                  <option value="Cacciatore">{language === 'it' ? 'Cacciatore' : 'Hunter'}</option>
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                   <i className="fas fa-chevron-down text-[10px]"></i>
@@ -343,11 +332,13 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">{t('all')}</option>
-                  <option value="Veterani">{t('veterans')}</option>
-                  <option value="Master">{t('master')}</option>
-                  <option value="Senior">{t('senior')}</option>
-                  <option value="Lady">{t('lady')}</option>
-                  <option value="Junior">{t('junior')}</option>
+                  <option value="MAN">{language === 'it' ? 'MAN (Uomini)' : 'MAN (Man)'}</option>
+                  <option value="LAD">{language === 'it' ? 'LAD (Lady)' : 'LAD (Lady)'}</option>
+                  <option value="JUN">{language === 'it' ? 'JUN (Junior / Settore Giovanile)' : 'JUN (Junior)'}</option>
+                  <option value="SEN">{language === 'it' ? 'SEN (Senior)' : 'SEN (Senior)'}</option>
+                  <option value="VET">{language === 'it' ? 'VET (Veterani)' : 'VET (Veteran)'}</option>
+                  <option value="MAS">{language === 'it' ? 'MAS (Master)' : 'MAS (Master)'}</option>
+                  <option value="Cacciatori">{language === 'it' ? 'Cacciatori' : 'Hunters'}</option>
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                   <i className="fas fa-chevron-down text-[10px]"></i>

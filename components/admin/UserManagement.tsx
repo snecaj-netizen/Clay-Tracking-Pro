@@ -1397,14 +1397,14 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('category')}</label>
                   <select value={category} disabled={isCacciatore} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none disabled:opacity-50">
                     {isCacciatore ? (
-                      <option value="Cacciatore">Cacciatore (CA)</option>
+                      <option value="Cacciatore">{language === 'it' ? 'Cacciatore (CA)' : 'Hunter (CA)'}</option>
                     ) : (
                       <>
                         <option value="">{t('select_dot')}</option>
-                        <option value="E">E</option>
-                        <option value="1*">1*</option>
-                        <option value="2*">2*</option>
-                        <option value="3*">3*</option>
+                        <option value="E">{language === 'it' ? 'E (Eccellenza)' : 'E (Excellence)'}</option>
+                        <option value="1*">{language === 'it' ? '1* (Prima)' : '1* (1st Class)'}</option>
+                        <option value="2*">{language === 'it' ? '2* (Seconda)' : '2* (2nd Class)'}</option>
+                        <option value="3*">{language === 'it' ? '3* (Terza)' : '3* (3rd Class)'}</option>
                       </>
                     )}
                   </select>
@@ -1413,16 +1413,16 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('qualification')}</label>
                   <select value={qualification} disabled={isCacciatore} onChange={e => setQualification(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all appearance-none disabled:opacity-50">
                     {isCacciatore ? (
-                      <option value="Cacciatori">Cacciatori</option>
+                      <option value="Cacciatori">{language === 'it' ? 'Cacciatori' : 'Hunters'}</option>
                     ) : (
                       <>
                         <option value="">{t('select_dot')}</option>
-                        <option value="MAN">MAN (Man)</option>
-                        <option value="LAD">LAD (Lady)</option>
-                        <option value="JUN">JUN (Junior)</option>
-                        <option value="SEN">SEN (Senior)</option>
-                        <option value="VET">VET (Veteran)</option>
-                        <option value="MAS">MAS (Master)</option>
+                        <option value="MAN">{language === 'it' ? 'MAN (Uomini)' : 'MAN (Man)'}</option>
+                        <option value="LAD">{language === 'it' ? 'LAD (Lady)' : 'LAD (Lady)'}</option>
+                        <option value="JUN">{language === 'it' ? 'JUN (Junior / Settore Giovanile)' : 'JUN (Junior)'}</option>
+                        <option value="SEN">{language === 'it' ? 'SEN (Senior)' : 'SEN (Senior)'}</option>
+                        <option value="VET">{language === 'it' ? 'VET (Veterani)' : 'VET (Veteran)'}</option>
+                        <option value="MAS">{language === 'it' ? 'MAS (Master)' : 'MAS (Master)'}</option>
                       </>
                     )}
                   </select>

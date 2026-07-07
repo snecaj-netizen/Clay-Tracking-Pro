@@ -580,7 +580,9 @@ export const AdminProvider: React.FC<{
         society: filterSociety,
         discipline: filterDiscipline,
         location: filterLocation,
-        year: filterYear
+        year: filterYear,
+        category: filterCategory,
+        qualification: filterQualification
       });
       
       const res = await fetch(`/api/admin/all-results?${queryParams.toString()}`, {
@@ -605,7 +607,7 @@ export const AdminProvider: React.FC<{
       if (!isBackground) setLoading(false);
       else setBackgroundLoading(false);
     }
-  }, [currentUser?.role, token, resultsPage, resultsPerPage, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear]);
+  }, [currentUser?.role, token, resultsPage, resultsPerPage, filterShooter, filterSociety, filterDiscipline, filterLocation, filterYear, filterCategory, filterQualification]);
 
   const fetchFilterOptions = useCallback(async (signal?: AbortSignal) => {
     try {

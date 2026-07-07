@@ -3602,6 +3602,8 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
     const discipline = req.query.discipline as string;
     const location = req.query.location as string;
     const year = req.query.year as string;
+    const category = req.query.category as string;
+    const qualification = req.query.qualification as string;
 
     let whereClauses: string[] = ["c.totalscore > 0"];
     let params: any[] = [];
@@ -3642,6 +3644,16 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
       params.push(parseInt(year));
     }
 
+    if (category) {
+      whereClauses.push("u.category = $" + (params.length + 1));
+      params.push(category);
+    }
+
+    if (qualification) {
+      whereClauses.push("u.qualification = $" + (params.length + 1));
+      params.push(qualification);
+    }
+
     const whereString = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
 
     // Get total count of distinct shooters
@@ -3661,7 +3673,11 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
         SELECT 
           user_id,
           discipline,
-          averageperseries,
+          CASE 
+            WHEN discipline = 'Doppietto Compak (DCK)' OR discipline LIKE '%Doppietto%' OR discipline LIKE '%DCK%' 
+            THEN averageperseries / 2.0 
+            ELSE averageperseries 
+          END as averageperseries,
           ROW_NUMBER() OVER(PARTITION BY user_id, discipline ORDER BY averageperseries DESC) as rank
         FROM competitions
         WHERE level != 'Allenamento / Pratica' AND discipline != 'Allenamento' AND totalscore > 0
@@ -4662,7 +4678,13 @@ app.get('/api/teams', authenticateToken, requireAdminOrSociety, async (req: any,
                'category', u.category,
                'qualification', u.qualification,
                'rte_score', (
-                 SELECT AVG(averageperseries)
+                 SELECT AVG(
+                   CASE 
+                     WHEN t.discipline = 'Doppietto Compak (DCK)' OR t.discipline LIKE '%Doppietto%' OR t.discipline LIKE '%DCK%' 
+                     THEN averageperseries / 2.0 
+                     ELSE averageperseries 
+                   END
+                 )
                  FROM (
                    SELECT averageperseries
                    FROM competitions
