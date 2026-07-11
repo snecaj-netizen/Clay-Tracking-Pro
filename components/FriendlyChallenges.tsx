@@ -79,6 +79,15 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
 
   // Active state
   const [selectedChallenge, setSelectedChallenge] = useState<FriendlyChallenge | null>(null);
+  const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
+  const [isProvisionalStanding, setIsProvisionalStanding] = useState(false);
+  const [useCategoryGrouping, setUseCategoryGrouping] = useState(false);
+  
+  // Inline additions during challenge
+  const [isAddingShooterInline, setIsAddingShooterInline] = useState(false);
+  const [inlineSearchValue, setInlineSearchValue] = useState<any[]>([]);
+  const [inlineManualName, setInlineManualName] = useState('');
+  const [inlineManualCategory, setInlineManualCategory] = useState('Nessuna / Tempo Libero');
   
   // Create state
   const [challengeName, setChallengeName] = useState('');
@@ -179,6 +188,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
           const currentUpdated = parsed.find((c: any) => c.id === selectedChallenge.id);
           if (currentUpdated) {
             setSelectedChallenge(currentUpdated);
+            setUseCategoryGrouping(currentUpdated.group_by_category || false);
           }
         }
       }
@@ -223,6 +233,114 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
     }
   }, [user]);
 
+  const handleStartEditChallenge = (c: FriendlyChallenge, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingChallengeId(c.id);
+    setChallengeName(c.name);
+    setDiscipline(c.discipline);
+    setLocation(c.location || '');
+    setGroupByCategory(c.group_by_category || false);
+    setSelectedShooters(c.shooters || []);
+    setSearchShootersValue([]);
+    navigateToViewState('create');
+  };
+
+  const handleCancelEditOrCreate = () => {
+    setEditingChallengeId(null);
+    setChallengeName('');
+    setLocation('');
+    setGroupByCategory(false);
+    setSearchShootersValue([]);
+    if (user) {
+      setSelectedShooters([
+        {
+          id: user.id,
+          name: `${user.surname} ${user.name}`,
+          category: user.category || user.qualification || 'Nessuna / Tempo Libero',
+          qualification: user.qualification || '',
+          scores: [0],
+          hit_misses: [Array(25).fill(0)]
+        }
+      ]);
+    } else {
+      setSelectedShooters([]);
+    }
+    navigateToViewState('list');
+  };
+
+  const handleAddShooterInline = async () => {
+    if (!selectedChallenge) return;
+    
+    let newShooter: ChallengingShooter | null = null;
+    
+    if (inlineSearchValue && inlineSearchValue.length > 0) {
+      const sVal = inlineSearchValue[0];
+      const sObj = shootersList.find(s => s.id === sVal || `${s.surname} ${s.name}` === sVal);
+      if (sObj) {
+        const exists = selectedChallenge.shooters.some(sh => String(sh.id) === String(sObj.id));
+        if (exists) {
+          triggerToast('Questo tiratore è già presente in pedana', 'info');
+          return;
+        }
+        newShooter = {
+          id: sObj.id,
+          name: `${sObj.surname} ${sObj.name}`,
+          category: sObj.category || 'Nessuna / Tempo Libero',
+          qualification: sObj.qualification || '',
+          scores: [],
+          hit_misses: []
+        };
+      }
+    } else if (inlineManualName.trim()) {
+      newShooter = {
+        id: 'manual_' + Math.random().toString(36).substr(2, 5),
+        name: inlineManualName.trim(),
+        category: inlineManualCategory,
+        qualification: '',
+        scores: [],
+        hit_misses: []
+      };
+    } else {
+      triggerToast('Seleziona un tesserato o inserisci un nome', 'info');
+      return;
+    }
+
+    if (newShooter) {
+      const challengeCopy = {
+        ...selectedChallenge,
+        shooters: [
+          ...selectedChallenge.shooters,
+          newShooter
+        ]
+      };
+      
+      const maxRounds = selectedChallenge.shooters[0]?.hit_misses?.length || 1;
+      challengeCopy.shooters.forEach(s => {
+        if (!s.scores) s.scores = [];
+        if (!s.hit_misses) s.hit_misses = [];
+        while (s.hit_misses.length < maxRounds) {
+          s.hit_misses.push(Array(25).fill(-1));
+        }
+        while (s.scores.length < maxRounds) {
+          s.scores.push(0);
+        }
+      });
+      
+      try {
+        await handleUpdateChallengeOnServer(challengeCopy);
+        setSelectedChallenge(challengeCopy);
+        triggerToast(`${newShooter.name} aggiunto alla pedana con successo! 🎯`, 'success');
+        
+        setIsAddingShooterInline(false);
+        setInlineSearchValue([]);
+        setInlineManualName('');
+        setInlineManualCategory('Nessuna / Tempo Libero');
+      } catch (err) {
+        triggerToast('Errore durante l\'aggiunta del tiratore', 'error');
+      }
+    }
+  };
+
   const handleCreateChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!challengeName.trim()) {
@@ -234,6 +352,69 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
       return;
     }
 
+    if (editingChallengeId) {
+      const maxRounds = selectedShooters.find(s => s.hit_misses && s.hit_misses.length > 0)?.hit_misses?.length || 1;
+      const mappedShooters = selectedShooters.map(s => {
+        if (s.hit_misses && s.hit_misses.length > 0) {
+          const newHM = [...s.hit_misses];
+          while (newHM.length < maxRounds) {
+            newHM.push(Array(25).fill(-1));
+          }
+          const newScores = [...(s.scores || [])];
+          while (newScores.length < maxRounds) {
+            newScores.push(0);
+          }
+          return {
+            ...s,
+            scores: newScores,
+            hit_misses: newHM
+          };
+        }
+        return {
+          ...s,
+          scores: Array(maxRounds).fill(0),
+          hit_misses: Array(maxRounds).fill(null).map(() => Array(25).fill(-1))
+        };
+      });
+
+      const payload = {
+        name: challengeName,
+        discipline,
+        location: location || 'Campo Privato',
+        group_by_category: groupByCategory,
+        shooters: mappedShooters,
+      };
+
+      try {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        const res = await fetch(`/api/friendly-challenges/${editingChallengeId}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          triggerToast('Sfida modificata con successo! 💾', 'success');
+          setEditingChallengeId(null);
+          setChallengeName('');
+          setLocation('');
+          setGroupByCategory(false);
+          setSearchShootersValue([]);
+          loadChallenges();
+          navigateToViewState('list');
+        } else {
+          triggerToast('Errore durante la modifica della sfida', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        triggerToast('Errore di connessione', 'error');
+      }
+      return;
+    }
+
     const payload = {
       name: challengeName,
       discipline,
@@ -242,7 +423,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
       shooters: selectedShooters.map(s => ({
         ...s,
         scores: [0],
-        hit_misses: [Array(25).fill(-1)] // -1 is un-shot, 1 is hit, 0 is miss
+        hit_misses: [Array(25).fill(-1)]
       })),
       status: 'ongoing'
     };
@@ -275,12 +456,10 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
         navigateToViewState('shoot', true);
         triggerToast('Sfida creata con successo! Inizia a sparare 🎯', 'success');
         
-        // Reset creating form state
         setChallengeName('');
         setLocation('');
         setGroupByCategory(false);
         setSearchShootersValue([]);
-        // Keep only creator
         setSelectedShooters([
           {
             id: user.id,
@@ -700,7 +879,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
 
   const groupedStandings = (roundIdx?: number | 'global') => {
     const sorted = getSortedStandings(roundIdx);
-    if (!selectedChallenge?.group_by_category) {
+    if (!useCategoryGrouping) {
       return { 'Classifica Generale': sorted };
     }
     
@@ -840,6 +1019,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                       key={c.id}
                       onClick={() => {
                         setSelectedChallenge(c);
+                        setUseCategoryGrouping(c.group_by_category || false);
                         setActiveRoundIdx(0);
                         setActiveShooterIdx(0);
                         setActiveTargetIdx(0);
@@ -870,13 +1050,22 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                           </p>
                         </div>
                         {isCreator && (
-                          <button
-                            onClick={(e) => handleDeleteChallenge(c.id, e)}
-                            className="p-2 text-slate-600 hover:text-red-500 transition rounded-lg hover:bg-red-500/10"
-                            title="Elimina sfida"
-                          >
-                            <i className="fas fa-trash-alt text-xs"></i>
-                          </button>
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => handleStartEditChallenge(c, e)}
+                              className="p-2 text-slate-600 hover:text-orange-500 transition rounded-lg hover:bg-orange-500/10"
+                              title="Modifica sfida"
+                            >
+                              <i className="fas fa-edit text-xs"></i>
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteChallenge(c.id, e)}
+                              className="p-2 text-slate-600 hover:text-red-500 transition rounded-lg hover:bg-red-500/10"
+                              title="Elimina sfida"
+                            >
+                              <i className="fas fa-trash-alt text-xs"></i>
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -922,8 +1111,12 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
             className="bg-slate-950 border border-slate-900 rounded-3xl p-6 shadow-2xl relative"
           >
             <div className="border-b border-slate-900 pb-4 mb-5">
-              <h4 className="text-sm font-black text-white uppercase tracking-wider">Nuova Batteria Sfida</h4>
-              <p className="text-xs text-slate-500">Compila i dati e aggiungi i tiratori presenti in pedana.</p>
+              <h4 className="text-sm font-black text-white uppercase tracking-wider">
+                {editingChallengeId ? 'Modifica Batteria Sfida' : 'Nuova Batteria Sfida'}
+              </h4>
+              <p className="text-xs text-slate-500">
+                {editingChallengeId ? 'Aggiorna i dettagli e i tiratori presenti in pedana.' : 'Compila i dati e aggiungi i tiratori presenti in pedana.'}
+              </p>
             </div>
 
             <form onSubmit={handleCreateChallenge} className="space-y-5">
@@ -1068,7 +1261,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-900">
                 <button
                   type="button"
-                  onClick={() => navigateToViewState('list')}
+                  onClick={handleCancelEditOrCreate}
                   className="px-4 py-2 text-slate-500 hover:text-white font-bold text-xs"
                 >
                   Annulla
@@ -1077,7 +1270,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                   type="submit"
                   className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-[10px] uppercase font-black tracking-widest rounded-xl transition shadow-lg shadow-orange-950/20"
                 >
-                  Inizia Sfida ! 🚀
+                  {editingChallengeId ? 'Salva Modifiche 💾' : 'Inizia Sfida ! 🚀'}
                 </button>
               </div>
             </form>
@@ -1128,6 +1321,17 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                     <i className="fas fa-save"></i>
                   )}
                   {isSavingChallenge ? 'Salvataggio...' : 'Salva Serie'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProvisionalStanding(true);
+                    setResultsRoundFilter('global');
+                    navigateToViewState('results');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-orange-500 hover:text-orange-400 font-black uppercase text-[10px] tracking-wider rounded-xl transition shadow-lg flex items-center justify-center gap-1.5"
+                >
+                  <i className="fas fa-chart-bar"></i> Classifica Provvisoria
                 </button>
                 <button
                   type="button"
@@ -1200,6 +1404,95 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                       </button>
                     );
                   })}
+                </div>
+
+                {/* INLINE ADD SHOOTER PANEL */}
+                <div className="border-t border-slate-900 pt-3 mt-2">
+                  {!isAddingShooterInline ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingShooterInline(true)}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-850 text-orange-500 hover:text-orange-400 text-[10px] font-black uppercase tracking-widest border border-dashed border-slate-800 rounded-xl transition flex items-center justify-center gap-1.5"
+                    >
+                      <i className="fas fa-user-plus text-xs"></i> Aggiungi Tiratore
+                    </button>
+                  ) : (
+                    <div className="space-y-3 bg-slate-900/30 p-3 rounded-2xl border border-slate-900">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black uppercase text-slate-400">Nuovo Tiratore in Pedana</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddingShooterInline(false);
+                            setInlineSearchValue([]);
+                            setInlineManualName('');
+                          }}
+                          className="text-slate-500 hover:text-white transition"
+                        >
+                          <i className="fas fa-times text-xs"></i>
+                        </button>
+                      </div>
+
+                      {/* Dropdown search */}
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-slate-500">Cerca Tesserato</label>
+                        <ShooterSearch
+                          value={inlineSearchValue}
+                          onChange={(val) => {
+                            setInlineSearchValue(val);
+                            if (val && val.length > 0) {
+                              setInlineManualName('');
+                            }
+                          }}
+                          shooters={shootersList}
+                          multiple={false}
+                          placeholder="Seleziona un tesserato..."
+                        />
+                      </div>
+
+                      <div className="text-center text-slate-600 text-[9px] font-bold">-- OPPURE INSERISCI A MANO --</div>
+
+                      {/* Manual entries */}
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase tracking-widest text-slate-500">Cognome Nome</label>
+                          <input
+                            type="text"
+                            value={inlineManualName}
+                            onChange={(e) => {
+                              setInlineManualName(e.target.value);
+                              if (e.target.value) {
+                                setInlineSearchValue([]);
+                              }
+                            }}
+                            placeholder="Cognome Nome..."
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-orange-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase tracking-widest text-slate-500">Categoria</label>
+                          <select
+                            value={inlineManualCategory}
+                            onChange={(e) => setInlineManualCategory(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-300 outline-none focus:border-orange-500"
+                          >
+                            {CATEGORIES.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddShooterInline}
+                        className="w-full py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-[9px] uppercase font-black tracking-widest rounded-xl transition shadow-md"
+                      >
+                        Conferma Aggiunta
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1399,9 +1692,16 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
             {/* Header / Info bar */}
             <div className="bg-slate-950 border border-slate-900 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black tracking-widest text-emerald-500 px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                  Partita Conclusa 🏆
-                </span>
+                {isProvisionalStanding ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest text-orange-500 px-2 py-0.5 bg-orange-500/10 rounded-full border border-orange-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                    Classifica Provvisoria 📊
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest text-emerald-500 px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                    Partita Conclusa 🏆
+                  </span>
+                )}
                 <h4 className="text-base font-black text-white uppercase tracking-wider">{selectedChallenge.name}</h4>
                 <p className="text-xs text-slate-500 flex items-center gap-3">
                   <span>{selectedChallenge.discipline}</span>
@@ -1411,52 +1711,87 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                   <span>{new Date(selectedChallenge.created_at).toLocaleDateString('it-IT')}</span>
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  triggerConfirm(
-                    'Riapri Sfida',
-                    'Sei sicuro di voler riaprire questa sfida per correggere dei punteggi?',
-                    () => {
-                      const copy = { ...selectedChallenge, status: 'ongoing' as const };
-                      setSelectedChallenge(copy);
-                      navigateToViewState('shoot');
-                      handleUpdateChallengeOnServer(copy);
-                    }
-                  );
-                }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-850 text-orange-500 border border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-wider transition"
-              >
-                Riapri Sfida 🔄
-              </button>
+              
+              {isProvisionalStanding ? (
+                <button
+                  onClick={() => {
+                    setIsProvisionalStanding(false);
+                    navigateToViewState('shoot');
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white border border-orange-500/30 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shadow-lg"
+                >
+                  <i className="fas fa-arrow-left"></i> Torna alla Pedana 🎯
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    triggerConfirm(
+                      'Riapri Sfida',
+                      'Sei sicuro di voler riaprire questa sfida per correggere dei punteggi?',
+                      () => {
+                        const copy = { ...selectedChallenge, status: 'ongoing' as const };
+                        setSelectedChallenge(copy);
+                        navigateToViewState('shoot');
+                        handleUpdateChallengeOnServer(copy);
+                      }
+                    );
+                  }}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-850 text-orange-500 border border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-wider transition"
+                >
+                  Riapri Sfida 🔄
+                </button>
+              )}
             </div>
 
             {/* CLASSCLASSIFICA */}
             <div className="bg-slate-950 border border-slate-900 rounded-3xl p-6 space-y-6">
               
-              {/* Filter round results selection */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-900">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Visualizza Classifica:</span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setResultsRoundFilter('global')}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition border ${resultsRoundFilter === 'global' ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-900 text-slate-400 hover:text-white'}`}
-                  >
-                    Totale Generale
-                  </button>
-                  {selectedChallenge.shooters[0]?.hit_misses.map((_, rIdx) => (
+              {/* Filter and toggle options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Filter round results selection */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-900">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Visualizza Classifica:</span>
+                  <div className="flex flex-wrap gap-2">
                     <button
-                      key={rIdx}
-                      onClick={() => setResultsRoundFilter(rIdx)}
-                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition border ${resultsRoundFilter === rIdx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-900 text-slate-400 hover:text-white'}`}
+                      onClick={() => setResultsRoundFilter('global')}
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition border ${resultsRoundFilter === 'global' ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-900 text-slate-400 hover:text-white'}`}
                     >
-                      Serie {rIdx + 1}
+                      Totale Generale
                     </button>
-                  ))}
+                    {selectedChallenge.shooters[0]?.hit_misses.map((_, rIdx) => (
+                      <button
+                        key={rIdx}
+                        onClick={() => setResultsRoundFilter(rIdx)}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition border ${resultsRoundFilter === rIdx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-900 text-slate-400 hover:text-white'}`}
+                      >
+                        Serie {rIdx + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grouping Toggle */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-900">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Raggruppamento Classifica:</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setUseCategoryGrouping(false)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition border ${!useCategoryGrouping ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-900 text-slate-400 hover:text-white'}`}
+                    >
+                      Generale 🌐
+                    </button>
+                    <button
+                      onClick={() => setUseCategoryGrouping(true)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition border ${useCategoryGrouping ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-900 text-slate-400 hover:text-white'}`}
+                    >
+                      Per Categoria 🏷️
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Podium graphic for generic classification */}
-              {!selectedChallenge.group_by_category && (
+              {!useCategoryGrouping && (
                 <div className="flex flex-row justify-center items-end gap-1.5 sm:gap-4 py-8 border-b border-slate-900">
                   
                   {/* 2nd Place */}
