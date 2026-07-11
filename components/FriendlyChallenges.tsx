@@ -97,6 +97,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
   const [activeRoundIdx, setActiveRoundIdx] = useState(0);
   const [activeTargetIdx, setActiveTargetIdx] = useState(0);
   const [manualInputVal, setManualInputVal] = useState<string | null>(null);
+  const [isSavingChallenge, setIsSavingChallenge] = useState(false);
 
   const navigateToViewState = (newState: 'list' | 'create' | 'shoot' | 'results', replace: boolean = false) => {
     if (newState === viewState) return;
@@ -148,11 +149,38 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
       if (res.ok) {
         const data = await res.json();
         // Parse shooters standard JSON
-        const parsed = data.map((c: any) => ({
-          ...c,
-          shooters: typeof c.shooters === 'string' ? JSON.parse(c.shooters) : c.shooters
-        }));
+        const parsed = data.map((c: any) => {
+          let shooters = typeof c.shooters === 'string' ? JSON.parse(c.shooters) : c.shooters;
+          if (Array.isArray(shooters)) {
+            shooters = shooters.map((s: any) => {
+              let hm = s.hit_misses || [];
+              if (Array.isArray(hm)) {
+                // If any round is null/undefined, replace it with a clean array of -1
+                hm = hm.map((row: any) => (Array.isArray(row) ? row : Array(25).fill(-1)));
+              } else {
+                hm = [Array(25).fill(-1)];
+              }
+              return {
+                ...s,
+                scores: Array.isArray(s.scores) ? s.scores : [0],
+                hit_misses: hm
+              };
+            });
+          }
+          return {
+            ...c,
+            shooters
+          };
+        });
         setChallenges(parsed);
+        
+        // Also update selectedChallenge if it is currently open, so it doesn't have stale/broken values!
+        if (selectedChallenge) {
+          const currentUpdated = parsed.find((c: any) => c.id === selectedChallenge.id);
+          if (currentUpdated) {
+            setSelectedChallenge(currentUpdated);
+          }
+        }
       }
     } catch (err) {
       console.error('Error loading challenges:', err);
@@ -241,6 +269,7 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
           created_at: new Date().toISOString()
         };
         setSelectedChallenge(newChallengeObj);
+        setActiveRoundIdx(0);
         setActiveShooterIdx(0);
         setActiveTargetIdx(0);
         navigateToViewState('shoot', true);
@@ -395,11 +424,25 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
   // Add a new series (round) to the active challenge
   const handleAddNewRound = () => {
     if (!selectedChallenge) return;
-    const challengeCopy = { ...selectedChallenge };
+    
+    // Deep clone challenge to avoid mutating React state directly
+    const challengeCopy = {
+      ...selectedChallenge,
+      shooters: selectedChallenge.shooters.map(s => ({
+        ...s,
+        scores: [...(s.scores || [])],
+        hit_misses: (s.hit_misses || []).map(row => row ? [...row] : Array(25).fill(-1))
+      }))
+    };
     
     challengeCopy.shooters.forEach(s => {
-      if (!s.scores) s.scores = [];
-      if (!s.hit_misses) s.hit_misses = [];
+      // Ensure properly filled to avoid sparse/null gaps before adding
+      while (s.hit_misses.length < challengeCopy.shooters[0].hit_misses.length) {
+        s.hit_misses.push(Array(25).fill(-1));
+      }
+      while (s.scores.length < challengeCopy.shooters[0].hit_misses.length) {
+        s.scores.push(0);
+      }
       
       s.scores.push(0);
       s.hit_misses.push(Array(25).fill(-1));
@@ -419,10 +462,26 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
   const handleTargetShot = (isHit: boolean) => {
     if (!selectedChallenge) return;
 
-    const challengeCopy = { ...selectedChallenge };
+    // Deep clone challenge
+    const challengeCopy = {
+      ...selectedChallenge,
+      shooters: selectedChallenge.shooters.map(s => ({
+        ...s,
+        scores: [...(s.scores || [])],
+        hit_misses: (s.hit_misses || []).map(row => row ? [...row] : Array(25).fill(-1))
+      }))
+    };
+    
     const shooter = challengeCopy.shooters[activeShooterIdx];
     
-    // Ensure properly initialized round and target indices
+    // Ensure properly initialized round and target indices to prevent sparse array nulls
+    while (shooter.hit_misses.length <= activeRoundIdx) {
+      shooter.hit_misses.push(Array(25).fill(-1));
+    }
+    while (shooter.scores.length <= activeRoundIdx) {
+      shooter.scores.push(0);
+    }
+
     if (!shooter.hit_misses[activeRoundIdx]) {
       shooter.hit_misses[activeRoundIdx] = Array(25).fill(-1);
     }
@@ -447,6 +506,13 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
       setActiveShooterIdx(nextIdx);
       
       const nextShooter = challengeCopy.shooters[nextIdx];
+      // Ensure next shooter is also properly initialized up to activeRoundIdx
+      while (nextShooter.hit_misses.length <= activeRoundIdx) {
+        nextShooter.hit_misses.push(Array(25).fill(-1));
+      }
+      while (nextShooter.scores.length <= activeRoundIdx) {
+        nextShooter.scores.push(0);
+      }
       const unshotIdx = nextShooter.hit_misses[activeRoundIdx]?.findIndex(x => x === -1);
       const firstUnshot = unshotIdx !== undefined && unshotIdx !== -1 ? unshotIdx : 0;
       setActiveTargetIdx(firstUnshot);
@@ -460,9 +526,26 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
   const handleToggleTargetSlot = (shooterIdx: number, targetIdx: number) => {
     if (!selectedChallenge) return;
 
-    const challengeCopy = { ...selectedChallenge };
+    // Deep clone challenge
+    const challengeCopy = {
+      ...selectedChallenge,
+      shooters: selectedChallenge.shooters.map(s => ({
+        ...s,
+        scores: [...(s.scores || [])],
+        hit_misses: (s.hit_misses || []).map(row => row ? [...row] : Array(25).fill(-1))
+      }))
+    };
+    
     const shooter = challengeCopy.shooters[shooterIdx];
     
+    // Ensure properly initialized round and target indices
+    while (shooter.hit_misses.length <= activeRoundIdx) {
+      shooter.hit_misses.push(Array(25).fill(-1));
+    }
+    while (shooter.scores.length <= activeRoundIdx) {
+      shooter.scores.push(0);
+    }
+
     if (!shooter.hit_misses[activeRoundIdx]) {
       shooter.hit_misses[activeRoundIdx] = Array(25).fill(-1);
     }
@@ -487,9 +570,26 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
   const handleManualScoreInput = (shooterIdx: number, val: number) => {
     if (!selectedChallenge) return;
 
-    const challengeCopy = { ...selectedChallenge };
+    // Deep clone challenge
+    const challengeCopy = {
+      ...selectedChallenge,
+      shooters: selectedChallenge.shooters.map(s => ({
+        ...s,
+        scores: [...(s.scores || [])],
+        hit_misses: (s.hit_misses || []).map(row => row ? [...row] : Array(25).fill(-1))
+      }))
+    };
+    
     const shooter = challengeCopy.shooters[shooterIdx];
     
+    // Ensure properly initialized round and target indices
+    while (shooter.hit_misses.length <= activeRoundIdx) {
+      shooter.hit_misses.push(Array(25).fill(-1));
+    }
+    while (shooter.scores.length <= activeRoundIdx) {
+      shooter.scores.push(0);
+    }
+
     if (!shooter.hit_misses[activeRoundIdx]) {
       shooter.hit_misses[activeRoundIdx] = Array(25).fill(-1);
     }
@@ -566,9 +666,12 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
       if (filter === 'global') {
         let totalHits = 0;
         let totalShot = 0;
-        s.hit_misses.forEach(round => {
-          totalHits += round.filter(x => x === 1).length;
-          totalShot += round.filter(x => x !== -1).length;
+        const h_m = s.hit_misses || [];
+        h_m.forEach(round => {
+          if (round && Array.isArray(round)) {
+            totalHits += round.filter(x => x === 1).length;
+            totalShot += round.filter(x => x !== -1).length;
+          }
         });
         return {
           ...s,
@@ -577,8 +680,9 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
         };
       } else {
         const rIdx = Number(filter);
-        const hitCount = s.hit_misses[rIdx]?.filter(x => x === 1).length || 0;
-        const totalShot = s.hit_misses[rIdx]?.filter(x => x !== -1).length || 0;
+        const round = s.hit_misses ? s.hit_misses[rIdx] : null;
+        const hitCount = (round && Array.isArray(round)) ? round.filter(x => x === 1).length : 0;
+        const totalShot = (round && Array.isArray(round)) ? round.filter(x => x !== -1).length : 0;
         return {
           ...s,
           totalHits: hitCount,
@@ -736,8 +840,10 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                       key={c.id}
                       onClick={() => {
                         setSelectedChallenge(c);
+                        setActiveRoundIdx(0);
                         setActiveShooterIdx(0);
                         setActiveTargetIdx(0);
+                        setResultsRoundFilter('global');
                         navigateToViewState(isOngoing ? 'shoot' : 'results');
                       }}
                       className="p-5 bg-slate-950 border border-slate-900/80 hover:border-slate-800 rounded-2xl cursor-pointer hover:shadow-xl transition-all relative flex flex-col justify-between space-y-4"
@@ -999,12 +1105,38 @@ const FriendlyChallenges: React.FC<FriendlyChallengesProps> = ({ user, token, so
                   {selectedChallenge.discipline} • {selectedChallenge.location}
                 </p>
               </div>
-              <button
-                onClick={handleFinishChallenge}
-                className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition shadow-lg shadow-emerald-950/20"
-              >
-                <i className="fas fa-check mr-1.5"></i> Termina &amp; Classifica
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsSavingChallenge(true);
+                    try {
+                      await handleUpdateChallengeOnServer(selectedChallenge);
+                      triggerToast('Serie salvata con successo sul server! 💾', 'success');
+                    } catch (err) {
+                      triggerToast('Errore nel salvataggio dei dati', 'error');
+                    } finally {
+                      setIsSavingChallenge(false);
+                    }
+                  }}
+                  disabled={isSavingChallenge}
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-orange-500 hover:text-orange-400 font-black uppercase text-[10px] tracking-wider rounded-xl transition shadow-lg flex items-center justify-center gap-1.5"
+                >
+                  {isSavingChallenge ? (
+                    <i className="fas fa-spinner fa-spin"></i>
+                  ) : (
+                    <i className="fas fa-save"></i>
+                  )}
+                  {isSavingChallenge ? 'Salvataggio...' : 'Salva Serie'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFinishChallenge}
+                  className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition shadow-lg shadow-emerald-950/20"
+                >
+                  <i className="fas fa-check mr-1.5"></i> Termina &amp; Classifica
+                </button>
+              </div>
             </div>
 
             {/* Series selector tabs */}
