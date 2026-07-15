@@ -90,6 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   });
   const [isRegLoading, setIsRegLoading] = useState(false);
   const [selectedRegionalRanking, setSelectedRegionalRanking] = useState<any | null>(null);
+  const [showRegulations, setShowRegulations] = useState(false);
   const [selectedTrialDetails, setSelectedTrialDetails] = useState<{
     societyName: string;
     trialLabel: string;
@@ -1078,30 +1079,46 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              {/* Info Box about Rules */}
-              <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl text-xs text-slate-400 space-y-4">
-                <div>
-                  <p className="font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                    <i className="fas fa-user text-orange-400" /> Classifica Individuale FITAV:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1 text-slate-400">
-                    <li>Sono previste 4 prove regionali. Per entrare in classifica finale è necessario disputare <b>almeno 3 prove</b>.</li>
-                    <li>Se un tiratore effettua tutte e 4 le prove, <b>il peggior punteggio (penalità più alta) viene scartato</b>.</li>
-                    <li>Le penalità di ogni prova rappresentano la differenza di piattelli rispetto al primo classificato di quella specifica Categoria/Qualifica nel medesimo round.</li>
-                    <li>Il tiratore mantiene per tutto il campionato il vincolo di qualifica o categoria stabilito nella sua prima gara disputata.</li>
-                  </ul>
-                </div>
-                <div className="border-t border-slate-800/60 pt-3">
-                  <p className="font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                    <i className="fas fa-users text-blue-400" /> Classifica Società TAV FITAV:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1 text-slate-400">
-                    <li>Il punteggio di squadra in ogni prova è determinato dalla somma dei migliori punteggi individuali (hits totali) dei tiratori iscritti alla medesima società.</li>
-                    <li>Nelle discipline di <b>Fossa (Trap)</b> concorrono i migliori <b>6 tiratori</b> per ogni prova. Nelle altre discipline concorrono i migliori <b>3 tiratori</b>.</li>
-                    <li>Come per l'individuale, le società devono disputare <b>almeno 3 prove</b> per qualificarsi al campionato. Qualora partecipino a tutte le 4 prove, viene applicato lo <b>scarto della peggiore prestazione</b> (punteggio più basso o penalità più alta).</li>
-                  </ul>
-                </div>
+              {/* Toggle Button for Rules/Regulations */}
+              <div className="flex justify-start">
+                <button
+                  type="button"
+                  onClick={() => setShowRegulations(!showRegulations)}
+                  className="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-orange-600/10 border border-orange-500/40 hover:border-orange-500 text-orange-400 hover:text-orange-300 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+                  style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                >
+                  <i className={`fas ${showRegulations ? 'fa-eye-slash text-red-400' : 'fa-eye text-orange-400'}`} />
+                  {showRegulations ? 'Nascondi Regolamenti' : 'Mostra Regolamenti (Classifica Individuale e Società)'}
+                  <i className={`fas ${showRegulations ? 'fa-chevron-up text-slate-400' : 'fa-chevron-down text-slate-400'} ml-1`} />
+                </button>
               </div>
+
+              {/* Info Box about Rules (conditionally rendered) */}
+              {showRegulations && (
+                <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl text-xs text-slate-400 space-y-4 animate-fade-in">
+                  <div>
+                    <p className="font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+                      <i className="fas fa-user text-orange-400" /> Classifica Individuale FITAV:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 text-slate-400">
+                      <li>Sono previste 4 prove regionali. Per entrare in classifica finale è necessario disputare <b>almeno 3 prove</b>.</li>
+                      <li>Se un tiratore effettua tutte e 4 le prove, <b>il peggior punteggio (penalità più alta) viene scartato</b>.</li>
+                      <li>Le penalità di ogni prova rappresentano la differenza di piattelli rispetto al premier classificato di quella specifica Categoria/Qualifica nel medesimo round.</li>
+                      <li>Il tiratore mantiene per tutto il campionato il vincolo di qualifica o categoria stabilito nella sua prima gara disputata.</li>
+                    </ul>
+                  </div>
+                  <div className="border-t border-slate-800/60 pt-3">
+                    <p className="font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+                      <i className="fas fa-users text-blue-400" /> Classifica Società TAV FITAV:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 text-slate-400">
+                      <li>Il punteggio di squadra in ogni prova è determinato dalla somma dei migliori punteggi individuali (hits totali) dei tiratori iscritti alla medesima società.</li>
+                      <li>Nelle discipline di <b>Fossa (Trap)</b> concorrono i migliori <b>6 tiratori</b> per ogni prova. Nelle altre discipline concorrono i migliori <b>3 tiratori</b>.</li>
+                      <li>Come per l'individuale, le società devono disputare <b>almeno 3 prove</b> per qualificarsi al campionato. Qualora partecipino a tutte le 4 prove, viene applicato lo <b>scarto della peggiore prestazione</b> (punteggio più basso o penalità più alta).</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
 
               {/* THE TRIALS MAP */}
               <div className={`grid gap-4 ${
