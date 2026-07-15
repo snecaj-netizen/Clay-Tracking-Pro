@@ -114,8 +114,18 @@ const UserRow = React.memo(({
               <i className="fas fa-user text-slate-500 text-xs"></i>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
             <span className="text-xs uppercase font-semibold">{u.name} {u.surname}</span>
+            {u.status === 'pending' && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30 px-1.5 py-0.5 rounded-md leading-none tracking-wider animate-pulse">
+                Pending
+              </span>
+            )}
+            {u.status === 'suspended' && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-md leading-none tracking-wider">
+                Sospeso
+              </span>
+            )}
           </div>
         </div>
       </td>
@@ -157,18 +167,28 @@ const UserRow = React.memo(({
       )}
       <td className="py-3 px-4 flex justify-end gap-3">
         {currentUser?.role === 'admin' && (
-          <button 
-            onClick={() => onToggleStatus(u.id, u.status)} 
-            disabled={u.email === 'snecaj@gmail.com'}
-            className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 ${
-              u.status === 'suspended' 
-                ? 'bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white' 
-                : 'bg-red-500/5 text-red-500/60 hover:bg-red-600 hover:text-white'
-            }`}
-            title={u.status === 'suspended' ? t('reactivate') : t('suspend')}
-          >
-            <i className={`fas ${u.status === 'suspended' ? 'fa-user-check' : 'fa-user-slash'} text-sm sm:text-xs`}></i>
-          </button>
+          u.status === 'pending' ? (
+            <button 
+              onClick={() => onToggleStatus(u.id, 'pending')} 
+              className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20"
+              title="Approva Tiratore"
+            >
+              <i className="fas fa-check text-sm sm:text-xs"></i>
+            </button>
+          ) : (
+            <button 
+              onClick={() => onToggleStatus(u.id, u.status)} 
+              disabled={u.email === 'snecaj@gmail.com'}
+              className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 ${
+                u.status === 'suspended' 
+                  ? 'bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white' 
+                  : 'bg-red-500/5 text-red-500/60 hover:bg-red-600 hover:text-white'
+              }`}
+              title={u.status === 'suspended' ? t('reactivate') : t('suspend')}
+            >
+              <i className={`fas ${u.status === 'suspended' ? 'fa-user-check' : 'fa-user-slash'} text-sm sm:text-xs`}></i>
+            </button>
+          )
         )}
         <button 
           onClick={() => onEdit(u)} 
@@ -224,6 +244,47 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [successPopupDetails, setSuccessPopupDetails] = useState<any | null>(null);
 
   const hasActiveFilters = filterRole !== '' || userSearchTerm !== '' || userFilterSociety !== '';
+
+  const [birthDateDisplay, setBirthDateDisplay] = useState('');
+
+  useEffect(() => {
+    if (birthDate) {
+      const parts = birthDate.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const month = parts[1];
+        const day = parts[2];
+        setBirthDateDisplay(`${day}/${month}/${year}`);
+      } else {
+        setBirthDateDisplay('');
+      }
+    } else {
+      setBirthDateDisplay('');
+    }
+  }, [birthDate]);
+
+  const handleBirthDateChange = (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 8);
+    let formatted = clean;
+    if (clean.length > 2) {
+      formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+    }
+    if (clean.length > 4) {
+      formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+    }
+    setBirthDateDisplay(formatted);
+
+    if (clean.length === 8) {
+      const day = clean.slice(0, 2);
+      const month = clean.slice(2, 4);
+      const year = clean.slice(4, 8);
+      const isoDate = `${year}-${month}-${day}`;
+      setBirthDate(isoDate);
+      updateAutoQualification(isoDate, qualification, setQualification);
+    } else {
+      setBirthDate('');
+    }
+  };
 
   useEffect(() => {
     if (role === 'society') {
@@ -359,12 +420,13 @@ const UserManagement: React.FC<UserManagementProps> = ({
   };
 
   const handleToggleStatus = (id: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-    const actionText = newStatus === 'suspended' ? t('suspend') : t('reactivate');
-    const confirmTitle = newStatus === 'suspended' ? t('suspend_user') : t('reactivate_user');
-    const confirmMessage = newStatus === 'suspended' 
-      ? t('suspend_user_confirm') 
-      : t('reactivate_user_confirm');
+    const isPending = currentStatus === 'pending';
+    const newStatus = isPending ? 'active' : (currentStatus === 'suspended' ? 'active' : 'suspended');
+    const actionText = isPending ? 'Approva' : (newStatus === 'suspended' ? t('suspend') : t('reactivate'));
+    const confirmTitle = isPending ? 'Approva Utente' : (newStatus === 'suspended' ? t('suspend_user') : t('reactivate_user'));
+    const confirmMessage = isPending 
+      ? 'Sei sicuro di voler approvare la registrazione di questo tiratore ed abilitare il suo accesso alla piattaforma?' 
+      : (newStatus === 'suspended' ? t('suspend_user_confirm') : t('reactivate_user_confirm'));
 
     triggerConfirm(
       confirmTitle,
@@ -386,7 +448,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
         }
       },
       actionText,
-      newStatus === 'suspended' ? 'danger' : 'primary'
+      isPending ? 'primary' : (newStatus === 'suspended' ? 'danger' : 'primary')
     );
   };
 
@@ -525,6 +587,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
     let sortableUsers = [...users];
     
     sortableUsers.sort((a, b) => {
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+
       if (a.is_logged_in && !b.is_logged_in) return -1;
       if (!a.is_logged_in && b.is_logged_in) return 1;
       
@@ -1368,14 +1433,13 @@ const UserManagement: React.FC<UserManagementProps> = ({
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('birth_date')}</label>
                 <input 
-                  type="date" 
-                  value={birthDate} 
-                  onChange={e => {
-                    setBirthDate(e.target.value);
-                    updateAutoQualification(e.target.value, qualification, setQualification);
-                  }} 
+                  type="text" 
+                  inputMode="numeric"
+                  placeholder="GG/MM/AAAA"
+                  value={birthDateDisplay} 
+                  onChange={e => handleBirthDateChange(e.target.value)} 
                   disabled={currentUser?.role === 'society' && !!editingUser}
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all min-w-0 placeholder-slate-700 ${currentUser?.role === 'society' && !!editingUser ? 'opacity-50 cursor-not-allowed' : ''}`} 
                 />
               </div>
               <div>

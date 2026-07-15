@@ -37,6 +37,19 @@ const FITASC_QUALS = [
   { id: 'MAS', label: 'MAS (Master)' },
 ];
 
+const CATEGORIES = [
+  'Eccellenza',
+  'Prima',
+  'Seconda',
+  'Terza',
+  'Skeet',
+  'Master',
+  'Veterani',
+  'Lady',
+  'Settore Giovanile',
+  'Nessuna / Tempo Libero'
+];
+
 interface AuthProps {
   onLogin: (token: string, user: any) => void;
   isModal?: boolean;
@@ -71,6 +84,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [birthDateDisplay, setBirthDateDisplay] = useState('');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -78,7 +94,29 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
   useEffect(() => {
     setError('');
     setSuccessMsg('');
+    setBirthDateDisplay('');
   }, [authMode]);
+
+  const handleBirthDateChange = (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 8);
+    let formatted = clean;
+    if (clean.length > 2) {
+      formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+    }
+    if (clean.length > 4) {
+      formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+    }
+    setBirthDateDisplay(formatted);
+
+    if (clean.length === 8) {
+      const day = clean.slice(0, 2);
+      const month = clean.slice(2, 4);
+      const year = clean.slice(4, 8);
+      setRegData(prev => ({ ...prev, birth_date: `${year}-${month}-${day}` }));
+    } else {
+      setRegData(prev => ({ ...prev, birth_date: '' }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +158,38 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
         // Registration
         if (regData.password !== regData.confirmPassword) {
           throw new Error(displayLang === 'it' ? 'Le password non coincidono.' : 'Passwords do not match.');
+        }
+
+        // Validate birth date
+        if (!regData.birth_date) {
+          throw new Error(displayLang === 'it'
+            ? 'Inserisci una data di nascita valida nel formato GG/MM/AAAA (es. 14/07/1985).'
+            : 'Please enter a valid birth date in DD/MM/YYYY format (e.g. 14/07/1985).'
+          );
+        } else {
+          const parts = regData.birth_date.split('-');
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          const d = parseInt(parts[2], 10);
+          const currentYear = new Date().getFullYear();
+          if (isNaN(y) || isNaN(m) || isNaN(d) || m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > currentYear) {
+            throw new Error(displayLang === 'it'
+              ? 'Data di nascita non valida.'
+              : 'Invalid birth date.'
+            );
+          }
+        }
+
+        // Validate FITAV card format: 3 letters + 2 numbers + 2 letters + 2 numbers
+        if (!regData.is_international && !regData.is_cacciatore && regData.shooter_code) {
+          const shooterCodeRegex = /^[A-Z]{3}\d{2}[A-Z]{2}\d{2}$/;
+          const cleanCode = regData.shooter_code.toUpperCase().trim();
+          if (!shooterCodeRegex.test(cleanCode)) {
+            throw new Error(displayLang === 'it' 
+              ? 'Formato Codice Tiratore non valido. Deve essere di 9 caratteri nel formato FITAV (es. ABC12DE34).'
+              : 'Invalid Shooter Code format. Must be a 9-character FITAV code (e.g. ABC12DE34).'
+            );
+          }
         }
 
         const registrationData = {
@@ -301,44 +371,52 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
             </div>
 
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Nome' : 'First Name'}</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Nome *' : 'First Name *'}</label>
               <input type="text" required value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Cognome' : 'Last Name'}</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Cognome *' : 'Last Name *'}</label>
               <input type="text" required value={regData.surname} onChange={e => setRegData({...regData, surname: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
             
             <div className="sm:col-span-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Email *' : 'Email *'}</label>
               <input type="email" required value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
 
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Data di Nascita' : 'Birth Date'}</label>
-              <input type="date" required value={regData.birth_date} onChange={e => setRegData({...regData, birth_date: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Data di Nascita *' : 'Birth Date *'}</label>
+              <input 
+                type="text" 
+                inputMode="numeric"
+                required 
+                placeholder="GG/MM/AAAA"
+                value={birthDateDisplay} 
+                onChange={e => handleBirthDateChange(e.target.value)} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all placeholder-slate-700" 
+              />
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Telefono' : 'Phone'}</label>
-              <input type="tel" value={regData.phone} onChange={e => setRegData({...regData, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Telefono *' : 'Phone *'}</label>
+              <input type="tel" required value={regData.phone} onChange={e => setRegData({...regData, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
             </div>
 
             {regData.is_international ? (
               <>
                 <div className="sm:col-span-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Nazionalità' : 'Nationality'}</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Nazionalità *' : 'Nationality *'}</label>
                   <select required value={regData.nationality} onChange={e => setRegData({...regData, nationality: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all no-scrollbar">
-                    <option value="">{displayLang === 'it' ? 'Seleziona Paese' : 'Select Country'}</option>
+                    <option value="">{displayLang === 'it' ? 'Seleziona Paese *' : 'Select Country *'}</option>
                     {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'ID Internazionale (es. ISSF)' : 'International ID (e.g. ISSF)'}</label>
-                  <input type="text" value={regData.international_id} onChange={e => setRegData({...regData, international_id: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'ID Internazionale (es. ISSF) *' : 'International ID (e.g. ISSF) *'}</label>
+                  <input type="text" required value={regData.international_id} onChange={e => setRegData({...regData, international_id: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Club Originale' : 'Original Club'}</label>
-                  <input type="text" value={regData.original_club} onChange={e => setRegData({...regData, original_club: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Club Originale *' : 'Original Club *'}</label>
+                  <input type="text" required value={regData.original_club} onChange={e => setRegData({...regData, original_club: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
               </>
             ) : regData.is_cacciatore ? (
@@ -349,60 +427,124 @@ const Auth: React.FC<AuthProps> = ({ onLogin, isModal, onClose, onGoToPortal }) 
                 </span>
                 <span className="text-[10px] text-slate-500 block">
                   {displayLang === 'it' 
-                    ? 'Nessun codice FITAV o club richiesto. Sarai inserito automaticamente sotto "Cacciatori".' 
-                    : 'No FITAV card or club required. You will be automatically categorized as Hunter.'}
+                    ? 'Nessun codice FITAV o club richiesto. Sarai inserito automaticamente sotto "Cacciatori" con categoria CA.' 
+                    : 'No FITAV card or club required. You will be automatically categorized under CA.'}
                 </span>
               </div>
             ) : (
               <>
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Società' : 'Club'}</label>
-                  <input type="text" value={regData.society} onChange={e => setRegData({...regData, society: e.target.value})} placeholder="Es: Tav Roma" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Società *' : 'Club *'}</label>
+                  <input type="text" required value={regData.society} onChange={e => setRegData({...regData, society: e.target.value})} placeholder="Es: Tav Roma" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Codice Tiratore (FITAV)' : 'Shooter Code (FITAV)'}</label>
-                  <input type="text" value={regData.shooter_code} onChange={e => setRegData({...regData, shooter_code: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Codice Tiratore (FITAV) *' : 'Shooter Code (FITAV) *'}</label>
+                  <input 
+                    type="text" 
+                    required 
+                    maxLength={9}
+                    placeholder="AAA12BB34"
+                    value={regData.shooter_code} 
+                    onChange={e => setRegData({...regData, shooter_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')})} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all uppercase placeholder-slate-700" 
+                  />
+                  <span className="text-[10px] text-slate-500 block mt-1 leading-normal">
+                    {displayLang === 'it' 
+                      ? 'Formato: 3 lettere, 2 numeri, 2 lettere, 2 numeri (es: ABC12DE34)' 
+                      : 'Format: 3 letters, 2 numbers, 2 letters, 2 numbers (e.g. ABC12DE34)'}
+                  </span>
                 </div>
               </>
             )}
 
-            <div className="sm:col-span-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Qualifica (FITASC)' : 'Qualification (FITASC)'}</label>
-              <select required value={regData.qualification} onChange={e => setRegData({...regData, qualification: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all">
-                <option value="">{displayLang === 'it' ? 'Seleziona Qualifica' : 'Select Qualification'}</option>
-                {FITASC_QUALS.map(q => {
-                  let localizedLabel = q.label;
-                  if (displayLang === 'it') {
-                    if (q.id === 'MAN') localizedLabel = 'MAN (Uomini)';
-                    else if (q.id === 'LAD') localizedLabel = 'LAD (Lady)';
-                    else if (q.id === 'JUN') localizedLabel = 'JUN (Junior / Settore Giovanile)';
-                    else if (q.id === 'SEN') localizedLabel = 'SEN (Senior)';
-                    else if (q.id === 'VET') localizedLabel = 'VET (Veterani)';
-                    else if (q.id === 'MAS') localizedLabel = 'MAS (Master)';
-                  } else {
-                    if (q.id === 'MAN') localizedLabel = 'MAN (Man)';
-                    else if (q.id === 'LAD') localizedLabel = 'LAD (Lady)';
-                    else if (q.id === 'JUN') localizedLabel = 'JUN (Junior)';
-                    else if (q.id === 'SEN') localizedLabel = 'SEN (Senior)';
-                    else if (q.id === 'VET') localizedLabel = 'VET (Veteran)';
-                    else if (q.id === 'MAS') localizedLabel = 'MAS (Master)';
-                  }
-                  return (
-                    <option key={q.id} value={q.id}>
-                      {localizedLabel}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+            {!regData.is_international && !regData.is_cacciatore && (
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  {displayLang === 'it' ? 'Categoria *' : 'Category *'}
+                </label>
+                <select 
+                  required 
+                  value={regData.category} 
+                  onChange={e => setRegData({...regData, category: e.target.value})} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all"
+                >
+                  <option value="">{displayLang === 'it' ? 'Seleziona Categoria' : 'Select Category'}</option>
+                  {CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {!regData.is_cacciatore && (
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Qualifica (FITASC)' : 'Qualification (FITASC)'}</label>
+                <select value={regData.qualification} onChange={e => setRegData({...regData, qualification: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all">
+                  <option value="">{displayLang === 'it' ? 'Seleziona Qualifica (Opzionale)' : 'Select Qualification (Optional)'}</option>
+                  {FITASC_QUALS.map(q => {
+                    let localizedLabel = q.label;
+                    if (displayLang === 'it') {
+                      if (q.id === 'MAN') localizedLabel = 'MAN (Uomini)';
+                      else if (q.id === 'LAD') localizedLabel = 'LAD (Lady)';
+                      else if (q.id === 'JUN') localizedLabel = 'JUN (Junior / Settore Giovanile)';
+                      else if (q.id === 'SEN') localizedLabel = 'SEN (Senior)';
+                      else if (q.id === 'VET') localizedLabel = 'VET (Veterani)';
+                      else if (q.id === 'MAS') localizedLabel = 'MAS (Master)';
+                    } else {
+                      if (q.id === 'MAN') localizedLabel = 'MAN (Man)';
+                      else if (q.id === 'LAD') localizedLabel = 'LAD (Lady)';
+                      else if (q.id === 'JUN') localizedLabel = 'JUN (Junior)';
+                      else if (q.id === 'SEN') localizedLabel = 'SEN (Senior)';
+                      else if (q.id === 'VET') localizedLabel = 'VET (Veteran)';
+                      else if (q.id === 'MAS') localizedLabel = 'MAS (Master)';
+                    }
+                    return (
+                      <option key={q.id} value={q.id}>
+                        {localizedLabel}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
 
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
-              <input type="password" required value={regData.password} onChange={e => setRegData({...regData, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Password *' : 'Password *'}</label>
+              <div className="relative">
+                <input 
+                  type={showRegPassword ? "text" : "password"} 
+                  required 
+                  value={regData.password} 
+                  onChange={e => setRegData({...regData, password: e.target.value})} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowRegPassword(!showRegPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  <i className={`fas ${showRegPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Conferma Password' : 'Confirm Password'}</label>
-              <input type="password" required value={regData.confirmPassword} onChange={e => setRegData({...regData, confirmPassword: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{displayLang === 'it' ? 'Conferma Password *' : 'Confirm Password *'}</label>
+              <div className="relative">
+                <input 
+                  type={showRegConfirmPassword ? "text" : "password"} 
+                  required 
+                  value={regData.confirmPassword} 
+                  onChange={e => setRegData({...regData, confirmPassword: e.target.value})} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  <i className={`fas ${showRegConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
             </div>
 
             <div className="sm:col-span-2 mt-4">

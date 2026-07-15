@@ -622,6 +622,103 @@ const getAutoQualification = (birthDate: string | null, currentQual: string | nu
   return currentQual;
 };
 
+const sendAdminNotificationEmail = async (shooter: any) => {
+  if (!process.env.SMTP_HOST) {
+    console.warn('⚠️ SMTP configuration missing. Admin registration notification not sent.');
+    return;
+  }
+
+  try {
+    const { rows: admins } = await pool.query("SELECT email FROM users WHERE role = 'admin'");
+    if (admins.length === 0) {
+      console.warn('⚠️ No admin users found to notify.');
+      return;
+    }
+
+    const adminEmails = admins.map(a => a.email);
+    const subject = `Nuova registrazione tiratore: ${shooter.surname} ${shooter.name}`;
+    
+    const mailOptions = {
+      from: getMailFrom(),
+      to: adminEmails.join(','),
+      subject: subject,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
+          <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900; font-size: 20px; border-bottom: 2px solid #ea580c; padding-bottom: 10px; margin-bottom: 20px;">Notifica Nuova Registrazione</h1>
+          <p>Ciao Admin,</p>
+          <p>Un nuovo tiratore si è registrato in autonomia tramite l'applicazione. L'account è attualmente in stato <strong>PENDING</strong> (in attesa di approvazione).</p>
+          
+          <div style="background-color: #1e293b; padding: 20px; border-radius: 12px; margin: 20px 0; line-height: 1.6;">
+            <h3 style="color: #ea580c; margin-top: 0; text-transform: uppercase; font-size: 14px;">Dettagli Tiratore</h3>
+            <strong>Cognome e Nome:</strong> ${shooter.surname} ${shooter.name}<br>
+            <strong>Email:</strong> ${shooter.email}<br>
+            <strong>Codice Tiratore:</strong> ${shooter.shooter_code || 'N/D'}<br>
+            <strong>Telefono:</strong> ${shooter.phone || 'N/D'}<br>
+            <strong>Data di Nascita:</strong> ${shooter.birth_date || 'N/D'}<br>
+            <strong>Categoria:</strong> ${shooter.category || 'N/D'}<br>
+            <strong>Qualifica:</strong> ${shooter.qualification || 'N/D'}<br>
+            <strong>Società:</strong> ${shooter.society || 'N/D'}<br>
+            <strong>Cacciatore:</strong> ${shooter.is_cacciatore ? 'Sì' : 'No'}<br>
+            <strong>Tiratore Internazionale:</strong> ${shooter.is_international ? 'Sì' : 'No'}
+          </div>
+
+          <p>Puoi gestire l'approvazione di questo utente accedendo al pannello di controllo dell'applicazione nella sezione Amministrazione -> Utenti.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.APP_URL || 'https://clay-tracking-pro-production-3fe8.up.railway.app'}/admin?tab=users" style="display: inline-block; background-color: #ea580c; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold;">GESTISCI UTENTI</a>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;">
+          <p style="font-size: 11px; color: #64748b;">Questa è una comunicazione automatica generata da Clay Performance.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Admin notification email sent successfully to ${adminEmails.length} admin(s)`);
+  } catch (error: any) {
+    console.error('❌ Error sending admin notification email:', error);
+  }
+};
+
+const sendUserApprovedEmail = async (email: string, name: string, lang: string = 'it') => {
+  if (!process.env.SMTP_HOST) return;
+
+  const isEn = lang === 'en';
+  const subject = isEn ? 'Account Approved - Clay Performance' : 'Account Approvato - Clay Performance';
+  const greeting = isEn ? `Hello ${name},` : `Ciao ${name},`;
+  const message = isEn 
+    ? 'Your registration has been approved by the administrator! You can now log in and access the full platform.' 
+    : 'La tua registrazione è stata approvata dall\'amministratore! Ora puoi effettuare l\'accesso e utilizzare tutte le funzionalità della piattaforma.';
+  
+  const btnText = isEn ? 'ACCESS PLATFORM' : 'ACCEDI ALLA PIATTAFORMA';
+
+  const mailOptions = {
+    from: getMailFrom(),
+    to: email,
+    subject: subject,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #ffffff; padding: 40px; border-radius: 24px;">
+        <h1 style="color: #ea580c; text-transform: uppercase; font-weight: 900;">Clay Performance</h1>
+        <p>${greeting}</p>
+        <p>${message}</p>
+        <div style="text-align: center;">
+          <a href="${process.env.APP_URL || 'https://clay-tracking-pro-production-3fe8.up.railway.app'}/" style="display: inline-block; background-color: #ea580c; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; margin: 20px 0;">${btnText}</a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;">
+        <p style="font-size: 12px; color: #64748b;">Questa è una comunicazione automatica, si prega di non rispondere a questa email.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ User approval email sent to: ${email}`);
+  } catch (error: any) {
+    console.error('❌ Error sending user approval email:', error);
+  }
+};
+
 const initDB = async () => {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ DATABASE_URL environment variable is missing. Database will not be initialized.');
@@ -1935,9 +2032,7 @@ app.post('/api/auth/register', async (req, res) => {
       if (!finalSociety) {
         finalSociety = 'Cacciatori';
       }
-      if (!finalCategory) {
-        finalCategory = 'Cacciatore';
-      }
+      finalCategory = 'CA';
       if (!finalQualification) {
         finalQualification = 'Cacciatori';
       }
@@ -1982,14 +2077,30 @@ app.post('/api/auth/register', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
       [
         upperName, upperSurname, email, hash, 'user', 
-        birth_date || null, phone || null, 'active',
+        birth_date || null, phone || null, 'pending',
         !!is_international, !!is_cacciatore, nationality || null, international_id || null, upperOriginalClub,
         upperSociety, finalShooterCode || null, finalQualification || null, finalCategory || null,
         verificationToken, false, userLanguage
       ]
     );
 
+    // Send email verification to shooter
     await sendVerificationEmail(email, upperName || 'Tiratore', verificationToken, req.get('host'), userLanguage);
+
+    // Send notification email to admin
+    await sendAdminNotificationEmail({
+      name: upperName,
+      surname: upperSurname,
+      email,
+      phone,
+      birth_date,
+      category: finalCategory,
+      qualification: finalQualification,
+      society: upperSociety,
+      is_cacciatore,
+      is_international,
+      shooter_code: finalShooterCode
+    });
 
     res.json({ success: true });
   } catch (err: any) {
@@ -2003,19 +2114,35 @@ app.get('/verify-email', async (req, res) => {
   if (!token) return res.status(400).send('Token mancante.');
 
   try {
-    const { rows } = await pool.query("SELECT id FROM users WHERE verification_token = $1", [token]);
+    const { rows } = await pool.query("SELECT id, status FROM users WHERE verification_token = $1", [token]);
     if (rows.length === 0) return res.status(400).send('Token non valido o scaduto.');
 
-    await pool.query("UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1", [rows[0].id]);
+    const user = rows[0];
+    await pool.query("UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1", [user.id]);
     
-    res.send(`
-      <div style="font-family: sans-serif; text-align: center; padding: 50px; background-color: #0f172a; color: white; min-height: 100vh;">
-        <h1 style="color: #ea580c; font-size: 48px; margin-bottom: 20px;">✓</h1>
-        <h1 style="color: white; text-transform: uppercase;">Email Verificata!</h1>
-        <p style="color: #94a3b8; margin-bottom: 30px;">Il tuo account è ora attivo. Puoi tornare all'app e procedere con il login.</p>
-        <a href="/" style="display: inline-block; background-color: #ea580c; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; letter-spacing: 1px;">ACCEDI ORA</a>
-      </div>
-    `);
+    if (user.status === 'pending') {
+      res.send(`
+        <div style="font-family: sans-serif; text-align: center; padding: 50px; background-color: #0f172a; color: white; min-height: 100vh;">
+          <h1 style="color: #ea580c; font-size: 48px; margin-bottom: 20px;">✓</h1>
+          <h1 style="color: white; text-transform: uppercase;">Email Verificata!</h1>
+          <p style="color: #94a3b8; margin-bottom: 30px; font-size: 16px; line-height: 1.6; max-width: 600px; margin-left: auto; margin-right: auto;">
+            La tua email è stata verificata con successo!<br><br>
+            Il tuo account è ora <strong>in attesa di approvazione</strong> da parte dell'amministratore.<br>
+            Riceverai una notifica via email non appena l'accesso sarà abilitato.
+          </p>
+          <a href="/" style="display: inline-block; background-color: #ea580c; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; letter-spacing: 1px;">TORNA ALL'APP</a>
+        </div>
+      `);
+    } else {
+      res.send(`
+        <div style="font-family: sans-serif; text-align: center; padding: 50px; background-color: #0f172a; color: white; min-height: 100vh;">
+          <h1 style="color: #ea580c; font-size: 48px; margin-bottom: 20px;">✓</h1>
+          <h1 style="color: white; text-transform: uppercase;">Email Verificata!</h1>
+          <p style="color: #94a3b8; margin-bottom: 30px;">Il tuo account è ora attivo. Puoi tornare all'app e procedere con il login.</p>
+          <a href="/" style="display: inline-block; background-color: #ea580c; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; letter-spacing: 1px;">ACCEDI ORA</a>
+        </div>
+      `);
+    }
   } catch (err) {
     res.status(500).send('Errore durante la verifica.');
   }
@@ -2086,6 +2213,14 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ 
         error: 'Account sospeso', 
         message: 'Il tuo account è stato sospeso. Contatta l\'amministratore per maggiori informazioni.' 
+      });
+    }
+
+    if (user.status === 'pending') {
+      console.log(`Login failed: User pending approval (${email})`);
+      return res.status(403).json({ 
+        error: 'In attesa di approvazione', 
+        message: 'Il tuo account è stato creato con successo, ma è in attesa di approvazione da parte di un amministratore. Riceverai una mail non appena l\'accesso sarà abilitato.' 
       });
     }
 
@@ -2771,10 +2906,10 @@ app.get('/api/admin/users', authenticateToken, requireAdminOrSociety, async (req
       .map(([id, _]) => id);
 
     if (activeUserIds.length > 0) {
-      query += ` ORDER BY CASE WHEN id = ANY($${params.length + 1}) THEN 0 ELSE 1 END, created_at DESC`;
+      query += ` ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, CASE WHEN id = ANY($${params.length + 1}) THEN 0 ELSE 1 END, created_at DESC`;
       params.push(activeUserIds);
     } else {
-      query += " ORDER BY created_at DESC";
+      query += " ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, created_at DESC";
     }
     
     if (limit) {
@@ -3400,9 +3535,10 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
   const upperOriginalClub = original_club ? original_club.toUpperCase().trim() : null;
 
   try {
-    const userCheck = await pool.query("SELECT role, society, email_verified FROM users WHERE id = $1", [req.params.id]);
+    const userCheck = await pool.query("SELECT role, society, email_verified, status, name, email, language FROM users WHERE id = $1", [req.params.id]);
     if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
+    const oldStatus = userCheck.rows[0].status;
     const targetEmailVerified = email_verified !== undefined ? !!email_verified : userCheck.rows[0].email_verified;
 
     if (req.user.role === 'society') {
@@ -3456,6 +3592,14 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async 
         }, 
         `/admin?tab=users`
       );
+    }
+
+    // If the user's status was changed from pending to active, send them an email
+    if (oldStatus === 'pending' && status === 'active') {
+      const approvedEmail = email || userCheck.rows[0].email;
+      const approvedName = upperName || userCheck.rows[0].name;
+      const approvedLang = language || userCheck.rows[0].language || 'it';
+      await sendUserApprovedEmail(approvedEmail, approvedName, approvedLang);
     }
 
     res.json({ success: true });

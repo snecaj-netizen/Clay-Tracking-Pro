@@ -45,10 +45,32 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
   const [society, setSociety] = useState(initialCac ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (initialDetails?.society || '')));
   const [shooterCode, setShooterCode] = useState(initialDetails?.shooterCode || '');
   const [birthDate, setBirthDate] = useState('');
+  const [birthDateDisplay, setBirthDateDisplay] = useState('');
   const [phone, setPhone] = useState('');
   const [disciplineCategories, setDisciplineCategories] = useState(initialDetails?.disciplineCategories || '');
   const [loading, setLoading] = useState(false);
   const [isCacciatore, setIsCacciatore] = useState(initialCac);
+
+  const handleBirthDateChange = (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 8);
+    let formatted = clean;
+    if (clean.length > 2) {
+      formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+    }
+    if (clean.length > 4) {
+      formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+    }
+    setBirthDateDisplay(formatted);
+
+    if (clean.length === 8) {
+      const day = clean.slice(0, 2);
+      const month = clean.slice(2, 4);
+      const year = clean.slice(4, 8);
+      setBirthDate(`${year}-${month}-${day}`);
+    } else {
+      setBirthDate('');
+    }
+  };
 
   const handleShooterCodeChange = (val: string) => {
     const uppercaseVal = val.toUpperCase();
@@ -69,6 +91,23 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
     if (!isCacciatore && shooterCode && !shooterCodeRegex.test(shooterCode)) {
       if (triggerToast) triggerToast(t('invalid_shooter_code_format'), 'error');
       return;
+    }
+
+    if (birthDateDisplay && !birthDate) {
+      if (triggerToast) triggerToast((t('birth_date') || 'Data di Nascita') + ' non valida. Usa il formato GG/MM/AAAA', 'error');
+      return;
+    }
+
+    if (birthDate) {
+      const parts = birthDate.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(y) || isNaN(m) || isNaN(d) || m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > currentYear) {
+        if (triggerToast) triggerToast((t('birth_date') || 'Data di Nascita') + ' non valida.', 'error');
+        return;
+      }
     }
 
     setLoading(true);
@@ -256,7 +295,14 @@ const QuickAddShooterModal: React.FC<QuickAddShooterModalProps> = ({ token, curr
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('birth_date_label')}</label>
-                <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  placeholder="GG/MM/AAAA"
+                  value={birthDateDisplay} 
+                  onChange={e => handleBirthDateChange(e.target.value)} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all placeholder-slate-700" 
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('phone_label')}</label>
