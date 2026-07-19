@@ -116,6 +116,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     return { groupA: filteredA, groupB: filteredB, hunters: filteredHunters, libera: filteredLibera, others: filteredOthers, filtered: result };
   }, [teams, results, filterSociety, selectedTypeFilter]);
 
+  const hasFinalSeries = useMemo(() => {
+    return sortedAndGroupedTeams.filtered.some(team => {
+      return (team.member_ids || []).some((id: string | number) => {
+        const result = results.find(r => String(r.user_id) === String(id));
+        return result?.scores && result.scores[4] !== undefined && result.scores[4] !== null && result.scores[4] !== '' && Number(result.scores[4]) > 0;
+      });
+    });
+  }, [sortedAndGroupedTeams.filtered, results]);
+
   const societies = useMemo(() => {
     const socs = new Set<string>();
     results.forEach(r => {
@@ -546,7 +555,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                   <th className="p-4 text-center">S. 2</th>
                   <th className="p-4 text-center">S. 3</th>
                   <th className="p-4 text-center">S. 4</th>
-                  <th className="p-4 text-center">S. Fin.</th>
+                  {hasFinalSeries && <th className="p-4 text-center">S. Fin.</th>}
                   <th className="p-4 text-right">Tot</th>
                   <th className="p-4 text-right">Sp.</th>
                 </tr>
@@ -617,11 +626,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                           <td className="p-4 text-[10px] font-black text-slate-400 uppercase">
                             {m.qualification}
                           </td>
-                          {[0, 1, 2, 3, 4].map(sIdx => (
-                            <td key={sIdx} className={`p-4 text-center tabular-nums text-sm ${m.scores[sIdx] === 25 ? 'text-red-500 font-black' : 'text-slate-400'}`}>
-                              {m.scores[sIdx] !== undefined ? m.scores[sIdx] : '--'}
-                            </td>
-                          ))}
+                          {[0, 1, 2, 3, 4].map(sIdx => {
+                            if (sIdx === 4 && !hasFinalSeries) return null;
+                            return (
+                              <td key={sIdx} className={`p-4 text-center tabular-nums text-sm ${m.scores[sIdx] === 25 ? 'text-red-500 font-black' : 'text-slate-400'}`}>
+                                {m.scores[sIdx] !== undefined ? m.scores[sIdx] : '--'}
+                              </td>
+                            );
+                          })}
                           <td className="p-4 text-right font-black text-white tabular-nums">
                             {m.totalscore}
                           </td>
@@ -642,9 +654,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                             </td>
                           )
                         })}
-                        <td className="p-3 text-center font-black text-emerald-400 tabular-nums">
-                          {teamMembers.reduce((sum, m) => sum + (m.scores[4] || 0), 0) || '0'}
-                        </td>
+                        {hasFinalSeries && (
+                          <td className="p-3 text-center font-black text-emerald-400 tabular-nums">
+                            {teamMembers.reduce((sum, m) => sum + (m.scores[4] || 0), 0) || '0'}
+                          </td>
+                        )}
                         <td className="p-3 text-right font-black text-white bg-emerald-600/40">
                           <div className="flex flex-col items-end justify-center">
                             <span className="text-lg tabular-nums">{team.totalScore}</span>
@@ -661,7 +675,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                       </tr>
                       {!readOnly && (
                          <tr className="bg-slate-900/50">
-                           <td colSpan={13} className="p-4 text-right border-b border-slate-800">
+                           <td colSpan={hasFinalSeries ? 13 : 12} className="p-4 text-right border-b border-slate-800">
                               <div className="flex justify-end gap-3 items-center">
                                 {team.is_sent ? (
                                   <span className="text-[10px] font-black uppercase text-emerald-500 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 rounded-lg">
