@@ -207,8 +207,14 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
       filtered = teamStats.filter(s => s.discipline === statsFilterDiscipline);
     }
     return [...filtered].sort((a, b) => {
-      const rteA = a.avg_score ? parseFloat(a.avg_score) * 4 : 0;
-      const rteB = b.avg_score ? parseFloat(b.avg_score) * 4 : 0;
+      const isDoppiettoA = a.discipline === 'Doppietto Compak (DCK)' || String(a.discipline).toUpperCase().includes('DOPPIETTO') || String(a.discipline).toUpperCase().includes('DCK');
+      const isDoppiettoB = b.discipline === 'Doppietto Compak (DCK)' || String(b.discipline).toUpperCase().includes('DOPPIETTO') || String(b.discipline).toUpperCase().includes('DCK');
+      
+      const multA = isDoppiettoA ? 2 : 4;
+      const multB = isDoppiettoB ? 2 : 4;
+      
+      const rteA = a.avg_score ? parseFloat(a.avg_score) * multA : 0;
+      const rteB = b.avg_score ? parseFloat(b.avg_score) * multB : 0;
       return rteB - rteA;
     });
   }, [teamStats, statsFilterDiscipline]);
@@ -253,6 +259,14 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
   const [teamSubTab, setTeamSubTab] = useState<'list' | 'stats'>('list');
   const [shooterSearch, setShooterSearch] = useState('');
   const [pickerDiscipline, setPickerDiscipline] = useState('');
+  const [filterSocietyName, setFilterSocietyName] = useState('');
+
+  const filteredTeams = useMemo(() => {
+    if (currentUser?.role === 'admin' && filterSocietyName) {
+      return teams.filter(t => t.society === filterSocietyName);
+    }
+    return teams;
+  }, [teams, currentUser, filterSocietyName]);
 
   const pickerDisciplines = useMemo(() => {
     return Array.from(new Set(events.map((e: any) => e.discipline))).sort();
@@ -554,7 +568,11 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                 <div className="text-right">
                   <div className="flex items-baseline justify-end gap-1">
                     <span className="text-base font-black text-orange-500">
-                      {(parseFloat(stat.avg_score) * 4).toFixed(2)}
+                      {(() => {
+                        const isDoppietto = stat.discipline === 'Doppietto Compak (DCK)' || String(stat.discipline).toUpperCase().includes('DOPPIETTO') || String(stat.discipline).toUpperCase().includes('DCK');
+                        const multiplier = isDoppietto ? 2 : 4;
+                        return (parseFloat(stat.avg_score) * multiplier).toFixed(2);
+                      })()}
                     </span>
                     <span className="text-[9px] font-bold text-slate-600">RTE</span>
                   </div>
@@ -705,29 +723,60 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
               </form>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {teams.map(team => (
-                <TeamCard 
-                  key={team.id} 
-                  team={team} 
-                  editingScore={editingScore} 
-                  onSetEditingScore={setEditingScore} 
-                  onUpdateScore={handleUpdateScore} 
-                  onSetSelectedTeamForSheet={handleSetSelectedTeamForSheet} 
-                  onEditTeam={handleEditTeam} 
-                  onDeleteTeam={handleDeleteTeam} 
-                  onSendTeam={handleSendTeam}
-                  onWithdrawTeam={handleWithdrawTeam}
-                  isSociety={currentUser?.role === 'society' || currentUser?.role === 'admin'}
-                />
-              ))}
-              {teams.length === 0 && (
-                <div className="col-span-full py-20 text-center bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
-                  <i className="fas fa-users text-4xl text-slate-800 mb-4"></i>
-                  <p className="text-slate-500 font-bold">{t('no_teams_created')}</p>
-                  <button onClick={handleOpenNewTeamForm} className="mt-4 text-orange-500 font-black uppercase text-xs hover:underline">{t('create_first_team')}</button>
+            <div className="space-y-6">
+              {currentUser?.role === 'admin' && (
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-orange-600/20 border border-orange-500/20 flex items-center justify-center text-orange-500">
+                      <i className="fas fa-filter"></i>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('filter_teams_title')}</h3>
+                      <span className="text-[10px] text-slate-500 font-bold">{t('filter_by_society_desc')}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 min-w-[240px] w-full sm:w-auto">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                      <i className="fas fa-building text-orange-500"></i>
+                      {t('society_label') || 'Società'}
+                    </label>
+                    <div className="relative">
+                      <SocietySearch 
+                        value={filterSocietyName}
+                        onChange={(val) => setFilterSocietyName(val)}
+                        societies={societies}
+                        placeholder={t('all_societies') || 'Tutte le Società'}
+                        className="!bg-slate-900 border-slate-800 focus:border-orange-500 text-[11px] font-black uppercase text-white placeholder-slate-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredTeams.map(team => (
+                  <TeamCard 
+                    key={team.id} 
+                    team={team} 
+                    editingScore={editingScore} 
+                    onSetEditingScore={setEditingScore} 
+                    onUpdateScore={handleUpdateScore} 
+                    onSetSelectedTeamForSheet={handleSetSelectedTeamForSheet} 
+                    onEditTeam={handleEditTeam} 
+                    onDeleteTeam={handleDeleteTeam} 
+                    onSendTeam={handleSendTeam}
+                    onWithdrawTeam={handleWithdrawTeam}
+                    isSociety={currentUser?.role === 'society' || currentUser?.role === 'admin'}
+                  />
+                ))}
+                {filteredTeams.length === 0 && (
+                  <div className="col-span-full py-20 text-center bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
+                    <i className="fas fa-users text-4xl text-slate-800 mb-4"></i>
+                    <p className="text-slate-500 font-bold">{t('no_teams_created')}</p>
+                    <button onClick={handleOpenNewTeamForm} className="mt-4 text-orange-500 font-black uppercase text-xs hover:underline">{t('create_first_team')}</button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

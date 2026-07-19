@@ -314,6 +314,8 @@ const translations: Translations = {
   'language_label': { it: 'Lingua', en: 'Language' },
   'search_user_placeholder': { it: 'Cerca utente per nome o cognome...', en: 'Search user by name or surname...' },
   'filter_role': { it: 'Filtra per Ruolo', en: 'Filter by Role' },
+  'filter_teams_title': { it: 'Filtra Squadre', en: 'Filter Teams' },
+  'filter_by_society_desc': { it: 'Filtra l\'elenco per Società TAV', en: 'Filter list by TAV Club' },
   'all_roles': { it: 'Tutti i ruoli', en: 'All roles' },
   'new_user': { it: 'Nuovo Utente', en: 'New User' },
   'export_excel': { it: 'Esporta Excel', en: 'Export Excel' },

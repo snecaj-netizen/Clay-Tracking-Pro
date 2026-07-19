@@ -42,10 +42,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     const teamsWithTotals = teams.map(team => {
       const teamMembers = (team.member_ids || []).map((id: string) => {
         const result = results.find(r => r.user_id === id);
-        return { totalscore: result?.totalscore || 0 };
+        const shootOffVal = result?.shoot_off !== undefined && result?.shoot_off !== null ? parseInt(String(result.shoot_off), 10) : 0;
+        return {
+          totalscore: result?.totalscore || 0,
+          shoot_off: isNaN(shootOffVal) ? 0 : shootOffVal
+        };
       });
       const totalScore = teamMembers.reduce((sum: number, m: any) => sum + (m.totalscore || 0), 0);
-      return { ...team, totalScore };
+      const totalShootOff = teamMembers.reduce((sum: number, m: any) => sum + (m.shoot_off || 0), 0);
+      return { ...team, totalScore, totalShootOff };
     });
 
     const isGroupA = (type: string) => {
@@ -71,13 +76,18 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       return t === 'SQUADRA_TIRATORI' || t.includes('TIRATORI');
     };
 
-    const groupA = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupA(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const groupB = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const hunters = teamsWithTotals.filter(t => isHunter(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const libera = teamsWithTotals.filter(t => isLibera(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
-    const others = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort((a, b) => b.totalScore - a.totalScore);
+    const sortFunc = (a: any, b: any) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return b.totalShootOff - a.totalShootOff;
+    };
 
-    const all = teamsWithTotals.sort((a, b) => b.totalScore - a.totalScore);
+    const groupA = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupA(t.type || t.team_type)).sort(sortFunc);
+    const groupB = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupB(t.type || t.team_type)).sort(sortFunc);
+    const hunters = teamsWithTotals.filter(t => isHunter(t.type || t.team_type)).sort(sortFunc);
+    const libera = teamsWithTotals.filter(t => isLibera(t.type || t.team_type)).sort(sortFunc);
+    const others = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort(sortFunc);
+
+    const all = teamsWithTotals.sort(sortFunc);
 
     // Filter by society if selected
     let filteredA = groupA;
@@ -561,6 +571,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                     };
                   }).sort((a, b) => b.totalscore - a.totalscore);
 
+                  const teamShootOffTotal = teamMembers.reduce((sum, m) => {
+                    const val = m.shoot_off !== undefined && m.shoot_off !== null ? parseInt(String(m.shoot_off), 10) : 0;
+                    return sum + (isNaN(val) ? 0 : val);
+                  }, 0);
+
                   return (
                     <React.Fragment key={team.id}>
                       {teamMembers.map((m, mIdx) => (
@@ -630,10 +645,19 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                         <td className="p-3 text-center font-black text-emerald-400 tabular-nums">
                           {teamMembers.reduce((sum, m) => sum + (m.scores[4] || 0), 0) || '0'}
                         </td>
-                        <td className="p-3 text-right font-black text-white text-lg tabular-nums bg-emerald-600/40">
-                          {team.totalScore}
+                        <td className="p-3 text-right font-black text-white bg-emerald-600/40">
+                          <div className="flex flex-col items-end justify-center">
+                            <span className="text-lg tabular-nums">{team.totalScore}</span>
+                            {teamShootOffTotal > 0 && (
+                              <span className="text-[10px] text-orange-400 font-black leading-none mt-0.5 uppercase tracking-wider">
+                                (Barrage: {teamShootOffTotal})
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-3 text-right bg-emerald-600/40 font-black text-white">0</td>
+                        <td className="p-3 text-right bg-emerald-600/40 font-black text-white tabular-nums">
+                          {teamShootOffTotal > 0 ? teamShootOffTotal : '-'}
+                        </td>
                       </tr>
                       {!readOnly && (
                          <tr className="bg-slate-900/50">

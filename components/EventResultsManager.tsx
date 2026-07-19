@@ -1248,22 +1248,29 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         const teamMembers = (team.member_ids || []).map((id: string) => {
           const result = results.find(r => r.user_id === id);
           const user = users.find(u => u.id === id);
+          const shootOffVal = result?.shoot_off !== undefined && result?.shoot_off !== null ? parseInt(String(result.shoot_off), 10) : 0;
           return {
             id: id,
             user_id: id,
             user_name: result?.user_name || user?.name || t('unknown'),
             user_surname: result?.user_surname || user?.surname || '',
             totalscore: result?.totalscore || 0,
-            qualification: getShooterQualification(result || { ...user })
+            qualification: getShooterQualification(result || { ...user }),
+            shoot_off: isNaN(shootOffVal) ? 0 : shootOffVal
           };
         });
         const totalScore = teamMembers.reduce((sum: number, m: any) => sum + (m.totalscore || 0), 0);
+        const totalShootOff = teamMembers.reduce((sum: number, m: any) => sum + (m.shoot_off || 0), 0);
         return {
           ...team,
           totalScore,
+          totalShootOff,
           members: teamMembers
         };
-      }).sort((a, b) => b.totalScore - a.totalScore);
+      }).sort((a, b) => {
+        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+        return b.totalShootOff - a.totalShootOff;
+      });
 
       const isHunter = (type: string) => {
         if (!type) return false;
@@ -1289,15 +1296,18 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           const typeStr = team.type ? ` (${team.type})` : '';
           const nameStr = `${team.name}\n${team.society}${typeStr}`;
           const membersToRender = title.includes('Cacciatori') ? team.members.filter(m => m.qualification === 'CA') : team.members;
-          const shootersStr = membersToRender.map((s: any) => 
-            `${s.user_surname} ${s.user_name} (${s.totalscore})`
-          ).join('\n');
+          const shootersStr = membersToRender.map((s: any) => {
+            const sShootOffStr = s.shoot_off ? ` (+${s.shoot_off} Sp.)` : '';
+            return `${s.user_surname} ${s.user_name} (${s.totalscore}${sShootOffStr})`;
+          }).join('\n');
+          
+          const teamTotalStr = team.totalShootOff > 0 ? `${team.totalScore}\n(+${team.totalShootOff} Sp.)` : `${team.totalScore}`;
           
           return [
             index + 1,
             nameStr,
             shootersStr,
-            team.totalScore
+            teamTotalStr
           ];
         });
 
