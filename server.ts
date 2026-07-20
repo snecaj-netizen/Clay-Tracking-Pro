@@ -7848,13 +7848,21 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
        ON CONFLICT (id) DO UPDATE SET 
        user_id = EXCLUDED.user_id, name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, location = EXCLUDED.location, 
        discipline = EXCLUDED.discipline, level = EXCLUDED.level, totalscore = EXCLUDED.totalscore, totaltargets = EXCLUDED.totaltargets, 
-       averageperseries = EXCLUDED.averageperseries, position = EXCLUDED.position, cost = EXCLUDED.cost, win = EXCLUDED.win, 
-       notes = EXCLUDED.notes, weather = EXCLUDED.weather, scores = EXCLUDED.scores, detailedscores = EXCLUDED.detailedscores, 
-       seriesimages = EXCLUDED.seriesimages, usedcartridges = EXCLUDED.usedcartridges, chokes = EXCLUDED.chokes,
-       event_id = EXCLUDED.event_id, shoot_off = EXCLUDED.shoot_off, category_at_time = EXCLUDED.category_at_time, 
+       averageperseries = EXCLUDED.averageperseries, position = EXCLUDED.position, 
+       cost = CASE WHEN EXCLUDED.cost = 0 OR EXCLUDED.cost IS NULL THEN COALESCE(competitions.cost, 0) ELSE EXCLUDED.cost END, 
+       win = CASE WHEN EXCLUDED.win = 0 OR EXCLUDED.win IS NULL THEN COALESCE(competitions.win, 0) ELSE EXCLUDED.win END, 
+       notes = COALESCE(competitions.notes, EXCLUDED.notes), 
+       weather = COALESCE(competitions.weather, EXCLUDED.weather), 
+       scores = EXCLUDED.scores, detailedscores = EXCLUDED.detailedscores, 
+       seriesimages = COALESCE(competitions.seriesimages, EXCLUDED.seriesimages), 
+       usedcartridges = COALESCE(competitions.usedcartridges, EXCLUDED.usedcartridges), 
+       chokes = COALESCE(competitions.chokes, EXCLUDED.chokes),
+       event_id = EXCLUDED.event_id, 
+       shoot_off = CASE WHEN EXCLUDED.shoot_off IS NOT NULL THEN EXCLUDED.shoot_off ELSE competitions.shoot_off END,
+       category_at_time = EXCLUDED.category_at_time, 
        qualification_at_time = EXCLUDED.qualification_at_time, society_at_time = EXCLUDED.society_at_time,
-       ranking_preference = EXCLUDED.ranking_preference,
-       ranking_preference_override = EXCLUDED.ranking_preference_override,
+       ranking_preference = COALESCE(competitions.ranking_preference, EXCLUDED.ranking_preference),
+       ranking_preference_override = COALESCE(competitions.ranking_preference_override, EXCLUDED.ranking_preference_override),
        hidden_from_user = FALSE, team_id = EXCLUDED.team_id, team_name = EXCLUDED.team_name,
        series_fields = EXCLUDED.series_fields`,
       [
@@ -7899,12 +7907,13 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
   
   try {
     // Fetch existing competition to check permissions and get targetUserId
-    const existingComp = await pool.query('SELECT user_id, name, event_id FROM competitions WHERE id = $1', [req.params.id]);
+    const existingComp = await pool.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
     if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
     
-    const targetUserId = existingComp.rows[0].user_id;
-    const compName = existingComp.rows[0].name;
-    const compEventId = existingComp.rows[0].event_id;
+    const existing = existingComp.rows[0];
+    const targetUserId = existing.user_id;
+    const compName = existing.name;
+    const compEventId = existing.event_id;
 
     // Check if competition is linked to a validated event
     if (compEventId) {
@@ -7919,7 +7928,6 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       }
     }
 
-    let result;
     let teamId = c.teamId || null;
     let teamName = c.teamName || null;
 
@@ -7938,42 +7946,109 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       }
     }
 
+    // Determine roles and merge logic
+    const isUser = req.user.role !== 'admin' && req.user.role !== 'society';
+
+    // Official fields
+    let name = c.name !== undefined ? c.name : existing.name;
+    let date = c.date !== undefined ? c.date : existing.date;
+    let endDate = c.endDate !== undefined ? (c.endDate || null) : (existing.enddate || null);
+    let location = c.location !== undefined ? c.location : existing.location;
+    let discipline = c.discipline !== undefined ? c.discipline : existing.discipline;
+    let level = c.level !== undefined ? c.level : existing.level;
+    
+    let scores = c.scores !== undefined ? c.scores : (existing.scores ? (typeof existing.scores === 'string' ? JSON.parse(existing.scores) : existing.scores) : []);
+    let detailedScores = c.detailedScores !== undefined ? c.detailedScores : (existing.detailedscores ? (typeof existing.detailedscores === 'string' ? JSON.parse(existing.detailedscores) : existing.detailedscores) : null);
+    let totalScore = c.totalScore !== undefined ? c.totalScore : (existing.totalscore !== null ? existing.totalscore : 0);
+    let totalTargets = c.totalTargets !== undefined ? c.totalTargets : (existing.totaltargets !== null ? existing.totaltargets : 100);
+    let averagePerSeries = c.averagePerSeries !== undefined ? c.averagePerSeries : (existing.averageperseries !== null ? existing.averageperseries : 0);
+    let position = c.position !== undefined ? (c.position || null) : (existing.position || null);
+    let shootOff = c.shootOff !== undefined ? c.shootOff : existing.shoot_off;
+    let finalTeamId = teamId || existing.team_id;
+    let finalTeamName = teamName || existing.team_name;
+    let seriesFields = c.seriesFields !== undefined ? c.seriesFields : (existing.series_fields ? (typeof existing.series_fields === 'string' ? JSON.parse(existing.series_fields) : existing.series_fields) : null);
+
+    // If standard user is updating a competition linked to an official event, PREVENT overwriting official event fields
+    if (compEventId && isUser) {
+      name = existing.name;
+      date = existing.date;
+      endDate = existing.enddate || null;
+      location = existing.location;
+      discipline = existing.discipline;
+      scores = existing.scores ? (typeof existing.scores === 'string' ? JSON.parse(existing.scores) : existing.scores) : [];
+      detailedScores = existing.detailedscores ? (typeof existing.detailedscores === 'string' ? JSON.parse(existing.detailedscores) : existing.detailedscores) : null;
+      totalScore = existing.totalscore !== null ? existing.totalscore : 0;
+      totalTargets = existing.totaltargets !== null ? existing.totaltargets : 100;
+      averagePerSeries = existing.averageperseries !== null ? existing.averageperseries : 0;
+      position = existing.position || null;
+      shootOff = existing.shoot_off;
+      finalTeamId = existing.team_id;
+      finalTeamName = existing.team_name;
+      seriesFields = existing.series_fields ? (typeof existing.series_fields === 'string' ? JSON.parse(existing.series_fields) : existing.series_fields) : null;
+    }
+
+    // Personal fields (protect from being overwritten with defaults/null/zeros if omitted)
+    let cost = c.cost !== undefined ? c.cost : existing.cost;
+    if (cost === 0 || cost === null || cost === undefined) {
+      cost = existing.cost || 0;
+    }
+    
+    let win = c.win !== undefined ? c.win : existing.win;
+    if (win === 0 || win === null || win === undefined) {
+      win = existing.win || 0;
+    }
+
+    let notes = c.notes !== undefined ? (c.notes || null) : (existing.notes || null);
+    if (notes === null || notes === '') {
+      notes = existing.notes || null;
+    }
+
+    let weather = c.weather ? JSON.stringify(c.weather) : (existing.weather ? (typeof existing.weather === 'string' ? existing.weather : JSON.stringify(existing.weather)) : null);
+    let seriesImages = c.seriesImages ? JSON.stringify(c.seriesImages) : (existing.seriesimages ? (typeof existing.seriesimages === 'string' ? existing.seriesimages : JSON.stringify(existing.seriesimages)) : null);
+    let usedCartridges = c.usedCartridges ? JSON.stringify(c.usedCartridges) : (existing.usedcartridges ? (typeof existing.usedcartridges === 'string' ? existing.usedcartridges : JSON.stringify(existing.usedcartridges)) : null);
+    let chokes = c.chokes ? JSON.stringify(c.chokes) : (existing.chokes ? (typeof existing.chokes === 'string' ? existing.chokes : JSON.stringify(existing.chokes)) : null);
+
+    let rankingPreference = c.ranking_preference || existing.ranking_preference || 'categoria';
+    let rankingPreferenceOverride = c.ranking_preference_override || existing.ranking_preference_override || null;
+
+    let result;
+
     if (req.user.role === 'admin') {
       const finalUserId = c.userId || targetUserId;
       result = await pool.query(
         `UPDATE competitions SET user_id=$1, name=$2, date=$3, enddate=$4, location=$5, discipline=$6, level=$7, totalscore=$8, totaltargets=$9, averageperseries=$10, position=$11, cost=$12, win=$13, notes=$14, weather=$15, scores=$16, detailedscores=$17, seriesimages=$18, usedcartridges=$19, chokes=$20, event_id=$21, shoot_off=$22, ranking_preference=$23, ranking_preference_override=$24, team_id=$25, team_name=$26, series_fields=$27 WHERE id=$28`,
         [
-          finalUserId, c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
-          c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
-          c.weather ? JSON.stringify(c.weather) : null,
-          JSON.stringify(c.scores),
-          c.detailedScores ? JSON.stringify(c.detailedScores) : null,
-          c.seriesImages ? JSON.stringify(c.seriesImages) : null,
-          c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
-          c.chokes ? JSON.stringify(c.chokes) : null,
+          finalUserId, name, date, endDate, location, discipline, level, 
+          totalScore, totalTargets, averagePerSeries, position, cost, win, notes,
+          weather,
+          JSON.stringify(scores),
+          detailedScores ? JSON.stringify(detailedScores) : null,
+          seriesImages,
+          usedCartridges,
+          chokes,
           compEventId,
-          c.shootOff !== undefined ? c.shootOff : null,
-          c.ranking_preference || 'categoria',
-          c.ranking_preference_override || null,
-          teamId, teamName,
-          c.seriesFields ? JSON.stringify(c.seriesFields) : null,
+          shootOff !== undefined && shootOff !== null && shootOff !== '' ? parseInt(String(shootOff), 10) : null,
+          rankingPreference,
+          rankingPreferenceOverride,
+          finalTeamId, finalTeamName,
+          seriesFields ? JSON.stringify(seriesFields) : null,
           req.params.id
         ]
       );
     } else if (req.user.role === 'society') {
       // Società can update competitions for their own shooters OR for events they own OR results at their location
-      const existingComp = await pool.query('SELECT user_id, event_id, location FROM competitions WHERE id = $1', [req.params.id]);
-      if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
+      const existingCompCheck = await pool.query('SELECT user_id, event_id, location FROM competitions WHERE id = $1', [req.params.id]);
+      if (existingCompCheck.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
       
-      const compUserId = existingComp.rows[0].user_id;
-      const compEventId = existingComp.rows[0].event_id;
-      const compLocation = existingComp.rows[0].location;
+      const compUserId = existingCompCheck.rows[0].user_id;
+      const compEventIdVal = existingCompCheck.rows[0].event_id;
+      const compLocation = existingCompCheck.rows[0].location;
       
       let canManage = false;
       
-      if (compEventId) {
+      if (compEventIdVal) {
         // If it's an event result, ONLY the hosting Society can update it
-        const eventCheck = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [compEventId]);
+        const eventCheck = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [compEventIdVal]);
         if (eventCheck.rows.length > 0) {
           const ev = eventCheck.rows[0];
           if (ev.location === req.user.society || ev.created_by === req.user.id) {
@@ -8002,20 +8077,20 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       result = await pool.query(
         `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25, series_fields=$26 WHERE id=$27`,
         [
-          c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
-          c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
-          c.weather ? JSON.stringify(c.weather) : null,
-          JSON.stringify(c.scores),
-          c.detailedScores ? JSON.stringify(c.detailedScores) : null,
-          c.seriesImages ? JSON.stringify(c.seriesImages) : null,
-          c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
-          c.chokes ? JSON.stringify(c.chokes) : null,
-          compEventId,
-          c.shootOff !== undefined ? c.shootOff : null,
-          c.ranking_preference || 'categoria',
-          c.ranking_preference_override || null,
-          teamId, teamName,
-          c.seriesFields ? JSON.stringify(c.seriesFields) : null,
+          name, date, endDate, location, discipline, level, 
+          totalScore, totalTargets, averagePerSeries, position, cost, win, notes,
+          weather,
+          JSON.stringify(scores),
+          detailedScores ? JSON.stringify(detailedScores) : null,
+          seriesImages,
+          usedCartridges,
+          chokes,
+          compEventIdVal,
+          shootOff !== undefined && shootOff !== null && shootOff !== '' ? parseInt(String(shootOff), 10) : null,
+          rankingPreference,
+          rankingPreferenceOverride,
+          finalTeamId, finalTeamName,
+          seriesFields ? JSON.stringify(seriesFields) : null,
           req.params.id
         ]
       );
@@ -8023,20 +8098,20 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
       result = await pool.query(
         `UPDATE competitions SET name=$1, date=$2, enddate=$3, location=$4, discipline=$5, level=$6, totalscore=$7, totaltargets=$8, averageperseries=$9, position=$10, cost=$11, win=$12, notes=$13, weather=$14, scores=$15, detailedscores=$16, seriesimages=$17, usedcartridges=$18, chokes=$19, event_id=$20, shoot_off=$21, ranking_preference=$22, ranking_preference_override=$23, team_id=$24, team_name=$25, series_fields=$26 WHERE id=$27 AND user_id=$28`,
         [
-          c.name, c.date, c.endDate || null, c.location, c.discipline, c.level, 
-          c.totalScore, c.totalTargets, c.averagePerSeries, c.position || null, c.cost || 0, c.win || 0, c.notes || null,
-          c.weather ? JSON.stringify(c.weather) : null,
-          JSON.stringify(c.scores),
-          c.detailedScores ? JSON.stringify(c.detailedScores) : null,
-          c.seriesImages ? JSON.stringify(c.seriesImages) : null,
-          c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
-          c.chokes ? JSON.stringify(c.chokes) : null,
+          name, date, endDate, location, discipline, level, 
+          totalScore, totalTargets, averagePerSeries, position, cost, win, notes,
+          weather,
+          JSON.stringify(scores),
+          detailedScores ? JSON.stringify(detailedScores) : null,
+          seriesImages,
+          usedCartridges,
+          chokes,
           compEventId,
-          c.shootOff !== undefined ? c.shootOff : null,
-          c.ranking_preference || 'categoria',
-          c.ranking_preference_override || null,
-          teamId, teamName,
-          c.seriesFields ? JSON.stringify(c.seriesFields) : null,
+          shootOff !== undefined && shootOff !== null && shootOff !== '' ? parseInt(String(shootOff), 10) : null,
+          rankingPreference,
+          rankingPreferenceOverride,
+          finalTeamId, finalTeamName,
+          seriesFields ? JSON.stringify(seriesFields) : null,
           req.params.id, req.user.id
         ]
       );

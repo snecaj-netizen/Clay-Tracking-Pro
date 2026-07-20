@@ -530,22 +530,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       <div className="space-y-8">
         {!isCreating && sortedAndGroupedTeams.filtered.length > 0 && (
           <div className="overflow-x-auto bg-slate-900/30 rounded-2xl border border-slate-800">
-            <table className="w-full text-left border-collapse min-w-[800px]">
+            <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
-                <tr className="bg-slate-950 border-b border-slate-800 text-[10px] uppercase font-black tracking-widest text-slate-500">
-                  <th className="p-4 w-12">Pos</th>
-                  <th className="p-4 w-32">Sq</th>
-                  <th className="p-4">Nominativo</th>
-                  <th className="p-4">Tessera</th>
-                  <th className="p-4">Cat</th>
-                  <th className="p-4">Qual</th>
-                  <th className="p-4 text-center">S. 1</th>
-                  <th className="p-4 text-center">S. 2</th>
-                  <th className="p-4 text-center">S. 3</th>
-                  <th className="p-4 text-center">S. 4</th>
-                  {hasFinalSeries && <th className="p-4 text-center">S. Fin.</th>}
-                  <th className="p-4 text-right">Tot</th>
-                  <th className="p-4 text-right">Sp.</th>
+                <tr className="bg-slate-950 border-b border-slate-800 text-[9px] uppercase font-black tracking-widest text-slate-500">
+                  <th className="py-2.5 px-3 w-10">Pos</th>
+                  <th className="py-2.5 px-3 w-28">Sq</th>
+                  <th className="py-2.5 px-3">Nominativo</th>
+                  <th className="py-2.5 px-3">Tessera</th>
+                  <th className="py-2.5 px-3">Cat</th>
+                  <th className="py-2.5 px-3">Qual</th>
+                  <th className="py-2.5 px-3 text-center">S. 1</th>
+                  <th className="py-2.5 px-3 text-center">S. 2</th>
+                  <th className="py-2.5 px-3 text-center">S. 3</th>
+                  <th className="py-2.5 px-3 text-center">S. 4</th>
+                  {hasFinalSeries && <th className="py-2.5 px-3 text-center">S. Fin.</th>}
+                  <th className="py-2.5 px-3 text-right">Tot</th>
+                  <th className="py-2.5 px-3 text-right">Sp.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/30">
@@ -577,93 +577,93 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                     <React.Fragment key={team.id}>
                       {teamMembers.map((m, mIdx) => (
                         <tr key={`${team.id}-m-${m.id}`} className="group hover:bg-slate-800/30 transition-colors">
-                          <td className="p-4 border-r border-slate-800/30">
+                          <td className="py-2 px-3 border-r border-slate-800/30">
                             {mIdx === 0 && (
                               <div className="flex flex-col items-center">
-                                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black transition-all ${tIdx < 3 ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400'}`}>
+                                <span className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs transition-all ${tIdx < 3 ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-slate-800 text-slate-400'}`}>
                                   {tIdx + 1}
                                 </span>
                               </div>
                             )}
                           </td>
-                          <td className="p-4 font-black text-xs text-blue-400 uppercase tracking-widest border-r border-slate-800/30">
+                          <td className="py-2 px-3 font-black text-[11px] text-blue-400 uppercase tracking-widest border-r border-slate-800/30">
                             {mIdx === 0 && (
                               <>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
                                   <span className="font-bold">{team.name}</span>
                                   {(team.type || team.team_type) && (() => {
                                     const typeVal = team.type || team.team_type || '';
                                     let displayType = typeVal;
                                     if (typeVal === 'A' || typeVal.includes('(A)') || typeVal.includes('_A')) displayType = 'A';
                                     else if (typeVal === 'B' || typeVal.includes('(B)') || typeVal.includes('_B')) displayType = 'B';
-                                    return <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">{displayType}</span>;
+                                    return <span className="text-[8px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.5 rounded-full">{displayType}</span>;
                                   })()}
                                 </div>
                               </>
                             )}
                           </td>
-                          <td className="p-4 font-bold text-slate-200 uppercase text-xs">
+                          <td className="py-2 px-3 font-bold text-slate-200 uppercase text-[11px]">
                             {m.user_surname} {m.user_name}
                           </td>
-                          <td className="p-4 text-[10px] font-mono text-slate-500 uppercase">
+                          <td className="py-2 px-3 text-[9px] font-mono text-slate-500 uppercase">
                             {m.shooter_code}
                           </td>
-                          <td className="p-4 text-[10px] font-black text-slate-400 uppercase">
+                          <td className="py-2 px-3 text-[9px] font-black text-slate-400 uppercase">
                             {m.category}
                           </td>
-                          <td className="p-4 text-[10px] font-black text-slate-400 uppercase">
+                          <td className="py-2 px-3 text-[9px] font-black text-slate-400 uppercase">
                             {m.qualification}
                           </td>
                           {[0, 1, 2, 3, 4].map(sIdx => {
                             if (sIdx === 4 && !hasFinalSeries) return null;
                             return (
-                              <td key={sIdx} className={`p-4 text-center tabular-nums text-sm ${m.scores[sIdx] === 25 ? 'text-red-500 font-black' : 'text-slate-400'}`}>
+                              <td key={sIdx} className={`py-2 px-3 text-center tabular-nums text-xs ${m.scores[sIdx] === 25 ? 'text-red-500 font-black' : 'text-slate-400'}`}>
                                 {m.scores[sIdx] !== undefined ? m.scores[sIdx] : '--'}
                               </td>
                             );
                           })}
-                          <td className="p-4 text-right font-black text-white tabular-nums">
+                          <td className="py-2 px-3 text-right font-black text-white tabular-nums text-xs">
                             {m.totalscore}
                           </td>
-                          <td className="p-4 text-right tabular-nums text-slate-500 text-xs">
+                          <td className="py-2 px-3 text-right tabular-nums text-slate-500 text-[11px]">
                             {m.shoot_off}
                           </td>
                         </tr>
                       ))}
                       <tr className="bg-emerald-600/20 border-b-2 border-emerald-500/30">
-                        <td className="p-3 border-r border-emerald-500/20"></td>
-                        <td className="p-3 border-r border-emerald-500/20"></td>
-                        <td colSpan={4} className="p-3 text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">{team.name} - TOTAL</td>
+                        <td className="py-2 px-3 border-r border-emerald-500/20"></td>
+                        <td className="py-2 px-3 border-r border-emerald-500/20"></td>
+                        <td colSpan={4} className="py-2 px-3 text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">{team.name} - TOTAL</td>
                         {[0, 1, 2, 3].map(sIdx => {
                           const seriesSum = teamMembers.reduce((sum, m) => sum + (m.scores[sIdx] || 0), 0);
                           return (
-                            <td key={sIdx} className="p-3 text-center font-black text-emerald-400 tabular-nums">
+                            <td key={sIdx} className="py-2 px-3 text-center font-black text-emerald-400 tabular-nums text-xs">
                               {seriesSum || '--'}
                             </td>
                           )
                         })}
                         {hasFinalSeries && (
-                          <td className="p-3 text-center font-black text-emerald-400 tabular-nums">
+                          <td className="py-2 px-3 text-center font-black text-emerald-400 tabular-nums text-xs">
                             {teamMembers.reduce((sum, m) => sum + (m.scores[4] || 0), 0) || '0'}
                           </td>
                         )}
-                        <td className="p-3 text-right font-black text-white bg-emerald-600/40">
+                        <td className="py-2 px-3 text-right font-black text-white bg-emerald-600/40">
                           <div className="flex flex-col items-end justify-center">
-                            <span className="text-lg tabular-nums">{team.totalScore}</span>
+                            <span className="text-base tabular-nums">{team.totalScore}</span>
                             {teamShootOffTotal > 0 && (
-                              <span className="text-[10px] text-orange-400 font-black leading-none mt-0.5 uppercase tracking-wider">
+                              <span className="text-[9px] text-orange-400 font-black leading-none mt-0.5 uppercase tracking-wider">
                                 (Barrage: {teamShootOffTotal})
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="p-3 text-right bg-emerald-600/40 font-black text-white tabular-nums">
+                        <td className="py-2 px-3 text-right bg-emerald-600/40 font-black text-white tabular-nums text-xs">
                           {teamShootOffTotal > 0 ? teamShootOffTotal : '-'}
                         </td>
                       </tr>
                       {!readOnly && (
                          <tr className="bg-slate-900/50">
-                           <td colSpan={hasFinalSeries ? 13 : 12} className="p-4 text-right border-b border-slate-800">
+                           <td colSpan={hasFinalSeries ? 13 : 12} className="py-2 px-3 text-right border-b border-slate-800">
                               <div className="flex justify-end gap-3 items-center">
                                 {team.is_sent ? (
                                   <span className="text-[10px] font-black uppercase text-emerald-500 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 rounded-lg">

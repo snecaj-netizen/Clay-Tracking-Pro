@@ -997,15 +997,21 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
 
     // 1. Sort by total score descending
-    if (b.totalscore !== a.totalscore) {
-      return (b.totalscore || 0) - (a.totalscore || 0);
+    const scoreA = typeof a.totalscore === 'number' ? a.totalscore : parseInt(String(a.totalscore || 0), 10);
+    const scoreB = typeof b.totalscore === 'number' ? b.totalscore : parseInt(String(b.totalscore || 0), 10);
+    const cleanScoreA = isNaN(scoreA) ? 0 : scoreA;
+    const cleanScoreB = isNaN(scoreB) ? 0 : scoreB;
+    if (cleanScoreB !== cleanScoreA) {
+      return cleanScoreB - cleanScoreA;
     }
     
     // 2. Sort by shoot-off score descending
-    const aShootOff = a.shoot_off !== null && a.shoot_off !== undefined ? a.shoot_off : -1;
-    const bShootOff = b.shoot_off !== null && b.shoot_off !== undefined ? b.shoot_off : -1;
-    if (bShootOff !== aShootOff) {
-      return bShootOff - aShootOff;
+    const aShootOff = a.shoot_off !== null && a.shoot_off !== undefined ? (typeof a.shoot_off === 'number' ? a.shoot_off : parseInt(String(a.shoot_off), 10)) : -1;
+    const bShootOff = b.shoot_off !== null && b.shoot_off !== undefined ? (typeof b.shoot_off === 'number' ? b.shoot_off : parseInt(String(b.shoot_off), 10)) : -1;
+    const cleanAShootOff = isNaN(aShootOff) ? -1 : aShootOff;
+    const cleanBShootOff = isNaN(bShootOff) ? -1 : bShootOff;
+    if (cleanBShootOff !== cleanAShootOff) {
+      return cleanBShootOff - cleanAShootOff;
     }
     
     // 3. FITAV Countback Rule (zeroes from the end)
