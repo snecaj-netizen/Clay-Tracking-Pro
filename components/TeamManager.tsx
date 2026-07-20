@@ -206,18 +206,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       return 'Squadra deve avere almeno un partecipante';
     }
 
-    // Check maximum 3 teams per type per society (doesn't apply to Libera?)
-    if (formData.type !== 'SQUADRA_TIRATORI' && formData.type !== 'CACCIATORI') {
-      const existingTeamsOfType = teams.filter(t => 
-        t.society === formData.society && 
-        t.type === formData.type && 
-        t.id !== editingTeamId
-      );
-      if (existingTeamsOfType.length >= 3) {
-        return t('max_teams_reached').replace('{{type}}', typeDef.name);
-      }
-    }
-
     const members = formData.memberIds.map(id => users.find(u => u.id === id)).filter(Boolean);
     
     const getCat = (m: any) => {
