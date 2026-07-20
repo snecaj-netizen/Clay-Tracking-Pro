@@ -348,7 +348,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                     )}
                   </div>
   
-                  <h3 className="text-xs sm:text-sm font-black uppercase leading-tight mb-2 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
+                  <h3 className="text-base sm:text-xs md:text-sm font-black uppercase leading-tight mb-2 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
                     {event.name}
                   </h3>
   
@@ -577,13 +577,13 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {ongoingSocieties.map((soc, idx) => {
                       const fullText = `${soc.code ? `${soc.code} - ` : ''}${soc.name}`;
-                      let fontSizeClass = 'text-xs sm:text-sm';
+                      let fontSizeClass = 'text-base sm:text-xs md:text-sm';
                       if (fullText.length > 35) {
-                        fontSizeClass = 'text-[9px] sm:text-[10px]';
+                        fontSizeClass = 'text-[13px] sm:text-[9px] md:text-[10px]';
                       } else if (fullText.length > 25) {
-                        fontSizeClass = 'text-[10px] sm:text-[11px]';
+                        fontSizeClass = 'text-sm sm:text-[10px] md:text-[11px]';
                       } else if (fullText.length > 18) {
-                        fontSizeClass = 'text-[11px] sm:text-xs';
+                        fontSizeClass = 'text-[15px] sm:text-[11px] md:text-xs';
                       }
 
                       return (
@@ -595,11 +595,11 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                           onClick={() => handleSelectSociety(soc.name, 'ongoing')}
                           className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-green-500/30 [.light-theme_&]:border-green-500/20 rounded-2xl p-4 sm:p-5 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-green-500/50 transition-all cursor-pointer shadow-md relative overflow-hidden flex flex-col justify-between min-h-[110px]"
                         >
-                          <div className="flex flex-col min-w-0 mb-3">
-                             <h3 className={`${fontSizeClass} font-black uppercase leading-tight group-hover:text-green-500 transition-colors break-words`} title={fullText}>
+                          <div className="flex flex-col min-w-0 mb-3 w-full">
+                             <h3 className={`${fontSizeClass} font-black uppercase leading-tight group-hover:text-green-500 transition-colors truncate whitespace-nowrap w-full`} title={fullText}>
                                {fullText}
                              </h3>
-                             <span className="text-[9px] font-black text-green-500 uppercase tracking-widest mt-1 block">
+                             <span className="text-[9px] font-black text-green-500 uppercase tracking-widest mt-1 block truncate">
                                {t('region_label')}: {soc.region}
                              </span>
                           </div>
@@ -643,13 +643,13 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {pastSocieties.map((soc, idx) => {
                       const fullText = `${soc.code ? `${soc.code} - ` : ''}${soc.name}`;
-                      let fontSizeClass = 'text-xs sm:text-sm';
+                      let fontSizeClass = 'text-base sm:text-xs md:text-sm';
                       if (fullText.length > 35) {
-                        fontSizeClass = 'text-[9px] sm:text-[10px]';
+                        fontSizeClass = 'text-[13px] sm:text-[9px] md:text-[10px]';
                       } else if (fullText.length > 25) {
-                        fontSizeClass = 'text-[10px] sm:text-[11px]';
+                        fontSizeClass = 'text-sm sm:text-[10px] md:text-[11px]';
                       } else if (fullText.length > 18) {
-                        fontSizeClass = 'text-[11px] sm:text-xs';
+                        fontSizeClass = 'text-[15px] sm:text-[11px] md:text-xs';
                       }
 
                       return (
@@ -661,11 +661,11 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                           onClick={() => handleSelectSociety(soc.name, 'past')}
                           className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-700 [.light-theme_&]:border-slate-300 rounded-2xl p-4 sm:p-5 hover:border-slate-500 transition-all cursor-pointer shadow-md grayscale hover:grayscale-0 flex flex-col justify-between min-h-[110px]"
                         >
-                          <div className="flex flex-col min-w-0 mb-3">
-                             <h3 className={`${fontSizeClass} font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors break-words`} title={fullText}>
+                          <div className="flex flex-col min-w-0 mb-3 w-full">
+                             <h3 className={`${fontSizeClass} font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors truncate whitespace-nowrap w-full`} title={fullText}>
                                {fullText}
                              </h3>
-                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 block">
+                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 block truncate">
                                {t('region_label')}: {soc.region}
                              </span>
                           </div>
