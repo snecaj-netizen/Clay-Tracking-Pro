@@ -348,7 +348,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                     )}
                   </div>
   
-                  <h3 className="text-lg md:text-xl font-black uppercase leading-tight mb-3 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
+                  <h3 className="text-xs sm:text-sm font-black uppercase leading-tight mb-2 text-slate-900 [.dark-theme_&]:text-white line-clamp-2">
                     {event.name}
                   </h3>
   
@@ -574,35 +574,47 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
             {viewMode === 'ongoing' ? (
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {ongoingSocieties.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {ongoingSocieties.map((soc, idx) => (
-                      <motion.div
-                        key={`ongoing-${soc.name}`}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.05 }}
-                        onClick={() => handleSelectSociety(soc.name, 'ongoing')}
-                        className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-green-500/30 [.light-theme_&]:border-green-500/20 rounded-3xl p-6 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-green-500/50 transition-all cursor-pointer shadow-xl relative overflow-hidden"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                           <div className="flex flex-col">
-                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-green-500 transition-colors">
-                                {soc.code ? `${soc.code} - ` : ''}{soc.name}
-                              </h3>
-                              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest mt-1">
-                                {t('region_label')}: {soc.region}
-                              </span>
-                           </div>
-                           <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 group-hover:border-green-500/50 transition-colors">
-                             <i className="fas fa-chevron-right text-xs text-slate-500 group-hover:text-green-500"></i>
-                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                          <i className="fas fa-trophy text-green-500"></i>
-                          <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')}</span>
-                        </div>
-                      </motion.div>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {ongoingSocieties.map((soc, idx) => {
+                      const fullText = `${soc.code ? `${soc.code} - ` : ''}${soc.name}`;
+                      let fontSizeClass = 'text-xs sm:text-sm';
+                      if (fullText.length > 35) {
+                        fontSizeClass = 'text-[9px] sm:text-[10px]';
+                      } else if (fullText.length > 25) {
+                        fontSizeClass = 'text-[10px] sm:text-[11px]';
+                      } else if (fullText.length > 18) {
+                        fontSizeClass = 'text-[11px] sm:text-xs';
+                      }
+
+                      return (
+                        <motion.div
+                          key={`ongoing-${soc.name}`}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.05 }}
+                          onClick={() => handleSelectSociety(soc.name, 'ongoing')}
+                          className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-green-500/30 [.light-theme_&]:border-green-500/20 rounded-2xl p-4 sm:p-5 hover:bg-slate-900/60 [.light-theme_&]:hover:bg-slate-50 hover:border-green-500/50 transition-all cursor-pointer shadow-md relative overflow-hidden flex flex-col justify-between min-h-[110px]"
+                        >
+                          <div className="flex flex-col min-w-0 mb-3">
+                             <h3 className={`${fontSizeClass} font-black uppercase leading-tight group-hover:text-green-500 transition-colors break-words`} title={fullText}>
+                               {fullText}
+                             </h3>
+                             <span className="text-[9px] font-black text-green-500 uppercase tracking-widest mt-1 block">
+                               {t('region_label')}: {soc.region}
+                             </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-slate-800/20 [.light-theme_&]:border-slate-100/50">
+                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                               <i className="fas fa-trophy text-green-500 text-[10px]"></i>
+                               <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')}</span>
+                             </div>
+                             <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 group-hover:border-green-500/50 transition-colors shrink-0">
+                               <i className="fas fa-chevron-right text-[9px] text-slate-500 group-hover:text-green-500"></i>
+                             </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="bg-slate-900/20 [.light-theme_&]:bg-slate-100/50 rounded-3xl p-12 text-center border border-slate-800/50 [.light-theme_&]:border-slate-200 max-w-xl mx-auto flex flex-col items-center gap-4">
@@ -628,35 +640,47 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
             ) : (
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {pastSocieties.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {pastSocieties.map((soc, idx) => (
-                      <motion.div
-                        key={`past-${soc.name}`}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.05 }}
-                        onClick={() => handleSelectSociety(soc.name, 'past')}
-                        className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-700 [.light-theme_&]:border-slate-300 rounded-3xl p-6 hover:border-slate-500 transition-all cursor-pointer shadow-lg grayscale hover:grayscale-0"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                           <div className="flex flex-col">
-                              <h3 className="text-xl font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors">
-                                {soc.code ? `${soc.code} - ` : ''}{soc.name}
-                              </h3>
-                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">
-                                {t('region_label')}: {soc.region}
-                              </span>
-                           </div>
-                           <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-700 group-hover:border-slate-500 transition-colors">
-                             <i className="fas fa-chevron-right text-xs text-slate-600"></i>
-                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                          <i className="fas fa-calendar-check opacity-50"></i>
-                          <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')}</span>
-                        </div>
-                      </motion.div>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {pastSocieties.map((soc, idx) => {
+                      const fullText = `${soc.code ? `${soc.code} - ` : ''}${soc.name}`;
+                      let fontSizeClass = 'text-xs sm:text-sm';
+                      if (fullText.length > 35) {
+                        fontSizeClass = 'text-[9px] sm:text-[10px]';
+                      } else if (fullText.length > 25) {
+                        fontSizeClass = 'text-[10px] sm:text-[11px]';
+                      } else if (fullText.length > 18) {
+                        fontSizeClass = 'text-[11px] sm:text-xs';
+                      }
+
+                      return (
+                        <motion.div
+                          key={`past-${soc.name}`}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.05 }}
+                          onClick={() => handleSelectSociety(soc.name, 'past')}
+                          className="group bg-slate-900/40 [.light-theme_&]:bg-white border border-slate-700 [.light-theme_&]:border-slate-300 rounded-2xl p-4 sm:p-5 hover:border-slate-500 transition-all cursor-pointer shadow-md grayscale hover:grayscale-0 flex flex-col justify-between min-h-[110px]"
+                        >
+                          <div className="flex flex-col min-w-0 mb-3">
+                             <h3 className={`${fontSizeClass} font-black uppercase leading-tight group-hover:text-white [.light-theme_&]:group-hover:text-slate-900 transition-colors break-words`} title={fullText}>
+                               {fullText}
+                             </h3>
+                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 block">
+                               {t('region_label')}: {soc.region}
+                             </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-slate-800/20 [.light-theme_&]:border-slate-100">
+                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                               <i className="fas fa-calendar-check opacity-50 text-[10px]"></i>
+                               <span>{soc.count} {soc.count === 1 ? t('race_singular') : t('races_plural')}</span>
+                             </div>
+                             <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center border border-slate-700 group-hover:border-slate-500 transition-colors shrink-0">
+                               <i className="fas fa-chevron-right text-[9px] text-slate-600"></i>
+                             </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="bg-slate-900/10 rounded-3xl p-12 text-center border border-slate-800/30">
