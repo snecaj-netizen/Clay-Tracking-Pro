@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { Competition, Discipline } from '../types';
 import StatsCharts from './StatsCharts';
 import ShareCard from './ShareCard';
+import { useUI } from '../contexts/UIContext';
 import { calculateRTE } from '../ratingUtils';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -77,6 +78,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   user 
 }) => {
   const { t, language } = useLanguage();
+  const { triggerToast } = useUI();
   const [shareData, setShareData] = useState<{ comp: Competition, isPerfect?: boolean } | null>(null);
   
   // Regional Championships Dashboard standings state with Session Storage caching

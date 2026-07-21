@@ -123,56 +123,112 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
 
             {/* User Section */}
             <div className="mb-8 flex flex-col items-center relative w-full">
-              {/* Medal Badge - Centered relative to avatar */}
-              {competition.position && competition.position >= 1 && competition.position <= 3 && (
-                <div 
-                  className="absolute z-20 flex flex-col items-center"
-                  style={{ 
-                    top: '-10px', 
-                    right: 'calc(50% - 75px)',
-                  }}
-                >
-                  <div style={{
-                    backgroundColor: competition.position === 1 ? '#fbbf24' : competition.position === 2 ? '#94a3b8' : '#b45309',
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
-                    border: '4px solid white'
-                  }}>
-                    <i className={`fas fa-medal text-white ${competition.position === 1 ? 'text-2xl' : 'text-xl'}`}></i>
+
+              {competition.position && competition.position >= 1 && competition.position <= 3 ? (
+                /* Podium View */
+                <div className="flex items-end justify-center gap-3.5 w-full max-w-[320px] mx-auto mb-6 mt-10">
+                  
+                  {/* 2nd Place Step (Left) */}
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="relative">
+                      {/* Avatar */}
+                      <div className="w-14 h-14 rounded-full border-2 border-white overflow-hidden shadow-md bg-slate-100 flex items-center justify-center">
+                        {competition.position === 2 ? (
+                          user.avatar ? (
+                            <img src={user.avatar} alt="Avatar 2nd" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                          ) : (
+                            <span className="text-slate-500 text-lg font-bold">{user.name?.[0] || ''}{user.surname?.[0] || ''}</span>
+                          )
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400">
+                            <i className="fas fa-user text-sm opacity-50"></i>
+                          </div>
+                        )}
+                      </div>
+                      {competition.position === 2 && (
+                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-slate-400 text-white rounded-full flex items-center justify-center text-[10px] font-black border border-white shadow-sm">
+                          🥈
+                        </div>
+                      )}
+                    </div>
+                    {/* Pedestal */}
+                    <div className="w-full h-16 bg-gradient-to-b from-slate-200 to-slate-400 border-t border-white rounded-t-xl shadow-inner mt-2.5 flex items-center justify-center">
+                      <span className="text-slate-600 font-black text-2xl drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">2</span>
+                    </div>
                   </div>
-                  <div style={{ 
-                    marginTop: '-10px',
-                    backgroundColor: 'white', 
-                    color: competition.position === 1 ? '#b45309' : competition.position === 2 ? '#475569' : '#78350f',
-                    fontSize: '10px',
-                    fontWeight: '900',
-                    padding: '4px 10px 5px 10px',
-                    borderRadius: '10px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    whiteSpace: 'nowrap',
-                    border: '1px solid rgba(0,0,0,0.05)',
-                    lineHeight: '1.2'
-                  }}>
-                    {competition.position === 1 ? '1° POSTO' : competition.position === 2 ? '2° POSTO' : '3° POSTO'}
-                    {competition.ranking_preference === 'categoria' ? ' CAT.' : competition.ranking_preference === 'qualifica' ? ' QUAL.' : ''}
+
+                  {/* 1st Place Step (Center) */}
+                  <div className="flex flex-col items-center flex-1 z-10 scale-110">
+                    <div className="relative">
+                      {/* Crown icon above first place if it is the user */}
+                      {competition.position === 1 && (
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-yellow-500 animate-bounce">
+                          👑
+                        </div>
+                      )}
+                      {/* Avatar */}
+                      <div className="w-16 h-16 rounded-full border-4 border-yellow-400 overflow-hidden shadow-lg bg-slate-100 flex items-center justify-center ring-4 ring-yellow-400/20">
+                        {competition.position === 1 ? (
+                          user.avatar ? (
+                            <img src={user.avatar} alt="Avatar 1st" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                          ) : (
+                            <span className="text-amber-600 text-xl font-bold">{user.name?.[0] || ''}{user.surname?.[0] || ''}</span>
+                          )
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400">
+                            <i className="fas fa-user text-base opacity-50"></i>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Pedestal */}
+                    <div className="w-full h-24 bg-gradient-to-b from-yellow-300 via-yellow-400 to-amber-500 border-t border-yellow-200 rounded-t-xl shadow-md mt-2.5 flex items-center justify-center">
+                      <span className="text-amber-950 font-black text-3xl drop-shadow-[0_1.5px_1px_rgba(255,255,255,0.6)]">1</span>
+                    </div>
                   </div>
+
+                  {/* 3rd Place Step (Right) */}
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="relative">
+                      {/* Avatar */}
+                      <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden shadow-md bg-slate-100 flex items-center justify-center">
+                        {competition.position === 3 ? (
+                          user.avatar ? (
+                            <img src={user.avatar} alt="Avatar 3rd" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                          ) : (
+                            <span className="text-slate-400 text-sm font-bold">{user.name?.[0] || ''}{user.surname?.[0] || ''}</span>
+                          )
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400">
+                            <i className="fas fa-user text-xs opacity-50"></i>
+                          </div>
+                        )}
+                      </div>
+                      {competition.position === 3 && (
+                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-700 text-white rounded-full flex items-center justify-center text-[8px] font-black border border-white shadow-sm">
+                          🥉
+                        </div>
+                      )}
+                    </div>
+                    {/* Pedestal */}
+                    <div className="w-full h-11 bg-gradient-to-b from-amber-600 to-amber-800 border-t border-amber-500 rounded-t-xl shadow-inner mt-2.5 flex items-center justify-center">
+                      <span className="text-amber-100 font-black text-xl drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">3</span>
+                    </div>
+                  </div>
+
+                </div>
+              ) : (
+                /* Default Single Avatar View */
+                <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden mb-4 shadow-2xl bg-slate-50 ring-8 ring-slate-50/50">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-300 text-5xl">
+                      <i className="fas fa-user"></i>
+                    </div>
+                  )}
                 </div>
               )}
-
-              <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden mb-4 shadow-2xl bg-slate-50 ring-8 ring-slate-50/50">
-                {user.avatar ? (
-                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" crossOrigin="anonymous" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300 text-5xl">
-                    <i className="fas fa-user"></i>
-                  </div>
-                )}
-              </div>
               
               <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight pb-1">
                 {user.name} {user.surname}
