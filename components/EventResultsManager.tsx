@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { SocietyEvent, PrizeSetting, User, Discipline, getSeriesLayout } from '../types';
+import { isMakeABreak, getMakeABreakTargetInfo, getSeriesMaxScore, calculateSeriesScore } from '../lib/makeABreak';
 import { calculateRTE, shortenCategoryName, getDisplayCategory, INTERNATIONAL_CODES, INTL_TO_DOMESTIC, getCategoryForDiscipline } from '../ratingUtils';
 import ShooterSearch from './ShooterSearch';
 import TeamManager from './TeamManager';
@@ -79,6 +80,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     const sum = layoutInfo.layout.reduce((a, b) => a + b, 0);
     return sum > 0 ? sum : 25;
   }, [layoutInfo]);
+  const maxSeriesScore = useMemo(() => {
+    return getSeriesMaxScore(event.discipline as Discipline, targetsPerSeries);
+  }, [event.discipline, targetsPerSeries]);
 
   // Form state
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -432,8 +436,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             if (!name) errors.push("Nome mancante");
 
             scores.forEach((s, sI) => {
-              if (s < 0 || s > targetsPerSeries) {
-                errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${targetsPerSeries})`);
+              if (s < 0 || s > maxSeriesScore) {
+                errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${maxSeriesScore})`);
               }
             });
 
@@ -627,8 +631,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           }
 
           scores.forEach((s, sI) => {
-            if (s < 0 || s > targetsPerSeries) {
-              errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${targetsPerSeries})`);
+            if (s < 0 || s > maxSeriesScore) {
+              errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${maxSeriesScore})`);
             }
           });
 
@@ -934,12 +938,14 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       setExpandedSeries(idx);
       // Initialize with hits (green) by default if not already set
       if (!detailedScores[idx] || detailedScores[idx].length === 0) {
+        const isMB = isMakeABreak(event.discipline);
+        const newSeries = Array(targetsPerSeries).fill(true);
         const newDetailed = [...detailedScores];
-        newDetailed[idx] = Array(targetsPerSeries).fill(true);
+        newDetailed[idx] = newSeries;
         setDetailedScores(newDetailed);
         
         const newScores = [...series];
-        newScores[idx] = targetsPerSeries.toString();
+        newScores[idx] = (isMB ? 65 : targetsPerSeries).toString();
         setSeries(newScores);
       }
     }
@@ -954,7 +960,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       newDetailed[seriesIndex] = newSeries;
       
       const newScores = [...series];
-      newScores[seriesIndex] = newSeries.filter(Boolean).length.toString();
+      newScores[seriesIndex] = calculateSeriesScore(event.discipline, newSeries).toString();
       setSeries(newScores);
       
       return newDetailed;
@@ -971,16 +977,26 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       return;
     }
 
-    const clampedScore = Math.min(targetsPerSeries, Math.max(0, score));
+    const clampedScore = Math.min(maxSeriesScore, Math.max(0, score));
     
     // Update series numeric value
     const newScores = [...series];
     newScores[idx] = clampedScore.toString();
     setSeries(newScores);
 
-    // Update detailed scores: first 'clampedScore' are hits, rest are misses (zeros)
+    // Update detailed scores
+    const isMB = isMakeABreak(event.discipline);
     const newDetailed = [...detailedScores];
-    newDetailed[idx] = Array(targetsPerSeries).fill(false).map((_, i) => i >= (targetsPerSeries - clampedScore));
+    const targetArr = Array(targetsPerSeries).fill(false);
+    let curr = 0;
+    for (let i = 0; i < targetsPerSeries; i++) {
+      const pts = isMB ? getMakeABreakTargetInfo(i).points : 1;
+      if (curr + pts <= clampedScore || clampedScore >= maxSeriesScore) {
+        targetArr[i] = true;
+        curr += pts;
+      }
+    }
+    newDetailed[idx] = targetArr;
     setDetailedScores(newDetailed);
   };
 
@@ -2048,7 +2064,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         <input 
                           type="number" 
                           min="0" 
-                          max={targetsPerSeries}
+                          max={maxSeriesScore}
                           value={s}
                           onChange={(e) => handleSeriesValueChange(i, e.target.value)}
                           onFocus={() => {
@@ -2094,15 +2110,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 {Array.from({ length: count }).map(() => {
                                   const targetIdx = absoluteIdx++;
                                   const isHit = detailedScores[expandedSeries!]?.[targetIdx];
+                                  const isMB = isMakeABreak(event.discipline);
+                                  const mbInfo = isMB ? getMakeABreakTargetInfo(targetIdx) : null;
                                   return (
-                                    <button
-                                      key={targetIdx}
-                                      type="button"
-                                      onClick={() => handleDetailedScoreChange(expandedSeries!, targetIdx)}
-                                      className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[7px] sm:text-[9px] border' : 'w-9 h-9 border-2 text-[11px]'} rounded-full transition-all active:scale-90 flex items-center justify-center font-black ${getDotColors(isHit)}`}
-                                    >
-                                      {targetIdx + 1}
-                                    </button>
+                                    <div key={targetIdx} className="flex flex-col items-center gap-1">
+                                      {mbInfo && (
+                                        <span className="text-[8px] text-slate-500 font-bold">M{mbInfo.machine}</span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDetailedScoreChange(expandedSeries!, targetIdx)}
+                                        className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[7px] sm:text-[9px] border' : 'w-9 h-9 border-2 text-[10px]'} rounded-full transition-all active:scale-90 flex items-center justify-center font-black ${getDotColors(isHit)}`}
+                                        title={mbInfo ? `${mbInfo.fullLabel}: ${isHit ? 'Colpito' : 'Zero'}` : `Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Zero'}`}
+                                      >
+                                        {mbInfo ? `${mbInfo.points}p` : targetIdx + 1}
+                                      </button>
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -2775,7 +2798,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               </div>
                             </td>
                           {Array.from({ length: maxSeriesCount }).map((_, i) => (
-                            <td key={i} className={`p-2 sm:p-3 font-mono text-[11px] sm:text-sm text-center ${r.scores && r.scores[i] === targetsPerSeries ? 'text-red-500 font-black' : 'text-slate-300'}`}>
+                            <td key={i} className={`p-2 sm:p-3 font-mono text-[11px] sm:text-sm text-center ${r.scores && r.scores[i] === maxSeriesScore ? 'text-red-500 font-black' : 'text-slate-300'}`}>
                               {r.scores && r.scores[i] !== undefined ? r.scores[i] : '-'}
                             </td>
                           ))}
@@ -2833,7 +2856,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                           Serie {sIdx + 1}{r.seriesFields && r.seriesFields[sIdx] ? ` - Campo ${r.seriesFields[sIdx]}` : ''}
                                         </div>
-                                        <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/{targetsPerSeries}</span></div>
+                                        <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/{maxSeriesScore}</span></div>
                                       </div>
                                       <div className="flex flex-wrap gap-4 items-end">
                                         {(() => {

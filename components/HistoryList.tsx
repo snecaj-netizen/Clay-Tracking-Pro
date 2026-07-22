@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Competition, CompetitionLevel, Discipline, getSeriesLayout } from '../types';
+import { isMakeABreak, getMakeABreakTargetInfo } from '../lib/makeABreak';
 import SeriesPopup from './SeriesPopup';
 import ShareCard from './ShareCard';
 import { useUI } from '../contexts/UIContext';
@@ -452,6 +453,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
                     <div className="flex flex-wrap gap-2">
                       {comp.scores.map((s, i) => {
                         const hasDetails = comp.detailedScores && comp.detailedScores[i] && comp.detailedScores[i].length > 0;
+                        const isMB = isMakeABreak(comp.discipline);
+                        const isPerfect = isMB ? s === 65 : s === 25;
+                        const scoreColor = isMB
+                          ? (s === 65 ? 'text-orange-500' : s >= 55 ? 'text-yellow-500' : s >= 45 ? 'text-slate-200' : 'text-slate-400')
+                          : (s === 25 ? 'text-orange-500' : s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600');
+
                         return (
                           <button 
                             key={i} 
@@ -460,16 +467,16 @@ const HistoryList: React.FC<HistoryListProps> = ({
                             title={comp.seriesFields && comp.seriesFields[i] ? `Serie ${i+1} - Campo ${comp.seriesFields[i]}` : t('click_to_enter_result')}
                           >
                             <span className="text-[8px] text-slate-600 font-bold uppercase">S{i+1}{comp.seriesFields && comp.seriesFields[i] ? ` - C${comp.seriesFields[i]}` : ''}</span>
-                            <span className={`text-sm font-black ${s === 25 ? 'text-orange-500' : s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600'}`}>{s}</span>
+                            <span className={`text-sm font-black ${scoreColor}`}>{s}</span>
                             {hasDetails && <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-orange-500 rounded-full shadow-[0_0_5px_rgba(249,115,22,0.5)]"></div>}
-                            {s === 25 && (
+                            {isPerfect && (
                               <div 
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setShareData({ comp, isPerfect: true, index: i });
                                 }}
                                 className="absolute -top-2 -right-2 w-5 h-5 bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover/series:opacity-100 transition-opacity active:scale-95 z-20"
-                                title={t('share_25')}
+                                title={isMB ? 'Condividi 65/65' : t('share_25')}
                               >
                                 <i className="fas fa-share-alt text-[8px]"></i>
                               </div>

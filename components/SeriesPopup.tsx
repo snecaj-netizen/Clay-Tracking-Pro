@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Competition, getSeriesLayout, Discipline } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { isMakeABreak, getMakeABreakTargetInfo, getSeriesMaxScore, calculateSeriesScore } from '../lib/makeABreak';
 
 interface SeriesPopupProps {
   competition: Competition;
@@ -14,29 +15,36 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
   const { t } = useLanguage();
   const seriesLayoutObj = getSeriesLayout(competition.discipline);
   const targetsPerSeries = seriesLayoutObj.layout.reduce((a, b) => a + b, 0);
+  const isMB = isMakeABreak(competition.discipline);
+  const maxSeriesScore = getSeriesMaxScore(competition.discipline, targetsPerSeries);
 
   const [score, setScore] = useState<number>(() => {
     if (competition.scores[seriesIndex] !== undefined && competition.scores[seriesIndex] > 0) {
       return competition.scores[seriesIndex];
     }
-    // If detailed scores exist, use their count
+    // If detailed scores exist, calculate from them
     if (competition.detailedScores && competition.detailedScores[seriesIndex] && competition.detailedScores[seriesIndex].length === targetsPerSeries) {
-      return competition.detailedScores[seriesIndex].filter(Boolean).length;
+      return calculateSeriesScore(competition.discipline, competition.detailedScores[seriesIndex]);
     }
-    return targetsPerSeries; // Default to 25 as requested by user
+    return isMB ? 65 : targetsPerSeries;
   });
   const [detailedScore, setDetailedScore] = useState<boolean[]>(() => {
     if (competition.detailedScores && competition.detailedScores[seriesIndex] && competition.detailedScores[seriesIndex].length === targetsPerSeries) {
       return [...competition.detailedScores[seriesIndex]];
     } else {
-      // Default to all hits (green) as requested by user if no score is present
+      // Default to all hits (green) if no score is present
       const initialCount = (competition.scores[seriesIndex] !== undefined && competition.scores[seriesIndex] > 0) 
         ? competition.scores[seriesIndex] 
-        : targetsPerSeries;
+        : (isMB ? 65 : targetsPerSeries);
       
       const initial = Array(targetsPerSeries).fill(false);
-      for (let i = 0; i < initialCount; i++) {
-        initial[i] = true;
+      let curr = 0;
+      for (let i = 0; i < targetsPerSeries; i++) {
+        const pts = isMB ? getMakeABreakTargetInfo(i).points : 1;
+        if (curr + pts <= initialCount || initialCount >= maxSeriesScore) {
+          initial[i] = true;
+          curr += pts;
+        }
       }
       return initial;
     }
@@ -55,18 +63,23 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
     setDetailedScore(newDetailed);
     
     // Update total score for this series
-    const newTotal = newDetailed.filter(Boolean).length;
+    const newTotal = calculateSeriesScore(competition.discipline, newDetailed);
     setScore(newTotal);
   };
 
   const handleScoreChange = (val: string) => {
     const num = parseInt(val);
-    if (!isNaN(num) && num >= 0 && num <= targetsPerSeries) {
+    if (!isNaN(num) && num >= 0 && num <= maxSeriesScore) {
       setScore(num);
-      // Update detailed scores to match the new total (simple fill)
+      // Update detailed scores to match
       const newDetailed = Array(targetsPerSeries).fill(false);
-      for (let i = 0; i < num; i++) {
-        newDetailed[i] = true;
+      let curr = 0;
+      for (let i = 0; i < targetsPerSeries; i++) {
+        const pts = isMB ? getMakeABreakTargetInfo(i).points : 1;
+        if (curr + pts <= num || num >= maxSeriesScore) {
+          newDetailed[i] = true;
+          curr += pts;
+        }
       }
       setDetailedScore(newDetailed);
     } else if (val === '') {
@@ -132,7 +145,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
               <input 
                 type="number" 
                 min="0" 
-                max={targetsPerSeries} 
+                max={maxSeriesScore} 
                 value={score} 
                 onChange={(e) => handleScoreChange(e.target.value)} 
                 onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
@@ -169,15 +182,20 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
                       {Array.from({ length: targetCount }).map((_, targetOffset) => {
                         const targetIdx = startIndex + targetOffset;
                         const isHit = detailedScore[targetIdx];
+                        const mbInfo = isMB ? getMakeABreakTargetInfo(targetIdx) : null;
                         return (
                           <div key={targetIdx} className={`flex flex-col items-center ${isDCK ? 'gap-[1px]' : 'gap-1'} shrink-0`}>
-                            <span className="text-[8px] text-slate-500 font-bold">{targetIdx + 1}</span>
+                            <span className="text-[8px] text-slate-500 font-bold">
+                              {mbInfo ? `M${mbInfo.machine}` : targetIdx + 1}
+                            </span>
                             <button
                               type="button"
                               onClick={() => handleDetailedScoreChange(targetIdx)}
-                              className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5' : 'w-8 h-8 sm:w-7 sm:h-7'} rounded-full border-2 transition-all active:scale-90 ${isHit ? 'bg-[#a3e635] border-[#65a30d] shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
-                              title={`${t('target_with_index').replace('{{index}}', (targetIdx + 1).toString())}: ${isHit ? t('hit_label') : t('missed_label')}`}
-                            />
+                              className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[8px]' : 'w-8 h-8 sm:w-7 sm:h-7 text-[10px]'} rounded-full border-2 transition-all active:scale-90 flex items-center justify-center font-black ${isHit ? 'bg-[#a3e635] border-[#65a30d] text-green-950 shadow-[0_0_10px_rgba(163,230,53,0.2)]' : 'bg-[#ef4444] border-[#b91c1c] text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}
+                              title={mbInfo ? `${mbInfo.fullLabel}: ${isHit ? t('hit_label') : t('missed_label')}` : `${t('target_with_index').replace('{{index}}', (targetIdx + 1).toString())}: ${isHit ? t('hit_label') : t('missed_label')}`}
+                            >
+                              {mbInfo ? `${mbInfo.points}p` : ''}
+                            </button>
                           </div>
                         );
                       })}

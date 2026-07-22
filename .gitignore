@@ -8,8 +8,14 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+dist
 dist-ssr
 *.local
+.env
+.env.*
+
+# Firebase applet config (contains Google API Key)
+firebase-applet-config.json
 
 # Editor directories and files
 .vscode/*

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Save, Phone, Calendar, Target, Shield, Info } from 'lucide-react';
-import { User, SocietyEvent, EventRegistration } from '../types';
+import { X, Save, Phone, Calendar, Target, Shield, Info, Users } from 'lucide-react';
+import { User, SocietyEvent, EventRegistration, Discipline } from '../types';
+import { isMakeABreak } from '../lib/makeABreak';
 import ShooterSearch from './ShooterSearch';
 import { useUI } from '../contexts/UIContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -93,6 +94,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showSuccessDetail, setShowSuccessDetail] = useState(false);
   const [shooters, setShooters] = useState<any[]>([]);
+  const [teammates, setTeammates] = useState<number[]>([]);
   const [eventRegistrations, setEventRegistrations] = useState<any[]>([]);
   const [eventSquads, setEventSquads] = useState<any[]>([]);
 
@@ -312,24 +314,24 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
   }, [shooters, initialData]);
 
   useEffect(() => {
-    if (user.role === 'admin' || user.role === 'society') {
-      const fetchShooters = async () => {
-        try {
-          const usersUrl = `/api/admin/users?limit=10000&excludeRole=society${user.role === 'society' ? '&all=true' : ''}`;
-          const res = await fetch(usersUrl, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const shootersData = data.users || data;
-            setShooters(shootersData);
-          }
-        } catch (err) {
-          console.error("Failed to fetch shooters", err);
+    const fetchShooters = async () => {
+      try {
+        const usersUrl = (user.role === 'admin' || user.role === 'society')
+          ? `/api/admin/users?limit=10000&excludeRole=society${user.role === 'society' ? '&all=true' : ''}`
+          : `/api/shooters-list`;
+        const res = await fetch(usersUrl, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const shootersData = data.users || data;
+          setShooters(shootersData);
         }
-      };
-      fetchShooters();
-    }
+      } catch (err) {
+        console.error("Failed to fetch shooters", err);
+      }
+    };
+    fetchShooters();
   }, [user.role]);
 
   const getEventDays = () => {
@@ -412,6 +414,7 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
             },
             body: JSON.stringify({
               ...formData,
+              teammate_ids: teammates,
               addToSquad: addToSquad
             })
           });
@@ -729,9 +732,44 @@ export const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({
                 )}
               </div>
 
+              {/* Make a Break Trio Selection */}
+              {isMakeABreak(event.discipline as Discipline) && !initialData && (
+                <div className="bg-orange-950/20 border border-orange-500/30 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-orange-400 font-bold text-xs sm:text-sm">
+                    <Users className="w-4 h-4 text-orange-500" />
+                    <span>{language === 'it' ? 'Iscrizione Trio Make a Break' : 'Make a Break Trio Registration'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {language === 'it' 
+                      ? 'In questa gara puoi selezionare fino a 2 amici per iscriverli insieme a te nello stesso orario e sparare nella stessa batteria!'
+                      : 'In this event you can select up to 2 friend shooters to register them together in the same time slot & squad!'
+                    }
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                      {language === 'it' ? 'Compagni di Batteria (max 2 tiratori)' : 'Teammates (max 2 shooters)'}
+                    </label>
+                    <ShooterSearch
+                      value={teammates}
+                      onChange={(val: any) => {
+                        if (Array.isArray(val) && val.length <= 2) {
+                          setTeammates(val);
+                        }
+                      }}
+                      shooters={shooters.filter(s => s.id !== (formData.user_id ? Number(formData.user_id) : user.id))}
+                      useId={true}
+                      multiple={true}
+                      placeholder={language === 'it' ? "Cerca e aggiungi un compagno..." : "Search and add a teammate..."}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Notes */}
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{language === 'it' ? 'Note' : 'Notes'}</label>
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{language === 'it' ? 'Note' : 'Notes'}</label>
+                </div>
                 <textarea
                   value={formData.notes}
                   onChange={e => setFormData({ ...formData, notes: e.target.value })}

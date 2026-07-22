@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Discipline, Competition, CompetitionLevel, Cartridge, CartridgeType, UsedCartridge, getSeriesLayout, SocietyEvent } from '../types';
+import { isMakeABreak, getMakeABreakTargetInfo, getSeriesMaxScore, calculateSeriesScore } from '../lib/makeABreak';
 import SocietySearch from './SocietySearch';
 import ShooterSearch from './ShooterSearch';
 import { handleNetworkError } from './ConnectionStatus';
@@ -140,6 +141,10 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const seriesLayoutObj = getSeriesLayout(discipline);
     return seriesLayoutObj.layout.reduce((a, b) => a + b, 0) || 25;
   }, [discipline]);
+
+  const maxSeriesScore = useMemo(() => {
+    return getSeriesMaxScore(discipline, targetsPerSeries);
+  }, [discipline, targetsPerSeries]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -309,12 +314,12 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
   const handleScoreChange = (index: number, value: string) => {
     const num = parseInt(value) || 0;
-    const clamped = Math.min(targetsPerSeries, Math.max(0, num));
+    const clamped = Math.min(maxSeriesScore, Math.max(0, num));
     const newScores = [...scores];
     newScores[index] = clamped;
     setScores(newScores);
     
-    // If detailed score exists, we might want to clear it or adjust it, but for now let's just clear it if they manually change the number
+    // If detailed score exists, clear it when score is manually edited
     if (detailedScores[index] && detailedScores[index].length > 0) {
       setDetailedScores(prev => {
         const newDetailed = [...prev];
@@ -331,9 +336,15 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       setExpandedSeries(idx);
       if (!detailedScores[idx] || detailedScores[idx].length === 0) {
         const currentScore = scores[idx] || 0;
+        const isMB = isMakeABreak(discipline);
         const newSeries = Array(targetsPerSeries).fill(false);
-        for (let i = 0; i < currentScore; i++) {
-          newSeries[i] = true;
+        let curr = 0;
+        for (let i = 0; i < targetsPerSeries; i++) {
+          const pts = isMB ? getMakeABreakTargetInfo(i).points : 1;
+          if (curr + pts <= currentScore || currentScore >= maxSeriesScore) {
+            newSeries[i] = true;
+            curr += pts;
+          }
         }
         setDetailedScores(prev => {
           const newDetailed = [...prev];
@@ -352,7 +363,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       newDetailed[seriesIndex] = newSeries;
       
       const newScores = [...scores];
-      newScores[seriesIndex] = newSeries.filter(Boolean).length;
+      newScores[seriesIndex] = calculateSeriesScore(discipline, newSeries);
       setScores(newScores);
       
       return newDetailed;
@@ -966,7 +977,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                  <input type="number" min="0" max={targetsPerSeries} value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
+                  <input type="number" min="0" max={maxSeriesScore} value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
                   <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
                     <i className="fas fa-list-ul"></i>
                   </button>
@@ -998,17 +1009,24 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                               }
                             };
 
-                            return (
-                              <button
-                                key={targetIdx}
-                                type="button"
-                                onClick={() => handleDetailedScoreChange(idx, targetIdx)}
-                                className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[7px] sm:text-[9px]' : 'w-8 h-8 sm:w-10 sm:h-10 text-[11px]'} rounded-full transition-all active:scale-90 ${getDotColors(isHit)} flex items-center justify-center font-bold`}
-                                title={`Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
-                              >
-                                {isDCK ? targetIdx + 1 : ''}
-                              </button>
-                            );
+                             const isMB = isMakeABreak(discipline);
+                             const mbInfo = isMB ? getMakeABreakTargetInfo(targetIdx) : null;
+
+                             return (
+                               <div key={targetIdx} className="flex flex-col items-center gap-1">
+                                 {mbInfo && (
+                                   <span className="text-[8px] text-slate-500 font-bold">M{mbInfo.machine}</span>
+                                 )}
+                                 <button
+                                   type="button"
+                                   onClick={() => handleDetailedScoreChange(idx, targetIdx)}
+                                   className={`${isDCK ? 'w-6 h-6 sm:w-5 sm:h-5 text-[7px] sm:text-[9px]' : 'w-8 h-8 sm:w-10 sm:h-10 text-[11px]'} rounded-full transition-all active:scale-90 ${getDotColors(isHit)} flex items-center justify-center font-bold`}
+                                   title={mbInfo ? `${mbInfo.fullLabel}: ${isHit ? 'Colpito' : 'Mancato'}` : `Piattello ${targetIdx + 1}: ${isHit ? 'Colpito' : 'Mancato'}`}
+                                 >
+                                   {mbInfo ? `${mbInfo.points}p` : (isDCK ? targetIdx + 1 : '')}
+                                 </button>
+                               </div>
+                             );
                           })}
                         </div>
                       </div>

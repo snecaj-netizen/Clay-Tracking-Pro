@@ -5921,97 +5921,129 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
     // Determine the target user ID
     let targetUserId = req.user.id;
     if (user_id && (req.user.role === 'admin' || req.user.role === 'society')) {
-      targetUserId = user_id;
+      targetUserId = Number(user_id);
     }
 
-    // Fetch user details for email
-    const userResult = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [targetUserId]);
-    const targetUser = userResult.rows[0];
+    const { teammate_ids, addToSquad } = req.body;
 
-    // Check if user is already registered
-    const existingReg = await pool.query(
-      'SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2',
-      [id, targetUserId]
-    );
-    
-    if (existingReg.rows.length > 0) {
-      return res.status(400).json({ error: 'Il tiratore è già iscritto a questa gara.' });
+    // Collect all user IDs to register together (main shooter + teammates)
+    const rawTeammateIds = Array.isArray(teammate_ids) ? teammate_ids.map(Number).filter(id => !isNaN(id) && id > 0) : [];
+    const allUserIdsToRegister = [targetUserId, ...rawTeammateIds].filter((value, index, self) => self.indexOf(value) === index);
+
+    // Fetch user names for auto note generation
+    const usersInfoRes = await pool.query('SELECT id, name, surname FROM users WHERE id = ANY($1)', [allUserIdsToRegister]);
+    const usersMap = new Map(usersInfoRes.rows.map(u => [u.id, `${u.surname || ''} ${u.name || ''}`.trim()]));
+
+    let groupNote = notes || '';
+    if (allUserIdsToRegister.length > 1) {
+      const trioNames = allUserIdsToRegister.map(uid => usersMap.get(uid) || `Tiratore #${uid}`).join(', ');
+      const trioTag = `Trio Make a Break: ${trioNames}`;
+      groupNote = groupNote ? `${groupNote} | ${trioTag}` : trioTag;
     }
 
-    const result = await pool.query(
-      `INSERT INTO event_registrations (
-        event_id, user_id, registration_day, registration_type,
-        shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
-        shooting_session, notes, phone
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *`,
-      [id, targetUserId, registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, notes, phone]
-    );
+    const isMBDiscipline = !!(eventObj.discipline && (eventObj.discipline.includes('MB') || eventObj.discipline.includes('Make a Break') || eventObj.discipline.toLowerCase().includes('make a break')));
+    const maxSquadMembers = 6;
 
-    const regId = result.rows[0].id;
+    const registeredRegIds: number[] = [];
+    let primaryRegId: number | null = null;
 
-    // Create a competition record for the shooter (Le Tue Gare)
-    try {
-      const compId = `evt_${id}_${targetUserId}`;
-      const userDetails = await pool.query('SELECT category, qualification, society, discipline_categories, is_cacciatore FROM users WHERE id = $1', [targetUserId]);
-      const isCacciatore = userDetails.rows[0]?.is_cacciatore || false;
-      let cat = userDetails.rows[0]?.category || null;
-      const qual = userDetails.rows[0]?.qualification || null;
-      const soc = userDetails.rows[0]?.society || null;
-      const discCats = userDetails.rows[0]?.discipline_categories || null;
-
-      if (!isCacciatore && discCats) {
-        const discCat = getCategoryForDisciplineBackend(discCats, eventObj.discipline);
-        if (discCat) {
-          cat = normalizeCategoryBackend(discCat);
-        }
-      }
-      
-      const numSeries = Math.ceil((eventObj.targets || 100) / 25);
-      const emptyScores = Array(numSeries).fill(0);
-
-      await pool.query(
-        `INSERT INTO competitions (
-          id, user_id, name, date, enddate, location, discipline, level, 
-          totalscore, totaltargets, averageperseries, scores, event_id,
-          category_at_time, qualification_at_time, society_at_time, hidden_from_user
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, FALSE)
-        ON CONFLICT (id) DO UPDATE SET 
-          name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, 
-          location = EXCLUDED.location, discipline = EXCLUDED.discipline, level = EXCLUDED.level,
-          totaltargets = EXCLUDED.totaltargets, event_id = EXCLUDED.event_id,
-          hidden_from_user = FALSE`,
-        [
-          compId, targetUserId, eventObj.name, eventObj.start_date, eventObj.end_date || null, 
-          eventObj.location, eventObj.discipline, eventObj.type || 'Regionale',
-          0, eventObj.targets || 100, 0, JSON.stringify(emptyScores), id,
-          cat, qual, soc
-        ]
+    for (const currentUid of allUserIdsToRegister) {
+      // Check if user is already registered
+      const existingReg = await pool.query(
+        'SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2',
+        [id, currentUid]
       );
-    } catch (compErr) {
-      console.error('Error creating linked competition record:', compErr);
-      // Don't fail the whole registration if this fails
+
+      if (existingReg.rows.length > 0) {
+        if (currentUid === targetUserId) {
+          return res.status(400).json({ error: 'Il tiratore principale è già iscritto a questa gara.' });
+        }
+        // If teammate is already registered, collect their regId
+        registeredRegIds.push(existingReg.rows[0].id);
+        continue;
+      }
+
+      const result = await pool.query(
+        `INSERT INTO event_registrations (
+          event_id, user_id, registration_day, registration_type,
+          shotgun_brand, shotgun_model, cartridge_brand, cartridge_model,
+          shooting_session, notes, phone
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *`,
+        [id, currentUid, registration_day, registration_type, shotgun_brand, shotgun_model, cartridge_brand, cartridge_model, shooting_session, groupNote, phone]
+      );
+
+      const regId = result.rows[0].id;
+      registeredRegIds.push(regId);
+      if (currentUid === targetUserId) {
+        primaryRegId = regId;
+      }
+
+      // Create a competition record for the shooter (Le Tue Gare)
+      try {
+        const compId = `evt_${id}_${currentUid}`;
+        const userDetails = await pool.query('SELECT category, qualification, society, discipline_categories, is_cacciatore FROM users WHERE id = $1', [currentUid]);
+        const isCacciatore = userDetails.rows[0]?.is_cacciatore || false;
+        let cat = userDetails.rows[0]?.category || null;
+        const qual = userDetails.rows[0]?.qualification || null;
+        const soc = userDetails.rows[0]?.society || null;
+        const discCats = userDetails.rows[0]?.discipline_categories || null;
+
+        if (!isCacciatore && discCats) {
+          const discCat = getCategoryForDisciplineBackend(discCats, eventObj.discipline);
+          if (discCat) {
+            cat = normalizeCategoryBackend(discCat);
+          }
+        }
+        
+        const numSeries = Math.ceil((eventObj.targets || 100) / 25);
+        const emptyScores = Array(numSeries).fill(0);
+
+        await pool.query(
+          `INSERT INTO competitions (
+            id, user_id, name, date, enddate, location, discipline, level, 
+            totalscore, totaltargets, averageperseries, scores, event_id,
+            category_at_time, qualification_at_time, society_at_time, hidden_from_user
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, FALSE)
+          ON CONFLICT (id) DO UPDATE SET 
+            name = EXCLUDED.name, date = EXCLUDED.date, enddate = EXCLUDED.enddate, 
+            location = EXCLUDED.location, discipline = EXCLUDED.discipline, level = EXCLUDED.level,
+            totaltargets = EXCLUDED.totaltargets, event_id = EXCLUDED.event_id,
+            hidden_from_user = FALSE`,
+          [
+            compId, currentUid, eventObj.name, eventObj.start_date, eventObj.end_date || null, 
+            eventObj.location, eventObj.discipline, eventObj.type || 'Regionale',
+            0, eventObj.targets || 100, 0, JSON.stringify(emptyScores), id,
+            cat, qual, soc
+          ]
+        );
+      } catch (compErr) {
+        console.error('Error creating linked competition record:', compErr);
+      }
+
+      // Update user phone and equipment if provided
+      if (phone && currentUid === targetUserId) {
+        await pool.query('UPDATE users SET phone = $1 WHERE id = $2', [phone, currentUid]);
+      }
+      if (shotgun_brand) {
+        await pool.query('UPDATE users SET shotgun_brand = $1 WHERE id = $2', [shotgun_brand, currentUid]);
+      }
+      if (shotgun_model) {
+        await pool.query('UPDATE users SET shotgun_model = $1 WHERE id = $2', [shotgun_model, currentUid]);
+      }
+      if (cartridge_brand) {
+        await pool.query('UPDATE users SET cartridge_brand = $1 WHERE id = $2', [cartridge_brand, currentUid]);
+      }
+      if (cartridge_model) {
+        await pool.query('UPDATE users SET cartridge_model = $1 WHERE id = $2', [cartridge_model, currentUid]);
+      }
     }
 
-    // Update user phone and equipment if provided
-    if (phone) {
-      await pool.query('UPDATE users SET phone = $1 WHERE id = $2', [phone, targetUserId]);
-    }
-    if (shotgun_brand) {
-      await pool.query('UPDATE users SET shotgun_brand = $1 WHERE id = $2', [shotgun_brand, targetUserId]);
-    }
-    if (shotgun_model) {
-      await pool.query('UPDATE users SET shotgun_model = $1 WHERE id = $2', [shotgun_model, targetUserId]);
-    }
-    if (cartridge_brand) {
-      await pool.query('UPDATE users SET cartridge_brand = $1 WHERE id = $2', [cartridge_brand, targetUserId]);
-    }
-    if (cartridge_model) {
-      await pool.query('UPDATE users SET cartridge_model = $1 WHERE id = $2', [cartridge_model, targetUserId]);
+    if (!primaryRegId && registeredRegIds.length > 0) {
+      primaryRegId = registeredRegIds[0];
     }
 
     // Handle automatic squad assignment if time is specified OR if explicitly requested
-    const { addToSquad } = req.body;
     const isTimeFormat = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(shooting_session);
     
     if (isTimeFormat || (addToSquad && (req.user.role === 'admin' || req.user.role === 'society'))) {
@@ -6034,7 +6066,9 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
         let squadId = null;
         for (const s of squadRes.rows) {
           const membersCount = await pool.query('SELECT COUNT(*) FROM event_squad_members WHERE squad_id = $1', [s.id]);
-          if (parseInt(membersCount.rows[0].count) < 6) {
+          const currentCount = parseInt(membersCount.rows[0].count);
+          // Check if this squad has space for ALL members to register together
+          if (currentCount + registeredRegIds.length <= maxSquadMembers) {
             squadId = s.id;
             break;
           }
@@ -6052,16 +6086,22 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
           squadId = newSquad.rows[0].id;
         }
 
-        // Add to squad
-        const maxBibResult = await pool.query('SELECT MAX(bib_number) as max_bib FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE s.event_id = $1', [id]);
-        const nextBib = (maxBibResult.rows[0].max_bib || 0) + 1;
-        const nextPosRes = await pool.query('SELECT MAX(position) as max_pos FROM event_squad_members WHERE squad_id = $1', [squadId]);
-        const nextPos = (nextPosRes.rows[0].max_pos || 0) + 1;
+        // Add all registeredRegIds to squad
+        for (const rId of registeredRegIds) {
+          // Check if already in squad
+          const inSquadCheck = await pool.query('SELECT id FROM event_squad_members WHERE squad_id = $1 AND registration_id = $2', [squadId, rId]);
+          if (inSquadCheck.rows.length === 0) {
+            const maxBibResult = await pool.query('SELECT MAX(bib_number) as max_bib FROM event_squad_members sm JOIN event_squads s ON sm.squad_id = s.id WHERE s.event_id = $1', [id]);
+            const nextBib = (maxBibResult.rows[0].max_bib || 0) + 1;
+            const nextPosRes = await pool.query('SELECT MAX(position) as max_pos FROM event_squad_members WHERE squad_id = $1', [squadId]);
+            const nextPos = (nextPosRes.rows[0].max_pos || 0) + 1;
 
-        await pool.query(
-          'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
-          [squadId, regId, nextPos, nextBib]
-        );
+            await pool.query(
+              'INSERT INTO event_squad_members (squad_id, registration_id, position, bib_number) VALUES ($1, $2, $3, $4)',
+              [squadId, rId, nextPos, nextBib]
+            );
+          }
+        }
       }
     }
     
@@ -6075,8 +6115,12 @@ app.post('/api/events/:id/register', authenticateToken, async (req: any, res) =>
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
        WHERE r.id = $1`,
-      [regId]
+      [primaryRegId]
     );
+
+    // Fetch target user for email notification
+    const targetUserRes = await pool.query('SELECT name, surname, email, email_verified, language FROM users WHERE id = $1', [targetUserId]);
+    const targetUser = targetUserRes.rows[0];
 
     // Send email if email exists and verified
     if (targetUser && targetUser.email && targetUser.email_verified) {
@@ -6589,6 +6633,9 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
     // Structure to hold squads in memory: Map<time, Array<squad>>
     const finalSquads: Map<string, Array<{ field: number, members: number[] }>> = new Map();
 
+    const isMB = !!(event.discipline && (event.discipline.includes('MB') || event.discipline.includes('Make a Break') || event.discipline.toLowerCase().includes('make a break')));
+    const squadCapacity = 6;
+
     // Pass 1: Assign preferred specific HH:MM times
     for (const reg of specificTime) {
       const time = reg.shooting_session;
@@ -6600,7 +6647,7 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
       let placed = false;
 
       for (const squad of squadsAtTime) {
-        if (squad.members.length < 6) {
+        if (squad.members.length < squadCapacity) {
           squad.members.push(reg.id);
           placed = true;
           break;
@@ -6652,7 +6699,7 @@ app.post('/api/events/:id/squads/generate', authenticateToken, async (req: any, 
 
       // Fill existing squads at this time
       for (const squad of squadsAtTime) {
-        while (squad.members.length < 6) {
+        while (squad.members.length < squadCapacity) {
           let selected = null;
           if (currentMinutes < MORNING_END && morningIdx < morningPool.length) {
             selected = morningPool[morningIdx++];

@@ -13,6 +13,7 @@ export enum Discipline {
   SK_ISSF = 'Skeet ISSF (SK ISSF)',
   TR1 = 'Trap 1 (TR1)',
   DT = 'Double Trap (DT)',
+  MB = 'Make a Break (MB)',
   TRAINING = 'Allenamento'
 }
 
@@ -27,6 +28,7 @@ export const DISCIPLINE_TO_ACRONYM: Partial<Record<Discipline, string>> = {
   [Discipline.TC]: 'TC',
   [Discipline.CK]: 'PC',
   [Discipline.TR1]: 'TA',
+  [Discipline.MB]: 'MB',
 };
 
 export enum TargetCount {
@@ -381,6 +383,11 @@ export const getSeriesLayout = (discipline: Discipline) => {
       return {
         label: 'Serie',
         layout: [5, 5, 5, 5] // 20 targets total
+      };
+    case Discipline.MB: // Make a Break
+      return {
+        label: 'Piazzola',
+        layout: [8, 8, 9] // 3 stations: Piazzola 1 (8), Piazzola 2 (8), Piazzola 3 (9) = 25 targets
       };
     default:
       return {
