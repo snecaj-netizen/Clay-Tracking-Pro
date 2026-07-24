@@ -304,6 +304,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     for (let i = 1; i <= numSeries; i++) {
       headers.push(`S${i}`);
     }
+    headers.push('S.Fin');
     headers.push('Shoot-Off');
     headers.push('Preferenza Classifica');
 
@@ -320,6 +321,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     for (let i = 1; i <= numSeries; i++) {
       exampleRow[`S${i}`] = '22';
     }
+    exampleRow['S.Fin'] = '';
     exampleRow['Shoot-Off'] = '';
     exampleRow['Preferenza Classifica'] = 'Categoria';
 
@@ -381,9 +383,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             const rankingPreference: 'categoria' | 'qualifica' = (raw.rankingPreference || '').toString().toLowerCase().trim() === 'qualifica' ? 'qualifica' : 'categoria';
 
             const scores: number[] = Array.isArray(raw.scores) ? raw.scores.map((s: any) => parseInt(s) || 0) : [];
-            // pad or trim to numSeries
+            // pad up to numSeries if fewer
             while (scores.length < numSeries) scores.push(0);
-            scores.splice(numSeries);
 
             const shootOffRaw = raw.shootOff !== undefined && raw.shootOff !== null
               ? raw.shootOff
@@ -437,7 +438,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
             scores.forEach((s, sI) => {
               if (s < 0 || s > maxSeriesScore) {
-                errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${maxSeriesScore})`);
+                const sName = sI >= numSeries ? 'S.FIN' : `S${sI+1}`;
+                errors.push(`Punteggio ${sName} (${s}) non valido (deve essere tra 0 e ${maxSeriesScore})`);
               }
             });
 
@@ -549,16 +551,30 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
         const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
 
+        const finalSeriesKeys = ['sfin', 's.fin', 's.fin.', 's. fin', 's_fin', 's-fin', 'finale', 'final', 'sf', 's. finale', `s${numSeries + 1}`];
+
+        const hasSFinInSheet = rawRows.some((raw: any) => {
+          return Object.keys(raw).some(rk => {
+            const cleanRK = rk.toLowerCase().replace(/[\s*_.-]/g, '');
+            return finalSeriesKeys.some(k => k.replace(/[\s*_.-]/g, '') === cleanRK);
+          });
+        });
+
         const parsed: any[] = rawRows.map((raw: any, index: number) => {
           const getVal = (keys: string[]): string => {
             for (const k of keys) {
-              const matchedKey = Object.keys(raw).find(rk => rk.toLowerCase().replace(/\s+/g, '').replace(/[*_]/g, '') === k.toLowerCase().replace(/\s+/g, ''));
-              if (matchedKey) return String(raw[matchedKey] || '').trim();
+              const cleanK = k.toLowerCase().replace(/[\s*_.-]/g, '');
+              const matchedKey = Object.keys(raw).find(rk => 
+                rk.toLowerCase().replace(/[\s*_.-]/g, '') === cleanK
+              );
+              if (matchedKey && raw[matchedKey] !== undefined && raw[matchedKey] !== null) {
+                return String(raw[matchedKey]).trim();
+              }
             }
             return '';
           };
 
-          const shooterCode = getVal(['codicetiratore', 'codice', 'cf', 'fiscalcode', 'tessera', 'fitav']);
+          const shooterCode = getVal(['codicetiratore', 'codice', 'cf', 'fiscalcode', 'tessera', 'fitav', 'cod']);
           const rawSurname = getVal(['cognome', 'surname', 'lastname']);
           const rawName = getVal(['nome', 'name', 'firstname']);
           const rawEmail = getVal(['email', 'mail']);
@@ -566,7 +582,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           const rawCategory = getVal(['categoria', 'category', 'class']);
           const rawQualification = getVal(['qualifica', 'qualification']);
           const bibNumber = getVal(['pett', 'pettorale', 'bib']);
-          const rawDisciplineCategories = getVal(['disciplinecategories', 'discipline_categories', 'discipline_category', 'discipline', 'specialita', 'discipline_categories']);
+          const rawDisciplineCategories = getVal(['disciplinecategories', 'discipline_categories', 'discipline_category', 'discipline', 'specialita']);
           
           const rawPref = getVal(['preferenza', 'preferenzaclassifica', 'rankingpreference']);
           const rankingPreference: 'categoria' | 'qualifica' = (rawPref.toLowerCase().includes('qual') || rawPref.toLowerCase() === 'qualifica') ? 'qualifica' : 'categoria';
@@ -576,6 +592,26 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             const val = getVal([`s${sIdx}`]);
             const scoreNum = parseInt(val);
             scores.push(isNaN(scoreNum) ? 0 : scoreNum);
+          }
+
+          const finalVal = getVal(finalSeriesKeys);
+          if (finalVal !== '') {
+            const sFinNum = parseInt(finalVal);
+            scores.push(isNaN(sFinNum) ? 0 : sFinNum);
+          } else if (hasSFinInSheet) {
+            scores.push(0);
+          } else {
+            let extraIdx = numSeries + 1;
+            while (true) {
+              const extraVal = getVal([`s${extraIdx}`]);
+              if (extraVal !== '') {
+                const scoreNum = parseInt(extraVal);
+                scores.push(isNaN(scoreNum) ? 0 : scoreNum);
+                extraIdx++;
+              } else {
+                break;
+              }
+            }
           }
 
           const shootOffVal = getVal(['shootoff', 'shoot-off', 'shoot_off', 'spareggio', 'barrage', 'so', 'shoff', 's-o']);
@@ -632,7 +668,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
           scores.forEach((s, sI) => {
             if (s < 0 || s > maxSeriesScore) {
-              errors.push(`Punteggio S${sI+1} (${s}) non valido (deve essere tra 0 e ${maxSeriesScore})`);
+              const sName = sI >= numSeries ? 'S.FIN' : `S${sI+1}`;
+              errors.push(`Punteggio ${sName} (${s}) non valido (deve essere tra 0 e ${maxSeriesScore})`);
             }
           });
 
@@ -733,7 +770,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
       const totalScore = row.scores.reduce((a: number, b: number) => a + b, 0);
       const totalTargetsVal = event.targets || 100;
-      const averagePerSeries = totalScore / numSeries;
+      const averagePerSeries = row.scores.length > 0 ? totalScore / row.scores.length : totalScore / numSeries;
 
       const detailed: boolean[][] = row.scores.map((score: number) => {
         const numMisses = targetsPerSeries - score;
@@ -1114,9 +1151,20 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     
     currentY += 15;
 
-    const pdfMaxSeriesCount = results.length > 0 
-      ? Math.max(...results.map(r => Array.isArray(r.scores) ? r.scores.length : 0))
-      : 0;
+    const pdfMaxSeriesCount = React.useMemo(() => {
+      if (results.length === 0) return eventSeriesCount;
+      let maxCount = eventSeriesCount;
+      results.forEach(r => {
+        if (Array.isArray(r.scores)) {
+          for (let i = r.scores.length - 1; i >= eventSeriesCount; i--) {
+            if (r.scores[i] !== undefined && r.scores[i] !== null && Number(r.scores[i]) > 0) {
+              if (i + 1 > maxCount) maxCount = i + 1;
+            }
+          }
+        }
+      });
+      return maxCount;
+    }, [results, eventSeriesCount]);
 
     const renderTable = (title: string, data: any[]) => {
       doc.setFontSize(12);
@@ -1125,7 +1173,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       doc.text(title.toUpperCase(), 20, currentY);
       currentY += 5;
 
-      const seriesHeaders = Array.from({ length: pdfMaxSeriesCount }).map((_, i) => `S${i + 1}`);
+      const seriesHeaders = Array.from({ length: pdfMaxSeriesCount }).map((_, i) => i >= eventSeriesCount ? 'S.FIN' : `S${i + 1}`);
       const headers = [[t('pdf_pos'), 'PETT', t('pdf_shooter'), t('pdf_cat_qual'), ...seriesHeaders, t('pdf_total'), t('pdf_shoot_off')]];
 
       autoTable(doc, {
@@ -1658,12 +1706,22 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
   };
 
+  const eventSeriesCount = Math.ceil((event.targets || 100) / targetsPerSeries);
+
   const maxSeriesCount = React.useMemo(() => {
-    const eventSeriesCount = Math.ceil((event.targets || 100) / targetsPerSeries);
     if (filteredResults.length === 0) return eventSeriesCount;
-    const resultSeriesCounts = filteredResults.map(r => Array.isArray(r.scores) ? r.scores.length : 0);
-    return Math.max(eventSeriesCount, ...resultSeriesCounts);
-  }, [filteredResults, event.targets, targetsPerSeries]);
+    let maxCount = eventSeriesCount;
+    filteredResults.forEach(r => {
+      if (Array.isArray(r.scores)) {
+        for (let i = r.scores.length - 1; i >= eventSeriesCount; i--) {
+          if (r.scores[i] !== undefined && r.scores[i] !== null && Number(r.scores[i]) > 0) {
+            if (i + 1 > maxCount) maxCount = i + 1;
+          }
+        }
+      }
+    });
+    return maxCount;
+  }, [filteredResults, eventSeriesCount]);
 
   const handleSavePrizeSettings = async () => {
     try {
@@ -2070,7 +2128,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           onFocus={() => {
                             if (expandedSeries !== i) setExpandedSeries(i);
                           }}
-                          placeholder={`S${i+1}`}
+                          placeholder={i >= eventSeriesCount ? 'S.FIN' : `S${i+1}`}
                           className={`w-full bg-slate-950 border ${expandedSeries === i ? 'border-orange-500' : 'border-slate-800'} rounded-lg px-2 py-2 text-center text-white focus:border-orange-600 outline-none text-sm font-bold`}
                           required
                         />
@@ -2355,8 +2413,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         <th className="p-3 font-black text-center text-slate-500">Codice</th>
                         <th className="p-3 font-black text-center text-slate-500">Email</th>
                         <th className="p-3 font-black text-slate-500">Società / Categoria / Qualifica</th>
-                        {Array.from({ length: Math.ceil((event.targets || 100) / targetsPerSeries) }).map((_, i) => (
-                          <th key={i} className="p-3 font-black text-center w-14 text-slate-500 font-bold">S{i + 1}</th>
+                        {Array.from({ length: Math.max(eventSeriesCount, ...parsedRows.map(r => r.scores?.length || 0)) }).map((_, i) => (
+                          <th key={i} className="p-3 font-black text-center w-14 text-slate-500 font-bold">{i >= eventSeriesCount ? 'S.FIN' : `S${i + 1}`}</th>
                         ))}
                         <th className="p-3 font-black text-center w-14 text-slate-500">Shoot-Off</th>
                         <th className="p-3 font-black text-center w-20 text-slate-500 font-bold">Preferenza</th>
@@ -2662,7 +2720,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       <th className="p-2 sm:p-3 font-black">{t('shooter')}</th>
                       <th className="p-2 sm:p-3 font-black">{t('cat_qua')}</th>
                       {Array.from({ length: maxSeriesCount }).map((_, i) => (
-                        <th key={i} className="p-2 sm:p-3 font-black text-center">S{i + 1}</th>
+                        <th key={i} className="p-2 sm:p-3 font-black text-center">{i >= eventSeriesCount ? 'S.FIN' : `S${i + 1}`}</th>
                       ))}
                       <th className="p-2 sm:p-3 font-black text-right">{t('total')}</th>
                       <th className="p-2 sm:p-3 font-black text-right">{t('shootoff')}</th>
@@ -2854,7 +2912,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                     <div key={sIdx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
                                       <div className="flex justify-between items-center px-1">
                                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                          Serie {sIdx + 1}{r.seriesFields && r.seriesFields[sIdx] ? ` - Campo ${r.seriesFields[sIdx]}` : ''}
+                                          {sIdx >= eventSeriesCount ? 'S. Fin.' : `Serie ${sIdx + 1}`}{r.seriesFields && r.seriesFields[sIdx] ? ` - Campo ${r.seriesFields[sIdx]}` : ''}
                                         </div>
                                         <div className="text-sm font-black text-orange-500">{score}<span className="text-[8px] text-slate-500 ml-0.5">/{maxSeriesScore}</span></div>
                                       </div>
