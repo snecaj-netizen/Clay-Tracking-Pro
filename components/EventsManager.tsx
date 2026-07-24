@@ -48,6 +48,8 @@ interface EventsManagerProps {
   onFilterSocietyChange?: (val: string) => void;
   filterDiscipline?: string;
   onFilterDisciplineChange?: (val: string) => void;
+  filterYear?: string;
+  onFilterYearChange?: (val: string) => void;
   filterMonth?: string;
   onFilterMonthChange?: (val: string) => void;
   filterActivation?: string;
@@ -281,6 +283,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   exportTrigger, importTrigger, newEventTrigger,
   filterSociety: externalFilterSociety, onFilterSocietyChange,
   filterDiscipline: externalFilterDiscipline, onFilterDisciplineChange,
+  filterYear: externalFilterYear, onFilterYearChange,
   filterMonth: externalFilterMonth, onFilterMonthChange,
   filterActivation: externalFilterActivation, onFilterActivationChange,
   onSocietyClick,
@@ -351,6 +354,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const filterDiscipline = externalFilterDiscipline !== undefined ? externalFilterDiscipline : internalFilterDiscipline;
   const setFilterDiscipline = onFilterDisciplineChange || setInternalFilterDiscipline;
 
+  const currentYearStr = new Date().getFullYear().toString();
+  const [internalFilterYear, setInternalFilterYear] = useState(currentYearStr);
+  const filterYear = externalFilterYear !== undefined ? externalFilterYear : internalFilterYear;
+  const setFilterYear = onFilterYearChange || setInternalFilterYear;
+
   const [internalFilterMonth, setInternalFilterMonth] = useState('');
   const filterMonth = externalFilterMonth !== undefined ? externalFilterMonth : internalFilterMonth;
   const setFilterMonth = onFilterMonthChange || setInternalFilterMonth;
@@ -371,7 +379,20 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     }
   }, [filterMonth]);
   
-  const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterMonth !== '' || filterActivation !== '';
+  const hasActiveFilters = filterSociety !== '' || filterDiscipline !== '' || filterYear !== '' || filterMonth !== '' || filterActivation !== '';
+
+  const yearOptions = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set<number>();
+    yearsSet.add(currentYear);
+    events.forEach(ev => {
+      if (ev.start_date) {
+        const y = parseInt(ev.start_date.slice(0, 4), 10);
+        if (!isNaN(y)) yearsSet.add(y);
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [events]);
 
   const monthOptions = React.useMemo(() => {
     const options = [];
@@ -502,6 +523,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       
       if (filterSociety && ev.location?.toLowerCase().trim() !== filterSociety.toLowerCase().trim()) return false;
       if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
+      if (filterYear && ev.start_date && ev.start_date.slice(0, 4) !== filterYear) return false;
       if (filterMonth) {
         // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
         if (ev.start_date.slice(0, 7) !== filterMonth) return false;
@@ -563,7 +585,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       // If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, filterSociety, filterDiscipline, filterMonth, filterActivation, restrictToSociety, user, nextUpcomingEventId, viewMode, hasSocietaAccess, hasTiratoriAccess, filterRegistrationOpen]);
+  }, [events, filterSociety, filterDiscipline, filterYear, filterMonth, filterActivation, restrictToSociety, user, nextUpcomingEventId, viewMode, hasSocietaAccess, hasTiratoriAccess, filterRegistrationOpen]);
 
   const managedEvents = React.useMemo(() => {
     console.log('EventsManager: Calculating managedEvents', { user, eventsCount: events.length });
@@ -595,6 +617,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       // Apply filters
       if (filterSociety && ev.location?.toLowerCase().trim() !== filterSociety.toLowerCase().trim()) return false;
       if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
+      if (filterYear && ev.start_date && ev.start_date.slice(0, 4) !== filterYear) return false;
       if (filterMonth) {
         // ev.start_date is YYYY-MM-DD, filterMonth is YYYY-MM
         if (ev.start_date.slice(0, 7) !== filterMonth) return false;
@@ -644,7 +667,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       // 4. If both are future, sort ascending (closest future event first)
       return startA.getTime() - startB.getTime();
     });
-  }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterMonth, filterActivation, filterRegistrationOpen]);
+  }, [events, user, hasSocietaAccess, filterSociety, filterDiscipline, filterYear, filterMonth, filterActivation, filterRegistrationOpen]);
 
   const portalEvents = React.useMemo(() => {
     return managedEvents.filter(ev => ev.is_public);
@@ -1892,7 +1915,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       <div className={hideHeader ? "pt-0" : "pt-4"}>
         {!hideHeader && !showForm && showFilters && (
           <div className="mt-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 mb-8">
-            <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-6`}>
+            <div className={`grid grid-cols-1 ${restrictToSociety && user?.role === 'society' ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-6`}>
               {!(restrictToSociety && user?.role === 'society') && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
@@ -1919,7 +1942,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
                   >
                     <option value="">{t('all_disciplines')}</option>
-                    {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{d}</option>)}
+                    {Object.values(Discipline).filter(d => (d as string) !== Discipline.TRAINING && (d as string) !== 'Allenamento / Pratica').map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <i className="fas fa-calendar text-orange-500"></i>
+                  {t('year_label')}
+                </label>
+                <div className="relative group">
+                  <select 
+                    value={filterYear} 
+                    onChange={e => setFilterYear(e.target.value)} 
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-bold focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">{language === 'it' ? 'Tutti gli anni' : 'All years'}</option>
+                    {yearOptions.map(y => (
+                      <option key={y} value={y.toString()}>{y}</option>
+                    ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                     <i className="fas fa-chevron-down text-[10px]"></i>
@@ -1948,9 +1992,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                 </div>
               </div>
 
-              <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-2' : 'sm:col-span-3'} flex justify-end pt-2`}>
+              <div className={`${restrictToSociety && user?.role === 'society' ? 'sm:col-span-3' : 'sm:col-span-2 lg:col-span-4'} flex justify-end pt-2`}>
                 <button 
-                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); }}
+                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterYear(''); setFilterMonth(''); }}
                   className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
                 >
                   <i className="fas fa-undo-alt"></i>

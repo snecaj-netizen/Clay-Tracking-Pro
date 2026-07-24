@@ -46,6 +46,7 @@ const GarePage: React.FC<GarePageProps> = ({
   const [newEventTrigger, setNewEventTrigger] = useState(0);
   const [filterSociety, setFilterSociety] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
+  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
   const [filterMonth, setFilterMonth] = useState('');
   const [filterActivation, setFilterActivation] = useState('');
   const [direction, setDirection] = useState(0);
@@ -122,6 +123,19 @@ const GarePage: React.FC<GarePageProps> = ({
     }
     return options;
   }, []);
+
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set<number>();
+    yearsSet.add(currentYear);
+    events.forEach(ev => {
+      if (ev.start_date) {
+        const y = parseInt(ev.start_date.slice(0, 4), 10);
+        if (!isNaN(y)) yearsSet.add(y);
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [events]);
 
   const handleTabChange = (newTab: TabType) => {
     const currentIndex = availableTabs.indexOf(activeTab);
@@ -277,7 +291,7 @@ const GarePage: React.FC<GarePageProps> = ({
               exit={{ height: 0, opacity: 0 }}
               className="relative z-50"
             >
-              <div className={`grid grid-cols-1 ${user?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 pt-2 pb-1`}>
+              <div className={`grid grid-cols-1 ${user?.role === 'admin' ? 'sm:grid-cols-3 md:grid-cols-5' : 'sm:grid-cols-2 md:grid-cols-4'} gap-3 pt-2 pb-1`}>
                 <div className="space-y-1 relative z-30">
                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('society_tav_label')}</label>
                   <SocietySearch 
@@ -297,7 +311,25 @@ const GarePage: React.FC<GarePageProps> = ({
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all appearance-none"
                     >
                       <option value="">{t('all_disciplines')}</option>
-                      {Object.values(Discipline).filter(d => d !== Discipline.TRAINING).map(d => <option key={d} value={d}>{t(d)}</option>)}
+                      {Object.values(Discipline).filter(d => (d as string) !== Discipline.TRAINING && (d as string) !== 'Allenamento / Pratica').map(d => <option key={d} value={d}>{t(d)}</option>)}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                      <i className="fas fa-chevron-down text-[8px]"></i>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1 relative z-15">
+                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('year_label')}</label>
+                  <div className="relative group">
+                    <select 
+                      value={filterYear} 
+                      onChange={e => setFilterYear(e.target.value)} 
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white text-[11px] focus:border-orange-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">{language === 'it' ? 'Tutti gli anni' : 'All years'}</option>
+                      {yearOptions.map(y => (
+                        <option key={y} value={y.toString()}>{y}</option>
+                      ))}
                     </select>
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                       <i className="fas fa-chevron-down text-[8px]"></i>
@@ -346,7 +378,7 @@ const GarePage: React.FC<GarePageProps> = ({
               </div>
               <div className="flex justify-end pb-1">
                 <button 
-                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterMonth(''); setFilterActivation(''); }}
+                  onClick={() => { setFilterSociety(''); setFilterDiscipline(''); setFilterYear(''); setFilterMonth(''); setFilterActivation(''); }}
                   className="text-[9px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors"
                 >
                   {t('reset_filters')}
@@ -388,6 +420,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterSocietyChange={setFilterSociety}
                 filterDiscipline={filterDiscipline}
                 onFilterDisciplineChange={setFilterDiscipline}
+                filterYear={filterYear}
+                onFilterYearChange={setFilterYear}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
                 filterActivation={filterActivation}
@@ -426,6 +460,8 @@ const GarePage: React.FC<GarePageProps> = ({
                   onFilterSocietyChange={setFilterSociety}
                   filterDiscipline={filterDiscipline}
                   onFilterDisciplineChange={setFilterDiscipline}
+                  filterYear={filterYear}
+                  onFilterYearChange={setFilterYear}
                   filterMonth={filterMonth}
                   onFilterMonthChange={setFilterMonth}
                   filterActivation={filterActivation}
@@ -463,6 +499,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterSocietyChange={setFilterSociety}
                 filterDiscipline={filterDiscipline}
                 onFilterDisciplineChange={setFilterDiscipline}
+                filterYear={filterYear}
+                onFilterYearChange={setFilterYear}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
                 filterActivation={filterActivation}
@@ -494,6 +532,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterSocietyChange={setFilterSociety}
                 filterDiscipline={filterDiscipline}
                 onFilterDisciplineChange={setFilterDiscipline}
+                filterYear={filterYear}
+                onFilterYearChange={setFilterYear}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
                 filterActivation={filterActivation}
@@ -525,6 +565,8 @@ const GarePage: React.FC<GarePageProps> = ({
                 onFilterSocietyChange={setFilterSociety}
                 filterDiscipline={filterDiscipline}
                 onFilterDisciplineChange={setFilterDiscipline}
+                filterYear={filterYear}
+                onFilterYearChange={setFilterYear}
                 filterMonth={filterMonth}
                 onFilterMonthChange={setFilterMonth}
                 filterActivation={filterActivation}

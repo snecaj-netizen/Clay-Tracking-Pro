@@ -24,6 +24,8 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
   const [search, setSearch] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedDiscipline, setSelectedDiscipline] = useState('');
+  const currentYearStr = new Date().getFullYear().toString();
+  const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [viewingEvent, setViewingEvent] = useState<SocietyEvent | null>(null);
   const [selectedSociety, setSelectedSociety] = useState<{name: string, type: 'ongoing' | 'past'} | null>(null);
   const [viewMode, setViewMode] = useState<'ongoing' | 'past'>('ongoing');
@@ -199,6 +201,19 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
     return r.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
   };
 
+  const yearOptions = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set<number>();
+    yearsSet.add(currentYear);
+    events.forEach(ev => {
+      if (ev.start_date) {
+        const y = parseInt(ev.start_date.slice(0, 4), 10);
+        if (!isNaN(y)) yearsSet.add(y);
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [events]);
+
   const filterEvents = (eventList: SocietyEvent[]) => {
     return eventList.filter(event => {
       const matchesSearch = event.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -206,7 +221,8 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                             (event.region && event.region.toLowerCase().includes(search.toLowerCase()));
       const matchesRegion = selectedRegion === '' || normalizeRegion(event.region) === normalizeRegion(selectedRegion);
       const matchesDiscipline = selectedDiscipline === '' || event.discipline === selectedDiscipline;
-      return matchesSearch && matchesRegion && matchesDiscipline;
+      const matchesYear = selectedYear === '' || (event.start_date && event.start_date.slice(0, 4) === selectedYear);
+      return matchesSearch && matchesRegion && matchesDiscipline && matchesYear;
     });
   };
 
@@ -482,7 +498,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
           <span className="text-[10px] font-black uppercase tracking-widest">
             {showFilters ? t('hide_filters') : t('show_filters')}
           </span>
-          {!showFilters && (selectedRegion || selectedDiscipline || search) && (
+          {!showFilters && (selectedRegion || selectedDiscipline || search || selectedYear) && (
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
           )}
         </button>
@@ -496,7 +512,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
             className="max-w-7xl mx-auto overflow-hidden"
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950/50 [.light-theme_&]:bg-white p-6 rounded-3xl border border-slate-800/80 [.light-theme_&]:border-slate-200 shadow-2xl backdrop-blur-xl transition-colors">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 bg-slate-950/50 [.light-theme_&]:bg-white p-6 rounded-3xl border border-slate-800/80 [.light-theme_&]:border-slate-200 shadow-2xl backdrop-blur-xl transition-colors">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
                   <i className="fas fa-search text-orange-500"></i>
@@ -551,6 +567,38 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                     <i className="fas fa-chevron-down text-[10px]"></i>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 [.light-theme_&]:text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+                  <i className="fas fa-calendar text-orange-500"></i>
+                  {t('year_label')}
+                </label>
+                <div className="relative group">
+                  <select 
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="w-full bg-slate-900 [.light-theme_&]:bg-slate-100 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-2xl py-3 px-4 text-xs font-bold text-white [.light-theme_&]:text-slate-900 focus:border-orange-500/50 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">{language === 'it' ? 'Tutti gli anni' : 'All years'}</option>
+                    {yearOptions.map(y => (
+                      <option key={y} value={y.toString()}>{y}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    <i className="fas fa-chevron-down text-[10px]"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2">
+                <button 
+                  onClick={() => { setSearch(''); setSelectedRegion(''); setSelectedDiscipline(''); setSelectedYear(''); }}
+                  className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-400 transition-colors flex items-center gap-2"
+                >
+                  <i className="fas fa-undo-alt"></i>
+                  {t('reset_filters')}
+                </button>
               </div>
             </div>
           </motion.div>
