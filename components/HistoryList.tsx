@@ -830,7 +830,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                 className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-xl px-4 py-3 focus:border-orange-500 transition-colors appearance-none cursor-pointer font-bold"
               >
                 <option value="ALL">{t('all_disciplines')}</option>
-                {Object.values(Discipline).map(d => (
+                {Object.values(Discipline).filter(d => (d as string) !== Discipline.TRAINING && (d as string) !== 'Allenamento / Pratica').map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>

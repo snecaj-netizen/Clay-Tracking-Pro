@@ -3730,7 +3730,7 @@ app.get('/api/admin/filter-options', authenticateToken, requireAdminOrSociety, a
     ]);
 
     res.json({
-      disciplines: disciplinesRes.rows.map(r => r.discipline).filter(Boolean),
+      disciplines: disciplinesRes.rows.map(r => r.discipline).filter(d => d && d !== 'Allenamento' && d !== 'Allenamento / Pratica'),
       locations: locationsRes.rows.map(r => r.location).filter(Boolean),
       years: yearsRes.rows.map(r => r.year.toString()).filter(Boolean)
     });

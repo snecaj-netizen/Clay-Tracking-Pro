@@ -220,7 +220,9 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
   }, [teamStats, statsFilterDiscipline]);
 
   const statsDisciplines = useMemo(() => {
-    return Array.from(new Set(teamStats.map(s => s.discipline))).sort();
+    return Array.from(new Set(teamStats.map(s => s.discipline)))
+      .filter(d => d && d !== 'Allenamento' && d !== 'Allenamento / Pratica')
+      .sort();
   }, [teamStats]);
 
   const handleEditTeam = useCallback((team: any) => {

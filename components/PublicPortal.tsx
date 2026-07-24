@@ -545,7 +545,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ token, onPushState }) => {
                     className="w-full bg-slate-900 [.light-theme_&]:bg-slate-100 border border-slate-800 [.light-theme_&]:border-slate-200 rounded-2xl py-3 px-4 text-xs font-bold text-white [.light-theme_&]:text-slate-900 focus:border-orange-500/50 outline-none transition-all appearance-none cursor-pointer"
                   >
                     <option value="">{t('all_disciplines')}</option>
-                    {Object.values(Discipline).map(d => <option key={d} value={d}>{t(d)}</option>)}
+                    {Object.values(Discipline).filter(d => (d as string) !== Discipline.TRAINING && (d as string) !== 'Allenamento / Pratica').map(d => <option key={d} value={d}>{t(d)}</option>)}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                     <i className="fas fa-chevron-down text-[10px]"></i>
