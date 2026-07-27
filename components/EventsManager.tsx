@@ -43,6 +43,7 @@ interface EventsManagerProps {
   onNewEvent?: () => void;
   exportTrigger?: number;
   importTrigger?: number;
+  templateTrigger?: number;
   newEventTrigger?: number;
   filterSociety?: string;
   onFilterSocietyChange?: (val: string) => void;
@@ -280,7 +281,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   initialEvents,
   viewMode: externalViewMode, onViewModeChange, showFilters: externalShowFilters, onShowFiltersChange,
   onExportExcel, onImportExcel, onNewEvent,
-  exportTrigger, importTrigger, newEventTrigger,
+  exportTrigger, importTrigger, templateTrigger, newEventTrigger,
   filterSociety: externalFilterSociety, onFilterSocietyChange,
   filterDiscipline: externalFilterDiscipline, onFilterDisciplineChange,
   filterYear: externalFilterYear, onFilterYearChange,
@@ -315,8 +316,237 @@ const EventsManager: React.FC<EventsManagerProps> = ({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const lastHandledExportTrigger = React.useRef(exportTrigger || 0);
   const lastHandledImportTrigger = React.useRef(importTrigger || 0);
+  const lastHandledTemplateTrigger = React.useRef(templateTrigger || 0);
   const lastHandledNewEventTrigger = React.useRef(newEventTrigger || 0);
   const [isSaving, setIsSaving] = useState(false);
+  const [validationRows, setValidationRows] = useState<any[] | null>(null);
+  const [isSavingImport, setIsSavingImport] = useState(false);
+  const [validationFilterTab, setValidationFilterTab] = useState<'all' | 'update' | 'create' | 'skip'>('all');
+
+  const cleanDateStr = (dateVal: any): string => {
+    if (!dateVal) return '';
+    const str = dateVal.toString().trim();
+    if (str.includes('T')) return str.split('T')[0];
+    return str;
+  };
+
+  const normalizeDiscipline = (discStr: string): string => {
+    if (!discStr) return '';
+    const s = discStr.toLowerCase();
+    if (s.includes('compak') || s.includes('ck') || s.includes('cs')) return 'CK';
+    if (s.includes('olimpica') || s.includes('fo') || s.includes('fossa olimpica') || s.includes('trap')) return 'FO';
+    if (s.includes('universale') || s.includes('fu')) return 'FU';
+    if (s.includes('double') || s.includes('dt')) return 'DT';
+    if (s.includes('skeet') || s.includes('sk')) return 'SK';
+    if (s.includes('percorso') || s.includes('pc') || s.includes('pk')) return 'PC';
+    if (s.includes('elica') || s.includes('el')) return 'EL';
+    return s.trim();
+  };
+
+  const normalizeLocation = (locStr: string): string => {
+    if (!locStr) return '';
+    return locStr
+      .toLowerCase()
+      .replace(/a\.s\.d\.|t\.a\.v\.|c\.a\.t\.|a\.s\.d|t\.a\.v/gi, ' ')
+      .replace(/\b(asd|tav|cat|tiro|volo|associazione|sportiva|dilettantistica|societa|società|polisportiva|spett|spett.le)\b/gi, ' ')
+      .replace(/[\.\,\-\_\'\"\/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const normalizeName = (nameStr: string): string => {
+    if (!nameStr) return '';
+    return nameStr
+      .toLowerCase()
+      .replace(/\b(gran premio|grandi premi|g\.p\.|g\.p|gp)\b/gi, 'gp')
+      .replace(/\b(trofeo)\b/gi, 'trofeo')
+      .replace(/\b(campionato|camp\.)\b/gi, 'campionato')
+      .replace(/\b(regionale|reg\.)\b/gi, 'regionale')
+      .replace(/\b(nazionale|naz\.)\b/gi, 'nazionale')
+      .replace(/[\.\,\-\_\'\"\/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const getResolvedSocietyCode = (codeStr?: string, locationStr?: string, societiesList: any[] = []): string => {
+    let code = codeStr?.toString().trim().toLowerCase() || '';
+    if (code) return code;
+
+    if (locationStr && societiesList && societiesList.length > 0) {
+      const normLoc = normalizeLocation(locationStr);
+      const matched = societiesList.find(s => {
+        const sName = s.name?.toString().trim().toLowerCase() || '';
+        const sCode = (s.code || s.society_code)?.toString().trim().toLowerCase() || '';
+        const normSName = normalizeLocation(sName);
+        return (
+          (sCode && (sCode === locationStr.trim().toLowerCase())) ||
+          (sName && sName === locationStr.trim().toLowerCase()) ||
+          (normLoc.length >= 3 && normSName.length >= 3 && (normLoc === normSName || normLoc.includes(normSName) || normSName.includes(normLoc)))
+        );
+      });
+      if (matched) {
+        return (matched.code || matched.society_code)?.toString().trim().toLowerCase() || '';
+      }
+    }
+    return '';
+  };
+
+  const findBestEventMatch = (
+    rowId: string | undefined,
+    rawName: string,
+    startDate: string,
+    endDate: string,
+    finalLocation: string,
+    finalCode: string,
+    rawDiscipline: string,
+    rawTargets: number,
+    eventsList: any[],
+    societiesList: any[] = []
+  ) => {
+    if (!eventsList || eventsList.length === 0) return null;
+
+    if (rowId) {
+      const byId = eventsList.find(ev => ev.id === rowId);
+      if (byId) return { event: byId, matchReason: 'ID corrisponde esattamente' };
+    }
+
+    const rawNameNorm = normalizeName(rawName);
+    const rawLocNorm = normalizeLocation(finalLocation);
+    const normRawDisc = normalizeDiscipline(rawDiscipline);
+    const normRawCode = getResolvedSocietyCode(finalCode, finalLocation, societiesList);
+
+    const rawLocTokens = rawLocNorm.split(' ').filter(t => t.length >= 3);
+    const rawNameTokens = rawNameNorm.split(' ').filter(t => t.length >= 2);
+
+    let bestMatch: any = null;
+    let highestScore = 0;
+    let bestReason = '';
+
+    for (const ev of eventsList) {
+      const evNameNorm = normalizeName(ev.name);
+      const evLocNorm = normalizeLocation(ev.location);
+      const evNormDisc = normalizeDiscipline(ev.discipline);
+      const evNormCode = getResolvedSocietyCode(ev.society_code, ev.location, societiesList);
+
+      const evLocTokens = evLocNorm.split(' ').filter(t => t.length >= 3);
+      const evNameTokens = evNameNorm.split(' ').filter(t => t.length >= 2);
+
+      const isExactCode = !!(normRawCode && evNormCode && normRawCode === evNormCode);
+      const isExactLoc = rawLocNorm && evLocNorm && rawLocNorm === evLocNorm;
+      const isLocSubstring = (rawLocNorm.length >= 3 && evLocNorm.length >= 3) &&
+        (rawLocNorm.includes(evLocNorm) || evLocNorm.includes(rawLocNorm));
+      const hasLocTokenMatch = rawLocTokens.length > 0 && evLocTokens.length > 0 &&
+        rawLocTokens.some(t => evLocTokens.includes(t));
+
+      const isLocMatch = isExactCode || isExactLoc || isLocSubstring || hasLocTokenMatch;
+
+      const isDiscMatch = (!normRawDisc || !evNormDisc) ? true : (normRawDisc === evNormDisc);
+
+      const evStart = cleanDateStr(ev.start_date);
+      const evEnd = cleanDateStr(ev.end_date || ev.start_date);
+      const rowStart = cleanDateStr(startDate);
+      const rowEnd = cleanDateStr(endDate || startDate);
+
+      const isExactStartDate = rowStart && evStart && rowStart === evStart;
+      let isDateProximity = false;
+      if (rowStart && evStart) {
+        const d1 = new Date(rowStart).getTime();
+        const d2 = new Date(evStart).getTime();
+        if (!isNaN(d1) && !isNaN(d2)) {
+          const diffDays = Math.abs((d1 - d2) / (1000 * 3600 * 24));
+          if (diffDays <= 4) isDateProximity = true;
+        }
+      }
+      const isDateOverlap = rowStart && evStart && (rowStart <= evEnd) && (rowEnd >= evStart);
+      const isDateMatch = isExactStartDate || isDateOverlap || isDateProximity;
+
+      const isExactName = rawNameNorm && evNameNorm && rawNameNorm === evNameNorm;
+      const isNameStartsWith = (rawNameNorm.length >= 3 && evNameNorm.length >= 3) &&
+        (rawNameNorm.startsWith(evNameNorm) || evNameNorm.startsWith(rawNameNorm));
+      const isNameContains = (rawNameNorm.length >= 3 && evNameNorm.length >= 3) &&
+        (rawNameNorm.includes(evNameNorm) || evNameNorm.includes(rawNameNorm));
+
+      const commonNameTokens = rawNameTokens.filter(t => evNameTokens.includes(t));
+      const hasNameTokenMatch = commonNameTokens.length >= 1;
+
+      // Conflict guard: if TAV/Location is explicitly defined and clearly different (no token/code match) AND dates don't match, skip candidate
+      if (rawLocNorm && evLocNorm && !isLocMatch && !isDateMatch && !isExactName) {
+        continue;
+      }
+
+      let score = 0;
+      const reasons: string[] = [];
+
+      if (isExactName && isExactStartDate && isLocMatch) {
+        score = 100;
+        reasons.push('Identica per Nome, Data e TAV');
+      } else {
+        if (isExactCode) {
+          score += 45;
+          reasons.push(`Codice Società Univoco (${normRawCode.toUpperCase()})`);
+        } else if (isLocMatch) {
+          score += 35;
+          reasons.push('Stesso TAV / Società');
+        }
+
+        if (isDiscMatch) {
+          score += 25;
+          reasons.push('Stessa Disciplina');
+        }
+
+        if (isExactStartDate) {
+          score += 30;
+          reasons.push('Stessa Data Inizio');
+        } else if (isDateOverlap) {
+          score += 25;
+          reasons.push('Date Sovrapposte');
+        } else if (isDateProximity) {
+          score += 20;
+          reasons.push('Stesso Periodo / Weekend');
+        }
+
+        if (isExactName) {
+          score += 30;
+          reasons.push('Nome Identico');
+        } else if (isNameStartsWith) {
+          score += 25;
+          reasons.push('Inizio Nome Corrispondente');
+        } else if (isNameContains) {
+          score += 20;
+          reasons.push('Nome Contenuto / Abbreviato');
+        } else if (hasNameTokenMatch) {
+          score += 15;
+          reasons.push(`Parole in comune (${commonNameTokens.slice(0, 2).join(', ')})`);
+        }
+
+        if (rawTargets && ev.targets && Number(rawTargets) === Number(ev.targets)) {
+          score += 10;
+          reasons.push('Stesso n° Piattelli');
+        }
+
+        // BUMP 1: Same Unique Society Code + Date match + Discipline match -> automatic high score (85+)
+        if (isExactCode && isDateMatch && isDiscMatch) {
+          if (score < 85) score = 85;
+        } 
+        // BUMP 2: Same TAV (location token match) + Date match + Discipline match -> automatic strong match (75+)
+        else if (isLocMatch && isDateMatch && isDiscMatch) {
+          if (score < 75) score = 75;
+        }
+      }
+
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatch = ev;
+        bestReason = reasons.join(' • ');
+      }
+    }
+
+    if (highestScore >= 45 && bestMatch) {
+      return { event: bestMatch, matchReason: bestReason, score: highestScore };
+    }
+
+    return null;
+  };
   
   const resultsAccess = appSettings?.event_results_access || {};
 
@@ -429,6 +659,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       fileInputRef.current?.click();
     }
   }, [importTrigger]);
+
+  useEffect(() => {
+    if (templateTrigger && templateTrigger > lastHandledTemplateTrigger.current) {
+      lastHandledTemplateTrigger.current = templateTrigger;
+      handleDownloadTemplate();
+    }
+  }, [templateTrigger]);
 
   useEffect(() => {
     if (newEventTrigger && newEventTrigger > lastHandledNewEventTrigger.current) {
@@ -1525,6 +1762,62 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     XLSX.writeFile(wb, t('event_export_filename'));
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Nome Gara': '1° Gran Premio Compak Sporting',
+        'Tipo Gara': 'Regionale',
+        'Visibilità': 'Pubblica',
+        'Disciplina': 'Compak Sporting (CK)',
+        'Codice Società': '01001',
+        'Nome Società': 'TAV San Miniato',
+        'Piattelli': 50,
+        'Data Inizio': '2026-08-15',
+        'Data Fine': '2026-08-16',
+        'Costo': '35.00',
+        'Note': 'Note o programma di gara facoltativo',
+        'Link Iscrizione': ''
+      },
+      {
+        'Nome Gara': 'Trofeo D\'Estate Fossa Olimpica',
+        'Tipo Gara': 'Nazionale',
+        'Visibilità': 'Pubblica',
+        'Disciplina': 'Fossa Olimpica (FO)',
+        'Codice Società': '02005',
+        'Nome Società': 'TAV Valle Aniene',
+        'Piattelli': 100,
+        'Data Inizio': '2026-08-22',
+        'Data Fine': '2026-08-23',
+        'Costo': '50.00',
+        'Note': 'Prima serie ore 08:30',
+        'Link Iscrizione': 'https://www.fitav.it'
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    ws['!cols'] = [
+      { wch: 32 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 16 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 35 },
+      { wch: 25 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Modello Gare');
+    XLSX.writeFile(wb, 'Modello_Importazione_Gare.xlsx');
+    if (triggerToast) {
+      triggerToast('Modello Excel scaricato con successo!', 'success');
+    }
+  };
+
   const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1552,12 +1845,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             return d.toISOString().split('T')[0];
           }
           if (typeof dateVal === 'string') {
-            if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return dateVal;
-            const parts = dateVal.split(/[\/\-]/);
+            const trimmed = dateVal.trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+            const parts = trimmed.split(/[\/\-\.]/);
             if (parts.length === 3 && parts[2].length === 4) {
               return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
-            const parsed = new Date(dateVal);
+            const parsed = new Date(trimmed);
             if (!isNaN(parsed.getTime())) {
               return parsed.toISOString().split('T')[0];
             }
@@ -1565,53 +1859,143 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           return new Date().toISOString().split('T')[0];
         };
 
-        const importedEvents = data.map(row => ({
-          id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)),
-          name: row[t('competition_name_label')] || t('unnamed_competition'),
-          type: row[t('competition_type')] || t('regional'),
-          visibility: row[t('visibility')] || t('public_visibility'),
-          discipline: row[t('discipline_label')] || Discipline.CK,
-          location: row[t('society_label')] || '',
-          targets: parseInt(row[t('targets')]) || 50,
-          start_date: parseExcelDate(row[t('begin_date')]),
-          end_date: parseExcelDate(row[t('end_date')] || row[t('begin_date')]),
-          cost: row[t('cost')]?.toString() || '',
-          notes: row[t('notes')] || '',
-          registration_link: row[t('registration_link_label')] || ''
-        }));
+        const parsedRows = data.map((row: any, idx: number) => {
+          const rawName = (
+            row['Nome Gara'] ||
+            row['Nome'] ||
+            row['Gara'] ||
+            row[t('competition_name_label')] ||
+            ''
+          ).toString().trim();
 
-        triggerConfirm(
-          t('import'),
-          t('confirm_import_events_count').replace('{{count}}', importedEvents.length.toString()),
-          async () => {
-            setLoading(true);
-            try {
-              for (const ev of importedEvents) {
-                await fetch('/api/events', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify(ev)
-                });
-              }
-              fetchEvents();
-              if (triggerToast) {
-                triggerToast(t('import_completed_success'), 'success');
-              }
-            } catch (err) {
-              console.error('Error importing events:', err);
-              if (triggerToast) {
-                triggerToast(t('error_importing_events'), 'error');
-              }
-            } finally {
-              setLoading(false);
+          const rawType = (
+            row['Tipo Gara'] ||
+            row['Tipo'] ||
+            row[t('competition_type')] ||
+            'Regionale'
+          ).toString().trim();
+
+          const rawVisibility = (
+            row['Visibilità'] ||
+            row['Visibilita'] ||
+            row[t('visibility')] ||
+            'Pubblica'
+          ).toString().trim();
+
+          const rawDiscipline = (
+            row['Disciplina'] ||
+            row[t('discipline_label')] ||
+            Discipline.CK
+          ).toString().trim();
+
+          const rawCode = (
+            row['Codice Società'] ||
+            row['Codice Societa'] ||
+            row['Codice TAV'] ||
+            row['CodiceTAV'] ||
+            row['Codice_Societa'] ||
+            row['Codice'] ||
+            ''
+          ).toString().trim();
+
+          const rawSocietyName = (
+            row['Nome Società'] ||
+            row['Nome Societa'] ||
+            row['Società'] ||
+            row['Societa'] ||
+            row['Location'] ||
+            row['Campo'] ||
+            row[t('society_label')] ||
+            ''
+          ).toString().trim();
+
+          let matchedSociety = null;
+          if (rawCode) {
+            matchedSociety = societies.find(s => 
+              s.code?.toString().trim().toLowerCase() === rawCode.toLowerCase() ||
+              s.society_code?.toString().trim().toLowerCase() === rawCode.toLowerCase()
+            );
+          }
+          if (!matchedSociety && rawSocietyName) {
+            matchedSociety = societies.find(s => 
+              s.name?.toString().trim().toLowerCase() === rawSocietyName.toLowerCase() ||
+              s.code?.toString().trim().toLowerCase() === rawSocietyName.toLowerCase()
+            );
+          }
+
+          const finalLocation = matchedSociety ? matchedSociety.name : (rawSocietyName || rawCode || 'Società Non Specificata');
+          const finalCode = matchedSociety ? matchedSociety.code : rawCode;
+
+          const rawTargets = parseInt(row['Piattelli'] || row[t('targets')]) || 50;
+          const startDate = parseExcelDate(row['Data Inizio'] || row['Data Inizio (AAAA-MM-GG)'] || row[t('begin_date')]);
+          const endDate = parseExcelDate(row['Data Fine'] || row['Data Fine (AAAA-MM-GG)'] || row[t('end_date')] || row['Data Inizio'] || row[t('begin_date')]);
+          const rawCost = (row['Costo'] || row[t('cost')] || '').toString().trim();
+          const rawNotes = (row['Note'] || row[t('notes')] || '').toString().trim();
+          const rawRegLink = (row['Link Iscrizione'] || row['Link'] || row[t('registration_link_label')] || '').toString().trim();
+
+          const matchResult = findBestEventMatch(
+            row['id'],
+            rawName,
+            startDate,
+            endDate,
+            finalLocation,
+            finalCode,
+            rawDiscipline,
+            rawTargets,
+            events,
+            societies
+          );
+
+          const existingMatch = matchResult ? matchResult.event : null;
+          const matchReason = matchResult ? matchResult.matchReason : '';
+          const isNameDifferent = existingMatch ? (existingMatch.name.trim().toLowerCase() !== rawName.trim().toLowerCase()) : false;
+
+          const todayStr = new Date().toISOString().split('T')[0];
+          const isPastDate = existingMatch 
+            ? (existingMatch.end_date ? existingMatch.end_date < todayStr : existingMatch.start_date < todayStr)
+            : (endDate ? endDate < todayStr : startDate < todayStr);
+          const hasResults = existingMatch ? ((existingMatch.result_count || 0) > 0) : false;
+          const isProtected = !!existingMatch && (isPastDate || hasResults);
+
+          let protectionReason = '';
+          if (isProtected) {
+            if (isPastDate && hasResults) {
+              protectionReason = 'Gara già svolta (data passata) e con risultati registrati';
+            } else if (isPastDate) {
+              protectionReason = 'Gara già svolta (data passata - dati congelati)';
+            } else if (hasResults) {
+              protectionReason = 'Gara con risultati già inseriti nel sistema';
             }
-          },
-          t('import'),
-          'primary'
-        );
+          }
+
+          return {
+            tempId: `import_${idx}_${Date.now()}`,
+            name: rawName,
+            type: rawType,
+            visibility: rawVisibility,
+            discipline: rawDiscipline,
+            location: finalLocation,
+            society_code: finalCode,
+            isSocietyMatched: !!matchedSociety,
+            targets: rawTargets,
+            start_date: startDate,
+            end_date: endDate,
+            cost: rawCost,
+            notes: rawNotes,
+            registration_link: rawRegLink,
+            existingEvent: existingMatch || null,
+            isNameDifferent,
+            matchReason,
+            isPastDate,
+            hasResults,
+            isProtected,
+            protectionReason,
+            decisionAction: isProtected ? 'skip' : (existingMatch ? 'update' : 'create'),
+            hasError: !rawName
+          };
+        });
+
+        setValidationRows(parsedRows);
       } catch (err) {
         console.error('Error reading Excel file:', err);
         if (triggerToast) {
@@ -1620,7 +2004,91 @@ const EventsManager: React.FC<EventsManagerProps> = ({
       }
     };
     reader.readAsBinaryString(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
+  };
+
+  const handleConfirmValidationImport = async () => {
+    if (!validationRows || validationRows.length === 0) return;
+    setIsSavingImport(true);
+
+    const activeRows = validationRows.filter(r => r.decisionAction !== 'skip' && !r.hasError);
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    try {
+      for (const row of activeRows) {
+        if (row.decisionAction === 'update' && row.existingEvent) {
+          const ex = row.existingEvent;
+          const payload = {
+            ...ex,
+            name: row.name || ex.name,
+            type: row.type || ex.type,
+            visibility: row.visibility || ex.visibility,
+            discipline: row.discipline || ex.discipline,
+            location: row.location || ex.location,
+            society_code: row.society_code || ex.society_code,
+            targets: row.targets || ex.targets,
+            start_date: row.start_date || ex.start_date,
+            end_date: row.end_date || ex.end_date,
+            cost: row.cost !== '' ? row.cost : (ex.cost || ''),
+            notes: row.notes && row.notes.trim() !== '' ? row.notes.trim() : (ex.notes || ''),
+            poster_url: ex.poster_url || '',
+            registration_link: row.registration_link && row.registration_link.trim() !== '' ? row.registration_link.trim() : (ex.registration_link || '')
+          };
+
+          await fetch(`/api/events/${ex.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+          updatedCount++;
+        } else {
+          const payload = {
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11) + Date.now().toString(36)),
+            name: row.name,
+            type: row.type || 'Regionale',
+            visibility: row.visibility || 'Pubblica',
+            discipline: row.discipline || Discipline.CK,
+            location: row.location || '',
+            society_code: row.society_code || '',
+            targets: row.targets || 50,
+            start_date: row.start_date,
+            end_date: row.end_date || row.start_date,
+            cost: row.cost || '',
+            notes: row.notes || '',
+            registration_link: row.registration_link || ''
+          };
+
+          await fetch('/api/events', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+          createdCount++;
+        }
+      }
+
+      await fetchEvents();
+      if (onRefresh) onRefresh();
+      setValidationRows(null);
+
+      if (triggerToast) {
+        triggerToast(`Importazione completata con successo! ${createdCount} nuove gare create, ${updatedCount} gare aggiornate (dati e allegati preservati).`, 'success');
+      }
+    } catch (err: any) {
+      console.error('Error during batch event import:', err);
+      if (triggerToast) {
+        triggerToast(`Errore durante l'importazione: ${err.message || 'Errore server'}`, 'error');
+      }
+    } finally {
+      setIsSavingImport(false);
+    }
   };
 
   const handleBulkDelete = () => {
@@ -2922,6 +3390,336 @@ const EventsManager: React.FC<EventsManagerProps> = ({
           triggerToast={triggerToast}
         />
       )}
+
+      {validationRows && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[3000] flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
+            
+            {/* Modal Header */}
+            <div className="relative bg-slate-900 border-b border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+              <div className="relative z-10">
+                <h3 className="text-lg sm:text-xl font-black text-white uppercase italic tracking-wider flex items-center gap-2.5">
+                  <i className="fas fa-calendar-check text-orange-500 animate-pulse"></i> Validazione Importazione Gare
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Verifica, aggiorna o aggiungi le gare dal file Excel prima del caricamento definitivo</p>
+              </div>
+              <div className="relative z-10 shrink-0 flex items-center gap-3 self-end sm:self-auto">
+                <span className="bg-slate-800 border border-slate-700 text-xs text-slate-300 font-bold px-3 py-1.5 rounded-xl">
+                  {validationRows.length} gare nel file
+                </span>
+                <button 
+                  onClick={() => setValidationRows(null)} 
+                  className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-red-600/20 hover:text-red-500 text-slate-400 transition-all flex items-center justify-center shadow-md cursor-pointer"
+                >
+                  <i className="fas fa-times text-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Information safeguard notice */}
+            <div className="bg-blue-950/40 border-b border-blue-800/40 px-5 py-3.5 flex items-start gap-3 shrink-0">
+              <i className="fas fa-shield-alt text-blue-400 text-lg mt-0.5 shrink-0"></i>
+              <div className="text-xs text-blue-200/90 leading-relaxed">
+                <strong className="text-blue-300 font-black uppercase tracking-wide">Salvaguardia Dati Esistenti:</strong> Per le gare già presenti nel sistema, l'importazione aggiornerà i dettagli base senza sovrascrivere o eliminare locandine PDF caricate, note personalizzate, iscrizioni o impostazioni avanzate inserite da admin o società.
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="bg-slate-900/60 border-b border-slate-800/80 p-3 flex gap-2 overflow-x-auto shrink-0 justify-center">
+              <button
+                type="button"
+                onClick={() => setValidationFilterTab('all')}
+                className={`px-3.5 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  validationFilterTab === 'all'
+                    ? 'border-slate-700 bg-slate-800 text-white shadow-lg'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-slate-800'
+                }`}
+              >
+                <span>Tutti</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  validationFilterTab === 'all' ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setValidationFilterTab('update')}
+                className={`px-3.5 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  validationFilterTab === 'update'
+                    ? 'border-blue-500/50 bg-blue-900/40 text-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-blue-500/30'
+                }`}
+              >
+                <i className="fas fa-sync-alt text-blue-400"></i>
+                <span>Da Aggiornare</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  validationFilterTab === 'update' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter(r => r.decisionAction === 'update').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setValidationFilterTab('create')}
+                className={`px-3.5 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  validationFilterTab === 'create'
+                    ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400 hover:border-emerald-500/30'
+                }`}
+              >
+                <i className="fas fa-plus text-emerald-400"></i>
+                <span>Nuove Gare</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  validationFilterTab === 'create' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter(r => r.decisionAction === 'create').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setValidationFilterTab('skip')}
+                className={`px-3.5 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  validationFilterTab === 'skip'
+                    ? 'border-slate-700 bg-slate-800 text-slate-300'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-400'
+                }`}
+              >
+                <i className="fas fa-ban"></i>
+                <span>Da Saltare</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                  validationFilterTab === 'skip' ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {validationRows.filter(r => r.decisionAction === 'skip').length}
+                </span>
+              </button>
+            </div>
+
+            {/* List of rows */}
+            <div className="p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
+              {validationRows
+                .filter(row => {
+                  if (validationFilterTab === 'update') return row.decisionAction === 'update';
+                  if (validationFilterTab === 'create') return row.decisionAction === 'create';
+                  if (validationFilterTab === 'skip') return row.decisionAction === 'skip';
+                  return true;
+                })
+                .map((row) => (
+                  <div 
+                    key={row.tempId}
+                    className={`bg-slate-950/80 border p-4 rounded-2xl transition-all relative overflow-hidden ${
+                      row.decisionAction === 'skip' 
+                        ? 'border-slate-800/50 opacity-60' 
+                        : row.decisionAction === 'update' 
+                        ? 'border-blue-500/30 bg-blue-950/10' 
+                        : 'border-emerald-500/30 bg-emerald-950/10'
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {row.isProtected ? (
+                            <span className="px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                              <i className="fas fa-shield-alt text-amber-400"></i> Gara Protetta (Non Modificabile)
+                            </span>
+                          ) : row.decisionAction === 'update' ? (
+                            <span className="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                              <i className="fas fa-sync-alt text-[9px]"></i> Aggiornamento Gara Esistente
+                            </span>
+                          ) : row.decisionAction === 'create' ? (
+                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                              <i className="fas fa-plus text-[9px]"></i> Nuova Gara
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-black uppercase tracking-wider">
+                              Incrocio Saltato
+                            </span>
+                          )}
+
+                          <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-orange-400 text-[10px] font-bold">
+                            {row.discipline}
+                          </span>
+
+                          <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 text-[10px]">
+                            {row.type} ({row.visibility})
+                          </span>
+                        </div>
+
+                        <h4 className="text-base font-black text-white tracking-tight italic">
+                          {row.name}
+                        </h4>
+
+                        <div className="flex items-center gap-2 text-xs text-slate-300 flex-wrap">
+                          <span className="flex items-center gap-1 text-slate-200 font-medium">
+                            <i className="fas fa-map-marker-alt text-orange-500"></i> {row.location}
+                          </span>
+
+                          {row.society_code && (
+                            <span className="px-2 py-0.5 rounded bg-slate-800/90 text-orange-400 text-[10px] font-mono border border-slate-700 font-bold">
+                              Cod. Società: {row.society_code}
+                            </span>
+                          )}
+
+                          {row.isSocietyMatched ? (
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <i className="fas fa-check-circle"></i> Società Riconosciuta
+                            </span>
+                          ) : row.society_code ? (
+                            <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                              <i className="fas fa-exclamation-triangle"></i> Società Non in Anagrafica
+                            </span>
+                          ) : null}
+
+                          {row.hasResults && (
+                            <span className="text-[10px] text-purple-400 font-bold flex items-center gap-1 bg-purple-950/60 border border-purple-800/50 px-2 py-0.5 rounded-md">
+                              <i className="fas fa-trophy text-purple-400"></i> {row.existingEvent?.result_count || 0} Risultati Registrati
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap pt-0.5">
+                          <span><i className="far fa-calendar-alt text-slate-500 mr-1"></i>{row.start_date} {row.end_date !== row.start_date ? `➜ ${row.end_date}` : ''}</span>
+                          <span><i className="fas fa-bullseye text-slate-500 mr-1"></i>{row.targets} piattelli</span>
+                          {row.cost && <span><i className="fas fa-tag text-slate-500 mr-1"></i>€ {row.cost}</span>}
+                          {row.isPastDate && (
+                            <span className="text-amber-400 font-semibold text-[10px]"><i className="fas fa-history mr-1"></i>Gara Passata</span>
+                          )}
+                        </div>
+
+                        {/* Protection explanation banner */}
+                        {row.isProtected && (
+                          <div className="mt-2 p-2 rounded-xl bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-200/90 flex items-center gap-2">
+                            <i className="fas fa-lock text-amber-400 shrink-0"></i>
+                            <span><strong>Protezione Dati Storici:</strong> {row.protectionReason}. Questa gara non verrà modificata dall'importazione Excel per salvaguardare lo storico ed i risultati ufficiali.</span>
+                          </div>
+                        )}
+
+                        {/* Match reason banner if updated */}
+                        {!row.isProtected && row.decisionAction === 'update' && row.matchReason && (
+                          <div className="mt-1.5 p-2 rounded-xl bg-blue-950/30 border border-blue-800/40 text-[11px] text-blue-200/90 flex items-center gap-2">
+                            <i className="fas fa-link text-blue-400 shrink-0"></i>
+                            <span><strong>Corrispondenza Rilevata:</strong> {row.matchReason}</span>
+                          </div>
+                        )}
+
+                        {/* Name difference comparison box */}
+                        {!row.isProtected && row.decisionAction === 'update' && row.existingEvent && row.isNameDifferent && (
+                          <div className="mt-2 p-2.5 rounded-xl bg-slate-900/90 border border-amber-500/30 text-xs space-y-1.5">
+                            <div className="text-[11px] text-slate-300 flex items-center gap-1.5 flex-wrap">
+                              <i className="fas fa-database text-blue-400 shrink-0"></i>
+                              <span>Nome attuale in sistema: <strong className="text-white italic">{row.existingEvent.name}</strong></span>
+                            </div>
+                            <div className="text-[11px] text-slate-300 flex items-center gap-1.5 flex-wrap">
+                              <i className="fas fa-file-excel text-emerald-400 shrink-0"></i>
+                              <span>Nuovo nome da Excel: <strong className="text-emerald-300 italic">{row.name}</strong></span>
+                            </div>
+                            <div className="text-[10px] text-amber-300/90 italic flex items-center gap-1">
+                              <i className="fas fa-info-circle text-amber-400"></i>
+                              <span>Confermando l'aggiornamento, il nome nel sistema verrà aggiornato con la denominazione del file Excel.</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Preserved details indicator for update */}
+                        {!row.isProtected && row.decisionAction === 'update' && row.existingEvent && (
+                          <div className="mt-2 pt-2 border-t border-slate-800/60 flex items-center gap-3 text-[10px] text-slate-400 flex-wrap">
+                            <span className="text-blue-300 font-bold">Integrazione sicura:</span>
+                            {row.existingEvent.poster_url && (
+                              <span className="text-emerald-400 font-medium flex items-center gap-1">
+                                <i className="fas fa-file-pdf"></i> Locandina/PDF conservata
+                              </span>
+                            )}
+                            {row.existingEvent.notes && !row.notes && (
+                              <span className="text-yellow-400 font-medium flex items-center gap-1">
+                                <i className="fas fa-sticky-note"></i> Note esistenti conservate
+                              </span>
+                            )}
+                            <span className="text-slate-400 italic">Iscrizioni e configurazioni non verranno intaccate</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Decision buttons */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-start md:self-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setValidationRows(prev => prev?.map(r => r.tempId === row.tempId ? { ...r, decisionAction: r.existingEvent ? 'update' : 'create' } : r) || null);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer ${
+                            row.decisionAction !== 'skip'
+                              ? row.decisionAction === 'update' ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {row.existingEvent ? 'Aggiorna' : 'Crea'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setValidationRows(prev => prev?.map(r => r.tempId === row.tempId ? { ...r, decisionAction: 'skip' } : r) || null);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer ${
+                            row.decisionAction === 'skip'
+                              ? 'bg-slate-700 text-white'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Salta
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-4 shrink-0">
+              <button
+                type="button"
+                onClick={() => setValidationRows(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Annulla
+              </button>
+
+              <button
+                type="button"
+                disabled={isSavingImport || validationRows.filter(r => r.decisionAction !== 'skip').length === 0}
+                onClick={handleConfirmValidationImport}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:opacity-50 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 cursor-pointer"
+              >
+                {isSavingImport ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Salvataggio in corso...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-check-circle"></i>
+                    <span>Conferma e Importa ({validationRows.filter(r => r.decisionAction !== 'skip').length} Gare)</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Hidden file input for Excel import */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleExcelImport} 
+        accept=".xlsx, .xls" 
+        className="hidden" 
+      />
 
     </div>
   );

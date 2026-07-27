@@ -43,6 +43,7 @@ const GarePage: React.FC<GarePageProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [exportTrigger, setExportTrigger] = useState(0);
   const [importTrigger, setImportTrigger] = useState(0);
+  const [templateTrigger, setTemplateTrigger] = useState(0);
   const [newEventTrigger, setNewEventTrigger] = useState(0);
   const [filterSociety, setFilterSociety] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
@@ -246,7 +247,7 @@ const GarePage: React.FC<GarePageProps> = ({
                     className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-slate-500 hover:text-white border border-slate-800 text-[10px] font-black uppercase transition-all"
                     title={t('export_label')}
                   >
-                    <i className="fas fa-file-excel"></i>
+                    <i className="fas fa-file-excel text-emerald-500"></i>
                     <span className="hidden sm:inline">{t('export_label')}</span>
                   </button>
                   <button 
@@ -254,8 +255,16 @@ const GarePage: React.FC<GarePageProps> = ({
                     className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-slate-500 hover:text-white border border-slate-800 text-[10px] font-black uppercase transition-all"
                     title={t('import_label')}
                   >
-                    <i className="fas fa-file-import"></i>
+                    <i className="fas fa-file-import text-blue-500"></i>
                     <span className="hidden sm:inline">{t('import_label')}</span>
+                  </button>
+                  <button 
+                    onClick={() => setTemplateTrigger(prev => prev + 1)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-slate-500 hover:text-white border border-slate-800 text-[10px] font-black uppercase transition-all"
+                    title="Scarica il modello Excel per l'importazione delle gare"
+                  >
+                    <i className="fas fa-file-download text-orange-500"></i>
+                    <span className="hidden sm:inline">Modello Excel</span>
                   </button>
                 </div>
               )}
@@ -416,6 +425,7 @@ const GarePage: React.FC<GarePageProps> = ({
                 onShowFiltersChange={setShowFilters}
                 exportTrigger={exportTrigger}
                 importTrigger={importTrigger}
+                templateTrigger={templateTrigger}
                 filterSociety={filterSociety}
                 onFilterSocietyChange={setFilterSociety}
                 filterDiscipline={filterDiscipline}

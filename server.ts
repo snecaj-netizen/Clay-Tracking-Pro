@@ -1102,6 +1102,7 @@ const initDB = async () => {
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS end_time TEXT DEFAULT '18:00'`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS show_time_slot_to_shooters BOOLEAN DEFAULT TRUE`);
       await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_odt_public BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS society_code TEXT`);
     } catch (e) {
       console.log("Error adding columns to events:", e);
     }
@@ -5247,12 +5248,12 @@ app.get('/api/events', authenticateToken, async (req: any, res) => {
 
     // 1. Fetch regular events with result count
     let eventQuery = `
-      SELECT DISTINCT ON (e.id) e.*, s.region as society_region,
+      SELECT DISTINCT ON (e.id) e.*, COALESCE(e.society_code, s.code) as society_code, s.region as society_region,
       (SELECT COUNT(*)::INTEGER FROM competitions c WHERE c.event_id = e.id) as result_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id) as registration_count,
       (SELECT COUNT(*)::INTEGER FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = $1) > 0 as is_registered
       FROM events e
-      LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(e.location)) = LOWER(TRIM(s.code))
+      LEFT JOIN societies s ON LOWER(TRIM(e.location)) = LOWER(TRIM(s.name)) OR LOWER(TRIM(e.location)) = LOWER(TRIM(s.code)) OR LOWER(TRIM(e.society_code)) = LOWER(TRIM(s.code))
     `;
     let eventParams: any[] = [req.user.id];
 
@@ -7052,7 +7053,7 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
   }
 
   const { 
-    id, name, type, visibility, discipline, location, targets, start_date, end_date, 
+    id, name, type, visibility, discipline, location, society_code, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
     is_public, is_odt_public, region, total_fields, total_rounds, use_fields_capacity,
@@ -7060,12 +7061,16 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
   } = req.body;
   
   let processedRegion = region;
-  if (!processedRegion && location) {
+  let processedSocietyCode = society_code;
+  if (location) {
     try {
-      const { rows: societies } = await pool.query("SELECT region FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", [location]);
-      if (societies.length > 0) processedRegion = societies[0].region;
+      const { rows: societies } = await pool.query("SELECT region, code FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) OR LOWER(TRIM(code)) = LOWER(TRIM($1))", [location]);
+      if (societies.length > 0) {
+        if (!processedRegion) processedRegion = societies[0].region;
+        if (!processedSocietyCode) processedSocietyCode = societies[0].code;
+      }
     } catch (e) {
-      console.error("Error fetching region for society:", e);
+      console.error("Error fetching region/code for society:", e);
     }
   }
   
@@ -7076,9 +7081,9 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         cost, notes, poster_url, registration_link, created_by, prize_settings, 
         ranking_logic, ranking_preference_override, has_society_ranking, has_team_ranking,
         is_public, is_odt_public, region, total_fields, total_rounds, use_fields_capacity,
-        start_time, end_time, show_time_slot_to_shooters
+        start_time, end_time, show_time_slot_to_shooters, society_code
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
        ON CONFLICT (id) DO UPDATE SET 
         name = EXCLUDED.name, type = EXCLUDED.type, visibility = EXCLUDED.visibility, 
         discipline = EXCLUDED.discipline, location = EXCLUDED.location, targets = EXCLUDED.targets, 
@@ -7096,14 +7101,16 @@ app.post('/api/events', authenticateToken, async (req: any, res) => {
         use_fields_capacity = EXCLUDED.use_fields_capacity,
         start_time = EXCLUDED.start_time,
         end_time = EXCLUDED.end_time,
-        show_time_slot_to_shooters = EXCLUDED.show_time_slot_to_shooters`,
+        show_time_slot_to_shooters = EXCLUDED.show_time_slot_to_shooters,
+        society_code = EXCLUDED.society_code`,
       [
         id, name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, req.user.id, prize_settings, 
         ranking_logic || 'individual', ranking_preference_override, has_society_ranking || false, 
         has_team_ranking || false, is_public || false, is_odt_public || false, processedRegion, total_fields || 1, total_rounds || 1,
         use_fields_capacity || false, start_time || '08:00', end_time || '18:00',
-        show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters
+        show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters,
+        processedSocietyCode || null
       ]
     );
 
@@ -7218,7 +7225,7 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
   }
 
   const { 
-    name, type, visibility, discipline, location, targets, start_date, end_date, 
+    name, type, visibility, discipline, location, society_code, targets, start_date, end_date, 
     cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
     ranking_preference_override, has_society_ranking, has_team_ranking,
     is_public, region, total_fields, total_rounds, use_fields_capacity,
@@ -7226,12 +7233,16 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
   } = req.body;
   
   let processedRegion = region;
-  if (!processedRegion && location) {
+  let processedSocietyCode = society_code;
+  if (location) {
     try {
-      const { rows: societies } = await pool.query("SELECT region FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", [location]);
-      if (societies.length > 0) processedRegion = societies[0].region;
+      const { rows: societies } = await pool.query("SELECT region, code FROM societies WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) OR LOWER(TRIM(code)) = LOWER(TRIM($1))", [location]);
+      if (societies.length > 0) {
+        if (!processedRegion) processedRegion = societies[0].region;
+        if (!processedSocietyCode) processedSocietyCode = societies[0].code;
+      }
     } catch (e) {
-      console.error("Error fetching region for society:", e);
+      console.error("Error fetching region/code for society:", e);
     }
   }
   
@@ -7278,14 +7289,16 @@ app.put('/api/events/:id', authenticateToken, async (req: any, res) => {
         use_fields_capacity = COALESCE($22, use_fields_capacity),
         start_time = COALESCE($23, start_time),
         end_time = COALESCE($24, end_time),
-        show_time_slot_to_shooters = COALESCE($26, show_time_slot_to_shooters)
+        show_time_slot_to_shooters = COALESCE($26, show_time_slot_to_shooters),
+        society_code = COALESCE($27, society_code)
       WHERE id = $25`,
       [
         name, type, visibility, discipline, location, targets, start_date, end_date, 
         cost, notes, poster_url, registration_link, prize_settings, ranking_logic, 
         ranking_preference_override, has_society_ranking, has_team_ranking, is_public, processedRegion, 
         total_fields, total_rounds, use_fields_capacity, start_time, end_time,
-        req.params.id, show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters
+        req.params.id, show_time_slot_to_shooters === undefined ? true : show_time_slot_to_shooters,
+        processedSocietyCode
       ]
     );
 
