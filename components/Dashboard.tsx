@@ -93,6 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isRegLoading, setIsRegLoading] = useState(false);
   const [selectedRegionalRanking, setSelectedRegionalRanking] = useState<any | null>(null);
   const [rankingFilter, setRankingFilter] = useState<string>('ALL');
+  const [showModalScrollTop, setShowModalScrollTop] = useState(false);
   const [showRegulations, setShowRegulations] = useState(false);
   const [selectedTrialDetails, setSelectedTrialDetails] = useState<{
     societyName: string;
@@ -1069,13 +1070,14 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={() => setSelectedRegionalRanking(null)}
           >
             <div 
-              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6 relative my-8 cursor-default"
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6 relative my-8 cursor-default scroll-smooth"
               onClick={(e) => e.stopPropagation()}
+              onScroll={(e) => setShowModalScrollTop(e.currentTarget.scrollTop > 150)}
             >
               <div className="absolute top-0 right-0 w-48 h-48 bg-orange-600/5 rounded-full blur-3xl pointer-events-none"></div>
 
               {/* Header Navigation */}
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div id="regional-modal-top" className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={() => setSelectedRegionalRanking(null)}
@@ -1712,6 +1714,21 @@ const Dashboard: React.FC<DashboardProps> = ({
                   Chiudi Classifiche
                 </button>
               </div>
+
+              {/* Floating Back-to-Top Button */}
+              {showModalScrollTop && (
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('regional-modal-top');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[3200] bg-orange-500 hover:bg-orange-600 text-white font-black text-xs px-4 py-2.5 rounded-full shadow-2xl shadow-orange-500/40 border border-orange-400/40 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 cursor-pointer animate-fade-in group"
+                  title="Torna in cima alla pagina"
+                >
+                  <i className="fas fa-arrow-up text-sm transition-transform group-hover:-translate-y-0.5" />
+                  <span className="font-bold uppercase tracking-wider text-[11px]">Torna in cima</span>
+                </button>
+              )}
             </div>
           </div>,
           document.body

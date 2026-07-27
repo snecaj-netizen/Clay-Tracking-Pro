@@ -23,7 +23,8 @@ import {
   FileText,
   Search,
   Compass,
-  Filter
+  Filter,
+  ArrowUp
 } from 'lucide-react';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -95,7 +96,16 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
   const [selectedChampId, setSelectedChampId] = useState<string | null>(null);
   const [rankingData, setRankingData] = useState<any | null>(null);
   const [rankingFilter, setRankingFilter] = useState<string>('ALL');
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [isRankingLoading, setIsRankingLoading] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 200);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [selectedTrialDetails, setSelectedTrialDetails] = useState<{
     societyName: string;
     trialLabel: string;
@@ -1078,7 +1088,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     return (
       <div className="space-y-6">
         {/* Header navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 backdrop-blur">
+        <div id="regional-admin-top" className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 backdrop-blur">
           <div className="flex items-center gap-3">
             <button 
               onClick={closeRanking}
@@ -1787,6 +1797,25 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Floating Back-to-Top Button */}
+          {showScrollTop && (
+            <button
+              onClick={() => {
+                const el = document.getElementById('regional-admin-top');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[3200] bg-orange-500 hover:bg-orange-600 text-white font-black text-xs px-4 py-2.5 rounded-full shadow-2xl shadow-orange-500/40 border border-orange-400/40 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 cursor-pointer animate-fade-in group"
+              title="Torna in cima alla pagina"
+            >
+              <ArrowUp className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
+              <span className="font-bold uppercase tracking-wider text-[11px]">Torna in cima</span>
+            </button>
           )}
         </div>
       </div>
