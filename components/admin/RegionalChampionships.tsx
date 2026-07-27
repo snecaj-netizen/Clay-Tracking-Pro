@@ -21,7 +21,9 @@ import {
   EyeOff,
   FileSpreadsheet,
   FileText,
-  Search
+  Search,
+  Compass,
+  Filter
 } from 'lucide-react';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -92,6 +94,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
   const [isLoading, setIsLoading] = useState(true);
   const [selectedChampId, setSelectedChampId] = useState<string | null>(null);
   const [rankingData, setRankingData] = useState<any | null>(null);
+  const [rankingFilter, setRankingFilter] = useState<string>('ALL');
   const [isRankingLoading, setIsRankingLoading] = useState(false);
   const [selectedTrialDetails, setSelectedTrialDetails] = useState<{
     societyName: string;
@@ -1044,6 +1047,28 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     const unclassifiedSec = rankingData.shooters ? rankingData.shooters.filter((s: any) => !s.isClassified) : [];
     const unclassifiedSoc = rankingData.societies ? rankingData.societies.filter((s : any) => !s.isClassified) : [];
 
+    const allGroupKeys = Object.keys(groupedRankings).sort();
+    const categoryKeys = allGroupKeys.filter(k => k.startsWith('categoria_'));
+    const qualificaKeys = allGroupKeys.filter(k => k.startsWith('qualifica_'));
+
+    const filteredGroupKeys = allGroupKeys.filter(groupKey => {
+      if (rankingFilter === 'ALL') return true;
+      if (rankingFilter === 'CATEGORIA') return groupKey.startsWith('categoria_');
+      if (rankingFilter === 'QUALIFICA') return groupKey.startsWith('qualifica_');
+      if (rankingFilter === 'SOCIETY') return false;
+      return groupKey === rankingFilter;
+    });
+
+    const showSocieties = (rankingFilter === 'ALL' || rankingFilter === 'SOCIETY') && societies.length > 0;
+    const showUnclassified = (rankingFilter === 'ALL') && unclassifiedSec.length > 0;
+
+    const scrollToSection = (id: string) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
     // Filter events to find the ones matching trials
     const t1Obj = events.find(e => e.id === rc.trial1_event_id);
     const t2Obj = events.find(e => e.id === rc.trial2_event_id);
@@ -1157,13 +1182,169 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
               <Trophy className="w-4 h-4 text-orange-500" /> Classifiche Individuali per Categoria / Qualifica
             </h3>
 
-            {Object.keys(groupedRankings).length === 0 ? (
+            {/* NAV / FILTER BUTTONS BAR */}
+            {allGroupKeys.length > 0 && (
+              <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl mb-6 space-y-3 shadow-lg backdrop-blur-sm">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-800/80">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 text-xs">
+                      <Compass className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-200">
+                      Filtri & Navigazione Rapida
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Clicca un pulsante per filtrare o raggiungere subito la classifica desiderata
+                  </span>
+                </div>
+
+                {/* Filter Mode Tabs */}
+                <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setRankingFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      rankingFilter === 'ALL'
+                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Tutte le Sezioni ({allGroupKeys.length + (societies.length > 0 ? 1 : 0)})
+                  </button>
+
+                  {categoryKeys.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setRankingFilter('CATEGORIA');
+                        setTimeout(() => scrollToSection(`group-${categoryKeys[0]}`), 50);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        rankingFilter === 'CATEGORIA'
+                          ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      Solo Categorie ({categoryKeys.length})
+                    </button>
+                  )}
+
+                  {qualificaKeys.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setRankingFilter('QUALIFICA');
+                        setTimeout(() => scrollToSection(`group-${qualificaKeys[0]}`), 50);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        rankingFilter === 'QUALIFICA'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      Solo Qualifiche ({qualificaKeys.length})
+                    </button>
+                  )}
+
+                  {societies.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setRankingFilter('SOCIETY');
+                        setTimeout(() => scrollToSection('section-societies'), 50);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        rankingFilter === 'SOCIETY'
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      🏆 Solo Società ({societies.length})
+                    </button>
+                  )}
+                </div>
+
+                {/* Direct Jump Pills */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {/* Categorie Pills */}
+                  {categoryKeys.map((gKey) => {
+                    const [_, val] = gKey.split('_');
+                    const isSelected = rankingFilter === gKey;
+                    return (
+                      <button
+                        key={gKey}
+                        onClick={() => {
+                          if (rankingFilter !== 'ALL' && rankingFilter !== 'CATEGORIA') {
+                            setRankingFilter('ALL');
+                          }
+                          setTimeout(() => scrollToSection(`group-${gKey}`), 50);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition flex items-center gap-1.5 border cursor-pointer ${
+                          isSelected
+                            ? 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+                            : 'bg-slate-950/80 text-slate-300 hover:text-orange-400 hover:bg-slate-850 border-slate-800 hover:border-orange-500/30'
+                        }`}
+                      >
+                        <span className="text-[8px] font-black px-1 rounded bg-orange-500/20 text-orange-400 font-mono">
+                          Cat.
+                        </span>
+                        {val}
+                      </button>
+                    );
+                  })}
+
+                  {/* Qualifiche Pills */}
+                  {qualificaKeys.map((gKey) => {
+                    const [_, val] = gKey.split('_');
+                    const isSelected = rankingFilter === gKey;
+                    return (
+                      <button
+                        key={gKey}
+                        onClick={() => {
+                          if (rankingFilter !== 'ALL' && rankingFilter !== 'QUALIFICA') {
+                            setRankingFilter('ALL');
+                          }
+                          setTimeout(() => scrollToSection(`group-${gKey}`), 50);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition flex items-center gap-1.5 border cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                            : 'bg-slate-950/80 text-slate-300 hover:text-blue-400 hover:bg-slate-850 border-slate-800 hover:border-blue-500/30'
+                        }`}
+                      >
+                        <span className="text-[8px] font-black px-1 rounded bg-blue-500/20 text-blue-400 font-mono">
+                          Qual.
+                        </span>
+                        {val}
+                      </button>
+                    );
+                  })}
+
+                  {/* Society Pill */}
+                  {societies.length > 0 && (
+                    <button
+                      onClick={() => {
+                        if (rankingFilter === 'CATEGORIA' || rankingFilter === 'QUALIFICA') {
+                          setRankingFilter('ALL');
+                        }
+                        setTimeout(() => scrollToSection('section-societies'), 50);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition flex items-center gap-1.5 border bg-slate-950/80 text-slate-300 hover:text-emerald-400 hover:bg-slate-850 border-slate-800 hover:border-emerald-500/30 cursor-pointer"
+                    >
+                      <span className="text-[8px] font-black px-1 rounded bg-emerald-500/20 text-emerald-400 font-mono">
+                        🏆
+                      </span>
+                      Classifica Società
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {filteredGroupKeys.length === 0 && rankingFilter !== 'SOCIETY' ? (
               <div className="bg-slate-900/30 border border-slate-800 p-8 rounded-xl text-center text-slate-500 text-xs">
-                Nessun risultato o provino caricato finora per questa disciplina.
+                Nessun risultato trovato per questo filtro. <button onClick={() => setRankingFilter('ALL')} className="text-orange-400 underline font-bold ml-1">Mostra Tutti</button>
               </div>
             ) : (
               <div className="space-y-8">
-                {Object.keys(groupedRankings).sort().map((groupKey) => {
+                {filteredGroupKeys.map((groupKey) => {
                   const shootersInGroup = groupedRankings[groupKey];
                   const [mode, value] = groupKey.split('_');
                   const top1 = shootersInGroup[0];
@@ -1171,7 +1352,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                   const top3 = shootersInGroup[2];
 
                   return (
-                    <div key={groupKey} className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden shadow-xl shadow-slate-950/20">
+                    <div key={groupKey} id={`group-${groupKey}`} className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden shadow-xl shadow-slate-950/20 scroll-mt-6">
                       {/* Group Header */}
                       <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
                         <span className="text-xs font-black uppercase text-orange-400 tracking-widest flex items-center gap-2">
@@ -1336,10 +1517,11 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
           </div>
 
           {/* SOCIETIES SECTION */}
-          <div>
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Building className="w-4 h-4 text-orange-500" /> Classifica Campionato Società TAV
-            </h3>
+          {showSocieties && (
+            <div id="section-societies" className="scroll-mt-6">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Building className="w-4 h-4 text-orange-500" /> Classifica Campionato Società TAV
+              </h3>
 
             {societies.length === 0 ? (
               <div className="bg-slate-900/30 border border-slate-800 p-8 rounded-xl text-center text-slate-500 text-xs">
@@ -1499,10 +1681,11 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
               </div>
             )}
           </div>
+          )}
 
           {/* UNCLASSIFIED SECTION */}
-          {unclassifiedSec.length > 0 && (
-            <div className="bg-slate-900/20 border border-slate-800/60 p-4 rounded-xl">
+          {showUnclassified && (
+            <div id="section-unclassified" className="bg-slate-900/20 border border-slate-800/60 p-4 rounded-xl scroll-mt-6">
               <span className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tiratori Iscritti in Attesa di Qualificazione (meno di 3 prove):</span>
               <div className="flex flex-wrap gap-2">
                 {unclassifiedSec.map((s: any) => (

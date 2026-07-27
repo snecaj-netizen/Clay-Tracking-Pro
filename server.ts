@@ -8478,10 +8478,18 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         return isTrialMatch(comp, trialName, trialEventId);
       };
 
+      let comp1: any = null;
+      let comp2: any = null;
+      let comp3: any = null;
+      let comp4: any = null;
+
       // Match Trial 1
       userComps.forEach((c: any) => {
         if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial1_name, rc.trial1_event_id)) {
-          if (score1 === null || c.totalscore > score1) score1 = c.totalscore;
+          if (score1 === null || c.totalscore > score1) {
+            score1 = c.totalscore;
+            comp1 = c;
+          }
           matchedCompIds.add(c.id);
           matchedComps.push(c);
         }
@@ -8490,7 +8498,10 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
       // Match Trial 2
       userComps.forEach((c: any) => {
         if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial2_name, rc.trial2_event_id)) {
-          if (score2 === null || c.totalscore > score2) score2 = c.totalscore;
+          if (score2 === null || c.totalscore > score2) {
+            score2 = c.totalscore;
+            comp2 = c;
+          }
           matchedCompIds.add(c.id);
           matchedComps.push(c);
         }
@@ -8499,7 +8510,10 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
       // Match Trial 3
       userComps.forEach((c: any) => {
         if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial3_name, rc.trial3_event_id)) {
-          if (score3 === null || c.totalscore > score3) score3 = c.totalscore;
+          if (score3 === null || c.totalscore > score3) {
+            score3 = c.totalscore;
+            comp3 = c;
+          }
           matchedCompIds.add(c.id);
           matchedComps.push(c);
         }
@@ -8508,7 +8522,10 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
       // Match Trial 4
       userComps.forEach((c: any) => {
         if (!matchedCompIds.has(c.id) && checkMatch(c, rc.trial4_name, rc.trial4_event_id)) {
-          if (score4 === null || c.totalscore > score4) score4 = c.totalscore;
+          if (score4 === null || c.totalscore > score4) {
+            score4 = c.totalscore;
+            comp4 = c;
+          }
           matchedCompIds.add(c.id);
           matchedComps.push(c);
         }
@@ -8523,6 +8540,10 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         trial2: score2,
         trial3: score3,
         trial4: score4,
+        comp1,
+        comp2,
+        comp3,
+        comp4,
         firstComp
       });
     });
@@ -8644,6 +8665,12 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
           trial3: tr.trial3,
           trial4: tr.trial4
         },
+        trialComps: {
+          trial1: tr.comp1,
+          trial2: tr.comp2,
+          trial3: tr.comp3,
+          trial4: tr.comp4
+        },
         trialPenalties: {
           trial1: actualP1,
           trial2: actualP2,
@@ -8673,16 +8700,22 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         if (a.isClassified !== b.isClassified) {
           return a.isClassified ? -1 : 1;
         }
-        // 2. Sort by how many trials they completed (descending so they compare on equal footing)
-        if (a.participatedCount !== b.participatedCount) {
-          return b.participatedCount - a.participatedCount;
+        // 2. If neither is classified, sort by how many trials they completed (descending)
+        if (!a.isClassified && !b.isClassified) {
+          if (a.participatedCount !== b.participatedCount) {
+            return b.participatedCount - a.participatedCount;
+          }
         }
         // 3. Sort by total penalties (ascending)
         if (a.totalPenalties !== b.totalPenalties) {
           return a.totalPenalties - b.totalPenalties;
         }
         // 4. Sort by total targets hit (descending)
-        return b.totalTargetsHit - a.totalTargetsHit;
+        if (a.totalTargetsHit !== b.totalTargetsHit) {
+          return b.totalTargetsHit - a.totalTargetsHit;
+        }
+        // 5. Tie-breaker: trials completed (descending)
+        return b.participatedCount - a.participatedCount;
       });
       groupedRankings[key].forEach((sp, idx) => {
         sp.position = idx + 1;
@@ -8697,7 +8730,7 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
     const isEccellenzaOrPrima = (categoryValue: string | null) => {
       if (!categoryValue) return false;
       const cat = categoryValue.toLowerCase().trim();
-      return cat === 'e' || cat === 'eccellenza' || cat === '1*' || cat === '1' || cat === 'prima' || cat === 'prima categoria';
+      return cat === 'e' || cat === 'eccellenza' || cat === '1*' || cat === '1' || cat === '1°' || cat === '1a' || cat === '1^' || cat.includes('eccellenza') || cat.includes('prima');
     };
 
     const societyTrials: { [society: string]: { [trial: string]: { score: number, shooters: any[] } | null } } = {};
@@ -8708,7 +8741,79 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         const activeShooters = shooterPenalties.filter((sp) => sp.society === soc && sp.trialScores[trialKey] !== null);
         if (activeShooters.length === 0) return null;
 
-        activeShooters.sort((a, b) => b.trialScores[trialKey]! - a.trialScores[trialKey]!);
+        const compareShootersForTrial = (a: any, b: any) => {
+          const scoreA = a.trialScores[trialKey] || 0;
+          const scoreB = b.trialScores[trialKey] || 0;
+          if (scoreB !== scoreA) {
+            return scoreB - scoreA;
+          }
+
+          const compA = a.trialComps ? a.trialComps[trialKey] : null;
+          const compB = b.trialComps ? b.trialComps[trialKey] : null;
+
+          if (compA && compB) {
+            // 1. Shoot-off
+            const aShootOff = compA.shoot_off !== null && compA.shoot_off !== undefined ? (typeof compA.shoot_off === 'number' ? compA.shoot_off : parseInt(String(compA.shoot_off), 10)) : -1;
+            const bShootOff = compB.shoot_off !== null && compB.shoot_off !== undefined ? (typeof compB.shoot_off === 'number' ? compB.shoot_off : parseInt(String(compB.shoot_off), 10)) : -1;
+            const cleanAShootOff = isNaN(aShootOff) ? -1 : aShootOff;
+            const cleanBShootOff = isNaN(bShootOff) ? -1 : bShootOff;
+            if (cleanBShootOff !== cleanAShootOff) {
+              return cleanBShootOff - cleanAShootOff;
+            }
+
+            // 2. Compare series (from last series to first)
+            const parseSeries = (rawScores: any) => {
+              if (!rawScores) return [];
+              if (Array.isArray(rawScores)) return rawScores;
+              if (typeof rawScores === 'string') {
+                try { return JSON.parse(rawScores); } catch (e) { return []; }
+              }
+              return [];
+            };
+            const scoresA = parseSeries(compA.scores);
+            const scoresB = parseSeries(compB.scores);
+            if (scoresA.length > 0 && scoresB.length > 0) {
+              const maxSeries = Math.max(scoresA.length, scoresB.length);
+              for (let i = maxSeries - 1; i >= 0; i--) {
+                const sA = parseInt(String(scoresA[i] || 0), 10) || 0;
+                const sB = parseInt(String(scoresB[i] || 0), 10) || 0;
+                if (sB !== sA) return sB - sA;
+              }
+            }
+
+            // 3. Compare detailed scores target by target backwards (FITAV countback rule)
+            const parseDetailed = (rawDetailed: any) => {
+              if (!rawDetailed) return null;
+              if (Array.isArray(rawDetailed)) return rawDetailed;
+              if (typeof rawDetailed === 'string') {
+                try { return JSON.parse(rawDetailed); } catch (e) { return null; }
+              }
+              return null;
+            };
+            const dA = parseDetailed(compA.detailedscores);
+            const dB = parseDetailed(compB.detailedscores);
+            if (Array.isArray(dA) && Array.isArray(dB) && dA.length > 0 && dB.length > 0) {
+              const maxS = Math.max(dA.length, dB.length);
+              for (let sIdx = maxS - 1; sIdx >= 0; sIdx--) {
+                const seriesA = dA[sIdx] || [];
+                const seriesB = dB[sIdx] || [];
+                const maxT = Math.max(seriesA.length, seriesB.length, 25);
+                for (let tIdx = maxT - 1; tIdx >= 0; tIdx--) {
+                  const hitA = seriesA[tIdx] === true;
+                  const hitB = seriesB[tIdx] === true;
+                  if (hitA !== hitB) {
+                    return hitA ? -1 : 1;
+                  }
+                }
+              }
+            }
+          }
+
+          // 4. Surname / Name alphabetical
+          return `${a.surname || ''} ${a.name || ''}`.localeCompare(`${b.surname || ''} ${b.name || ''}`);
+        };
+
+        activeShooters.sort(compareShootersForTrial);
         
         const selectedShooters: any[] = [];
         let epCount = 0;
@@ -8716,7 +8821,9 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
         for (const shooter of activeShooters) {
           if (selectedShooters.length >= topN) break;
 
-          const isEP = isEccellenzaOrPrima(shooter.category);
+          const comp = shooter.trialComps ? shooter.trialComps[trialKey] : null;
+          const cat = comp?.category_at_time || comp?.category || shooter.category;
+          const isEP = isEccellenzaOrPrima(cat);
           if (isEP) {
             if (epCount < maxEP) {
               selectedShooters.push(shooter);
@@ -8733,14 +8840,18 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
 
         return {
           score: sumOfScores,
-          shooters: selectedShooters.map(s => ({
-            id: s.shooterId,
-            name: s.name,
-            surname: s.surname,
-            score: s.trialScores[trialKey],
-            category: s.classificationValue,
-            mode: s.classificationMode
-          }))
+          shooters: selectedShooters.map(s => {
+            const comp = s.trialComps ? s.trialComps[trialKey] : null;
+            return {
+              id: s.shooterId,
+              name: s.name,
+              surname: s.surname,
+              score: s.trialScores[trialKey],
+              category: comp?.category_at_time || comp?.category || s.classificationValue,
+              qualification: comp?.qualification_at_time || comp?.qualification || s.qualification,
+              mode: s.classificationMode
+            };
+          })
         };
       };
 
@@ -8833,16 +8944,22 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
       if (a.isClassified !== b.isClassified) {
         return a.isClassified ? -1 : 1;
       }
-      // 2. Sort by how many trials they completed (descending so they compare on equal footing)
-      if (a.participatedCount !== b.participatedCount) {
-        return b.participatedCount - a.participatedCount;
+      // 2. If neither is classified, sort by how many trials they completed (descending)
+      if (!a.isClassified && !b.isClassified) {
+        if (a.participatedCount !== b.participatedCount) {
+          return b.participatedCount - a.participatedCount;
+        }
       }
       // 3. Sort by total penalties (ascending)
       if (a.totalPenalties !== b.totalPenalties) {
         return a.totalPenalties - b.totalPenalties;
       }
       // 4. Sort by total score sum (descending)
-      return b.totalScoreSum - a.totalScoreSum;
+      if (a.totalScoreSum !== b.totalScoreSum) {
+        return b.totalScoreSum - a.totalScoreSum;
+      }
+      // 5. Tie-breaker: trials completed (descending)
+      return b.participatedCount - a.participatedCount;
     });
     classifiedSocieties.forEach((sp, idx) => {
       sp.position = idx + 1;
