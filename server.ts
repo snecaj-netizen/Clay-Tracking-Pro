@@ -9435,24 +9435,23 @@ function serveStatic(app: any) {
 
 async function startApp() {
   try {
-    // Initialize Database
-    await initDB();
+    // Bind port 3000 immediately so container ingress and health checks respond instantly
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+    });
 
-    // Setup Vite or Static serving (API routes are already defined)
+    // Setup Vite middleware / static serving
     await setupVite(app);
 
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on port ${PORT}`);
+    // Initialize DB asynchronously in background so startup is non-blocking
+    initDB().then(() => {
+      console.log('✅ Database schema verified & ready');
+    }).catch((err) => {
+      console.error('⚠️ Database init background warning:', err);
     });
+
   } catch (error: any) {
     console.error('CRITICAL ERROR DURING STARTUP:', error);
-    // Even if DB or Vite fails, try to start Express so it can serve health checks or 500 errors instead of being dead
-    if (!app.listenerCount('listen')) {
-      app.get('/api/health', (req, res) => res.status(500).json({ status: 'degraded', error: error.message }));
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Server running in DEGRADED MODE on port ${PORT}`);
-      });
-    }
   }
 }
 
