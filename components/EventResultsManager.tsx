@@ -383,8 +383,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             const rankingPreference: 'categoria' | 'qualifica' = (raw.rankingPreference || '').toString().toLowerCase().trim() === 'qualifica' ? 'qualifica' : 'categoria';
 
             const scores: number[] = Array.isArray(raw.scores) ? raw.scores.map((s: any) => parseInt(s) || 0) : [];
-            // pad up to numSeries if fewer
-            while (scores.length < numSeries) scores.push(0);
+            // only pad if scores array is empty
+            if (scores.length === 0) {
+              while (scores.length < numSeries) scores.push(0);
+            }
 
             const shootOffRaw = raw.shootOff !== undefined && raw.shootOff !== null
               ? raw.shootOff
@@ -614,6 +616,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             }
           }
 
+          // Trim trailing zeros if the corresponding Excel column was empty
+          while (scores.length > 1 && scores[scores.length - 1] === 0) {
+            const sIdx = scores.length;
+            const val = getVal([`s${sIdx}`]);
+            if (val === '') {
+              scores.pop();
+            } else {
+              break;
+            }
+          }
+
           const shootOffVal = getVal(['shootoff', 'shoot-off', 'shoot_off', 'spareggio', 'barrage', 'so', 'shoff', 's-o']);
           const shootOff = shootOffVal !== '' ? (parseInt(shootOffVal) || 0) : null;
 
@@ -769,7 +782,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       
       const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
       const totalScore = row.scores.reduce((a: number, b: number) => a + b, 0);
-      const totalTargetsVal = event.targets || 100;
+      const isMB = isMakeABreak(event.discipline);
+      const totalTargetsVal = isMB ? row.scores.length * 60 : (row.scores.length > 0 ? row.scores.length * targetsPerSeries : (event.targets || 100));
       const averagePerSeries = row.scores.length > 0 ? totalScore / row.scores.length : totalScore / numSeries;
 
       const detailed: boolean[][] = row.scores.map((score: number) => {

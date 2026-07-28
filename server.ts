@@ -1517,6 +1517,78 @@ const initDB = async () => {
       console.error("❌ Error normalizing competitions' categories:", err);
     }
 
+    // Migration: Cleanup extra 0 series for competitions and sync event targets
+    try {
+      const { rows: targetEvents } = await pool.query(
+        "SELECT id, name, targets FROM events WHERE name ILIKE '%Prova Regionale%' OR name ILIKE '%Lazio%'"
+      );
+      console.log("🔍 Checking events for series cleanup:", targetEvents);
+
+      for (const evt of targetEvents) {
+        const { rows: evtComps } = await pool.query(
+          "SELECT id, totaltargets, totalscore, scores FROM competitions WHERE event_id = $1",
+          [evt.id]
+        );
+        console.log(`🔍 Event ${evt.name} (${evt.id}) has ${evtComps.length} competitions. Event targets: ${evt.targets}`);
+        
+        let maxNonZeroSeriesInEvent = 0;
+        for (const c of evtComps) {
+          const scores = typeof c.scores === 'string' ? JSON.parse(c.scores) : (c.scores || []);
+          const nonZeroLen = scores.reduce((acc: number, val: number, idx: number) => val > 0 ? idx + 1 : acc, 0);
+          if (nonZeroLen > maxNonZeroSeriesInEvent) {
+            maxNonZeroSeriesInEvent = nonZeroLen;
+          }
+        }
+        console.log(`🔍 Event ${evt.name}: max non-zero series count = ${maxNonZeroSeriesInEvent}`);
+        
+        if (maxNonZeroSeriesInEvent > 0 && evt.targets > maxNonZeroSeriesInEvent * 25) {
+          const correctTargets = maxNonZeroSeriesInEvent * 25;
+          console.log(`🔧 Updating event ${evt.name} targets from ${evt.targets} to ${correctTargets}`);
+          await pool.query("UPDATE events SET targets = $1 WHERE id = $2", [correctTargets, evt.id]);
+          await pool.query("UPDATE competitions SET totaltargets = $1 WHERE event_id = $2", [correctTargets, evt.id]);
+        }
+      }
+
+      const { rows: allComps } = await pool.query(
+        "SELECT id, name, totaltargets, totalscore, scores, averageperseries FROM competitions WHERE scores IS NOT NULL"
+      );
+      let cleanedCount = 0;
+      for (const c of allComps) {
+        const scores: number[] = typeof c.scores === 'string' ? JSON.parse(c.scores) : (c.scores || []);
+        if (!Array.isArray(scores) || scores.length <= 1) continue;
+        
+        let lastNonZeroIdx = -1;
+        for (let i = scores.length - 1; i >= 0; i--) {
+          if (scores[i] > 0) {
+            lastNonZeroIdx = i;
+            break;
+          }
+        }
+        
+        const actualSeriesCount = lastNonZeroIdx >= 0 ? lastNonZeroIdx + 1 : 1;
+        const expectedMaxSeries = Math.max(1, Math.ceil((c.totaltargets || 25) / 25));
+        
+        if (scores.length > actualSeriesCount && actualSeriesCount <= expectedMaxSeries) {
+          const trimmedScores = scores.slice(0, Math.max(actualSeriesCount, expectedMaxSeries));
+          if (trimmedScores.length < scores.length) {
+            const sumScore = trimmedScores.reduce((a, b) => a + b, 0);
+            const newAvg = trimmedScores.length > 0 ? sumScore / trimmedScores.length : 0;
+            
+            await pool.query(
+              "UPDATE competitions SET scores = $1, averageperseries = $2 WHERE id = $3",
+              [JSON.stringify(trimmedScores), newAvg, c.id]
+            );
+            cleanedCount++;
+          }
+        }
+      }
+      if (cleanedCount > 0) {
+        console.log(`✅ Cleaned up extra zero series for ${cleanedCount} competitions.`);
+      }
+    } catch (err) {
+      console.error("❌ Error in extra series cleanup migration:", err);
+    }
+
     console.log('Connected to PostgreSQL database and initialized tables.');
 
     // Ensure admin has the registrations_opened template
