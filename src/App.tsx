@@ -1847,7 +1847,7 @@ const App: React.FC = () => {
 
       <InstallPrompt />
       {showTour && user && (
-        <OnboardingTour role={user.role} onClose={handleCloseTour} />
+        <OnboardingTour role={user.role} user={user} onClose={handleCloseTour} />
       )}
       
       {/* Bottom Navigation for Mobile */}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { User } from '../types';
 
 interface TourStep {
   tag: string;
@@ -14,14 +15,24 @@ interface TourStep {
 
 interface OnboardingTourProps {
   role: 'admin' | 'society' | 'user';
+  user?: User;
+  societyName?: string;
   onClose: () => void;
 }
 
-const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
+const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, user, societyName, onClose }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const { language, t } = useLanguage();
 
   const isItalian = language === 'it';
+
+  // Determine personalized society display name
+  const displaySocietyName = (
+    societyName?.trim() ||
+    user?.society?.trim() ||
+    (user?.name ? `${user.name} ${user.surname || ''}`.trim() : '') ||
+    "TAV VETRALLA"
+  );
 
   // STEPS FOR SHOOTERS (TIRATORI)
   const shooterSteps: TourStep[] = isItalian ? [
@@ -200,8 +211,8 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
   const societySteps: TourStep[] = isItalian ? [
     {
       tag: "GESTIONE TAV DIGITALE",
-      title: "Benvenuto, Società TAV!",
-      description: "Il portale gestionale professionale per le Società di Tiro a Volo. Semplifica la gestione delle tue gare, raccogli le iscrizioni online e comunica in tempo reale con i tuoi tiratori.",
+      title: `Benvenuto, ${displaySocietyName}!`,
+      description: `Il portale gestionale professionale per le Società di Tiro a Volo. Semplifica la gestione delle tue gare, raccogli le iscrizioni online e comunica in tempo reale con i tuoi tiratori.`,
       highlights: [
         "Gestione digitale integrata per gare sociali, provinciali, regionali e nazionali",
         "Iscrizioni online veloci e prive di cartaceo",
@@ -285,7 +296,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
   ] : [
     {
       tag: "DIGITAL CLUB MANAGEMENT",
-      title: "Welcome, Shooting Club!",
+      title: `Welcome, ${displaySocietyName}!`,
       description: "The professional management portal for Clay Shooting Clubs. Simplify event organizing, collect online registrations, and communicate with shooters in real time.",
       highlights: [
         "Integrated digital management for club, regional, and national matches",
@@ -400,10 +411,10 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-white font-black text-base">TAV Roma Castelli</span>
+                    <span className="text-white font-black text-base">{displaySocietyName}</span>
                     <i className="fas fa-circle-check text-sky-400 text-xs"></i>
                   </div>
-                  <span className="text-slate-300 font-medium text-xs">Cod. FITAV 12-049 • Lazio</span>
+                  <span className="text-slate-300 font-medium text-xs">Gestione TAV • Portale Ufficiale</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-3">
@@ -435,7 +446,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
                 <span className="bg-emerald-600 text-white border border-emerald-400 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">Iscrizioni Aperte</span>
               </div>
               <div className="bg-slate-900 rounded-xl p-3.5 border border-slate-700/80 space-y-2.5">
-                <div className="text-sm font-black text-white">4° Trofeo Estivo TAV Castelli</div>
+                <div className="text-sm font-black text-white">4° Trofeo Estivo {displaySocietyName}</div>
                 <div className="flex flex-wrap gap-2 text-[11px]">
                   <span className="bg-slate-800 text-slate-200 font-semibold px-2.5 py-1 rounded-md border border-slate-700"><i className="fas fa-crosshairs text-orange-400 mr-1.5"></i>Fossa Olimpica</span>
                   <span className="bg-slate-800 text-slate-200 font-semibold px-2.5 py-1 rounded-md border border-slate-700"><i className="fas fa-layer-group text-sky-400 mr-1.5"></i>50 Piattelli</span>
@@ -459,9 +470,9 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
               </div>
               <div className="space-y-2 font-mono text-xs">
                 {[
-                  { bib: "101", name: "Rossi Mario", cat: "1ª", club: "TAV Roma" },
+                  { bib: "101", name: "Rossi Mario", cat: "1ª", club: displaySocietyName },
                   { bib: "102", name: "Bianchi Luca", cat: "Ecc", club: "TAV Lazio" },
-                  { bib: "103", name: "Verdi Giuseppe", cat: "2ª", club: "TAV Castelli" }
+                  { bib: "103", name: "Verdi Giuseppe", cat: "2ª", club: displaySocietyName }
                 ].map((m, idx) => (
                   <div key={idx} className="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                     <div className="flex items-center gap-2.5">
@@ -595,8 +606,8 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ role, onClose }) => {
                     <i className="fas fa-location-dot text-base animate-bounce"></i>
                   </div>
                   <div>
-                    <div className="text-xs font-black text-white">TAV Castelli - Roma</div>
-                    <div className="text-[11px] text-slate-300">Via Appia Nuova, Km 22 • 6 Impianti</div>
+                    <div className="text-xs font-black text-white">{displaySocietyName}</div>
+                    <div className="text-[11px] text-slate-300">Sede & Impianti Verificati • 6 Impianti</div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
