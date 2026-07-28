@@ -40,8 +40,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
 
   const sortedAndGroupedTeams = useMemo(() => {
     const teamsWithTotals = teams.map(team => {
-      const teamMembers = (team.member_ids || []).map((id: string) => {
-        const result = results.find(r => r.user_id === id);
+      const teamMembers = (team.member_ids || []).map((id: string | number) => {
+        const result = results.find(r => String(r.user_id) === String(id));
         const shootOffVal = result?.shoot_off !== undefined && result?.shoot_off !== null ? parseInt(String(result.shoot_off), 10) : 0;
         return {
           totalscore: result?.totalscore || 0,
@@ -162,11 +162,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     // If it's a SQUADRA_LIBERA, we don't strictly filter by society based on formData.society
     const isLibera = formData.type === 'SQUADRA_TIRATORI';
     
-    const registeredUserIds = new Set(results.map(r => r.user_id));
+    const registeredUserIds = new Set(results.map(r => String(r.user_id)));
     
     // Get all users belonging to the selected society (if not Libera)
     return users.filter(u => {
-      if (!registeredUserIds.has(u.id)) return false;
+      if (!registeredUserIds.has(String(u.id))) return false;
       
       if (!isLibera) {
         const s = (u.society || '').toLowerCase().trim();
@@ -175,7 +175,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       }
       
       // Check if the user is already in a team for this event
-      const isUserInAnotherTeam = teams.some(t => t.id !== editingTeamId && t.member_ids?.includes(u.id));
+      const isUserInAnotherTeam = teams.some(t => String(t.id) !== String(editingTeamId) && (t.member_ids || []).some((mId: any) => String(mId) === String(u.id)));
       if (isUserInAnotherTeam) {
         return false;
       }
@@ -206,14 +206,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       return 'Squadra deve avere almeno un partecipante';
     }
 
-    const members = formData.memberIds.map(id => users.find(u => u.id === id)).filter(Boolean);
+    const members = formData.memberIds.map(id => users.find(u => String(u.id) === String(id))).filter(Boolean);
     
     const getCat = (m: any) => {
-      const userResult = results.find(r => r.user_id === m.id);
+      const userResult = results.find(r => String(r.user_id) === String(m.id));
       return (userResult?.category_at_time || m.category || '').toLowerCase().trim();
     };
     const getQual = (m: any) => {
-      const userResult = results.find(r => r.user_id === m.id);
+      const userResult = results.find(r => String(r.user_id) === String(m.id));
       return (userResult?.qualification_at_time || m.qualification || '').toLowerCase().trim();
     };
 

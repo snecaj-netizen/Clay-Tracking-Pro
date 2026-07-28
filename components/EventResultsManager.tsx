@@ -1315,9 +1315,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       if (currentY > 240) { doc.addPage(); currentY = 20; }
       
       const teamRankings = teams.map(team => {
-        const teamMembers = (team.member_ids || []).map((id: string) => {
-          const result = results.find(r => r.user_id === id);
-          const user = users.find(u => u.id === id);
+        const teamMembers = (team.member_ids || []).map((id: string | number) => {
+          const result = results.find(r => String(r.user_id) === String(id));
+          const user = users.find(u => String(u.id) === String(id));
           const shootOffVal = result?.shoot_off !== undefined && result?.shoot_off !== null ? parseInt(String(result.shoot_off), 10) : 0;
           return {
             id: id,

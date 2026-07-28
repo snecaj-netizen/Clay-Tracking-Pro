@@ -5383,8 +5383,8 @@ app.post('/api/events/:id/teams', authenticateToken, async (req: any, res) => {
       // Update existing competitions for these users in this event to have team_id and team_name
       await client.query(`
         UPDATE competitions SET team_id = $1, team_name = $2 
-        WHERE event_id = $3 AND user_id = ANY($4)
-      `, [teamId, name, eventId, memberIds]);
+        WHERE (event_id = $3 OR name = $4) AND user_id = ANY($5)
+      `, [teamId, name, eventId, event.name, memberIds]);
       
       // Send push notification to team members
       await sendPushNotification(
@@ -5587,8 +5587,8 @@ app.put('/api/events/:id/teams/:teamId', authenticateToken, async (req: any, res
         // Update competitions
         await client.query(`
           UPDATE competitions SET team_id = $1, team_name = $2 
-          WHERE event_id = $3 AND user_id = ANY($4)
-        `, [teamId, finalName, eventId, memberIds]);
+          WHERE (event_id = $3 OR name = $4) AND user_id = ANY($5)
+        `, [teamId, finalName, eventId, event.name, memberIds]);
         
         // Send push notification to team members
         await sendPushNotification(
