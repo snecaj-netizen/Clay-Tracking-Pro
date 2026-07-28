@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Competition, Discipline, getSeriesLayout } from '../types';
+import { isMakeABreak } from '../lib/makeABreak';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -39,10 +40,13 @@ const DashboardAIReport: React.FC<DashboardAIReportProps> = ({ competitions }) =
       const resultsSummary = lastComps.map(c => {
         const score = c.totalScore || 0;
         const targets = c.totalTargets || 25;
+        const isMB = isMakeABreak(c.discipline);
+        const numSeries = c.scores && c.scores.length > 0 ? c.scores.length : Math.ceil(targets / 25);
+        const maxScoreOrTargets = isMB ? numSeries * 60 : targets;
         const layoutObj = getSeriesLayout(c.discipline);
-        const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
-        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / tps));
-        return `- ${c.name} (${c.discipline}, ${t('level')}: ${c.level}): ${score}/${targets} (${t('average')}: ${avg.toFixed(1)}) - ${t('position_label')}: ${c.position || 'N/D'}`;
+        const tps = isMB ? 60 : layoutObj.layout.reduce((a, b) => a + b, 0);
+        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / 25));
+        return `- ${c.name} (${c.discipline}, ${t('level')}: ${c.level}): ${score}/${maxScoreOrTargets} (${t('average')}: ${avg.toFixed(1)}/${tps}) - ${t('position_label')}: ${c.position || 'N/D'}`;
       }).join('\n');
 
       const prompt = `

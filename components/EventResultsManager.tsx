@@ -982,7 +982,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         setDetailedScores(newDetailed);
         
         const newScores = [...series];
-        newScores[idx] = (isMB ? 65 : targetsPerSeries).toString();
+        newScores[idx] = (isMB ? 60 : targetsPerSeries).toString();
         setSeries(newScores);
       }
     }
@@ -1145,9 +1145,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     doc.text(event.discipline || 'N/D', 45, currentY);
     
     doc.setFont('helvetica', 'bold');
-    doc.text(t('pdf_targets'), 120, currentY);
+    doc.text(isMakeABreak(event.discipline) ? 'PUNTI MAX:' : t('pdf_targets'), 120, currentY);
     doc.setFont('helvetica', 'normal');
-    doc.text((event.targets || 100).toString(), 145, currentY);
+    doc.text(isMakeABreak(event.discipline) ? (eventSeriesCount * 60).toString() : (event.targets || 100).toString(), 145, currentY);
     
     currentY += 15;
 

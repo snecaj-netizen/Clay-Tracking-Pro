@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Competition, Discipline, getSeriesLayout } from '../types';
+import { isMakeABreak } from '../lib/makeABreak';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface GeminiCoachProps {
@@ -39,17 +40,20 @@ const GeminiCoach: React.FC<GeminiCoachProps> = ({ competitions }) => {
       const resultsSummary = lastEight.map(c => {
         const score = c.totalScore || 0;
         const targets = c.totalTargets || 25;
+        const isMB = isMakeABreak(c.discipline);
+        const numSeries = c.scores && c.scores.length > 0 ? c.scores.length : Math.ceil(targets / 25);
+        const maxScoreOrTargets = isMB ? numSeries * 60 : targets;
         const isUpcoming = new Date(c.date) >= now || (c.totalScore === 0 && c.totalTargets > 0);
         const status = isUpcoming ? t('upcoming_tag') : t('concluded_tag');
         
         if (isUpcoming) {
-          return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Obiettivo: ${targets} piattelli.`;
+          return `- ${status} ${c.date}: ${c.name} (${c.discipline}), Obiettivo: ${maxScoreOrTargets} ${isMB ? 'punti' : 'piattelli'}.`;
         }
 
         const layoutObj = getSeriesLayout(c.discipline as Discipline);
-        const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
-        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / tps));
-        return `- ${status} ${c.date}: ${c.name} (${c.discipline}): ${score}/${targets} (Media: ${avg.toFixed(1)})`;
+        const tps = isMB ? 60 : layoutObj.layout.reduce((a, b) => a + b, 0);
+        const avg = typeof c.averagePerSeries === 'number' ? c.averagePerSeries : (score / (targets / 25));
+        return `- ${status} ${c.date}: ${c.name} (${c.discipline}): ${score}/${maxScoreOrTargets} (Media: ${avg.toFixed(1)}/${tps})`;
       }).join('\n');
 
       const prompt = `

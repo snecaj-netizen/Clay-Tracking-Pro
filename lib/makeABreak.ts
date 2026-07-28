@@ -97,7 +97,7 @@ export function getMakeABreakTargetInfo(targetIdx: number): MakeABreakTargetInfo
 
 export function getSeriesMaxScore(discipline: string | Discipline | undefined | null, defaultTargets: number = 25): number {
   if (isMakeABreak(discipline)) {
-    return 65; // Max score in Make a Break per series (20 + 20 + 25)
+    return 60; // Max score in Make a Break per series is 60 points
   }
   return defaultTargets;
 }

@@ -1,4 +1,5 @@
 import { Competition, Discipline, User, DISCIPLINE_TO_ACRONYM } from './types';
+import { isMakeABreak } from './lib/makeABreak';
 
 export const getCategoryForDiscipline = (user: User | undefined | null, discipline: Discipline): string | undefined => {
   if (!user || user.is_cacciatore) return undefined;
@@ -38,12 +39,13 @@ export interface RTERating {
   bestFive: number[];
 }
 
-export const calculateRTE = (competitions: Competition[]): RTERating[] => {
+export const calculateRTE = (competitions: Competition[], excludeMakeABreak: boolean = false): RTERating[] => {
   // Filter for real competitions (not training) and with score > 0
   const realComps = competitions.filter(c => 
     c.discipline !== Discipline.TRAINING && 
     c.totalScore > 0 &&
-    c.status !== 'draft' // Assuming draft results shouldn't count
+    c.status !== 'draft' &&
+    (!excludeMakeABreak || !isMakeABreak(c.discipline))
   );
   
   // Last 12 months filter

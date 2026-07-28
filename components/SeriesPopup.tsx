@@ -26,7 +26,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
     if (competition.detailedScores && competition.detailedScores[seriesIndex] && competition.detailedScores[seriesIndex].length === targetsPerSeries) {
       return calculateSeriesScore(competition.discipline, competition.detailedScores[seriesIndex]);
     }
-    return isMB ? 65 : targetsPerSeries;
+    return isMB ? maxSeriesScore : targetsPerSeries;
   });
   const [detailedScore, setDetailedScore] = useState<boolean[]>(() => {
     if (competition.detailedScores && competition.detailedScores[seriesIndex] && competition.detailedScores[seriesIndex].length === targetsPerSeries) {
@@ -35,7 +35,7 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
       // Default to all hits (green) if no score is present
       const initialCount = (competition.scores[seriesIndex] !== undefined && competition.scores[seriesIndex] > 0) 
         ? competition.scores[seriesIndex] 
-        : (isMB ? 65 : targetsPerSeries);
+        : (isMB ? maxSeriesScore : targetsPerSeries);
       
       const initial = Array(targetsPerSeries).fill(false);
       let curr = 0;

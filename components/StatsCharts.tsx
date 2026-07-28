@@ -39,6 +39,13 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
 
   if (completedCompetitions.length === 0) return null;
 
+  const maxAverageVal = Math.max(
+    25,
+    ...chartData.map(d => d.average || 0),
+    ...disciplineData.map(d => d.avg || 0)
+  );
+  const yMax = maxAverageVal > 50 ? 60 : maxAverageVal > 25 ? 50 : 25;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
@@ -59,7 +66,7 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
                 fontSize={10} 
                 tickLine={false} 
                 axisLine={false} 
-                domain={[0, 25]}
+                domain={[0, yMax]}
               />
               <Tooltip 
                 contentStyle={{ 
@@ -102,7 +109,7 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
                 fontSize={10} 
                 tickLine={false} 
                 axisLine={false}
-                domain={[0, 25]}
+                domain={[0, yMax]}
               />
               <Tooltip 
                 cursor={{ fill: 'transparent' }}

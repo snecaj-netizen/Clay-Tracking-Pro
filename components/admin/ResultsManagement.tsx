@@ -4,6 +4,7 @@ import ShooterSearch from '../ShooterSearch';
 import SocietySearch from '../SocietySearch';
 import { Competition, User, UserRole, Discipline, getSeriesLayout } from '../../types';
 import { calculateRTE, shortenCategoryName } from '../../ratingUtils';
+import { isMakeABreak } from '../../lib/makeABreak';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -496,7 +497,8 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                       totalTargets: r.totaltargets,
                       averagePerSeries: r.averageperseries,
                       scores: typeof r.scores === 'string' ? JSON.parse(r.scores) : r.scores,
-                    }))
+                    })),
+                    true // exclude Make a Break from RTE calculation for "Risultati gare" in "La mia società"
                   );
                   const bestRating = shooterRatings[0];
                   if (!bestRating) return null;
@@ -580,9 +582,13 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {results.map((r: any, idx: number) => {
+                        const isMB = isMakeABreak(r.discipline);
                         const layoutObj = getSeriesLayout(r.discipline as Discipline);
-                        const tps = layoutObj.layout.reduce((a, b) => a + b, 0);
-                        const avg = r.totalTargets > 0 ? (r.totalScore / r.totalTargets) * tps : 0;
+                        const tps = isMB ? 60 : layoutObj.layout.reduce((a, b) => a + b, 0);
+                        const parsedScores = typeof r.scores === 'string' ? JSON.parse(r.scores) : (r.scores || []);
+                        const numSeries = parsedScores.length > 0 ? parsedScores.length : Math.ceil((r.totalTargets || 25) / 25);
+                        const maxTargetsOrPoints = isMB ? numSeries * 60 : r.totalTargets;
+                        const avg = r.averageperseries ?? r.averagePerSeries ?? (r.totalTargets > 0 ? (r.totalScore / (isMB ? numSeries : (r.totalTargets / tps))) : 0);
                         
                         return (
                         <div key={idx} className="bg-slate-950 border border-slate-800 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:border-orange-500/30 transition-all group relative overflow-hidden">
@@ -649,7 +655,7 @@ const ResultsManagement: React.FC<ResultsManagementProps> = ({
                               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('score_label')}</p>
                               <div className="flex items-baseline gap-1">
                                 <span className="text-xl font-black text-white">{r.totalScore}</span>
-                                <span className="text-slate-600 font-black text-xs">/ {r.totalTargets}</span>
+                                <span className="text-slate-600 font-black text-xs">/ {maxTargetsOrPoints}</span>
                               </div>
                             </div>
                             

@@ -3828,6 +3828,7 @@ app.get('/api/admin/all-results', authenticateToken, requireAdminOrSociety, asyn
           ROW_NUMBER() OVER(PARTITION BY user_id, discipline ORDER BY averageperseries DESC) as rank
         FROM competitions
         WHERE level != 'Allenamento / Pratica' AND discipline != 'Allenamento' AND totalscore > 0
+          AND discipline NOT LIKE '%Make a Break%' AND discipline != 'Make a Break (MB)' AND discipline != 'MB'
           AND date::TIMESTAMP >= NOW() - INTERVAL '12 months'
       ),
       rte_stats AS (

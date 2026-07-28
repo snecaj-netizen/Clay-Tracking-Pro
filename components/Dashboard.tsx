@@ -7,6 +7,7 @@ import StatsCharts from './StatsCharts';
 import ShareCard from './ShareCard';
 import { useUI } from '../contexts/UIContext';
 import { calculateRTE } from '../ratingUtils';
+import { isMakeABreak } from '../lib/makeABreak';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const formatEventDates = (startDate: any, endDate: any, singleDate?: any) => {
@@ -574,6 +575,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                 competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0)
                   .every(c => c.discipline === Discipline.DCK)
                   ? '/50'
+                  : competitions.filter(c => c.discipline !== Discipline.TRAINING && c.totalScore > 0)
+                    .every(c => isMakeABreak(c.discipline))
+                  ? '/60'
                   : '/25'
               }
             </p>
@@ -604,6 +608,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     {t('average')}: <span className="text-white font-bold">{compStats.bestPlacementComp.averagePerSeries.toFixed(2)}</span> {
                       (compStats.bestPlacementComp.discipline === Discipline.DCK)
                         ? '/50'
+                        : isMakeABreak(compStats.bestPlacementComp.discipline)
+                        ? '/60'
                         : '/25'
                     }
                   </p>
@@ -649,7 +655,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         {r.rating.toFixed(2)}
                       </h3>
                       <span className="text-sm font-bold text-slate-500">
-                        /{r.discipline === Discipline.DCK ? '50' : '25'}
+                        /{r.discipline === Discipline.DCK ? '50' : isMakeABreak(r.discipline) ? '60' : '25'}
                       </span>
                     </div>
                   </div>

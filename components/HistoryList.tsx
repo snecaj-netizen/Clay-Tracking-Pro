@@ -454,9 +454,9 @@ const HistoryList: React.FC<HistoryListProps> = ({
                       {comp.scores.map((s, i) => {
                         const hasDetails = comp.detailedScores && comp.detailedScores[i] && comp.detailedScores[i].length > 0;
                         const isMB = isMakeABreak(comp.discipline);
-                        const isPerfect = isMB ? s === 65 : s === 25;
+                        const isPerfect = isMB ? s === 60 : s === 25;
                         const scoreColor = isMB
-                          ? (s === 65 ? 'text-orange-500' : s >= 55 ? 'text-yellow-500' : s >= 45 ? 'text-slate-200' : 'text-slate-400')
+                          ? (s === 60 ? 'text-orange-500' : s >= 50 ? 'text-yellow-500' : s >= 40 ? 'text-slate-200' : 'text-slate-400')
                           : (s === 25 ? 'text-orange-500' : s >= 24 ? 'text-yellow-500' : s >= 22 ? 'text-slate-200' : s >= 20 ? 'text-slate-400' : 'text-slate-600');
 
                         return (
@@ -476,7 +476,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                                   setShareData({ comp, isPerfect: true, index: i });
                                 }}
                                 className="absolute -top-2 -right-2 w-5 h-5 bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover/series:opacity-100 transition-opacity active:scale-95 z-20"
-                                title={isMB ? 'Condividi 65/65' : t('share_25')}
+                                title={isMB ? 'Condividi 60/60' : t('share_25')}
                               >
                                 <i className="fas fa-share-alt text-[8px]"></i>
                               </div>
