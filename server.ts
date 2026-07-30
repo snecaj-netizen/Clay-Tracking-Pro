@@ -7945,21 +7945,6 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
     let teamName = null;
 
     if (c.eventId) {
-      // Check if user already has a competition for this event or matching date/location/discipline
-      const existingComp = await pool.query(`
-        SELECT id FROM competitions 
-        WHERE user_id = $1 
-          AND date = $2 
-          AND location = $3 
-          AND discipline = $4
-          AND (event_id IS NULL OR event_id = $5)
-        LIMIT 1
-      `, [targetUserId, c.date, c.location, c.discipline, c.eventId]);
-      
-      if (existingComp.rows.length > 0) {
-        finalId = existingComp.rows[0].id;
-      }
-
       // Check if user is in a team for this event
       const teamCheck = await pool.query(`
         SELECT t.id, t.name 
@@ -7972,6 +7957,74 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
       if (teamCheck.rows.length > 0) {
         teamId = teamCheck.rows[0].id;
         teamName = teamCheck.rows[0].name;
+      }
+
+      // Check for existing competition row for this user and event
+      const existingEvtComp = await pool.query(`
+        SELECT id FROM competitions 
+        WHERE user_id = $1 AND (event_id = $2 OR id = $3)
+        LIMIT 1
+      `, [targetUserId, c.eventId, c.id || `evt_${c.eventId}_${targetUserId}`]);
+
+      if (existingEvtComp.rows.length > 0) {
+        finalId = existingEvtComp.rows[0].id;
+      } else if (!finalId) {
+        finalId = `evt_${c.eventId}_${targetUserId}`;
+      }
+    } else if (!finalId) {
+      // Search existing non-hidden competitions for targetUserId to find matches and avoid duplicates
+      const existingUserComps = await pool.query(`
+        SELECT id, name, date, enddate, location, discipline, event_id 
+        FROM competitions 
+        WHERE user_id = $1 AND hidden_from_user = FALSE
+      `, [targetUserId]);
+
+      let matchedCompId: string | null = null;
+      const normName = (s: string) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+      const normLoc = (s: string) => (s || '').toString().trim().toLowerCase();
+      const normDisc = (s: string) => (s || '').toString().trim().toLowerCase();
+
+      const inName = normName(c.name);
+      const inLoc = normLoc(c.location);
+      const inDisc = normDisc(c.discipline);
+      const inDate = c.date ? c.date.split('T')[0] : '';
+      const inEndDate = (c.endDate || c.enddate || c.date || '').split('T')[0];
+
+      for (const row of existingUserComps.rows) {
+        const rowName = normName(row.name);
+        const rowLoc = normLoc(row.location);
+        const rowDisc = normDisc(row.discipline);
+        const rowDate = row.date ? row.date.split('T')[0] : '';
+        const rowEndDate = (row.enddate || row.date || '').split('T')[0];
+
+        const isSameName = inName && rowName && (inName === rowName || inName.includes(rowName) || rowName.includes(inName));
+        if (!isSameName) continue;
+
+        const isSameDisc = !inDisc || !rowDisc || inDisc === rowDisc;
+        const isSameLoc = !inLoc || !rowLoc || inLoc === rowLoc || inLoc.includes(rowLoc) || rowLoc.includes(inLoc);
+        const isExactStart = inDate && rowDate && inDate === rowDate;
+        const isExactEnd = inEndDate && rowEndDate && inEndDate === rowEndDate;
+        const isOverlap = inDate && rowDate && (inDate <= rowEndDate) && (inEndDate >= rowDate);
+
+        let isProximity = false;
+        if (inDate && rowDate) {
+          const d1 = new Date(inDate).getTime();
+          const d2 = new Date(rowDate).getTime();
+          if (!isNaN(d1) && !isNaN(d2) && Math.abs((d1 - d2) / 86400000) <= 3) {
+            isProximity = true;
+          }
+        }
+
+        if ((isExactStart || isExactEnd || isOverlap || isProximity) && (isSameLoc || isSameDisc)) {
+          matchedCompId = row.id;
+          break;
+        }
+      }
+
+      if (matchedCompId) {
+        finalId = matchedCompId;
+      } else {
+        finalId = `comp_${Date.now()}_${targetUserId}`;
       }
     }
 
@@ -7990,7 +8043,7 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
        seriesimages = COALESCE(competitions.seriesimages, EXCLUDED.seriesimages), 
        usedcartridges = COALESCE(competitions.usedcartridges, EXCLUDED.usedcartridges), 
        chokes = COALESCE(competitions.chokes, EXCLUDED.chokes),
-       event_id = EXCLUDED.event_id, 
+       event_id = COALESCE(EXCLUDED.event_id, competitions.event_id), 
        shoot_off = CASE WHEN EXCLUDED.shoot_off IS NOT NULL THEN EXCLUDED.shoot_off ELSE competitions.shoot_off END,
        category_at_time = EXCLUDED.category_at_time, 
        qualification_at_time = EXCLUDED.qualification_at_time, society_at_time = EXCLUDED.society_at_time,
@@ -8007,7 +8060,7 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
         c.seriesImages ? JSON.stringify(c.seriesImages) : null,
         c.usedCartridges ? JSON.stringify(c.usedCartridges) : null,
         c.chokes ? JSON.stringify(c.chokes) : null,
-        (req.user.role === 'admin' || req.user.role === 'society') ? (c.eventId || null) : null,
+        c.eventId || null,
         c.shootOff !== undefined ? c.shootOff : null,
         cat, qual, soc,
         c.ranking_preference || 'categoria',
@@ -8101,8 +8154,10 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
     let finalTeamName = teamName || existing.team_name;
     let seriesFields = c.seriesFields !== undefined ? c.seriesFields : (existing.series_fields ? (typeof existing.series_fields === 'string' ? JSON.parse(existing.series_fields) : existing.series_fields) : null);
 
-    // If standard user is updating a competition linked to an official event, PREVENT overwriting official event fields
-    if (compEventId && isUser) {
+    const isEventManagement = req.query.from_event_management === 'true';
+
+    // If updating a competition linked to an official event outside Event Management, PREVENT overwriting official event fields
+    if (compEventId && !isEventManagement) {
       name = existing.name;
       date = existing.date;
       endDate = existing.enddate || null;
@@ -8304,61 +8359,45 @@ app.delete('/api/competitions/:id', authenticateToken, async (req: any, res) => 
       }
     }
 
+    const isEventManagement = req.query.from_event_management === 'true';
+
+    // Fetch competition info
+    const existingComp = await pool.query('SELECT user_id, event_id, location FROM competitions WHERE id = $1', [req.params.id]);
+    if (existingComp.rows.length === 0) {
+      return res.status(404).json({ error: 'Gara non trovata.' });
+    }
+
+    const compUserId = existingComp.rows[0].user_id;
+    const compEventId = existingComp.rows[0].event_id;
+    const compLocation = existingComp.rows[0].location;
+
     let result;
-    if (req.user.role === 'admin') {
-      result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
-    } else if (req.user.role === 'society') {
-      // Società can delete competitions for their own shooters OR for events they own OR results at their location
-      const existingComp = await pool.query('SELECT user_id, event_id, location FROM competitions WHERE id = $1', [req.params.id]);
-      if (existingComp.rows.length === 0) return res.status(404).json({ error: 'Gara non trovata.' });
-      
-      const compUserId = existingComp.rows[0].user_id;
-      const compEventId = existingComp.rows[0].event_id;
-      const compLocation = existingComp.rows[0].location;
-      
-      let canManage = false;
-      
-      if (compEventId) {
-        // If it's an event result, ONLY the hosting Society can delete it
+
+    if (isEventManagement && (req.user.role === 'admin' || req.user.role === 'society')) {
+      if (req.user.role === 'society' && compEventId) {
         const eventCheck = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [compEventId]);
         if (eventCheck.rows.length > 0) {
           const ev = eventCheck.rows[0];
-          if (ev.location === req.user.society || ev.created_by === req.user.id) {
-            canManage = true;
-          } else {
+          if (ev.location !== req.user.society && ev.created_by !== req.user.id) {
             return res.status(403).json({ error: 'I risultati di una gara possono essere eliminati solo dalla società ospitante o da un Admin.' });
           }
-        } else {
-          return res.status(404).json({ error: 'Evento non trovato.' });
         }
-      } else {
-        // Non-event competition
-        const userCheck = await pool.query('SELECT society FROM users WHERE id = $1', [compUserId]);
-        const isTheirShooter = userCheck.rows.length > 0 && userCheck.rows[0].society === req.user.society;
-        const isTheirLocation = compLocation === req.user.society;
-        
-        if (isTheirShooter || isTheirLocation) {
-          canManage = true;
-        }
-      }
-
-      if (!canManage) {
-        return res.status(403).json({ error: 'Puoi eliminare gare solo per i tuoi tiratori o per gare svolte presso la tua società.' });
       }
       result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
     } else {
-      // If it's a user deleting their own competition, check if it's linked to an event
-      const compCheck = await pool.query('SELECT event_id FROM competitions WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
-      if (compCheck.rows.length > 0) {
-        if (compCheck.rows[0].event_id) {
-          // It's linked to a society event, so just hide it from the user's view
-          result = await pool.query("UPDATE competitions SET hidden_from_user = TRUE WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+      // Personal history deletion (from "Le tue gare" or by standard user)
+      if (compEventId) {
+        // Linked to an official event -> DO NOT DELETE FROM DB! Just hide from user's personal view
+        result = await pool.query("UPDATE competitions SET hidden_from_user = TRUE WHERE id=$1", [req.params.id]);
+      } else {
+        // Unlinked personal entry -> Safe to delete from DB
+        if (req.user.role === 'admin') {
+          result = await pool.query("DELETE FROM competitions WHERE id=$1", [req.params.id]);
+        } else if (req.user.role === 'society') {
+          result = await pool.query("DELETE FROM competitions WHERE id=$1 AND (user_id=$2 OR location=$3)", [req.params.id, req.user.id, req.user.society]);
         } else {
-          // Not linked, safe to delete
           result = await pool.query("DELETE FROM competitions WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
         }
-      } else {
-        result = { rowCount: 0 };
       }
     }
     console.log(`DELETE competition result: rowCount=${result.rowCount}`);

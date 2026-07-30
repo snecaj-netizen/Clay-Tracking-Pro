@@ -141,7 +141,7 @@ const EventCard = React.memo(({
   return (
     <div 
       onClick={() => setSelectedEvent(ev)}
-      className={`group relative bg-slate-950/50 border rounded-2xl p-4 transition-all hover:shadow-2xl hover:shadow-orange-600/10 cursor-pointer flex flex-col h-full ${isSelected ? 'border-orange-500 bg-orange-600/5' : 'border-slate-800 hover:border-slate-700'}`}
+      className={`group relative bg-slate-950/50 border rounded-2xl p-3.5 transition-all hover:shadow-2xl hover:shadow-orange-600/10 cursor-pointer flex flex-col h-full ${isSelected ? 'border-orange-500 bg-orange-600/5' : 'border-slate-800 hover:border-slate-700'}`}
     >
       {viewMode === 'managed' && (
         <div className="absolute top-3 right-3 z-10" onClick={e => e.stopPropagation()}>
@@ -910,6 +910,25 @@ const EventsManager: React.FC<EventsManagerProps> = ({
     return managedEvents.filter(ev => ev.is_public);
   }, [managedEvents]);
 
+  const resultsEvents = React.useMemo(() => {
+    const canViewResults = user?.role === 'admin' || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess);
+    if (!canViewResults) return [];
+
+    return events.filter(ev => {
+      if (ev.status !== 'validated' && (!ev.result_count || Number(ev.result_count) === 0)) return false;
+      if (filterSociety && ev.location?.toLowerCase().trim() !== filterSociety.toLowerCase().trim()) return false;
+      if (filterDiscipline && ev.discipline !== filterDiscipline) return false;
+      if (filterYear && ev.start_date && ev.start_date.slice(0, 4) !== filterYear) return false;
+      if (filterMonth && ev.start_date && ev.start_date.slice(0, 7) !== filterMonth) return false;
+      if (user?.role === 'admin' && filterActivation) {
+        const isActivated = !!ev.is_management_enabled;
+        if (filterActivation === 'activated' && !isActivated) return false;
+        if (filterActivation === 'to_activate' && isActivated) return false;
+      }
+      return true;
+    });
+  }, [events, user, hasSocietaAccess, hasTiratoriAccess, filterSociety, filterDiscipline, filterYear, filterMonth, filterActivation]);
+
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => {
     const day = new Date(year, month, 1).getDay();
@@ -967,6 +986,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-poll"></i> {t('results_tab')}
+              {resultsEvents.length > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'results' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {resultsEvents.length}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => setViewMode('managed')} 
@@ -1029,43 +1053,43 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {managedEvents.map(ev => {
               const isPast = isPastEvent(ev);
               const isActivated = ev.is_management_enabled;
               
               return (
-                <div key={ev.id} className={`rounded-2xl border p-4 sm:p-5 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${
+                <div key={ev.id} className={`rounded-2xl border p-3.5 transition-all group shadow-xl relative overflow-hidden flex flex-col h-full ${
                   isActivated && !isPast 
                     ? 'bg-slate-900/80 border-emerald-500/50 ring-1 ring-emerald-500/20 shadow-emerald-500/5 hover:border-emerald-400' 
                     : isPast 
                       ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' 
                       : 'bg-slate-900/80 border-slate-800 hover:border-indigo-500/50'
                 }`}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-600/10 transition-colors"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-600/5 blur-2xl rounded-full -mr-12 -mt-12 group-hover:bg-indigo-600/10 transition-colors"></div>
                   
                   <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-1.5">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[8px] font-black uppercase tracking-widest border border-indigo-500/20">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="px-1.5 py-0.5 rounded-md bg-indigo-600/20 text-indigo-400 text-[8px] font-black uppercase tracking-wider border border-indigo-500/20">
                             {ev.discipline}
                           </span>
                           {(ev.status === 'validated' || ev.is_management_enabled) && (
-                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
+                            <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${ev.status === 'validated' ? 'bg-green-600/20 text-green-400 border-green-500/20' : 'bg-orange-600/20 text-orange-400 border-orange-500/20'}`}>
                               {ev.status === 'validated' ? t('finished_label') : t('live_label')}
                             </span>
                           )}
                           {isPast && (
-                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-widest border border-slate-700">
+                            <span className="px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-wider border border-slate-700">
                               {t('past')}
                             </span>
                           )}
                         </div>
-                        <h3 className="text-lg font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-tight mb-0.5">{ev.name}</h3>
-                        <div className="flex flex-col gap-1 mt-1">
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <i className="fas fa-calendar-alt text-indigo-500/50 w-3"></i>
+                        <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-snug mb-0.5">{ev.name}</h3>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <i className="fas fa-calendar-alt text-indigo-500/50 w-2.5"></i>
                             <span className="whitespace-nowrap italic text-slate-300">
                               {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
                               {ev.end_date && ev.end_date !== ev.start_date && (
@@ -1073,36 +1097,36 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                               )}
                             </span>
                           </p>
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <i className="fas fa-map-marker-alt text-indigo-500/50 w-3"></i>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <i className="fas fa-map-marker-alt text-indigo-500/50 w-2.5"></i>
                             {ev.location || t('field_nd')}
                           </p>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-2.5 mb-3">
-                      <div className="bg-slate-950/50 rounded-xl p-2.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('registered')}</div>
-                        <div className="text-lg font-black text-white">{ev.registration_count || 0}</div>
+                    <div className="grid grid-cols-2 gap-2 mb-2.5">
+                      <div className="bg-slate-950/50 rounded-xl p-1.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
+                        <div className="text-[7px] font-black text-slate-500 uppercase tracking-wider mb-0.5">{t('registered')}</div>
+                        <div className="text-sm font-black text-white">{ev.registration_count || 0}</div>
                       </div>
-                      <div className="bg-slate-950/50 rounded-xl p-2.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
-                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('targets')}</div>
-                        <div className="text-lg font-black text-white">{ev.targets}</div>
+                      <div className="bg-slate-950/50 rounded-xl p-1.5 border border-slate-800/50 text-center flex flex-col items-center justify-center">
+                        <div className="text-[7px] font-black text-slate-500 uppercase tracking-wider mb-0.5">{t('targets')}</div>
+                        <div className="text-sm font-black text-white">{ev.targets}</div>
                       </div>
                     </div>
 
-                      <div className="mt-auto space-y-2">
+                      <div className="mt-auto space-y-1.5">
                         {!ev.is_management_enabled && user?.role !== 'admin' && (
-                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-1.5 mb-1">
-                            <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-1 mb-1">
+                            <p className="text-[8px] font-black text-orange-500 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
                               <i className="fas fa-exclamation-triangle"></i>
                               {t('management_pending_activation')}
                             </p>
                           </div>
                         )}
                         
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-1.5">
                           <button 
                             onClick={() => {
                               if (!ev.is_management_enabled && user?.role !== 'admin') {
@@ -1114,13 +1138,13 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
                             disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                            className={`py-2 rounded-xl text-white text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 rounded-xl text-white text-[8px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center justify-center gap-1 ${
                               !ev.is_management_enabled && user?.role !== 'admin'
                                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-slate-700'
                                 : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
                             }`}
                           >
-                            <i className="fas fa-users-cog text-xs"></i>
+                            <i className="fas fa-users-cog text-[10px]"></i>
                             {t('manage_competition')}
                           </button>
                           <button 
@@ -1134,38 +1158,38 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
                             disabled={!ev.is_management_enabled && user?.role !== 'admin'}
-                            className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all active:scale-95 border flex items-center justify-center gap-1 ${
                               !ev.is_management_enabled && user?.role !== 'admin'
                                 ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                                : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
+                                : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-md shadow-indigo-600/20'
                             }`}
                           >
-                            <i className="fas fa-trophy"></i>
+                            <i className="fas fa-trophy text-[10px]"></i>
                             {t('rankings')}
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-1.5">
                           <button 
                             onClick={() => handleToggleOdt(ev)}
-                            className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all active:scale-95 border flex items-center justify-center gap-1 ${
                               ev.is_odt_public 
                                 ? 'bg-indigo-900/30 text-indigo-500 border-indigo-900/50 hover:bg-indigo-900/50' 
                                 : 'bg-indigo-900/10 text-indigo-400 border-indigo-900/30 hover:bg-indigo-900/20'
                             }`}
                           >
-                            <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'}`}></i>
+                            <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'} text-[10px]`}></i>
                             {ev.is_odt_public ? t('remove_odt') : t('publish_odt')}
                           </button>
                           <button 
                             onClick={() => handleTogglePublic(ev)}
-                            className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all active:scale-95 border flex items-center justify-center gap-1 ${
                               ev.is_public 
                                 ? 'bg-rose-900/30 text-rose-500 border-rose-900/50 hover:bg-rose-900/50' 
                                 : 'bg-emerald-900/30 text-emerald-500 border-emerald-900/50 hover:bg-emerald-900/50'
                             }`}
                           >
-                            <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'}`}></i>
+                            <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'} text-[10px]`}></i>
                             {ev.is_public ? t('remove_from_portal') : t('publish_to_portal')}
                           </button>
                         </div>
@@ -1173,9 +1197,9 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         {(user?.role === 'admin' || (user?.role === 'society' && ev.location === user?.society)) && (
                           <button 
                             onClick={() => handleEdit(ev)}
-                            className="w-full mt-2 py-2 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
+                            className="w-full mt-1 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-[8px] font-black uppercase tracking-wider hover:bg-slate-700 hover:text-white transition-all active:scale-95 border border-slate-700 flex items-center justify-center gap-1"
                           >
-                            <i className="fas fa-edit"></i>
+                            <i className="fas fa-edit text-[10px]"></i>
                             {t('edit_competition')}
                           </button>
                         )}
@@ -1213,6 +1237,11 @@ const EventsManager: React.FC<EventsManagerProps> = ({
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${viewMode === 'results' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-slate-500 hover:text-slate-300'}`}
             >
               <i className="fas fa-poll"></i> {t('results_tab')}
+              {resultsEvents.length > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${viewMode === 'results' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {resultsEvents.length}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => setViewMode('managed')} 
@@ -1267,28 +1296,28 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {portalEvents.map(ev => {
               const isPast = isPastEvent(ev);
               return (
-                <div key={ev.id} className={`rounded-2xl border p-4 sm:p-5 transition-all group shadow-2xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-emerald-500/50'}`}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
+                <div key={ev.id} className={`rounded-2xl border p-3.5 transition-all group shadow-xl relative overflow-hidden flex flex-col h-full ${isPast ? 'bg-slate-950/30 border-slate-700 opacity-60 grayscale hover:opacity-80' : 'bg-slate-900/80 border-slate-800 hover:border-emerald-500/50'}`}>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-600/5 blur-2xl rounded-full -mr-12 -mt-12 group-hover:bg-emerald-600/10 transition-colors"></div>
                   
                   <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-1.5">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-600/20 text-emerald-400 text-[8px] font-black uppercase tracking-widest border border-emerald-500/20">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-600/20 text-emerald-400 text-[8px] font-black uppercase tracking-wider border border-emerald-500/20">
                             {ev.discipline}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 bg-emerald-600/20 text-emerald-400`}>
+                          <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border border-emerald-500/20 bg-emerald-600/20 text-emerald-400`}>
                             {t('portal_tab')}
                           </span>
                         </div>
-                        <h3 className="text-lg font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-emerald-400 transition-colors leading-tight mb-0.5">{ev.name}</h3>
-                        <div className="flex flex-col gap-1 mt-1">
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <i className="fas fa-calendar-alt text-emerald-500/50 w-3"></i>
+                        <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-emerald-400 transition-colors leading-snug mb-0.5">{ev.name}</h3>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <i className="fas fa-calendar-alt text-emerald-500/50 w-2.5"></i>
                             <span className="whitespace-nowrap italic text-slate-300">
                               {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
                               {ev.end_date && ev.end_date !== ev.start_date && (
@@ -1296,36 +1325,36 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                               )}
                             </span>
                           </p>
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <i className="fas fa-map-marker-alt text-emerald-500/50 w-3"></i>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <i className="fas fa-map-marker-alt text-emerald-500/50 w-2.5"></i>
                             {ev.location || t('field_nd')}
                           </p>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="mt-auto space-y-2 pt-4 border-t border-white/5">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="mt-auto space-y-1.5 pt-2 border-t border-white/5">
+                      <div className="grid grid-cols-2 gap-1.5">
                         <button 
                           onClick={() => handleToggleOdt(ev)}
-                          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2.5 ${
+                          className={`w-full py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center justify-center gap-1 ${
                             ev.is_odt_public 
                               ? 'bg-indigo-600 text-white shadow-indigo-600/20' 
                               : 'bg-indigo-900/10 text-indigo-400 border border-indigo-500/20'
                           }`}
                         >
-                          <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'} text-xs`}></i>
+                          <i className={`fas ${ev.is_odt_public ? 'fa-eye-slash' : 'fa-users'} text-[10px]`}></i>
                           {ev.is_odt_public ? t('remove_odt') : t('publish_odt')}
                         </button>
                         <button 
                           onClick={() => handleTogglePublic(ev)}
-                          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2.5 ${
+                          className={`w-full py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center justify-center gap-1 ${
                             ev.is_public 
                               ? 'bg-rose-600 text-white shadow-rose-600/20' 
                               : 'bg-emerald-600 text-white shadow-emerald-600/20'
                           }`}
                         >
-                          <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'} text-xs`}></i>
+                          <i className={`fas ${ev.is_public ? 'fa-eye-slash' : 'fa-share-alt'} text-[10px]`}></i>
                           {ev.is_public ? t('remove_from_portal') : t('publish_to_portal')}
                         </button>
                       </div>
@@ -2781,7 +2810,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
         <div className="space-y-6">
           {renderResultsHeader()}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {filteredEvents.length === 0 ? (
               <div className="col-span-full py-20 text-center bg-slate-950/30 rounded-3xl border-2 border-dashed border-slate-800 flex flex-col items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center text-slate-700 text-2xl">
@@ -2815,34 +2844,34 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }
                     }}
-                    className={`group relative bg-slate-900/50 border ${ev.is_management_enabled ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.15)] animate-in fade-in zoom-in duration-500' : 'border-slate-800'} rounded-3xl overflow-hidden hover:border-orange-500/50 transition-all duration-300 ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:shadow-2xl hover:shadow-orange-500/10' : 'opacity-75 cursor-default'}`}
+                    className={`group relative bg-slate-900/50 border ${ev.is_management_enabled ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.15)] animate-in fade-in zoom-in duration-500' : 'border-slate-800'} rounded-2xl overflow-hidden hover:border-orange-500/50 transition-all duration-300 ${((user?.role === 'admin') || (user?.role === 'society' && hasSocietaAccess) || (user?.role === 'user' && hasTiratoriAccess)) ? 'cursor-pointer hover:shadow-2xl hover:shadow-orange-500/10' : 'opacity-75 cursor-default'}`}
                   >
                     {/* Results Badge */}
                     {Number(ev.result_count) > 0 && (
-                      <div className="absolute top-4 right-4 z-10">
-                        <div className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-orange-500/20 flex items-center gap-1 animate-pulse">
-                          <i className="fas fa-check-circle"></i>
+                      <div className="absolute top-2.5 right-2.5 z-10">
+                        <div className="bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg shadow-orange-500/20 flex items-center gap-1 animate-pulse">
+                          <i className="fas fa-check-circle text-[8px]"></i>
                           {t('results_uploaded')}
                         </div>
                       </div>
                     )}
-                    <div className="p-4 sm:p-5">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h3 className="font-black text-white text-lg group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-tight mb-0.5">{ev.name}</h3>
-                          <div className="flex flex-col gap-1">
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                              <i className="fas fa-map-marker-alt text-orange-500/50 w-3"></i> {ev.location || t('field_nd')}
+                    <div className="p-3 sm:p-3.5">
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div className="flex-1 pr-10">
+                          <h3 className="font-black text-white text-xs sm:text-sm group-hover:text-orange-500 transition-colors uppercase tracking-tight leading-snug mb-0.5 line-clamp-2">{ev.name}</h3>
+                          <div className="flex flex-col gap-0.5">
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                              <i className="fas fa-map-marker-alt text-orange-500/50 w-2.5"></i> {ev.location || t('field_nd')}
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
-                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{t('competition_date_label')}</p>
-                          <p className="text-xs font-bold text-white flex items-center gap-2">
-                            <i className="far fa-calendar text-orange-500"></i>
+                      <div className="grid grid-cols-2 gap-2 mb-2.5">
+                        <div className="bg-slate-950/50 rounded-xl p-2 border border-slate-800/50">
+                          <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-0.5">{t('competition_date_label')}</p>
+                          <p className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5">
+                            <i className="far fa-calendar text-orange-500 text-[10px]"></i>
                             <span className="whitespace-nowrap">
                               {new Date(ev.start_date || '').toLocaleDateString(language === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' })}
                               {ev.end_date && ev.end_date !== ev.start_date && (
@@ -2851,15 +2880,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                             </span>
                           </p>
                         </div>
-                        <div className="bg-slate-950/50 rounded-2xl p-2.5 border border-slate-800/50">
-                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{t('status_label')}</p>
-                          <div className="flex items-center gap-2">
+                        <div className="bg-slate-950/50 rounded-xl p-2 border border-slate-800/50">
+                          <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-0.5">{t('status_label')}</p>
+                          <div className="flex items-center gap-1.5">
                             {ev.status === 'validated' ? (
-                              <span className="text-[9px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1">
+                              <span className="text-[8px] sm:text-[9px] font-black text-green-500 uppercase tracking-wider flex items-center gap-1">
                                 <i className="fas fa-check-circle"></i> {t('validated_label')}
                               </span>
                             ) : ev.is_management_enabled ? (
-                              <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
+                              <span className="text-[8px] sm:text-[9px] font-black text-orange-500 uppercase tracking-wider flex items-center gap-1">
                                 <i className="fas fa-clock"></i> {t('live_label')}
                               </span>
                             ) : null}
@@ -2867,25 +2896,25 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-800/50">
-                        <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-[9px] font-black uppercase tracking-widest">
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-wider">
                           {ev.discipline}
                         </span>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {isAdmin && ev.status === 'validated' && (
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleReopen(ev.id);
                               }}
-                              className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/5"
+                              className="w-6 h-6 rounded-md bg-blue-600/10 text-blue-500 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-600/5"
                               title={t('reopen_for_edit')}
                             >
-                              <i className="fas fa-unlock text-xs"></i>
+                              <i className="fas fa-unlock text-[10px]"></i>
                             </button>
                           )}
-                          <button className="text-orange-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-transform">
+                          <button className="text-orange-500 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition-transform">
                             {canManage ? t('manage_label') : t('view_ranking')}
                           </button>
                         </div>
@@ -2893,7 +2922,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                     </div>
                     
                     {/* Decorative element */}
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-orange-500/10 transition-colors"></div>
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/5 blur-2xl rounded-full -mr-10 -mt-10 group-hover:bg-orange-500/10 transition-colors"></div>
                   </div>
                 );
               })
@@ -2939,7 +2968,7 @@ const EventsManager: React.FC<EventsManagerProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {filteredEvents.length === 0 ? (
               <div className="col-span-full py-12 text-center text-slate-600 italic text-sm bg-slate-950/30 rounded-2xl border border-dashed border-slate-800">
                 {t('no_events_found')}

@@ -804,11 +804,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       });
 
       const payload = {
-        id: `evt_${event.id}_${row.userId}_${Date.now()}`,
+        id: `evt_${event.id}_${row.userId}`,
         userId: row.userId,
         eventId: event.id,
         name: event.name,
         date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        endDate: event.end_date ? event.end_date.split('T')[0] : (event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0]),
         location: event.location,
         discipline: event.discipline,
         level: event.type,
@@ -823,7 +824,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       };
 
       try {
-        const res = await fetch('/api/competitions', {
+        const res = await fetch('/api/competitions?from_event_management=true', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1627,11 +1628,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       const averagePerSeries = totalScore / completedSeriesCount;
       
       const payload = {
-        id: resultIdToUse || `evt_${event.id}_${selectedUserId}_${Date.now()}`,
+        id: resultIdToUse || `evt_${event.id}_${selectedUserId}`,
         userId: parseInt(selectedUserId),
         eventId: event.id,
         name: event.name,
         date: event.start_date.split('T')[0],
+        endDate: event.end_date ? event.end_date.split('T')[0] : event.start_date.split('T')[0],
         location: event.location,
         discipline: event.discipline,
         level: event.type,
@@ -1646,7 +1648,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       };
 
       const isUpdate = !!resultIdToUse;
-      const res = await fetch(isUpdate ? `/api/competitions/${resultIdToUse}` : '/api/competitions', {
+      const res = await fetch(isUpdate ? `/api/competitions/${resultIdToUse}?from_event_management=true` : '/api/competitions?from_event_management=true', {
         method: isUpdate ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1843,7 +1845,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
   const handleDeleteResult = async (id: string) => {
     const confirmDelete = () => {
-      fetch(`/api/competitions/${id}`, {
+      fetch(`/api/competitions/${id}?from_event_management=true`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       }).then(res => {

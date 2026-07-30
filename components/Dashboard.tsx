@@ -151,10 +151,59 @@ const Dashboard: React.FC<DashboardProps> = ({
         const results = await Promise.all(standingsPromises);
         const filteredResults = results.filter(Boolean);
         setRegionalStandings(filteredResults);
+
+        // Save lightweight version in sessionStorage to prevent QuotaExceededError
         try {
-          sessionStorage.setItem('clay_tracker_regional_standings', JSON.stringify(filteredResults));
+          const createLightweightCache = (items: any[]) => {
+            return items.map((item: any) => {
+              if (!item || !item.allRankingData) return item;
+              const { championship, myStanding, allRankingData } = item;
+              const lightweightGrouped: Record<string, any[]> = {};
+              if (allRankingData.groupedRankings) {
+                for (const [key, shooters] of Object.entries(allRankingData.groupedRankings as Record<string, any[]>)) {
+                  lightweightGrouped[key] = (shooters || []).slice(0, 5).map((s: any) => ({
+                    id: s.id,
+                    shooterId: s.shooterId || s.id,
+                    name: s.name,
+                    surname: s.surname,
+                    shooter_code: s.shooter_code,
+                    category: s.category,
+                    qualification: s.qualification,
+                    position: s.position,
+                    total: s.total,
+                    totalPenalties: s.totalPenalties,
+                    totalTargetsHit: s.totalTargetsHit,
+                    bestScores: s.bestScores,
+                    classificationMode: s.classificationMode,
+                    classificationValue: s.classificationValue,
+                    participatedCount: s.participatedCount,
+                    isClassified: s.isClassified,
+                  }));
+                }
+              }
+              return {
+                championship,
+                myStanding,
+                isLightweightCache: true,
+                allRankingData: {
+                  championship: allRankingData.championship,
+                  groupedRankings: lightweightGrouped,
+                  classifiedSocieties: (allRankingData.classifiedSocieties || []).slice(0, 5),
+                  trials: allRankingData.trials || [],
+                }
+              };
+            });
+          };
+
+          const lightweightData = createLightweightCache(filteredResults);
+          sessionStorage.setItem('clay_tracker_regional_standings', JSON.stringify(lightweightData));
         } catch (e) {
-          console.error('Error saving standings cache:', e);
+          try {
+            sessionStorage.removeItem('clay_tracker_champs_list');
+            sessionStorage.removeItem('clay_tracker_champs_events');
+            sessionStorage.removeItem('clay_tracker_regional_standings');
+          } catch (cleanErr) {}
+          console.warn('Unable to save standings cache to sessionStorage (quota exceeded):', e);
         }
       }
     } catch (err) {
@@ -720,7 +769,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-[10px] text-slate-500 font-black uppercase tracking-wider">Caricamento classifiche regionali...</span>
           </div>
         ) : regionalStandings.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {regionalStandings.map((stand, idx) => {
               const rc = stand.championship;
               const mine = stand.myStanding;
@@ -729,120 +778,141 @@ const Dashboard: React.FC<DashboardProps> = ({
               const groupShoot = keyGroup ? (allData.groupedRankings?.[keyGroup] || []) : [];
 
               return (
-                <div key={rc.id} className="bg-slate-900 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-orange-600/5 rounded-full blur-2xl"></div>
+                <div key={rc?.id || `rc_${idx}`} className="bg-slate-900 border border-slate-700/60 p-3.5 rounded-xl shadow-lg space-y-3 relative overflow-hidden group flex flex-col justify-between">
+                  <div className="space-y-2.5">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-orange-600/5 rounded-full blur-xl pointer-events-none"></div>
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[8px] font-black uppercase bg-orange-600/25 text-orange-400 px-2 py-0.5 rounded border border-orange-500/25">
-                          {rc.season === 'Invernale' ? '❄️ Invernale' : '☀️ Estivo'}
-                        </span>
-                        <span className="text-[8px] font-mono text-slate-500">{rc.year}</span>
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1 mb-1 flex-wrap">
+                          <span className="text-[7.5px] font-black uppercase bg-orange-600/25 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/25">
+                            {rc.season === 'Invernale' ? '❄️ Invernale' : '☀️ Estivo'}
+                          </span>
+                          <span className="text-[7.5px] font-mono text-slate-500">{rc.year}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-white uppercase tracking-wider truncate" title={rc.name}>{rc.name}</h4>
+                        <span className="text-[8.5px] font-medium text-slate-500 block truncate">{rc.discipline}</span>
                       </div>
-                      <h4 className="text-xs font-black text-white uppercase tracking-wider">{rc.name}</h4>
-                      <span className="text-[9px] font-medium text-slate-500">{rc.discipline}</span>
+
+                      <button
+                        onClick={async () => {
+                          if (allData && !stand.isLightweightCache && Object.keys(allData).length > 0) {
+                            setSelectedRegionalRanking(allData);
+                          } else {
+                            const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+                            if (token && rc?.id) {
+                              try {
+                                const rRes = await fetch(`/api/regional-championships/${rc.id}/ranking`, {
+                                  headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                if (rRes.ok) {
+                                  const fullData = await rRes.json();
+                                  setSelectedRegionalRanking(fullData);
+                                  return;
+                                }
+                              } catch (e) {
+                                console.error('Error fetching full ranking details for modal:', e);
+                              }
+                            }
+                            setSelectedRegionalRanking(allData);
+                          }
+                        }}
+                        className="shrink-0 px-2 py-1 bg-orange-600 hover:bg-orange-500 border border-orange-500/20 text-white rounded-lg text-[8.5px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 relative z-10 shadow-sm"
+                        title="Vedi tutte le classifiche"
+                      >
+                        <i className="fas fa-trophy pointer-events-none text-[8.5px]"></i>
+                        <span>Classifiche</span>
+                      </button>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setSelectedRegionalRanking(allData);
-                      }}
-                      className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 border border-orange-500/20 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 relative z-10"
-                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                    >
-                      <i className="fas fa-trophy pointer-events-none"></i>
-                      Vedi tutte le classifiche
-                    </button>
-                  </div>
-
-                  {mine ? (
-                    <div className="space-y-4 pt-2">
-                      {/* My standing badge display */}
-                      <div className="bg-gradient-to-r from-orange-600/10 to-transparent border border-orange-500/20 p-3.5 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Il Tuo Posizionamento</p>
-                        <div className="flex items-baseline gap-2 mt-1">
-                          <span className="text-2xl font-black text-white">
-                            {mine.position ? `${mine.position}°` : '---'}{' '}
-                            <span className="text-xs text-orange-400 uppercase font-bold">In Classifica</span>
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-500">
-                            ({mine.classificationMode === 'categoria' ? 'Cat.' : 'Qual.'} {mine.classificationValue})
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-400 font-mono">
-                          <span>Penalità: <b className="text-orange-500 font-bold">{mine.totalPenalties}</b></span>
-                          <span>Centrati: <b className="text-slate-300 font-bold">{mine.totalTargetsHit}</b></span>
-                          <span>Prove: <b className="text-slate-300 font-bold">{mine.participatedCount}/4</b></span>
-                        </div>
-                      </div>
-
-                      {!mine.isClassified && mine.participatedCount > 0 && (
-                        <div className="bg-orange-950/25 border border-orange-500/10 p-2.5 rounded-xl">
-                          <p className="text-[8.5px] text-orange-400 font-bold leading-normal uppercase">
-                            ⚙️ Classifica Provvisoria
-                          </p>
-                          <p className="text-[8px] text-slate-400 mt-0.5 leading-relaxed">
-                            Sei presente in classifica provvisoria. Devi disputare almeno <b>3 prove</b> per qualificarti a quella finale.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Display podium snippet of my group */}
-                      {groupShoot.length > 0 && (
-                        <div className="bg-slate-950/40 border border-slate-800 p-3 rounded-xl">
-                          <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-2">Podio Attuale {mine.classificationValue}</span>
-                          <div className="space-y-1.5">
-                            {groupShoot.slice(0, 3).map((sh: any, shIdx: number) => {
-                              const isMe = sh.shooterId === mine.shooterId;
-                              return (
-                                <div key={sh.shooterId} className={`flex items-center justify-between text-[10px] p-1.5 rounded ${isMe ? 'bg-orange-600/15 border border-orange-500/25 font-bold' : ''}`}>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-mono">{shIdx === 0 ? '🥇' : shIdx === 1 ? '🥈' : '🥉'}</span>
-                                    <span className={isMe ? 'text-orange-400' : 'text-slate-300'}>{sh.surname} {sh.name}</span>
-                                    {isMe && <span className="text-[7px] font-black uppercase bg-orange-600 text-white px-1 rounded">Tu</span>}
-                                  </div>
-                                  <span className="font-mono text-slate-400">{sh.totalPenalties} pen.</span>
-                                </div>
-                              );
-                            })}
+                    {mine ? (
+                      <div className="space-y-2 pt-0.5">
+                        {/* My standing badge display */}
+                        <div className="bg-gradient-to-r from-orange-600/10 to-transparent border border-orange-500/20 p-2.5 rounded-lg">
+                          <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-wide">Il Tuo Posizionamento</p>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-lg font-black text-white">
+                              {mine.position ? `${mine.position}°` : '---'}
+                            </span>
+                            <span className="text-[9px] text-orange-400 uppercase font-bold">In Classifica</span>
+                            <span className="text-[8.5px] font-mono text-slate-500 ml-auto">
+                              ({mine.classificationMode === 'categoria' ? 'Cat.' : 'Qual.'} {mine.classificationValue})
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-orange-500/10 text-[8.5px] text-slate-400 font-mono">
+                            <span>Pen: <b className="text-orange-500 font-bold">{mine.totalPenalties}</b></span>
+                            <span>Hit: <b className="text-slate-300 font-bold">{mine.totalTargetsHit}</b></span>
+                            <span>Prove: <b className="text-slate-300 font-bold">{mine.participatedCount}/4</b></span>
                           </div>
                         </div>
-                      )}
 
-                      {/* Trials brief */}
-                      <div className="grid grid-cols-4 gap-1.5 text-center text-[9px] font-mono">
-                        {[1, 2, 3, 4].map(trialIdx => {
-                          const scr = mine.trialScores[`trial${trialIdx}` as keyof typeof mine.trialScores];
-                          const pen = mine.trialPenalties[`trial${trialIdx}` as keyof typeof mine.trialPenalties];
-                          const disc = mine.discardedTrialIdx === trialIdx;
+                        {!mine.isClassified && mine.participatedCount > 0 && (
+                          <div className="bg-orange-950/25 border border-orange-500/10 p-2 rounded-lg">
+                            <p className="text-[8px] text-orange-400 font-bold leading-tight uppercase flex items-center gap-1">
+                              <span>⚙️</span> Classifica Provvisoria
+                            </p>
+                            <p className="text-[8px] text-slate-400 mt-0.5 leading-tight">
+                              Disputa almeno <b>3 prove</b> per qualificarti alla finale.
+                            </p>
+                          </div>
+                        )}
 
-                          return (
-                            <div key={trialIdx} className="bg-slate-950/50 p-1.5 rounded border border-slate-850">
-                              <span className="text-[8px] text-slate-500 block">P{trialIdx}</span>
-                              {scr !== null ? (
-                                <div className={disc ? 'line-through text-slate-600' : ''}>
-                                  <span className="text-slate-300 bold block">{scr}</span>
-                                  <span className="text-[8px] text-slate-500">({pen}p)</span>
-                                </div>
-                              ) : (
-                                <span className="text-slate-600">-</span>
-                              )}
-                              {disc && <span className="text-[7px] text-red-500 font-bold uppercase block scale-90">Scarto</span>}
+                        {/* Display podium snippet of my group */}
+                        {groupShoot.length > 0 && (
+                          <div className="bg-slate-950/40 border border-slate-800 p-2 rounded-lg">
+                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Podio {mine.classificationValue}</span>
+                            <div className="space-y-1">
+                              {groupShoot.slice(0, 3).map((sh: any, shIdx: number) => {
+                                const isMe = (sh.shooterId || sh.id) === mine.shooterId;
+                                return (
+                                  <div key={sh.shooterId || sh.id || `sh_${shIdx}`} className={`flex items-center justify-between text-[8.5px] px-1.5 py-0.5 rounded ${isMe ? 'bg-orange-600/15 border border-orange-500/25 font-bold' : ''}`}>
+                                    <div className="flex items-center gap-1 min-w-0 truncate">
+                                      <span className="font-mono text-[8.5px]">{shIdx === 0 ? '🥇' : shIdx === 1 ? '🥈' : '🥉'}</span>
+                                      <span className={`truncate ${isMe ? 'text-orange-400' : 'text-slate-300'}`}>{sh.surname} {sh.name}</span>
+                                      {isMe && <span className="text-[6.5px] font-black uppercase bg-orange-600 text-white px-1 rounded shrink-0">Tu</span>}
+                                    </div>
+                                    <span className="font-mono text-slate-400 text-[8px] shrink-0 ml-1">{sh.totalPenalties} pen.</span>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
+                          </div>
+                        )}
+
+                        {/* Trials brief */}
+                        <div className="grid grid-cols-4 gap-1 text-center text-[8px] font-mono">
+                          {[1, 2, 3, 4].map(trialIdx => {
+                            const scr = mine.trialScores[`trial${trialIdx}` as keyof typeof mine.trialScores];
+                            const pen = mine.trialPenalties[`trial${trialIdx}` as keyof typeof mine.trialPenalties];
+                            const disc = mine.discardedTrialIdx === trialIdx;
+
+                            return (
+                              <div key={trialIdx} className="bg-slate-950/50 p-1 rounded border border-slate-850">
+                                <span className="text-[7.5px] text-slate-500 block">P{trialIdx}</span>
+                                {scr !== null ? (
+                                  <div className={disc ? 'line-through text-slate-600' : ''}>
+                                    <span className="text-slate-300 font-bold block">{scr}</span>
+                                    <span className="text-[7.5px] text-slate-500">({pen}p)</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-600">-</span>
+                                )}
+                                {disc && <span className="text-[6.5px] text-red-500 font-bold uppercase block">Scarto</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-950/20 border-2 border-dashed border-slate-800/85 p-6 rounded-xl text-center space-y-2">
-                      <i className="fas fa-exclamation-triangle text-slate-600 text-xs"></i>
-                      <p className="text-[10px] text-slate-400 leading-relaxed font-bold">Non qualificat{user?.gender === 'F' ? 'a' : 'o'}</p>
-                      <p className="text-[9px] text-slate-500 leading-snug">
-                        Devi disputare almeno 3 prove per qualificarti. Finora hai registrato prove regionali non collegate o non caricate.
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="bg-slate-950/20 border-2 border-dashed border-slate-800/85 p-3 rounded-xl text-center space-y-1 my-auto">
+                        <i className="fas fa-exclamation-triangle text-slate-600 text-xs"></i>
+                        <p className="text-[9px] text-slate-400 leading-relaxed font-bold">Non qualificat{user?.gender === 'F' ? 'a' : 'o'}</p>
+                        <p className="text-[8px] text-slate-500 leading-snug">
+                          Devi disputare almeno 3 prove per qualificarti.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -1452,10 +1522,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800 bg-slate-950/30 text-slate-300">
-                                  {shootersInGroup.map((s: any) => {
+                                  {shootersInGroup.map((s: any, sIdx: number) => {
                                     const isMe = s.shooterId === user?.id || (user?.surname && s.surname?.toLowerCase() === user.surname?.toLowerCase() && s.name?.toLowerCase() === user.name?.toLowerCase());
                                     return (
-                                      <tr key={s.shooterId} className={`hover:bg-slate-900/30 transition ${isMe ? 'bg-orange-600/5 font-bold border-l-2 border-l-orange-500' : ''}`}>
+                                      <tr key={s.shooterId || s.id || `sh_${sIdx}`} className={`hover:bg-slate-900/30 transition ${isMe ? 'bg-orange-600/5 font-bold border-l-2 border-l-orange-500' : ''}`}>
                                         <td className="py-2.5 px-4 font-mono font-black text-center text-slate-400">
                                           {s.position === 1 ? '🥇 1' : s.position === 2 ? '🥈 2' : s.position === 3 ? '🥉 3' : `${s.position}°`}
                                         </td>
@@ -1702,8 +1772,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div id="section-unclassified" className="bg-slate-950/20 border border-slate-800 p-4 rounded-xl scroll-mt-6">
                     <span className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2 font-sans">Tiratori Iscritti in Attesa di Qualificazione (meno di 3 prove):</span>
                     <div className="flex flex-wrap gap-2">
-                      {unclassifiedSec.map((s: any) => (
-                        <span key={s.shooterId} className="px-2.5 py-1 bg-slate-900/60 text-slate-400 rounded-lg text-xs font-medium border border-slate-800 font-sans">
+                      {unclassifiedSec.map((s: any, sIdx: number) => (
+                        <span key={s.shooterId || s.id || `unclass_${sIdx}`} className="px-2.5 py-1 bg-slate-900/60 text-slate-400 rounded-lg text-xs font-medium border border-slate-800 font-sans">
                           {s.surname} {s.name} ({s.participatedCount} prove)
                         </span>
                       ))}
