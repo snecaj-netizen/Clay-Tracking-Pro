@@ -8156,23 +8156,40 @@ app.put('/api/competitions/:id', authenticateToken, async (req: any, res) => {
 
     const isEventManagement = req.query.from_event_management === 'true';
 
-    // If updating a competition linked to an official event outside Event Management, PREVENT overwriting official event fields
+    // If updating a competition linked to an official event outside Event Management, PREVENT overwriting official event header metadata (name, date, location, discipline)
     if (compEventId && !isEventManagement) {
       name = existing.name;
       date = existing.date;
       endDate = existing.enddate || null;
       location = existing.location;
       discipline = existing.discipline;
-      scores = existing.scores ? (typeof existing.scores === 'string' ? JSON.parse(existing.scores) : existing.scores) : [];
-      detailedScores = existing.detailedscores ? (typeof existing.detailedscores === 'string' ? JSON.parse(existing.detailedscores) : existing.detailedscores) : null;
-      totalScore = existing.totalscore !== null ? existing.totalscore : 0;
-      totalTargets = existing.totaltargets !== null ? existing.totaltargets : 100;
-      averagePerSeries = existing.averageperseries !== null ? existing.averageperseries : 0;
-      position = existing.position || null;
-      shootOff = existing.shoot_off;
+      // Allow scores, detailedScores, totalScore, totalTargets, averagePerSeries, position, shootOff, and seriesFields to be updated if provided in body
+      if (c.scores === undefined) {
+        scores = existing.scores ? (typeof existing.scores === 'string' ? JSON.parse(existing.scores) : existing.scores) : [];
+      }
+      if (c.detailedScores === undefined) {
+        detailedScores = existing.detailedscores ? (typeof existing.detailedscores === 'string' ? JSON.parse(existing.detailedscores) : existing.detailedscores) : null;
+      }
+      if (c.totalScore === undefined) {
+        totalScore = existing.totalscore !== null ? existing.totalscore : 0;
+      }
+      if (c.totalTargets === undefined) {
+        totalTargets = existing.totaltargets !== null ? existing.totaltargets : 100;
+      }
+      if (c.averagePerSeries === undefined) {
+        averagePerSeries = existing.averageperseries !== null ? existing.averageperseries : 0;
+      }
+      if (c.position === undefined) {
+        position = existing.position || null;
+      }
+      if (c.shootOff === undefined) {
+        shootOff = existing.shoot_off;
+      }
+      if (c.seriesFields === undefined) {
+        seriesFields = existing.series_fields ? (typeof existing.series_fields === 'string' ? JSON.parse(existing.series_fields) : existing.series_fields) : null;
+      }
       finalTeamId = existing.team_id;
       finalTeamName = existing.team_name;
-      seriesFields = existing.series_fields ? (typeof existing.series_fields === 'string' ? JSON.parse(existing.series_fields) : existing.series_fields) : null;
     }
 
     // Personal fields (protect from being overwritten with defaults/null/zeros if omitted)

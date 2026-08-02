@@ -477,7 +477,16 @@ const App: React.FC = () => {
         }
 
         try {
-          const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }, signal });
+          const separator = url.includes('?') ? '&' : '?';
+          const fetchUrl = `${url}${separator}_t=${Date.now()}`;
+          const res = await fetch(fetchUrl, { 
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }, 
+            signal 
+          });
           if (res.status === 401 || res.status === 403) {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('auth_user');
@@ -669,6 +678,9 @@ const App: React.FC = () => {
       triggerToast?.(t('sync_error'), 'error');
     } else if (processedIds.length > 0) {
       triggerToast?.(t('sync_complete'), 'success');
+    }
+
+    if (navigator.onLine) {
       fetchData();
     }
   }, [isSyncing, token, triggerToast, fetchData, t, triggerOfflineStateUpdate]);
@@ -686,12 +698,26 @@ const App: React.FC = () => {
   }, [updatePendingCount, triggerOfflineStateUpdate]);
 
   useEffect(() => {
-    const handleOnline = () => {
-      syncOfflineData();
+    const handleOnline = async () => {
+      await syncOfflineData();
+      if (navigator.onLine) {
+        fetchData();
+      }
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        syncOfflineData().then(() => fetchData());
+      }
+    };
+
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [syncOfflineData]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [syncOfflineData, fetchData]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -881,11 +907,10 @@ const App: React.FC = () => {
         try {
           const cacheKey = 'cached__api_competitions';
           const cachedStr = localStorage.getItem(cacheKey);
-          if (cachedStr) {
-            const cached: Competition[] = JSON.parse(cachedStr);
-            const nextCached = !isEdit ? [compToSave, ...cached] : cached.map(c => c.id === compToSave.id ? compToSave : c);
-            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
-          }
+          const cached: Competition[] = cachedStr ? JSON.parse(cachedStr) : competitionsRaw;
+          const isFound = cached.some(c => c.id === compToSave.id);
+          const nextCached = isFound ? cached.map(c => c.id === compToSave.id ? compToSave : c) : [compToSave, ...cached];
+          localStorage.setItem(cacheKey, JSON.stringify(nextCached));
         } catch (e) {
           console.error('Error updating cache:', e);
         }
@@ -927,11 +952,10 @@ const App: React.FC = () => {
         try {
           const cacheKey = 'cached__api_competitions';
           const cachedStr = localStorage.getItem(cacheKey);
-          if (cachedStr) {
-            const cached: Competition[] = JSON.parse(cachedStr);
-            const nextCached = !isEdit ? [compToSave, ...cached] : cached.map(c => c.id === compToSave.id ? compToSave : c);
-            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
-          }
+          const cached: Competition[] = cachedStr ? JSON.parse(cachedStr) : competitionsRaw;
+          const isFound = cached.some(c => c.id === compToSave.id);
+          const nextCached = isFound ? cached.map(c => c.id === compToSave.id ? compToSave : c) : [compToSave, ...cached];
+          localStorage.setItem(cacheKey, JSON.stringify(nextCached));
         } catch (e) {}
 
         // Show success toast
@@ -1008,11 +1032,9 @@ const App: React.FC = () => {
         try {
           const cacheKey = 'cached__api_competitions';
           const cachedStr = localStorage.getItem(cacheKey);
-          if (cachedStr) {
-            const cached: Competition[] = JSON.parse(cachedStr);
-            const nextCached = cached.filter(c => c.id !== id);
-            localStorage.setItem(cacheKey, JSON.stringify(nextCached));
-          }
+          const cached: Competition[] = cachedStr ? JSON.parse(cachedStr) : competitionsRaw;
+          const nextCached = cached.filter(c => c.id !== id);
+          localStorage.setItem(cacheKey, JSON.stringify(nextCached));
         } catch (e) {
           console.error('Error updating cache:', e);
         }
