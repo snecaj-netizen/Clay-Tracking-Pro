@@ -124,10 +124,25 @@ const UpdateNotification: React.FC = () => {
               </div>
               
               <div className="flex-1 min-w-0">
-                <h4 className="text-white font-bold text-sm tracking-tight mb-1">Aggiornamento Disponibile</h4>
-                <p className="text-slate-300 text-xs leading-relaxed mb-4">
-                  È stata pubblicata una nuova versione di Clay Performance. Aggiorna l'applicazione per sbloccare le ultime novità e miglioramenti.
+                <h4 className="text-white font-bold text-sm tracking-tight mb-1">Nuova Versione Disponibile</h4>
+                <p className="text-slate-300 text-xs leading-relaxed mb-3">
+                  È disponibile un aggiornamento con importanti miglioramenti:
                 </p>
+
+                <ul className="space-y-1 mb-4 text-[11px] text-slate-300">
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-orange-400 font-bold">•</span>
+                    <span><strong>Coach AI Offline:</strong> Salva le chat e i consigli del coach per consultarli anche senza connessione.</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-orange-400 font-bold">•</span>
+                    <span><strong>Sincronizzazione "Le Mie Gare":</strong> Gestione migliorata dei risultati offline e aggiornamento automatico al ritorno online.</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-orange-400 font-bold">•</span>
+                    <span><strong>Stabilità e Prestazioni:</strong> Ottimizzazioni generali e correzioni di piccoli bug.</span>
+                  </li>
+                </ul>
                 
                 <div className="flex gap-2.5">
                   <button 

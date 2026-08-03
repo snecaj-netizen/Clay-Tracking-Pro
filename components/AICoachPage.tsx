@@ -28,6 +28,42 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   const [coachStatus, setCoachStatus] = useState<'idle' | 'thinking'>('idle');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const [activeTab, setActiveTab] = useState<'chat' | 'saved'>('chat');
+  const [savedChats, setSavedChats] = useState<Array<{ id: string; question: string; answer: string; date: string }>>(() => {
+    try {
+      const stored = localStorage.getItem('clay_tracker_saved_coach_chats');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveExchange = (question: string, answer: string) => {
+    const newItem = {
+      id: 'chat_' + Date.now() + Math.random().toString(36).substr(2, 5),
+      question,
+      answer,
+      date: new Date().toLocaleString()
+    };
+    const updated = [newItem, ...savedChats];
+    setSavedChats(updated);
+    try {
+      localStorage.setItem('clay_tracker_saved_coach_chats', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error saving chat to localStorage:', e);
+    }
+  };
+
+  const removeSavedChat = (id: string) => {
+    const updated = savedChats.filter(c => c.id !== id);
+    setSavedChats(updated);
+    try {
+      localStorage.setItem('clay_tracker_saved_coach_chats', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error removing saved chat:', e);
+    }
+  };
+
   const scrollToBottom = (smooth = true) => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
@@ -189,8 +225,8 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   return (
     <div className="flex flex-col w-full max-w-5xl mx-auto flex-1 min-h-[calc(100dvh-12rem)] sm:min-h-[calc(100dvh-14rem)]">
       {/* Coach Header */}
-      <div className="bg-slate-900 border border-slate-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-xl flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 sm:gap-4">
+      <div className="bg-slate-900 border border-slate-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
           <div className="relative">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/20">
               <i className="fas fa-user-tie text-xl sm:text-2xl"></i>
@@ -206,79 +242,173 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 w-full sm:w-auto justify-center">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              activeTab === 'chat' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <i className="fas fa-comments"></i>
+            <span>Chat</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('saved')}
+            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              activeTab === 'saved' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <i className="fas fa-bookmark"></i>
+            <span>Consigli Salvati ({savedChats.length})</span>
+          </button>
+        </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
-        <div 
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
-        >
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-500`}>
-              <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl ${
-                m.role === 'user' 
-                  ? 'bg-orange-600 text-white rounded-tr-none shadow-lg shadow-orange-600/20' 
-                  : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
-              }`}>
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{m.text}</ReactMarkdown>
-                </div>
-                <div className={`text-[9px] mt-2 font-bold uppercase tracking-widest opacity-50 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
+      {activeTab === 'saved' ? (
+        <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm p-4 sm:p-6 overflow-y-auto space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">Consigli e Conversazioni Salvate</h3>
+              <p className="text-[10px] text-slate-500">Disponibili per la consultazione offline in qualsiasi momento.</p>
             </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start animate-pulse">
-              <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-700">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
-                </div>
+            <span className="text-xs font-mono bg-slate-800 text-orange-400 px-2.5 py-1 rounded-lg border border-slate-700">
+              {savedChats.length} {savedChats.length === 1 ? 'Salvato' : 'Salvati'}
+            </span>
+          </div>
+
+          {savedChats.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-1 py-16 text-center space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-600 text-2xl">
+                <i className="fas fa-bookmark"></i>
               </div>
+              <p className="text-sm font-bold text-slate-400">Nessun consiglio salvato</p>
+              <p className="text-xs text-slate-500 max-w-sm">
+                Durante la chat con il coach AI, clicca sul pulsante "Salva per offline" in qualsiasi risposta per ritrovarla qui anche senza connessione internet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {savedChats.map((item) => (
+                <div key={item.id} className="bg-slate-900 border border-slate-700/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-lg relative group">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                    <span>📅 {item.date}</span>
+                    <button
+                      onClick={() => removeSavedChat(item.id)}
+                      className="text-red-400 hover:text-red-300 transition p-1 flex items-center gap-1"
+                      title="Rimuovi dai salvati"
+                    >
+                      <i className="fas fa-trash-alt"></i> Rimuovi
+                    </button>
+                  </div>
+                  
+                  <div className="bg-orange-600/10 border border-orange-500/20 p-3 rounded-xl">
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-wide mb-1">Domanda:</p>
+                    <p className="text-xs text-white font-medium">{item.question}</p>
+                  </div>
+
+                  <div className="bg-slate-950/60 border border-slate-800 p-3.5 rounded-xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1.5">Risposta del Coach:</p>
+                    <div className="prose prose-invert prose-sm max-w-none text-slate-300 text-xs">
+                      <ReactMarkdown>{item.answer}</ReactMarkdown>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
+      ) : (
+        /* Chat Area */
+        <div className="flex-1 bg-slate-900/50 border border-slate-600 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
+          >
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-500`}>
+                <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl ${
+                  m.role === 'user' 
+                    ? 'bg-orange-600 text-white rounded-tr-none shadow-lg shadow-orange-600/20' 
+                    : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
+                }`}>
+                  <div className="prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown>{m.text}</ReactMarkdown>
+                  </div>
+                  
+                  {m.role === 'model' && i > 0 && messages[i - 1]?.role === 'user' && (
+                    <div className="mt-3 pt-2 border-t border-slate-700/60 flex items-center justify-between">
+                      <span className="text-[9px] text-slate-400 font-mono">
+                        {savedChats.some(s => s.question === messages[i - 1].text && s.answer === m.text) ? '✅ Salvato offline' : ''}
+                      </span>
+                      <button
+                        onClick={() => saveExchange(messages[i - 1].text, m.text)}
+                        disabled={savedChats.some(s => s.question === messages[i - 1].text && s.answer === m.text)}
+                        className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <i className="fas fa-bookmark"></i>
+                        <span>{savedChats.some(s => s.question === messages[i - 1].text && s.answer === m.text) ? 'Salvato' : 'Salva per offline'}</span>
+                      </button>
+                    </div>
+                  )}
 
-        {/* Suggested Questions */}
-        {messages.length < 3 && (
-          <div className="px-6 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0 scroll-shadows">
-            {suggestedQuestions.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => setInput(q)}
-                className="whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-slate-700 transition-all active:scale-95"
-              >
-                {q}
-              </button>
+                  <div className={`text-[9px] mt-2 font-bold uppercase tracking-widest opacity-50 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
             ))}
+            {loading && (
+              <div className="flex justify-start animate-pulse">
+                <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-700">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                    <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Input Area */}
-        <div className="p-4 bg-slate-900 border-t border-slate-800 shrink-0">
-          <div className="relative flex items-center gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'ENTER' && handleSend()}
-              placeholder={t('coach_input_placeholder')}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-orange-600/50 transition-all"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || loading}
-              className="w-12 h-12 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:hover:bg-orange-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/20 transition-all active:scale-95"
-            >
-              <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
-            </button>
+          {/* Suggested Questions */}
+          {messages.length < 3 && (
+            <div className="px-6 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0 scroll-shadows">
+              {suggestedQuestions.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInput(q)}
+                  className="whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-700 transition-all active:scale-95"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="p-4 bg-slate-900 border-t border-slate-800 shrink-0">
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'ENTER' && handleSend()}
+                placeholder={t('coach_input_placeholder')}
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-orange-600/50 transition-all"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || loading}
+                className="w-12 h-12 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:hover:bg-orange-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/20 transition-all active:scale-95"
+              >
+                <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
