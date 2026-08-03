@@ -28,15 +28,27 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
   const [coachStatus, setCoachStatus] = useState<'idle' | 'thinking'>('idle');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const userKey = user?.id || user?.email || user?.name || 'guest';
+  const storageKey = `clay_tracker_saved_coach_chats_${userKey}`;
+
   const [activeTab, setActiveTab] = useState<'chat' | 'saved'>('chat');
   const [savedChats, setSavedChats] = useState<Array<{ id: string; question: string; answer: string; date: string }>>(() => {
     try {
-      const stored = localStorage.getItem('clay_tracker_saved_coach_chats');
+      const stored = localStorage.getItem(storageKey);
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
   });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      setSavedChats(stored ? JSON.parse(stored) : []);
+    } catch {
+      setSavedChats([]);
+    }
+  }, [storageKey]);
 
   const saveExchange = (question: string, answer: string) => {
     const newItem = {
@@ -48,7 +60,7 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
     const updated = [newItem, ...savedChats];
     setSavedChats(updated);
     try {
-      localStorage.setItem('clay_tracker_saved_coach_chats', JSON.stringify(updated));
+      localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (e) {
       console.error('Error saving chat to localStorage:', e);
     }
@@ -58,7 +70,7 @@ const AICoachPage: React.FC<AICoachPageProps> = ({
     const updated = savedChats.filter(c => c.id !== id);
     setSavedChats(updated);
     try {
-      localStorage.setItem('clay_tracker_saved_coach_chats', JSON.stringify(updated));
+      localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (e) {
       console.error('Error removing saved chat:', e);
     }
