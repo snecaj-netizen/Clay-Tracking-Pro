@@ -59,7 +59,8 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
       roles: ['user', 'admin']
     },
     {
-      id: 'ai-coach',
+      id: 'le-tue-gare',
+      tab: 'coach',
       label: t('ai_coach_dashboard') || 'AI Coach',
       icon: 'fa-robot',
       color: 'bg-slate-800',

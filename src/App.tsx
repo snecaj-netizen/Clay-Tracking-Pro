@@ -346,7 +346,11 @@ const App: React.FC = () => {
         if (event && event.state && event.state.view) {
           let { view: newView, tab, index } = event.state;
           
-          if (newView === 'le-tue-gare' && user?.role === 'society') {
+          if (newView === 'ai-coach') {
+            newView = 'le-tue-gare';
+            tab = 'coach';
+          }
+          if (newView === 'le-tue-gare' && user?.role === 'society' && tab !== 'coach') {
             newView = 'gare';
           }
   
@@ -1222,8 +1226,12 @@ const App: React.FC = () => {
   };
 
   const handleNavigate = (newView: any, tab?: string, eventId?: string) => {
+    if (newView === 'ai-coach') {
+      newView = 'le-tue-gare';
+      tab = 'coach';
+    }
     // Restrict history for society
-    if (newView === 'le-tue-gare' && user?.role === 'society') {
+    if (newView === 'le-tue-gare' && user?.role === 'society' && tab !== 'coach') {
       newView = 'gare';
     }
 
