@@ -425,6 +425,8 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
     const totalScore = scores.reduce((a, b) => a + b, 0);
     const completedSeriesCount = scores.filter(s => s > 0).length || 1;
     const averagePerSeries = totalScore / completedSeriesCount;
+    const isMB = isMakeABreak(discipline);
+    const finalTotalTargets = isMB ? (scores.length > 0 ? scores.length * 60 : Math.ceil(totalTargets / 25) * 60) : totalTargets;
     
     const newComp: Competition = {
       id: initialData?.id || '',
@@ -434,7 +436,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
       date,
       endDate: isMultiDayEligible && endDate ? endDate : undefined,
       discipline,
-      totalTargets,
+      totalTargets: finalTotalTargets,
       level,
       scores,
       detailedScores,

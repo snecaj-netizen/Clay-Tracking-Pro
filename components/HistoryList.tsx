@@ -61,6 +61,14 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const showFilters = showFiltersProp || internalShowFilters;
   const setShowFilters = onShowFiltersChange || setInternalShowFilters;
 
+  const getEffectiveMaxScore = (comp: any) => {
+    if (isMakeABreak(comp.discipline)) {
+      const numSeries = (comp.scores && comp.scores.length > 0) ? comp.scores.length : Math.ceil((comp.totalTargets || 100) / 25);
+      return numSeries * 60;
+    }
+    return comp.totalTargets;
+  };
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
@@ -385,7 +393,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
 
                     <div className="flex gap-4 mt-3">
                       <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
-                        {t('target_label')}: <span className="text-slate-300">{comp.totalTargets}</span>
+                        {t('target_label')}: <span className="text-slate-300">{getEffectiveMaxScore(comp)}</span>
                       </span>
                       {comp.cost > 0 && (
                         <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
@@ -405,7 +413,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                       <div className="text-right">
                         <p className="text-[10px] text-slate-500 font-bold uppercase">{t('score_label')}</p>
                         <div className="text-2xl font-black text-white">
-                          {comp.totalScore}<span className="text-slate-600 text-sm font-medium">/{comp.totalTargets}</span>
+                          {comp.totalScore}<span className="text-slate-600 text-sm font-medium">/{getEffectiveMaxScore(comp)}</span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -745,7 +753,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                           </div>
                           <div className="flex items-center gap-2">
                             <i className="fas fa-bullseye text-slate-600"></i>
-                            <span>{c.totalTargets} {t('targets_count_label')}</span>
+                            <span>{getEffectiveMaxScore(c)} {t('targets_count_label')}</span>
                           </div>
                         </div>
 

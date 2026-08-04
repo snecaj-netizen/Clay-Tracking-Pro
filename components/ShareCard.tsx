@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 import { Competition, User } from '../types';
+import { isMakeABreak } from '../lib/makeABreak';
 
 interface ShareCardProps {
   competition: Competition;
@@ -16,6 +17,9 @@ interface ShareCardProps {
 const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onClose, isPerfectSeries, seriesIndex: _seriesIndex }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const isMB = isMakeABreak(competition.discipline);
+  const effectiveTargets = isMB ? ((competition.scores && competition.scores.length > 0) ? competition.scores.length * 60 : Math.ceil((competition.totalTargets || 100) / 25) * 60) : competition.totalTargets;
 
   const handleShare = async (mode: 'share' | 'download' = 'share') => {
     if (!cardRef.current) return;
@@ -60,8 +64,8 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
           files: [file],
           title: 'Il mio risultato su Clay Performance',
           text: isPerfectSeries 
-            ? `Ho fatto 25/25! 🎯 Guarda il mio risultato su Clay Performance.` 
-            : `Ho completato la gara ${competition.name} con un punteggio di ${competition.totalScore}/${competition.totalTargets}! 🎯`,
+            ? (isMB ? `Ho fatto 60/60! 🎯 Guarda il mio risultato su Clay Performance.` : `Ho fatto 25/25! 🎯 Guarda il mio risultato su Clay Performance.`) 
+            : `Ho completato la gara ${competition.name} con un punteggio di ${competition.totalScore}/${effectiveTargets}! 🎯`,
         });
       } else {
         const url = URL.createObjectURL(blob);
@@ -249,11 +253,11 @@ const ShareCard: React.FC<ShareCardProps> = ({ competition, societies, user, onC
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-[0.4em] mb-4">Punteggio Finale</div>
                 <div className="text-7xl font-black text-white leading-tight flex items-baseline justify-center gap-1">
                   {isPerfectSeries ? (
-                    <span className="text-orange-500">25/25</span>
+                    <span className="text-orange-500">{isMB ? '60/60' : '25/25'}</span>
                   ) : (
                     <>
                       <span>{competition.totalScore}</span>
-                      <span className="text-slate-600 text-3xl font-bold">/{competition.totalTargets}</span>
+                      <span className="text-slate-600 text-3xl font-bold">/{effectiveTargets}</span>
                     </>
                   )}
                 </div>

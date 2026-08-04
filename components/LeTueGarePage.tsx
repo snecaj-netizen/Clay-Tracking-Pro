@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import AICoachPage from './AICoachPage';
 import FriendlyChallenges from './FriendlyChallenges';
 import { useLanguage } from '../contexts/LanguageContext';
+import { isMakeABreak } from '../lib/makeABreak';
 
 import { useUI } from '../contexts/UIContext';
 
@@ -156,7 +157,10 @@ const LeTueGarePage: React.FC<LeTueGarePageProps> = ({
     // Consider only competitions that have results entered (score > 0)
     const competitionsWithResults = competitions.filter(c => (c.totalScore || 0) > 0);
     
-    const totalPiattelli = competitionsWithResults.reduce((acc, c) => acc + (c.totalTargets || 0), 0);
+    const totalPiattelli = competitionsWithResults.reduce((acc, c) => {
+      const maxScore = isMakeABreak(c.discipline) ? ((c.scores && c.scores.length > 0) ? c.scores.length * 60 : Math.ceil((c.totalTargets || 100) / 25) * 60) : (c.totalTargets || 0);
+      return acc + maxScore;
+    }, 0);
     const totalRotti = competitionsWithResults.reduce((acc, c) => acc + (c.totalScore || 0), 0);
     const media = totalPiattelli > 0 ? (totalRotti / totalPiattelli * 100).toFixed(1) : '0.0';
     
