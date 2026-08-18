@@ -174,8 +174,9 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                   type="number"
                   min="1"
                   max="10"
-                  value={fieldsCount}
-                  onChange={e => setFieldsCount(parseInt(e.target.value))}
+                  placeholder="1"
+                  value={fieldsCount === 0 ? '' : fieldsCount}
+                  onChange={e => setFieldsCount(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all"
                 />
               </div>
@@ -259,9 +260,10 @@ export const EventSquadManager: React.FC<EventSquadManagerProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="number"
-                                value={member.bib_number || ''}
+                                placeholder="-"
+                                value={member.bib_number ?? ''}
                                 onChange={(e) => {
-                                  const newVal = parseInt(e.target.value);
+                                  const newVal = e.target.value === '' ? (undefined as any) : parseInt(e.target.value) || undefined;
                                   const newSquads = [...squads];
                                   newSquads[sIdx].members[mIdx].bib_number = newVal;
                                   setSquads(newSquads);

@@ -2576,12 +2576,15 @@ const EventsManager: React.FC<EventsManagerProps> = ({
                         required 
                         min={discipline === Discipline.DCK ? "50" : "25"} 
                         step={discipline === Discipline.DCK ? "50" : "25"} 
-                        value={targets} 
+                        placeholder="25"
+                        value={targets === 0 ? '' : targets} 
                         onChange={(e) => {
-                          const val = parseInt(e.target.value);
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                           setTargets(val);
                           const valPerSeries = discipline === Discipline.DCK ? 50 : 25;
-                          setTotalFields(Math.max(1, Math.ceil(val / valPerSeries)));
+                          if (val > 0) {
+                            setTotalFields(Math.max(1, Math.ceil(val / valPerSeries)));
+                          }
                         }} 
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" 
                       />

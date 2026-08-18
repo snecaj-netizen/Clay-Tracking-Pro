@@ -294,6 +294,7 @@ const translations: Translations = {
   'search_region_placeholder': { it: 'Cerca per regione...', en: 'Search by region...' },
   'society': { it: 'Società', en: 'Club' },
   'delete_btn': { it: 'Elimina', en: 'Delete' },
+  'confirm': { it: 'Conferma', en: 'Confirm' },
   'confirm_btn': { it: 'Conferma', en: 'Confirm' },
   'delete_label': { it: 'Elimina', en: 'Delete' },
   'confirm_delete_notification': { it: 'Sei sicuro di voler eliminare questa notifica?', en: 'Are you sure you want to delete this notification?' },

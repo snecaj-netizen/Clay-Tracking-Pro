@@ -146,9 +146,9 @@ const SeriesPopup: React.FC<SeriesPopupProps> = ({ competition, seriesIndex, onC
                 type="number" 
                 min="0" 
                 max={maxSeriesScore} 
-                value={score} 
+                placeholder="0"
+                value={score === 0 ? '' : score} 
                 onChange={(e) => handleScoreChange(e.target.value)} 
-                onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
                 className="w-16 sm:w-14 bg-slate-900 border border-slate-700 rounded-xl sm:rounded-lg px-2 py-2 sm:py-1.5 text-center text-2xl sm:text-xl font-black text-white focus:border-orange-600 outline-none transition-all" 
               />
             </div>

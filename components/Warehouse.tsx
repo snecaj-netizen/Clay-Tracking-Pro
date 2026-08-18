@@ -484,7 +484,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                             </div>
                             <div className="space-y-2">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('grams_label')}</label>
-                              <input type="number" required value={typeGrams} onChange={e => setTypeGrams(parseInt(e.target.value) || 0)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                              <input type="number" required placeholder="0" value={typeGrams === 0 ? '' : typeGrams} onChange={e => setTypeGrams(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                             </div>
                           </div>
                         </div>
@@ -540,15 +540,30 @@ const Warehouse: React.FC<WarehouseProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('purchased_pieces')}</label>
-                            <input type="number" required value={initialQuantity} onChange={e => {
-                              const val = parseInt(e.target.value) || 0;
-                              setInitialQuantity(val);
-                              if (!editingCart) setQuantity(val);
-                            }} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                            <input 
+                              type="number" 
+                              required 
+                              placeholder="0"
+                              value={initialQuantity === 0 ? '' : initialQuantity} 
+                              onChange={e => {
+                                const val = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                                setInitialQuantity(val);
+                                if (!editingCart) setQuantity(val);
+                              }} 
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                            />
                           </div>
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('cost_label')} (€)</label>
-                            <input type="number" step="0.01" required value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              required 
+                              placeholder="0.00"
+                              value={cost === 0 ? '' : cost} 
+                              onChange={e => setCost(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} 
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
+                            />
                           </div>
                         </div>
 
@@ -556,7 +571,14 @@ const Warehouse: React.FC<WarehouseProps> = ({
                           <div className="sm:col-span-2 space-y-2 bg-orange-600/5 p-4 rounded-2xl border border-orange-600/20">
                             <label className="text-[10px] font-black text-orange-500 uppercase tracking-widest ml-1">{t('current_stock_edit_label')}</label>
                             <div className="flex items-center gap-4">
-                              <input type="number" required value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="flex-1 bg-slate-950 border-2 border-orange-600/30 rounded-xl px-4 py-3 text-white text-sm font-black focus:border-orange-600 outline-none transition-all" />
+                              <input 
+                                type="number" 
+                                required 
+                                placeholder="0"
+                                value={quantity === 0 ? '' : quantity} 
+                                onChange={e => setQuantity(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} 
+                                className="flex-1 bg-slate-950 border-2 border-orange-600/30 rounded-xl px-4 py-3 text-white text-sm font-black focus:border-orange-600 outline-none transition-all" 
+                              />
                               <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-tight">
                                 {t('originally')}: {editingCart.initialQuantity} <br/>
                                 {t('remaining')}: {quantity}
@@ -582,7 +604,7 @@ const Warehouse: React.FC<WarehouseProps> = ({
                   <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-sm p-6 sm:p-8 border-t border-slate-800 flex justify-end gap-3 shrink-0">
                     <button type="button" onClick={resetForm} className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-white hover:bg-slate-700">{t('cancel')}</button>
                     <button type="submit" form="stock-form" className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-600/20">
-                      {editingCart ? t('update') : t('confirm')}
+                      {editingCart ? t('update') : t('confirm_btn')}
                     </button>
                   </div>
                 </div>

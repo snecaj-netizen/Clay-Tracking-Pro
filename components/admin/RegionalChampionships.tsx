@@ -1955,8 +1955,9 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Anno</label>
                   <input 
                     type="number" 
-                    value={formYear}
-                    onChange={(e) => setFormYear(parseInt(e.target.value) || new Date().getFullYear())}
+                    placeholder={String(new Date().getFullYear())}
+                    value={formYear === 0 ? '' : formYear}
+                    onChange={(e) => setFormYear(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
                   />
                 </div>

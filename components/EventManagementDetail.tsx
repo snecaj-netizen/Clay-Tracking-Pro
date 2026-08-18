@@ -1473,9 +1473,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                     <span className="text-sm font-black text-slate-500">B</span>
                                     <input 
                                       type="number"
-                                      value={squad.squad_number}
+                                      placeholder="1"
+                                      value={squad.squad_number === 0 ? '' : squad.squad_number}
                                       onChange={(e) => {
-                                        const val = parseInt(e.target.value) || 1;
+                                        const val = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                                         setSquads(prev => prev.map(s => String(s.id) === String(squad.id) ? { ...s, squad_number: val } : s));
                                         setHasUnsavedChanges(true);
                                       }}
@@ -1494,9 +1495,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Campo</span>
                                     <input 
                                       type="number"
-                                      value={squad.field_number}
+                                      placeholder="1"
+                                      value={squad.field_number === 0 ? '' : squad.field_number}
                                       onChange={(e) => {
-                                        const val = parseInt(e.target.value) || 1;
+                                        const val = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                                         setSquads(prev => prev.map(s => String(s.id) === String(squad.id) ? { ...s, field_number: val } : s));
                                         setHasUnsavedChanges(true);
                                       }}
@@ -1694,9 +1696,10 @@ export const EventManagementDetail: React.FC<EventManagementDetailProps> = ({
                                               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Campo</span>
                                               <input 
                                                 type="number"
-                                                value={squad.field_number}
+                                                placeholder="1"
+                                                value={squad.field_number === 0 ? '' : squad.field_number}
                                                 onChange={(e) => {
-                                                  const val = parseInt(e.target.value) || 1;
+                                                  const val = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                                                   setSquads(prev => prev.map(s => String(s.id) === String(squad.id) ? { ...s, field_number: val } : s));
                                                   setHasUnsavedChanges(true);
                                                 }}

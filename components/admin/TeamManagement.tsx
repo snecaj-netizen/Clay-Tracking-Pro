@@ -149,10 +149,11 @@ const TeamCard = React.memo(({
                     <input 
                       type="number" 
                       autoFocus
-                      defaultValue={member.score || 0}
-                      onBlur={(e) => onUpdateScore(team.id, member.id, Number(e.target.value))}
+                      placeholder="0"
+                      defaultValue={member.score === 0 ? '' : (member.score || '')}
+                      onBlur={(e) => onUpdateScore(team.id, member.id, Number(e.target.value) || 0)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') onUpdateScore(team.id, member.id, Number((e.target as HTMLInputElement).value));
+                        if (e.key === 'Enter') onUpdateScore(team.id, member.id, Number((e.target as HTMLInputElement).value) || 0);
                         if (e.key === 'Escape') onSetEditingScore(null);
                       }}
                       className="w-12 bg-slate-950 border border-orange-500 rounded-lg px-1.5 py-0.5 text-xs text-white text-center outline-none"
@@ -660,7 +661,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({
                       </div>
                       <div>
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('targets_total_label')}</label>
-                        <input type="number" required value={newTeamTargets} onChange={e => setNewTeamTargets(Number(e.target.value))} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
+                        <input type="number" required placeholder="0" value={newTeamTargets === 0 ? '' : newTeamTargets} onChange={e => setNewTeamTargets(e.target.value === '' ? 0 : Number(e.target.value) || 0)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:border-orange-600 outline-none transition-all" />
                       </div>
                     </>
                   )}

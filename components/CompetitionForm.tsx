@@ -313,7 +313,21 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
 
 
   const handleScoreChange = (index: number, value: string) => {
-    const num = parseInt(value) || 0;
+    if (value === '') {
+      const newScores = [...scores];
+      newScores[index] = 0;
+      setScores(newScores);
+      if (detailedScores[index] && detailedScores[index].length > 0) {
+        setDetailedScores(prev => {
+          const newDetailed = [...prev];
+          newDetailed[index] = [];
+          return newDetailed;
+        });
+      }
+      return;
+    }
+    const num = parseInt(value);
+    if (isNaN(num)) return;
     const clamped = Math.min(maxSeriesScore, Math.max(0, num));
     const newScores = [...scores];
     newScores[index] = clamped;
@@ -741,8 +755,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                 type="number" 
                 placeholder="Temp °C" 
                 value={weatherTemp ?? ''} 
-                onChange={(e) => setWeatherTemp(e.target.value ? parseInt(e.target.value) : undefined)} 
-                onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
+                onChange={(e) => setWeatherTemp(e.target.value === '' ? undefined : parseInt(e.target.value) || undefined)} 
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-600 outline-none transition-all" 
               />
             </div>
@@ -913,25 +926,25 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
         {isTraining ? (
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo per Serie (€)</label>
-            <input type="number" step="0.01" value={costPerSeries} onChange={(e) => setCostPerSeries(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
-            <p className="text-[10px] text-slate-400 font-medium mt-1">Totale: € {(costPerSeries * scores.length).toFixed(2)}</p>
+            <input type="number" step="0.01" placeholder="0.00" value={costPerSeries === 0 ? '' : costPerSeries} onChange={(e) => setCostPerSeries(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <p className="text-[10px] text-slate-400 font-medium mt-1">Totale: € {((costPerSeries || 0) * scores.length).toFixed(2)}</p>
           </div>
         ) : (
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Costo (€)</label>
-            <input type="number" step="0.01" value={cost} onChange={(e) => setCost(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <input type="number" step="0.01" placeholder="0.00" value={cost === 0 ? '' : cost} onChange={(e) => setCost(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
           </div>
         )}
         {!isTraining && (
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Vincita (€)</label>
-            <input type="number" step="0.01" value={win} onChange={(e) => setWin(parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <input type="number" step="0.01" placeholder="0.00" value={win === 0 ? '' : win} onChange={(e) => setWin(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
           </div>
         )}
         {!isTraining && date <= new Date().toISOString().split('T')[0] && (
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Posizionamento</label>
-            <input type="number" placeholder="Es: 1" value={position || ''} onChange={(e) => setPosition(e.target.value ? parseInt(e.target.value) : undefined)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
+            <input type="number" placeholder="Es: 1" value={position ?? ''} onChange={(e) => setPosition(e.target.value === '' ? undefined : parseInt(e.target.value) || undefined)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-600 outline-none transition-all" />
           </div>
         )}
       </div>
@@ -979,7 +992,7 @@ const CompetitionForm: React.FC<CompetitionFormProps> = ({ initialData, prefillD
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                  <input type="number" min="0" max={maxSeriesScore} value={score} onChange={(e) => handleScoreChange(idx, e.target.value)} onFocus={(e) => e.target.value === '0' && (e.target.value = '')} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
+                  <input type="number" min="0" max={maxSeriesScore} placeholder="0" value={score === 0 ? '' : score} onChange={(e) => handleScoreChange(idx, e.target.value)} className={`w-20 bg-slate-950 border ${isTraining ? 'border-blue-900/30' : 'border-slate-800'} rounded-xl px-2 py-2 text-center text-xl font-black text-white focus:border-orange-600 outline-none transition-all`} />
                   <button type="button" onClick={() => toggleDetailedView(idx)} className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${expandedSeries === idx ? 'bg-orange-600 border-orange-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`} title="Dettaglio Piattelli">
                     <i className="fas fa-list-ul"></i>
                   </button>

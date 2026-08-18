@@ -2046,9 +2046,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               <input 
                                 type="number" 
                                 min="0" 
-                                value={setting?.count || 0}
+                                placeholder="0"
+                                value={setting?.count ?? ''}
                                 onChange={(e) => {
-                                  const count = parseInt(e.target.value) || 0;
+                                  const count = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                                   setPrizeSettings(prev => {
                                     const filtered = prev.filter(s => !(s.type === 'categoria' && s.name === cat));
                                     if (count > 0) {
@@ -2078,9 +2079,10 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                               <input 
                                 type="number" 
                                 min="0" 
-                                value={setting?.count || 0}
+                                placeholder="0"
+                                value={setting?.count ?? ''}
                                 onChange={(e) => {
-                                  const count = parseInt(e.target.value) || 0;
+                                  const count = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
                                   setPrizeSettings(prev => {
                                     const filtered = prev.filter(s => !(s.type === 'qualifica' && s.name === qual));
                                     if (count > 0) {
