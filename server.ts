@@ -88,7 +88,7 @@ async function callGeminiWithRetry(
 // import { createServer as createViteServer } from 'vite'; // Removed top-level import
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 const SERVER_BOOT_ID = crypto.randomBytes(16).toString('hex');
 let CLIENT_BUILD_HASH = 'dev';
