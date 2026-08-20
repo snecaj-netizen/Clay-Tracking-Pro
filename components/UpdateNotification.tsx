@@ -132,7 +132,7 @@ const UpdateNotification: React.FC = () => {
                 <ul className="space-y-1 mb-4 text-[11px] text-slate-300">
                   <li className="flex items-start gap-1.5">
                     <span className="text-orange-400 font-bold">•</span>
-                    <span><strong>Stabilità e Prestazioni:</strong> Ottimizzazioni generali e correzioni di piccoli bug.</span>
+                    <span><strong>Home Page Admin:</strong> Aggiunto pulsante rapido per accedere direttamente alla sezione Magazzino.</span>
                   </li>
                 </ul>
                 

@@ -50,6 +50,14 @@ const HomePage: React.FC<HomePageProps> = ({ user, onNavigate }) => {
       roles: ['user', 'admin']
     },
     {
+      id: 'warehouse',
+      label: t('warehouse') || 'Magazzino',
+      icon: 'fa-box-open',
+      color: 'bg-amber-600',
+      description: t('warehouse_desc') || 'Gestione scorte cartucce e magazzino',
+      roles: ['admin']
+    },
+    {
       id: 'le-tue-gare',
       tab: 'challenges',
       label: t('challenges_tab_label') || 'Sfide tra Amici',

@@ -89,6 +89,7 @@ const translations: Translations = {
   'guide_faq': { it: 'Guida & FAQ', en: 'Guide & FAQ' },
   'update_profile': { it: 'Aggiorna Profilo', en: 'Update Profile' },
   'warehouse': { it: 'Magazzino', en: 'Warehouse' },
+  'warehouse_desc': { it: 'Gestione scorte cartucce e magazzino', en: 'Cartridge stock and warehouse management' },
   'admin_role': { it: 'Amministratore', en: 'Administrator' },
   'admin_panel': { it: 'Pannello Amministratore', en: 'Admin Panel' },
   'society_role': { it: 'Società', en: 'Club' },
