@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useUI } from '../../contexts/UIContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { Discipline } from '../../types';
 
 const formatDateStr = (dateStr: any) => {
   if (!dateStr) return '---';
@@ -120,7 +121,8 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
   const [formYear, setFormYear] = useState<number>(new Date().getFullYear());
   const [formSeason, setFormSeason] = useState<'Invernale' | 'Estivo'>('Invernale');
   const [formRegion, setFormRegion] = useState('');
-  const [formDiscipline, setFormDiscipline] = useState('Fossa Olimpica');
+  const [formDiscipline, setFormDiscipline] = useState<string>(Discipline.FO);
+  const [formMinTrials, setFormMinTrials] = useState<number>(0);
   
   // 4 Trials
   const [trial1Name, setTrial1Name] = useState('');
@@ -144,10 +146,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     'Trentino-Alto Adige', 'Umbria', 'Valle d\'Aosta', 'Veneto', 'Tutte'
   ];
 
-  const disciplines = [
-    'Fossa Olimpica', 'Skeet', 'Compak Sporting', 'Fossa Universale', 
-    'Double Trap', 'Elica', 'Percorso di Caccia'
-  ];
+  const disciplines = Object.values(Discipline).filter(d => d !== Discipline.TRAINING);
 
   // Load championships and events with cache fallback
   const loadData = async (forceRefetch = false) => {
@@ -271,7 +270,8 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     setFormYear(new Date().getFullYear());
     setFormSeason('Invernale');
     setFormRegion(user?.society_region || 'Lazio');
-    setFormDiscipline('Fossa Olimpica');
+    setFormDiscipline(Discipline.FO);
+    setFormMinTrials(0);
     setTrial1Name('');
     setTrial1EventId('');
     setTrial2Name('');
@@ -292,6 +292,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
     setFormSeason(rc.season);
     setFormRegion(rc.region);
     setFormDiscipline(rc.discipline);
+    setFormMinTrials(rc.min_trials || 0);
     setTrial1Name(rc.trial1_name || '');
     setTrial1EventId(rc.trial1_event_id || '');
     setTrial2Name(rc.trial2_name || '');
@@ -365,6 +366,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       season: formSeason,
       region: formRegion,
       discipline: formDiscipline,
+      min_trials: formMinTrials,
       trial1_name: trial1Name,
       trial1_event_id: trial1EventId,
       trial2_name: trial2Name,
@@ -411,12 +413,14 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       // --- SHEET 1: EXPERTLY FORMATTED SHOOTERS CHAMPIONSHIP BY CATEGORY / QUALIFICATION ---
       const sortedGroupKeys = Object.keys(rankingData.groupedRankings || {}).sort();
       
-      const champInfoRows = [
+      const trialsCount = [champ.trial1_event_id, champ.trial2_event_id, champ.trial3_event_id, champ.trial4_event_id].filter(Boolean).length;
+        const requiredTrials = champ.min_trials && champ.min_trials > 0 ? champ.min_trials : (trialsCount === 1 ? 1 : (champ.season === 'Invernale' ? 2 : 3));
+        const champInfoRows = [
         ['🏆 CAMPIONATO REGIONALE - CLASSIFICA DETTAGLIATA INDIVIDUALE'],
         [champ.name || ''],
         [],
         ['Disciplina F.I.T.A.V.:', champ.discipline || '', 'Regione:', champ.region || '', 'Anno:', champ.year || ''],
-        ['Regolamento Campionato:', 'Sono necessarie almeno 3 prove su 4 per il computo finale. Nel caso si effettuino tutte e 4 le prove, la prova peggiore (penalità più alta) viene scartata.'],
+        ['Regolamento Campionato:', `Sono necessarie almeno ${requiredTrials} prove su ${trialsCount} per il computo finale. Nel caso si effettuino più di ${requiredTrials} prove, le prove peggiori vengono scartate.`],
         [],
         []
       ];
@@ -494,7 +498,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
       const unclassifiedSec = rankingData.shooters ? rankingData.shooters.filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0) : [];
       if (unclassifiedSec.length > 0) {
         shootersBodyRows.push([]);
-        shootersBodyRows.push([`⚠️ TESSERATI NON CLASSIFICATI (Meno di 3 prove completate)`]);
+        shootersBodyRows.push([`⚠️ TESSERATI NON CLASSIFICATI (Meno di ${requiredTrials} prove completate)`]);
         shootersBodyRows.push([
           'Posizione',
           'Cognome',
@@ -1053,6 +1057,8 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
   if (selectedChampId && rankingData) {
     const rc = rankingData.championship;
     const groupedRankings = rankingData.groupedRankings || {};
+    const trialsCountUI = [rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length;
+    const requiredTrialsUI = rc.min_trials && rc.min_trials > 0 ? rc.min_trials : (trialsCountUI === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3));
     const societies = rankingData.classifiedSocieties || [];
     const unclassifiedSec = rankingData.shooters ? rankingData.shooters.filter((s: any) => !s.isClassified) : [];
     const unclassifiedSoc = rankingData.societies ? rankingData.societies.filter((s : any) => !s.isClassified) : [];
@@ -1130,8 +1136,8 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
         <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-xl text-xs text-slate-400 space-y-2">
           <p className="font-bold text-slate-300">💡 Regolamento Classifica FITAV:</p>
           <ul className="list-disc pl-5 space-y-1 text-slate-400">
-            <li>Sono previste 4 prove regionali. Per entrare in classifica finale è necessario disputare <b>almeno 3 prove</b>.</li>
-            <li>Se un tiratore effettua tutte e 4 le prove, <b>il peggior punteggio (penalità più alta) viene scartato</b>.</li>
+            <li>Sono previste {trialsCountUI} prove regionali. Per entrare in classifica finale è necessario disputare <b>almeno {requiredTrialsUI} {requiredTrialsUI === 1 ? 'prova' : 'prove'}</b>.</li>
+            <li>Se un tiratore effettua più delle prove richieste, <b>i punteggi peggiori vengono scartati</b>.</li>
             <li>Le penalità di ogni prova rappresentano la differenza di piattelli rispetto al primo classificato di quella specifica Categoria/Qualifica nel medesimo round.</li>
             <li>Il tiratore mantiene per tutto il campionato il vincolo di qualifica o categoria stabilito nella sua prima gara disputata.</li>
           </ul>
@@ -1451,7 +1457,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                                       <span>{s.surname} {s.name}</span>
                                       {!s.isClassified && (
                                         <span className="text-[7.5px] font-black uppercase tracking-wider bg-orange-600/20 text-orange-400 border border-orange-500/20 px-1 py-0.5 rounded-sm">
-                                          {s.participatedCount}/3 prove
+                                          {s.participatedCount}/{requiredTrialsUI} prove
                                         </span>
                                       )}
                                     </div>
@@ -1570,7 +1576,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                                 <span>{soc.societyName}</span>
                                 {!soc.isClassified && (
                                   <span className="text-[7.5px] font-black uppercase tracking-wider bg-blue-600/20 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded-sm">
-                                    {soc.participatedCount}/3 prove
+                                    {soc.participatedCount}/{requiredTrialsUI} prove
                                   </span>
                                 )}
                               </div>
@@ -1696,7 +1702,7 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
           {/* UNCLASSIFIED SECTION */}
           {showUnclassified && (
             <div id="section-unclassified" className="bg-slate-900/20 border border-slate-800/60 p-4 rounded-xl scroll-mt-6">
-              <span className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tiratori Iscritti in Attesa di Qualificazione (meno di 3 prove):</span>
+              <span className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Tiratori Iscritti in Attesa di Qualificazione (meno prove di quelle richieste):</span>
               <div className="flex flex-wrap gap-2">
                 {unclassifiedSec.map((s: any) => (
                   <span key={s.shooterId} className="px-2.5 py-1 bg-slate-900/60 text-slate-400 rounded-lg text-xs font-medium border border-slate-800">
@@ -1994,6 +2000,18 @@ export const RegionalChampionships: React.FC<RegionalChampionshipsProps> = ({ us
                   >
                     {disciplines.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block" title="Lascia 0 per auto-calcolo o prova unica">N. Prove Minime</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    placeholder="0 (Automatico)"
+                    value={formMinTrials === 0 ? '' : formMinTrials}
+                    onChange={(e) => setFormMinTrials(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                  />
                 </div>
               </div>
 

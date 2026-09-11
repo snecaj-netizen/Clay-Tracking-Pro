@@ -226,12 +226,14 @@ const Dashboard: React.FC<DashboardProps> = ({
       // --- SHEET 1: EXPERTLY FORMATTED SHOOTERS CHAMPIONSHIP BY CATEGORY / QUALIFICATION ---
       const sortedGroupKeys = Object.keys(rankingData.groupedRankings || {}).sort();
       
+      const trialsCount = [champ.trial1_event_id, champ.trial2_event_id, champ.trial3_event_id, champ.trial4_event_id].filter(Boolean).length;
+      const requiredTrials = champ.min_trials && champ.min_trials > 0 ? champ.min_trials : (trialsCount === 1 ? 1 : (champ.season === 'Invernale' ? 2 : 3));
       const champInfoRows = [
         ['🏆 CAMPIONATO REGIONALE - CLASSIFICA DETTAGLIATA INDIVIDUALE'],
         [champ.name || ''],
         [],
         ['Disciplina F.I.T.A.V.:', champ.discipline || '', 'Regione:', champ.region || '', 'Anno:', champ.year || ''],
-        ['Regolamento Campionato:', 'Sono necessarie almeno 3 prove su 4 per il computo finale. Nel caso si effettuino tutte e 4 le prove, la prova peggiore (penalità più alta) viene scartata.'],
+        ['Regolamento Campionato:', `Sono necessarie almeno ${requiredTrials} prove su ${trialsCount} per il computo finale. Nel caso si effettuino più di ${requiredTrials} prove, le prove peggiori vengono scartate.`],
         [],
         []
       ];
@@ -309,7 +311,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       const unclassifiedSec = rankingData.shooters ? rankingData.shooters.filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0) : [];
       if (unclassifiedSec.length > 0) {
         shootersBodyRows.push([]);
-        shootersBodyRows.push([`⚠️ TESSERATI NON CLASSIFICATI (Meno di 3 prove completate)`]);
+        shootersBodyRows.push([`⚠️ TESSERATI NON CLASSIFICATI (Meno di ${requiredTrials} prove completate)`]);
         shootersBodyRows.push([
           'Posizione',
           'Cognome',
@@ -842,7 +844,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-orange-500/10 text-[8.5px] text-slate-400 font-mono">
                             <span>Pen: <b className="text-orange-500 font-bold">{mine.totalPenalties}</b></span>
                             <span>Hit: <b className="text-slate-300 font-bold">{mine.totalTargetsHit}</b></span>
-                            <span>Prove: <b className="text-slate-300 font-bold">{mine.participatedCount}/4</b></span>
+                            <span>Prove: <b className="text-slate-300 font-bold">{mine.participatedCount}/{[rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length}</b></span>
                           </div>
                         </div>
 
@@ -852,7 +854,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                               <span>⚙️</span> Classifica Provvisoria
                             </p>
                             <p className="text-[8px] text-slate-400 mt-0.5 leading-tight">
-                              Disputa almeno <b>3 prove</b> per qualificarti alla finale.
+                              Disputa almeno <b>{rc.min_trials || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3))} {rc.min_trials === 1 || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 && !rc.min_trials) ? 'prova' : 'prove'}</b> per qualificarti.
                             </p>
                           </div>
                         )}
@@ -908,7 +910,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <i className="fas fa-exclamation-triangle text-slate-600 text-xs"></i>
                         <p className="text-[9px] text-slate-400 leading-relaxed font-bold">Non qualificat{user?.gender === 'F' ? 'a' : 'o'}</p>
                         <p className="text-[8px] text-slate-500 leading-snug">
-                          Devi disputare almeno 3 prove per qualificarti.
+                          Devi disputare almeno {rc.min_trials || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3))} {rc.min_trials === 1 || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 && !rc.min_trials) ? 'prova' : 'prove'} per qualificarti.
                         </p>
                       </div>
                     )}
@@ -1110,6 +1112,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       {selectedRegionalRanking && (() => {
         const rc = selectedRegionalRanking.championship;
         const groupedRankings = selectedRegionalRanking.groupedRankings || {};
+        const trialsCount = [rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length;
+        const requiredTrials = rc.min_trials && rc.min_trials > 0 ? rc.min_trials : (trialsCount === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3));
         const classifiedSocieties = selectedRegionalRanking.classifiedSocieties || [];
         const unclassifiedSec = selectedRegionalRanking.shooters ? selectedRegionalRanking.shooters.filter((s: any) => !s.isClassified && (s.participatedCount || 0) > 0) : [];
 
@@ -1204,8 +1208,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <i className="fas fa-user text-orange-400" /> Classifica Individuale FITAV:
                     </p>
                     <ul className="list-disc pl-5 space-y-1 text-slate-400">
-                      <li>Sono previste 4 prove regionali. Per entrare in classifica finale è necessario disputare <b>almeno 3 prove</b>.</li>
-                      <li>Se un tiratore effettua tutte e 4 le prove, <b>il peggior punteggio (penalità più alta) viene scartato</b>.</li>
+                      <li>Sono previste {[rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length} prove regionali. Per entrare in classifica finale è necessario disputare <b>almeno {rc.min_trials || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3))} prove</b>.</li>
+                      <li>Se un tiratore effettua più delle prove richieste, <b>i punteggi peggiori vengono scartati</b>.</li>
                       <li>Le penalità di ogni prova rappresentano la differenza di piattelli rispetto al premier classificato di quella specifica Categoria/Qualifica nel medesimo round.</li>
                       <li>Il tiratore mantiene per tutto il campionato il vincolo di qualifica o categoria stabilito nella sua prima gara disputata.</li>
                     </ul>
@@ -1217,7 +1221,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <ul className="list-disc pl-5 space-y-1 text-slate-400">
                       <li>Il punteggio di squadra in ogni prova è determinato dalla somma dei migliori punteggi individuali (hits totali) dei tiratori iscritti alla medesima società.</li>
                       <li>Nelle discipline di <b>Fossa (Trap)</b> concorrono i migliori <b>6 tiratori</b> per ogni prova. Nelle altre discipline concorrono i migliori <b>3 tiratori</b>.</li>
-                      <li>Come per l'individuale, le società devono disputare <b>almeno 3 prove</b> per qualificarsi al campionato. Qualora partecipino a tutte le 4 prove, viene applicato lo <b>scarto della peggiore prestazione</b> (punteggio più basso o penalità più alta).</li>
+                      <li>Come per l'individuale, le società devono disputare <b>almeno {rc.min_trials || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3))} prove</b> per qualificarsi al campionato. Qualora partecipino a più prove di quelle minime, viene applicato lo <b>scarto della peggiore prestazione</b>.</li>
                     </ul>
                   </div>
                 </div>
@@ -1535,7 +1539,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                             {isMe && <span className="text-[7px] font-black uppercase bg-orange-600 text-white px-1 rounded-sm">Tu</span>}
                                             {!s.isClassified && (
                                               <span className="text-[7.5px] font-black uppercase tracking-wider bg-orange-600/20 text-orange-400 border border-orange-500/20 px-1 py-0.5 rounded-sm">
-                                                {s.participatedCount}/3 prove
+                                                {s.participatedCount}/{rc.min_trials || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3))} prove
                                               </span>
                                             )}
                                           </div>
@@ -1649,7 +1653,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                       <span>{soc.societyName}</span>
                                       {!soc.isClassified && (
                                         <span className="text-[7.5px] font-black uppercase tracking-wider bg-blue-600/20 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded-sm">
-                                          {soc.participatedCount}/3 prove
+                                          {soc.participatedCount}/{rc.min_trials || ([rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3))} prove
                                         </span>
                                       )}
                                     </div>
@@ -1770,7 +1774,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {/* UNCLASSIFIED SECTION */}
                 {showUnclassified && (
                   <div id="section-unclassified" className="bg-slate-950/20 border border-slate-800 p-4 rounded-xl scroll-mt-6">
-                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2 font-sans">Tiratori Iscritti in Attesa di Qualificazione (meno di 3 prove):</span>
+                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2 font-sans">Tiratori Iscritti in Attesa di Qualificazione (meno prove di quelle richieste):</span>
                     <div className="flex flex-wrap gap-2">
                       {unclassifiedSec.map((s: any, sIdx: number) => (
                         <span key={s.shooterId || s.id || `unclass_${sIdx}`} className="px-2.5 py-1 bg-slate-900/60 text-slate-400 rounded-lg text-xs font-medium border border-slate-800 font-sans">

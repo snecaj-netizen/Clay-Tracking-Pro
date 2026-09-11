@@ -8445,12 +8445,12 @@ app.post('/api/regional-championships', authenticateToken, async (req: any, res)
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Solo gli amministratori possono gestire i campionati regionali.' });
     }
-    const { id, name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id } = req.body;
+    const { id, name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id, min_trials } = req.body;
     const rcId = id || 'rc_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     await pool.query(
-      `INSERT INTO regional_championships (id, name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [rcId, name, parseInt(year) || new Date().getFullYear(), season, region, discipline, trial1_name || null, trial1_event_id || null, trial2_name || null, trial2_event_id || null, trial3_name || null, trial3_event_id || null, trial4_name || null, trial4_event_id || null]
+      `INSERT INTO regional_championships (id, name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id, min_trials)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [rcId, name, parseInt(year) || new Date().getFullYear(), season, region, discipline, trial1_name || null, trial1_event_id || null, trial2_name || null, trial2_event_id || null, trial3_name || null, trial3_event_id || null, trial4_name || null, trial4_event_id || null, parseInt(min_trials) || 0]
     );
     res.json({ success: true, id: rcId });
   } catch (err: any) {
@@ -8463,16 +8463,17 @@ app.put('/api/regional-championships/:id', authenticateToken, async (req: any, r
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Solo gli amministratori possono gestire i campionati regionali.' });
     }
-    const { name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id } = req.body;
+    const { name, year, season, region, discipline, trial1_name, trial1_event_id, trial2_name, trial2_event_id, trial3_name, trial3_event_id, trial4_name, trial4_event_id, min_trials } = req.body;
     await pool.query(
       `UPDATE regional_championships 
        SET name=$1, year=$2, season=$3, region=$4, discipline=$5, 
            trial1_name=$6, trial1_event_id=$7, 
            trial2_name=$8, trial2_event_id=$9, 
            trial3_name=$10, trial3_event_id=$11, 
-           trial4_name=$12, trial4_event_id=$13
+           trial4_name=$12, trial4_event_id=$13,
+           min_trials=$15
        WHERE id=$14`,
-      [name, parseInt(year) || new Date().getFullYear(), season, region, discipline, trial1_name || null, trial1_event_id || null, trial2_name || null, trial2_event_id || null, trial3_name || null, trial3_event_id || null, trial4_name || null, trial4_event_id || null, req.params.id]
+      [name, parseInt(year) || new Date().getFullYear(), season, region, discipline, trial1_name || null, trial1_event_id || null, trial2_name || null, trial2_event_id || null, trial3_name || null, trial3_event_id || null, trial4_name || null, trial4_event_id || null, req.params.id, parseInt(min_trials) || 0]
     );
     res.json({ success: true });
   } catch (err: any) {
@@ -8770,10 +8771,15 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
       const participatedCount = penaltiesList.length;
       let totalPenalties = 0;
       let discardedTrialIdx: number | null = null;
-      const isClassified = participatedCount >= (rc.season === 'Invernale' ? 2 : 3);
+      
+      const configuredTrialsCount = [rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length;
+      let requiredTrials = rc.min_trials && rc.min_trials > 0 ? rc.min_trials : 
+                           (configuredTrialsCount === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3));
+      const isClassified = participatedCount >= requiredTrials;
+
 
       if (isClassified) {
-        if ((rc.season === 'Invernale' && participatedCount === 3) || participatedCount === 4) {
+        if (participatedCount > requiredTrials && requiredTrials > 0) {
           const maxP = Math.max(...penaltiesList);
           totalPenalties = penaltiesList.reduce((acc, p) => acc + p, 0) - maxP;
           if (actualP1 === maxP) discardedTrialIdx = 1;
@@ -9028,12 +9034,17 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
 
       const pList = [p1, p2, p3, p4].filter((p): p is number => p !== null);
       const participatedCount = pList.length;
-      const isClassified = participatedCount >= (rc.season === 'Invernale' ? 2 : 3);
+      
+      const configuredTrialsCount = [rc.trial1_event_id, rc.trial2_event_id, rc.trial3_event_id, rc.trial4_event_id].filter(Boolean).length;
+      let requiredTrials = rc.min_trials && rc.min_trials > 0 ? rc.min_trials : 
+                           (configuredTrialsCount === 1 ? 1 : (rc.season === 'Invernale' ? 2 : 3));
+      const isClassified = participatedCount >= requiredTrials;
+
       let totalPenalties = 0;
       let discardedTrialIdx: number | null = null;
 
       if (isClassified) {
-        if ((rc.season === 'Invernale' && participatedCount === 3) || participatedCount === 4) {
+        if (participatedCount > requiredTrials && requiredTrials > 0) {
           const maxP = Math.max(...pList);
           totalPenalties = pList.reduce((acc, p) => acc + p, 0) - maxP;
           if (p1 === maxP) discardedTrialIdx = 1;
