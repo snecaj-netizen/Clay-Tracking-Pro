@@ -22,7 +22,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   const { triggerConfirm, triggerToast } = useUI();
   const [isCreating, setIsCreating] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'A' | 'B' | 'CA' | 'LIBERA' | 'ALL'>('A');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
   const [formData, setFormData] = useState({
     name: '',
     society: '',
@@ -85,7 +85,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     const groupB = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && isGroupB(t.type || t.team_type)).sort(sortFunc);
     const hunters = teamsWithTotals.filter(t => isHunter(t.type || t.team_type)).sort(sortFunc);
     const libera = teamsWithTotals.filter(t => isLibera(t.type || t.team_type)).sort(sortFunc);
-    const others = teamsWithTotals.filter(t => !isHunter(t.type || t.team_type) && !isLibera(t.type || t.team_type) && !isGroupA(t.type || t.team_type) && !isGroupB(t.type || t.team_type)).sort(sortFunc);
+
+    // Collect all unique custom team types
+    const customTypeNames = Array.from(new Set(
+      teamsWithTotals
+        .map(t => (t.type || t.team_type || '').trim())
+        .filter(t => t && !isHunter(t) && !isLibera(t) && !isGroupA(t) && !isGroupB(t) && t !== 'PC_A' && t !== 'PC_B' && t !== 'SP_A' && t !== 'SP_B' && t !== 'TAV_FITAV')
+    )).sort();
+
+    const customTypeGroups: { [key: string]: typeof teamsWithTotals } = {};
+    customTypeNames.forEach(cType => {
+      let list = teamsWithTotals.filter(t => (t.type || t.team_type || '').trim() === cType).sort(sortFunc);
+      if (filterSociety) {
+        list = list.filter(t => t.society === filterSociety);
+      }
+      customTypeGroups[cType] = list;
+    });
 
     const all = teamsWithTotals.sort(sortFunc);
 
@@ -94,7 +109,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     let filteredB = groupB;
     let filteredHunters = hunters;
     let filteredLibera = libera;
-    let filteredOthers = others;
     let filteredAll = all;
 
     if (filterSociety) {
@@ -102,7 +116,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       filteredB = groupB.filter(t => t.society === filterSociety);
       filteredHunters = hunters.filter(t => t.society === filterSociety);
       filteredLibera = libera.filter(t => t.society === filterSociety);
-      filteredOthers = others.filter(t => t.society === filterSociety);
       filteredAll = all.filter(t => t.society === filterSociety);
     }
 
@@ -111,9 +124,18 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
     else if (selectedTypeFilter === 'B') result = filteredB;
     else if (selectedTypeFilter === 'CA') result = filteredHunters;
     else if (selectedTypeFilter === 'LIBERA') result = filteredLibera;
+    else if (customTypeGroups[selectedTypeFilter]) result = customTypeGroups[selectedTypeFilter];
     else result = filteredAll;
 
-    return { groupA: filteredA, groupB: filteredB, hunters: filteredHunters, libera: filteredLibera, others: filteredOthers, filtered: result };
+    return { 
+      groupA: filteredA, 
+      groupB: filteredB, 
+      hunters: filteredHunters, 
+      libera: filteredLibera, 
+      customTypeGroups,
+      customTypeNames,
+      filtered: result 
+    };
   }, [teams, results, filterSociety, selectedTypeFilter]);
 
   const hasFinalSeries = useMemo(() => {
@@ -155,8 +177,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       { id: 'CACCIATORI', name: 'Squadre Cacciatori', size: 99 },
       { id: 'SQUADRA_TIRATORI', name: 'Squadra Tiratori', size: 99 } // No limit, using 99 as a placeholder for "no limit"
     );
+
+    // Also include any custom types already used in existing teams
+    const existingCustomTypes = new Set<string>();
+    teams.forEach(t => {
+      const tVal = (t.type || t.team_type || '').trim();
+      if (tVal && !list.some(item => item.id.toLowerCase() === tVal.toLowerCase())) {
+        existingCustomTypes.add(tVal);
+      }
+    });
+
+    existingCustomTypes.forEach(cType => {
+      list.push({ id: cType, name: cType, size: 99 });
+    });
+
     return list;
-  }, [event.discipline, t]);
+  }, [event.discipline, t, teams]);
 
   const availableShooters = useMemo(() => {
     // If it's a SQUADRA_LIBERA, we don't strictly filter by society based on formData.society
@@ -191,19 +227,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   })), [availableShooters]);
 
   const validateTeam = () => {
-    // Society is optional for 'SQUADRA_LIBERA'
     if (!formData.name || !formData.type) return t('fill_required_fields');
-    if (formData.type !== 'SQUADRA_TIRATORI' && !formData.society) return t('fill_required_fields');
-    
-    const typeDef = teamTypes.find(t => t.id === formData.type);
-    if (!typeDef) return t('invalid_team_type');
-    
-    if (formData.type !== 'CACCIATORI' && formData.type !== 'SQUADRA_TIRATORI' && formData.memberIds.length !== typeDef.size) {
-      return t('team_members_size_error').replace('{{size}}', String(typeDef.size));
-    }
-    
-    if ((formData.type === 'SQUADRA_TIRATORI' || formData.type === 'CACCIATORI') && formData.memberIds.length < 1) {
-      return 'Squadra deve avere almeno un partecipante';
+    if (formData.memberIds.length < 1) {
+      return 'La squadra deve avere almeno un partecipante';
     }
 
     const members = formData.memberIds.map(id => users.find(u => String(u.id) === String(id))).filter(Boolean);
@@ -411,20 +437,34 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t('team_type_label')}</label>
-              <select
-                value={formData.type}
-                onChange={e => {
-                  const val = e.target.value;
-                  const targetSoc = val === 'CACCIATORI' ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (formData.society === 'Cacciatori' ? '' : formData.society));
-                  setFormData({...formData, type: val, society: targetSoc, memberIds: []});
-                }}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
-              >
-                <option value="">{t('select_type')}</option>
-                {teamTypes.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={formData.type}
+                  onChange={e => {
+                    const val = e.target.value;
+                    const targetSoc = val.toUpperCase() === 'CACCIATORI' ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (formData.society === 'Cacciatori' ? '' : formData.society));
+                    setFormData({...formData, type: val, society: targetSoc});
+                  }}
+                  placeholder="Es. Settore A, Veterani, Trofeo..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white focus:border-orange-500 outline-none"
+                />
+                <div className="flex flex-wrap gap-1">
+                  {teamTypes.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        const targetSoc = t.id === 'CACCIATORI' ? 'Cacciatori' : (currentUser?.role === 'society' ? (currentUser.society || '') : (formData.society === 'Cacciatori' ? '' : formData.society));
+                        setFormData({...formData, type: t.id, society: targetSoc, memberIds: []});
+                      }}
+                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition-all ${formData.type === t.id ? 'bg-orange-600 border-orange-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -438,20 +478,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               </div>
             )}
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-              {t('select_shooters_label')
-                .replace(/\{\{current\}\}/g, String(formData.memberIds.length))
-                .replace(/\{\{total\}\}/g, String(teamTypes.find(t => t.id === formData.type)?.size || 0))}
+              Seleziona Membri Squadra ({formData.memberIds.length} selezionati)
             </label>
             <ShooterSearch 
               value={formData.memberIds}
               onChange={(val) => {
                 if (Array.isArray(val)) {
-                  const typeDef = teamTypes.find(t => t.id === formData.type);
-                  // Allow unlimited shooters for hunter or 'free' teams
-                  if (typeDef && formData.type !== 'SQUADRA_TIRATORI' && formData.type !== 'CACCIATORI' && val.length > typeDef.size) {
-                    if (triggerToast) triggerToast(t('team_members_size_error').replace('{{size}}', String(typeDef.size)), 'info');
-                    return;
-                  }
                   setFormData({ ...formData, memberIds: val });
                 }
               }}
@@ -524,6 +556,19 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
               Squadra Tiratori
             </button>
           )}
+          {sortedAndGroupedTeams.customTypeNames.map(cName => {
+            const count = sortedAndGroupedTeams.customTypeGroups[cName]?.length || 0;
+            if (count === 0) return null;
+            return (
+              <button
+                key={cName}
+                onClick={() => setSelectedTypeFilter(cName)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectedTypeFilter === cName ? 'bg-slate-800 border-orange-500 text-orange-500 shadow-lg shadow-orange-600/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
+              >
+                {cName} ({count})
+              </button>
+            );
+          })}
         </div>
       )}
 
