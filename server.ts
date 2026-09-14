@@ -3573,6 +3573,143 @@ app.post('/api/admin/users/import', authenticateToken, requireAdminOrSociety, as
   }
 });
 
+app.post('/api/admin/users/auto-register-shooters', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
+  const { shooters } = req.body;
+  if (!Array.isArray(shooters) || shooters.length === 0) {
+    return res.status(400).json({ error: 'Nessun tiratore fornito per la registrazione.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const registered: any[] = [];
+
+    const { rows: societies } = await client.query("SELECT name, code FROM societies");
+    const societyMap = new Map(societies.map(s => [s.code?.toLowerCase(), s.name]));
+
+    for (let i = 0; i < shooters.length; i++) {
+      const s = shooters[i];
+      const upperName = (s.name || '').toUpperCase().trim();
+      const upperSurname = (s.surname || '').toUpperCase().trim();
+      let shooterCode = (s.shooter_code || s.shooterCode || '').toUpperCase().trim();
+      let societyName = (s.society || '').toUpperCase().trim();
+
+      if (societyName) {
+        const found = societyMap.get(societyName.toLowerCase());
+        if (found) societyName = found;
+      }
+      if (req.user.role === 'society') {
+        societyName = req.user.society;
+      }
+
+      // Check if user already exists by shooterCode
+      let existingUser: any = null;
+      if (shooterCode) {
+        const { rows } = await client.query(
+          "SELECT id, name, surname, shooter_code, society, category, qualification, email FROM users WHERE LOWER(shooter_code) = LOWER($1)",
+          [shooterCode]
+        );
+        if (rows.length > 0) existingUser = rows[0];
+      }
+
+      // Or check by exact Name + Surname
+      if (!existingUser && upperName && upperSurname) {
+        const { rows } = await client.query(
+          "SELECT id, name, surname, shooter_code, society, category, qualification, email FROM users WHERE UPPER(name) = $1 AND UPPER(surname) = $2",
+          [upperName, upperSurname]
+        );
+        if (rows.length > 0) existingUser = rows[0];
+      }
+
+      if (existingUser) {
+        registered.push({
+          id: existingUser.id,
+          name: existingUser.name,
+          surname: existingUser.surname,
+          shooter_code: existingUser.shooter_code,
+          society: existingUser.society,
+          category: existingUser.category,
+          qualification: existingUser.qualification,
+          email: existingUser.email,
+          created: false
+        });
+        continue;
+      }
+
+      // Auto-generate code if missing
+      if (!shooterCode) {
+        const rand = Math.round(100000 + Math.random() * 900000);
+        shooterCode = `CT-${rand}`;
+      }
+
+      // Ensure shooter_code uniqueness
+      let codeAttempt = shooterCode;
+      let suffix = 1;
+      while (true) {
+        const { rows: codeCheck } = await client.query(
+          "SELECT id FROM users WHERE LOWER(shooter_code) = LOWER($1)",
+          [codeAttempt]
+        );
+        if (codeCheck.length === 0) break;
+        codeAttempt = `${shooterCode}-${suffix++}`;
+      }
+      shooterCode = codeAttempt;
+
+      // Auto-generate email if missing
+      let email = (s.email || '').toLowerCase().trim();
+      if (!email || !email.includes('@')) {
+        const cleanName = (upperName || 'tiratore').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanSurname = (upperSurname || 'auto').toLowerCase().replace(/[^a-z0-9]/g, '');
+        email = `${cleanName}.${cleanSurname}.${shooterCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@claytracker.local`;
+      }
+
+      // Ensure email uniqueness
+      let emailAttempt = email;
+      let emailSuffix = 1;
+      while (true) {
+        const { rows: emailCheck } = await client.query(
+          "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
+          [emailAttempt]
+        );
+        if (emailCheck.length === 0) break;
+        const [localPart, domainPart] = email.split('@');
+        emailAttempt = `${localPart}${emailSuffix++}@${domainPart || 'claytracker.local'}`;
+      }
+      email = emailAttempt;
+
+      const finalCategory = s.category || '2*';
+      const finalQualification = s.qualification || getAutoQualification(s.birth_date, null, upperName);
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(shooterCode || 'ClayTracker123!', salt);
+
+      const { rows: inserted } = await client.query(
+        "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, status, discipline_categories) VALUES ($1, $2, $3, $4, 'user', $5, $6, $7, $8, 'active', $9) RETURNING id, name, surname, shooter_code, society, category, qualification, email",
+        [upperName, upperSurname, email, hash, finalCategory, finalQualification, societyName || null, shooterCode, s.discipline_categories || null]
+      );
+
+      registered.push({
+        id: inserted[0].id,
+        name: inserted[0].name,
+        surname: inserted[0].surname,
+        shooter_code: inserted[0].shooter_code,
+        society: inserted[0].society,
+        category: inserted[0].category,
+        qualification: inserted[0].qualification,
+        email: inserted[0].email,
+        created: true
+      });
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, registered });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message || 'Errore durante la registrazione automatica dei tiratori.' });
+  } finally {
+    client.release();
+  }
+});
+
 app.put('/api/admin/users/:id', authenticateToken, requireAdminOrSociety, async (req: any, res) => {
   const { 
     name, surname, email, role, password, category, qualification, society, shooter_code, avatar, birth_date, phone, status,
@@ -5960,6 +6097,28 @@ app.get('/api/events/:id/results', authenticateToken, async (req: any, res) => {
     res.json(parsedResults);
   } catch (err: any) {
     console.error('Error fetching event results:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete all results for an event (keeps teams, squads, and registrations intact)
+app.delete('/api/events/:id/results', authenticateToken, async (req: any, res) => {
+  try {
+    const eventId = req.params.id;
+    if (req.user.role !== 'admin') {
+      const eventRes = await pool.query('SELECT location, created_by FROM events WHERE id = $1', [eventId]);
+      if (eventRes.rows.length === 0) return res.status(404).json({ error: 'Evento non trovato' });
+      const ev = eventRes.rows[0];
+      if (ev.location !== req.user.society && ev.created_by !== req.user.id) {
+        return res.status(403).json({ error: 'Non autorizzato a eliminare i risultati di questa gara.' });
+      }
+    }
+
+    const delRes = await pool.query('DELETE FROM competitions WHERE event_id = $1', [eventId]);
+    console.log(`Deleted ${delRes.rowCount} results for event ${eventId}`);
+    res.json({ success: true, deletedCount: delRes.rowCount });
+  } catch (err: any) {
+    console.error('Error deleting event results:', err);
     res.status(500).json({ error: err.message });
   }
 });

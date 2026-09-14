@@ -367,7 +367,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
         return { ...prev, memberIds: prev.memberIds.filter(m => m !== id) };
       } else {
         const typeDef = teamTypes.find(t => t.id === prev.type);
-        if (typeDef && prev.memberIds.length >= typeDef.size) {
+        if (typeDef && typeDef.size && typeDef.size < 99 && prev.memberIds.length >= typeDef.size) {
           if (triggerToast) triggerToast(`Massimo ${typeDef.size} tiratori per questa squadra`, 'info');
           return prev;
         }

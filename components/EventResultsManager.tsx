@@ -74,6 +74,9 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [importErrorDetail, setImportErrorDetail] = useState<string | null>(null);
+  const [availableSheets, setAvailableSheets] = useState<{ name: string; count: number }[]>([]);
+  const [selectedSheetFilter, setSelectedSheetFilter] = useState<string>('all');
+  const [rowStatusFilter, setRowStatusFilter] = useState<'all' | 'to_save' | 'unregistered' | 'identical' | 'errors'>('all');
   
   const layoutInfo = useMemo(() => getSeriesLayout(event.discipline as Discipline), [event.discipline]);
   const targetsPerSeries = useMemo(() => {
@@ -93,6 +96,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [shootOff, setShootOff] = useState('');
   const [showQuickAddShooter, setShowQuickAddShooter] = useState(false);
   const [quickAddInitialDetails, setQuickAddInitialDetails] = useState<any>(null);
+  const [autoRegistering, setAutoRegistering] = useState(false);
+  const [deletingAllResults, setDeletingAllResults] = useState(false);
 
   const reEvaluateParsedRows = (updatedUsers: any[]) => {
     setParsedRows(prevRows => {
@@ -127,46 +132,70 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         }
 
         // Re-construct the errors array
-        const updatedErrors = row.errors.filter((e: string) => 
+        const updatedErrors = (row.errors || []).filter((e: string) => 
           !e.includes("mancante") && 
           !e.includes("non registrato") && 
           !e.includes("non trovato") &&
-          !e.includes("ricerca fallita")
+          !e.includes("ricerca fallita") &&
+          !e.startsWith("ATTENZIONE:") &&
+          !e.startsWith("Variazione:") &&
+          !e.startsWith("INFO:")
         );
 
-        const finalShooterCode = row.shooterCode || (foundUser ? (foundUser.shooter_code || foundUser.shooterCode || '') : '');
+        let finalShooterCode = row.shooterCode || (foundUser ? (foundUser.shooter_code || foundUser.shooterCode || '') : '');
         const surname = row.surname || (foundUser ? (foundUser.surname || foundUser.cognome || '') : '');
         const name = row.name || (foundUser ? (foundUser.name || foundUser.nome || '') : '');
-        const email = row.email || (foundUser ? (foundUser.email || '') : '');
+        let email = row.email || (foundUser ? (foundUser.email || '') : '');
+
+        if (!finalShooterCode && !userFound) {
+          const randSuffix = Math.round(100000 + Math.random() * 900000);
+          finalShooterCode = `CT-${randSuffix}`;
+        }
+
+        if (!email) {
+          const cleanForEmail = (finalShooterCode || `${surname}.${name}`).toLowerCase().replace(/[^a-z0-9]/g, '');
+          email = cleanForEmail ? `${cleanForEmail}@claytracker.local` : `tiratore_${row.index}@claytracker.local`;
+        }
+
         const society = row.society || (foundUser ? (foundUser.society || '') : '') || event.location || '';
         const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
         const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(row.category || (foundUser ? foundUser.category : '2*'));
         const qualification = row.qualification || normalizeQualification(foundUser ? (foundUser.qualification || '') : '');
 
-        // Check if shooters or codes are missing, similar to initial mapping
-        if (!finalShooterCode && !userFound) {
-          updatedErrors.push("Codice Tiratore mancante");
-        } else if (finalShooterCode && finalShooterCode.length < 5) {
-          updatedErrors.push("Codice Tiratore troppo corto");
-        }
-
         if (!surname) updatedErrors.push("Cognome mancante");
         if (!name) updatedErrors.push("Nome mancante");
-        if (!email) {
-          updatedErrors.push("Email mancante");
-        } else if (email && !email.includes('@')) {
-          updatedErrors.push("Formato Email non valido");
-        }
 
-        if (!userFound) {
-          updatedErrors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
-        }
+        let isIdentical = false;
+        let isModified = false;
+        let saveAction: 'skip' | 'update' | 'insert' | 'auto_register' = 'insert';
 
-        if (userFound) {
-          const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
-          if (hasExisting && !updatedErrors.some((e: string) => e.includes("Risultato già registrato"))) {
-            updatedErrors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
+        if (userFound && userId) {
+          const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
+          if (existingResult) {
+            const existingScores: number[] = Array.isArray(existingResult.scores) ? existingResult.scores.map(s => Number(s) || 0) : [];
+            const importedScores: number[] = (row.scores || []).map((s: any) => Number(s) || 0);
+            
+            const scoresMatch = existingScores.length === importedScores.length && 
+              existingScores.every((val, idx) => val === importedScores[idx]);
+            
+            const existingShootOff = (existingResult.shoot_off !== null && existingResult.shoot_off !== undefined) ? Number(existingResult.shoot_off) : 0;
+            const importedShootOff = (row.shootOff !== null && row.shootOff !== undefined) ? Number(row.shootOff) : 0;
+            const shootOffMatch = existingShootOff === importedShootOff;
+
+            if (scoresMatch && shootOffMatch) {
+              isIdentical = true;
+              saveAction = 'skip';
+            } else {
+              isModified = true;
+              saveAction = 'update';
+              updatedErrors.push(`Variazione: Punteggio esistente (${existingScores.join('/')}) diverso da Excel (${importedScores.join('/')}). Verrà aggiornato.`);
+            }
+          } else {
+            saveAction = 'insert';
           }
+        } else {
+          saveAction = 'auto_register';
+          updatedErrors.push("INFO: Tiratore non ancora registrato a portale. Verrà creato automaticamente al salvataggio.");
         }
 
         return {
@@ -180,12 +209,61 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           qualification,
           userId,
           userFound,
+          isIdentical,
+          isModified,
+          saveAction,
           errors: updatedErrors,
-          isValid: updatedErrors.filter((e: string) => !e.startsWith("ATTENZIONE:")).length === 0
+          isValid: updatedErrors.filter((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:")).length === 0
         };
       });
     });
   };
+
+  const rowsWithErrors = useMemo(() => 
+    parsedRows.filter(r => !r.isIdentical && r.errors && r.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:"))),
+    [parsedRows]
+  );
+  const rowsUnregistered = useMemo(() => 
+    parsedRows.filter(r => !r.userFound || r.saveAction === 'auto_register'),
+    [parsedRows]
+  );
+  const rowsToSave = useMemo(() => 
+    parsedRows.filter(r => !r.isIdentical && (!r.errors || !r.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:")))),
+    [parsedRows]
+  );
+  const rowsIdentical = useMemo(() => 
+    parsedRows.filter(r => r.isIdentical),
+    [parsedRows]
+  );
+  const rowsNew = useMemo(() => 
+    parsedRows.filter(r => !r.isIdentical && r.saveAction === 'insert'),
+    [parsedRows]
+  );
+  const rowsModified = useMemo(() => 
+    parsedRows.filter(r => !r.isIdentical && r.saveAction === 'update'),
+    [parsedRows]
+  );
+
+  const displayedParsedRows = useMemo(() => {
+    return parsedRows.filter(row => {
+      if (selectedSheetFilter !== 'all' && row._sheetSource && row._sheetSource !== selectedSheetFilter) {
+        return false;
+      }
+      if (rowStatusFilter === 'to_save') {
+        return !row.isIdentical && (!row.errors || !row.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:")));
+      }
+      if (rowStatusFilter === 'identical') {
+        return !!row.isIdentical;
+      }
+      if (rowStatusFilter === 'unregistered') {
+        return !row.userFound || row.saveAction === 'auto_register';
+      }
+      if (rowStatusFilter === 'errors') {
+        return row.errors && row.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:"));
+      }
+      return true;
+    });
+  }, [parsedRows, selectedSheetFilter, rowStatusFilter]);
 
   const categories = useMemo(() => {
     const list = Array.from(new Set(results.map(r => r.category_at_time || r.category).filter(Boolean)));
@@ -331,6 +409,60 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     
     XLSX.writeFile(workbook, `Template_Risultati_${event.name.replace(/\s+/g, '_')}.xlsx`);
     triggerToast("Template scaricato con successo!", "success");
+  };
+
+  const handleExportCurrentResultsExcel = () => {
+    const validResults = results.filter(r => !r.is_registered_only);
+    if (!validResults || validResults.length === 0) {
+      triggerToast("Nessun risultato registrato da esportare per questa gara.", "info");
+      return;
+    }
+    const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+    const headers = [
+      'Codice Tiratore *',
+      'Cognome *',
+      'Nome *',
+      'Email *',
+      'Società',
+      'Categoria *',
+      'Qualifica',
+      'PETT'
+    ];
+    for (let i = 1; i <= numSeries; i++) {
+      headers.push(`S${i}`);
+    }
+    headers.push('S.Fin');
+    headers.push('Shoot-Off');
+    headers.push('Preferenza Classifica');
+
+    const rows = validResults.map(r => {
+      const u = users.find(user => user.id === r.user_id);
+      const scores = Array.isArray(r.scores) ? r.scores : [];
+      const rowData: any = {
+        'Codice Tiratore *': r.shooter_code || u?.shooter_code || '',
+        'Cognome *': r.surname || u?.surname || '',
+        'Nome *': r.name || u?.name || '',
+        'Email *': r.email || u?.email || '',
+        'Società': r.society || u?.society || '',
+        'Categoria *': r.category || u?.category || '',
+        'Qualifica': r.qualification || u?.qualification || '',
+        'PETT': r.bib_number || ''
+      };
+      for (let i = 1; i <= numSeries; i++) {
+        rowData[`S${i}`] = scores[i - 1] !== undefined ? String(scores[i - 1]) : '';
+      }
+      rowData['S.Fin'] = scores[numSeries] !== undefined ? String(scores[numSeries]) : '';
+      rowData['Shoot-Off'] = r.shoot_off !== null && r.shoot_off !== undefined ? String(r.shoot_off) : '';
+      rowData['Preferenza Classifica'] = r.ranking_preference === 'qualifica' ? 'Qualifica' : 'Categoria';
+      return rowData;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Risultati Gara");
+    const cleanEventName = (event.name || 'Gara').replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(workbook, `Risultati_${cleanEventName}.xlsx`);
+    triggerToast(`Esportati ${rows.length} risultati attuali in Excel con successo!`, "success");
   };
 
   const handleUploadPDFResults = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -531,6 +663,113 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     reader.readAsDataURL(file);
   };
 
+  // Helper to recalculate worksheet['!ref'] to encompass all cell keys (fixes SheetJS dropping appended rows)
+  const fixWorksheetRange = (worksheet: any) => {
+    if (!worksheet) return;
+    let minRow = Infinity, maxRow = -1;
+    let minCol = Infinity, maxCol = -1;
+
+    // Check existing !ref
+    if (worksheet['!ref']) {
+      try {
+        const r = XLSX.utils.decode_range(worksheet['!ref']);
+        minRow = Math.min(minRow, r.s.r);
+        minCol = Math.min(minCol, r.s.c);
+        maxRow = Math.max(maxRow, r.e.r);
+        maxCol = Math.max(maxCol, r.e.c);
+      } catch {}
+    }
+
+    // Check !fullref
+    if (worksheet['!fullref']) {
+      try {
+        const fr = XLSX.utils.decode_range(worksheet['!fullref']);
+        minRow = Math.min(minRow, fr.s.r);
+        minCol = Math.min(minCol, fr.s.c);
+        maxRow = Math.max(maxRow, fr.e.r);
+        maxCol = Math.max(maxCol, fr.e.c);
+      } catch {}
+    }
+
+    // Dense array mode
+    if (Array.isArray(worksheet)) {
+      minRow = 0;
+      maxRow = Math.max(maxRow, worksheet.length - 1);
+      for (let r = 0; r < worksheet.length; r++) {
+        if (Array.isArray(worksheet[r])) {
+          maxCol = Math.max(maxCol, worksheet[r].length - 1);
+        }
+      }
+    }
+
+    // Scan all cell keys
+    for (const key of Object.keys(worksheet)) {
+      if (key.startsWith('!')) continue;
+      const match = key.match(/^([A-Za-z]+)([0-9]+)$/);
+      if (match) {
+        const rowIdx = parseInt(match[2], 10) - 1;
+        try {
+          const cell = XLSX.utils.decode_cell(key);
+          if (cell.r < minRow) minRow = cell.r;
+          if (cell.r > maxRow) maxRow = cell.r;
+          if (cell.c < minCol) minCol = cell.c;
+          if (cell.c > maxCol) maxCol = cell.c;
+        } catch {
+          if (rowIdx < minRow) minRow = rowIdx;
+          if (rowIdx > maxRow) maxRow = rowIdx;
+        }
+      }
+    }
+
+    if (maxRow >= 0 && maxCol >= 0) {
+      worksheet['!ref'] = XLSX.utils.encode_range({
+        s: { r: minRow === Infinity ? 0 : minRow, c: minCol === Infinity ? 0 : minCol },
+        e: { r: maxRow, c: maxCol }
+      });
+    }
+  };
+
+  // Helper to detect which row contains the actual table headers
+  const detectHeaderRowIndex = (worksheet: any): number => {
+    const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+    if (!rawMatrix || rawMatrix.length === 0) return 0;
+
+    const headerKeywords = [
+      'cognome', 'surname', 'lastname',
+      'nome', 'name', 'firstname',
+      'tiratore', 'atleta', 'nominativo',
+      'codice', 'codicetiratore', 'cf', 'fiscalcode', 'tessera', 'fitav',
+      'societa', 'club', 'team',
+      'categoria', 'category', 'cat',
+      'qualifica', 'qualification', 'qual',
+      'pett', 'pettorale', 'bib',
+      's1', 'serie 1', 'serie1'
+    ];
+
+    let bestIndex = 0;
+    let maxMatches = 0;
+    const scanLimit = Math.min(rawMatrix.length, 20);
+
+    for (let i = 0; i < scanLimit; i++) {
+      const row = rawMatrix[i];
+      if (!Array.isArray(row)) continue;
+      let matches = 0;
+      for (const cell of row) {
+        const cellStr = String(cell || '').toLowerCase().replace(/[\s*_.-]/g, '');
+        if (!cellStr) continue;
+        if (headerKeywords.some(kw => cellStr.includes(kw.replace(/[\s*_.-]/g, '')))) {
+          matches++;
+        }
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestIndex = i;
+      }
+    }
+
+    return maxMatches >= 2 ? bestIndex : 0;
+  };
+
   const handleUploadExcelResults = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -540,20 +779,170 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const rawRows = XLSX.utils.sheet_to_json(worksheet);
+        let workbook: any = null;
 
-        if (rawRows.length === 0) {
-          triggerToast("Il file Excel non contiene righe di dati.", "error");
+        // Step 1: If it's a zip/PK buffer (standard .xlsx), strip <dimension .../> tags from sheet XMLs
+        // This ensures SheetJS reads all rows without being artificially truncated by stale dimension bounds
+        if (data[0] === 0x50 && data[1] === 0x4B) {
+          try {
+            const cfb = XLSX.CFB.read(data, { type: 'buffer' });
+            let modified = false;
+            if (cfb && cfb.FileIndex) {
+              for (const f of cfb.FileIndex) {
+                if (f.name && f.name.includes("sheet") && f.name.endsWith(".xml") && f.content) {
+                  let xml = typeof f.content === 'string' ? f.content : new TextDecoder('utf-8').decode(f.content);
+                  if (/<(?:\w+:)?dimension/i.test(xml)) {
+                    xml = xml.replace(/<(?:\w+:)?dimension[^>]*\/>/gi, "");
+                    const enc = new TextEncoder().encode(xml);
+                    f.content = enc;
+                    f.size = enc.length;
+                    modified = true;
+                  }
+                }
+              }
+              if (modified) {
+                workbook = (XLSX as any).parse_zip(cfb, {});
+              }
+            }
+          } catch (cfbErr) {
+            console.warn("CFB dimension strip fallback:", cfbErr);
+          }
+        }
+
+        if (!workbook) {
+          workbook = XLSX.read(data, { type: 'array' });
+        }
+
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          triggerToast("Il file Excel non contiene fogli.", "error");
           setLoading(false);
           return;
         }
 
+        // Process all sheets in the workbook to ensure multi-sheet workbooks include all shooters
+        const sheetSummaries: { name: string; count: number }[] = [];
+        const combinedRawRows: any[] = [];
+
+        for (const sName of workbook.SheetNames) {
+          const ws = workbook.Sheets[sName];
+          if (!ws) continue;
+          fixWorksheetRange(ws);
+
+          // Find absolute max row and col across all cell keys
+          let maxRow = -1;
+          let maxCol = -1;
+          for (const key of Object.keys(ws)) {
+            if (key.startsWith('!')) continue;
+            try {
+              const cell = XLSX.utils.decode_cell(key);
+              if (cell.r > maxRow) maxRow = cell.r;
+              if (cell.c > maxCol) maxCol = cell.c;
+            } catch {}
+          }
+
+          if (maxRow >= 0 && maxCol >= 0) {
+            ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxRow, c: maxCol } });
+          }
+
+          const hIdx = detectHeaderRowIndex(ws);
+
+          // Primary object parsing with explicit range
+          let rows = XLSX.utils.sheet_to_json(ws, { 
+            range: { s: { r: hIdx, c: 0 }, e: { r: Math.max(maxRow, hIdx + 1), c: Math.max(maxCol, 20) } },
+            defval: '' 
+          });
+          let validRows = rows.filter((r: any) => {
+            if (!r || typeof r !== 'object') return false;
+            return Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== '');
+          });
+
+          // Fallback parsing via 2D array matrix with explicit range
+          try {
+            const rawMatrix = XLSX.utils.sheet_to_json(ws, { 
+              header: 1, 
+              range: { s: { r: hIdx, c: 0 }, e: { r: Math.max(maxRow, hIdx + 1), c: Math.max(maxCol, 20) } },
+              defval: '' 
+            }) as any[][];
+            if (rawMatrix && rawMatrix.length > 1) {
+              const headerRow = rawMatrix[0];
+              const nonBlankRows = rawMatrix.slice(1).filter(r => 
+                Array.isArray(r) && r.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
+              );
+              if (nonBlankRows.length > validRows.length) {
+                validRows = nonBlankRows.map((rArr) => {
+                  const obj: any = {};
+                  headerRow.forEach((h: any, cIdx: number) => {
+                    const hKey = h !== null && h !== undefined && String(h).trim() !== '' ? String(h).trim() : `__COL_${cIdx}`;
+                    obj[hKey] = rArr[cIdx] !== undefined ? rArr[cIdx] : '';
+                  });
+                  return obj;
+                });
+              }
+            }
+          } catch {}
+
+          // Direct cell scan for every row from hIdx + 1 to maxRow to guarantee 0 dropped rows
+          if (maxRow > hIdx) {
+            try {
+              const headerMap: { [c: number]: string } = {};
+              for (let c = 0; c <= Math.max(maxCol, 25); c++) {
+                const cellKey = XLSX.utils.encode_cell({ r: hIdx, c });
+                const cellVal = ws[cellKey] ? String(ws[cellKey].v || ws[cellKey].w || '').trim() : '';
+                if (cellVal) headerMap[c] = cellVal;
+              }
+
+              const directRows: any[] = [];
+              for (let r = hIdx + 1; r <= maxRow; r++) {
+                let hasData = false;
+                const rowObj: any = {};
+                for (let c = 0; c <= Math.max(maxCol, 25); c++) {
+                  const cellKey = XLSX.utils.encode_cell({ r, c });
+                  const cellVal = ws[cellKey] ? (ws[cellKey].v !== undefined ? ws[cellKey].v : ws[cellKey].w) : '';
+                  if (cellVal !== undefined && cellVal !== null && String(cellVal).trim() !== '') {
+                    hasData = true;
+                  }
+                  const hName = headerMap[c] || `__COL_${c}`;
+                  rowObj[hName] = cellVal !== undefined ? cellVal : '';
+                }
+                if (hasData) {
+                  directRows.push(rowObj);
+                }
+              }
+
+              if (directRows.length > validRows.length) {
+                validRows = directRows;
+              }
+            } catch (scanErr) {
+              console.warn("Direct cell scan fallback:", scanErr);
+            }
+          }
+
+          if (validRows.length > 0) {
+            sheetSummaries.push({ name: sName, count: validRows.length });
+            for (const vr of validRows) {
+              combinedRawRows.push({ ...(vr as any), _sheetSource: sName });
+            }
+          }
+        }
+
+        if (combinedRawRows.length === 0) {
+          triggerToast("Il file Excel non contiene righe di dati valide.", "error");
+          setLoading(false);
+          return;
+        }
+
+        setAvailableSheets(sheetSummaries);
+        setSelectedSheetFilter('all');
+        setRowStatusFilter('all');
+
+        const rawRows = combinedRawRows;
         const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
 
-        const finalSeriesKeys = ['sfin', 's.fin', 's.fin.', 's. fin', 's_fin', 's-fin', 'finale', 'final', 'sf', 's. finale', `s${numSeries + 1}`];
+        const finalSeriesKeys = [
+          'sfin', 's.fin', 's.fin.', 's. fin', 's_fin', 's-fin', 
+          'finale', 'final', 'sf', 's. finale', 'seriefinale', 'serie finale',
+          `s${numSeries + 1}`, `serie${numSeries + 1}`
+        ];
 
         const hasSFinInSheet = rawRows.some((raw: any) => {
           return Object.keys(raw).some(rk => {
@@ -564,34 +953,103 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
         const parsed: any[] = rawRows.map((raw: any, index: number) => {
           const getVal = (keys: string[]): string => {
+            // Pass 1: exact match on normalized key name
             for (const k of keys) {
               const cleanK = k.toLowerCase().replace(/[\s*_.-]/g, '');
               const matchedKey = Object.keys(raw).find(rk => 
                 rk.toLowerCase().replace(/[\s*_.-]/g, '') === cleanK
               );
               if (matchedKey && raw[matchedKey] !== undefined && raw[matchedKey] !== null) {
-                return String(raw[matchedKey]).trim();
+                const str = String(raw[matchedKey]).trim();
+                if (str !== '') return str;
+              }
+            }
+            // Pass 2: substring match on normalized key name (only for keys with > 2 chars to avoid s1 matching s10)
+            for (const k of keys) {
+              if (k.length <= 2) continue;
+              const cleanK = k.toLowerCase().replace(/[\s*_.-]/g, '');
+              const matchedKey = Object.keys(raw).find(rk => {
+                const cleanRK = rk.toLowerCase().replace(/[\s*_.-]/g, '');
+                return cleanRK.includes(cleanK) || cleanK.includes(cleanRK);
+              });
+              if (matchedKey && raw[matchedKey] !== undefined && raw[matchedKey] !== null) {
+                const str = String(raw[matchedKey]).trim();
+                if (str !== '') return str;
               }
             }
             return '';
           };
 
-          const shooterCode = getVal(['codicetiratore', 'codice', 'cf', 'fiscalcode', 'tessera', 'fitav', 'cod']);
-          const rawSurname = getVal(['cognome', 'surname', 'lastname']);
-          const rawName = getVal(['nome', 'name', 'firstname']);
-          const rawEmail = getVal(['email', 'mail']);
-          const rawSociety = getVal(['societa', 'club', 'team']);
-          const rawCategory = getVal(['categoria', 'category', 'class']);
-          const rawQualification = getVal(['qualifica', 'qualification']);
-          const bibNumber = getVal(['pett', 'pettorale', 'bib']);
+          const shooterCode = getVal([
+            'codicetiratore', 'codice', 'cf', 'fiscalcode', 'tessera', 'fitav', 'cod',
+            'codicefitav', 'tesserafitav', 'matricola', 'id', 'shootercode', 'shooter_code'
+          ]);
+
+          let rawSurname = getVal(['cognome', 'surname', 'lastname', 'cognomi']);
+          let rawName = getVal(['nome', 'name', 'firstname', 'nomi']);
+          const rawFullName = getVal([
+            'tiratore', 'tiratori', 'atleta', 'atleti', 'nominativo', 'nominativi',
+            'cognomenome', 'nomecognome', 'cognomeenome', 'nomeecognome',
+            'partecipante', 'partecipanti', 'concorrente', 'concorrenti',
+            'fullname', 'full_name'
+          ]);
+
+          if ((!rawSurname || !rawName) && rawFullName) {
+            const parts = rawFullName.trim().split(/\s+/);
+            if (parts.length >= 2) {
+              if (!rawSurname) rawSurname = parts[0];
+              if (!rawName) rawName = parts.slice(1).join(' ');
+            } else if (parts.length === 1) {
+              if (!rawSurname) rawSurname = parts[0];
+            }
+          }
+
+          // Fallback: if surname and name are still empty, scan any column containing letters
+          if (!rawSurname && !rawName) {
+            for (const [colKey, colVal] of Object.entries(raw)) {
+              if (colKey.startsWith('_') || colKey.startsWith('!')) continue;
+              const strVal = String(colVal || '').trim();
+              if (!strVal || /^\d+$/.test(strVal)) continue;
+              if (/[a-zA-Z]{3,}/.test(strVal) && strVal.length > 2 && strVal.length < 60) {
+                const parts = strVal.split(/\s+/);
+                if (parts.length >= 2) {
+                  rawSurname = parts[0];
+                  rawName = parts.slice(1).join(' ');
+                  break;
+                } else if (parts.length === 1) {
+                  rawSurname = parts[0];
+                  rawName = 'Tiratore';
+                  break;
+                }
+              }
+            }
+          }
+
+          const rawEmail = getVal(['email', 'mail', 'indirizzoemail']);
+          const rawSociety = getVal(['societa', 'club', 'team', 'tav', 'societatav', 'campo']);
+          const rawCategory = getVal(['categoria', 'category', 'class', 'cat', 'classe']);
+          const rawQualification = getVal(['qualifica', 'qualification', 'qual']);
+          const bibNumber = getVal(['pett', 'pettorale', 'bib', 'dorsale', 'numero', 'num', 'n']);
           const rawDisciplineCategories = getVal(['disciplinecategories', 'discipline_categories', 'discipline_category', 'discipline', 'specialita']);
           
-          const rawPref = getVal(['preferenza', 'preferenzaclassifica', 'rankingpreference']);
+          const rawPref = getVal(['preferenza', 'preferenzaclassifica', 'rankingpreference', 'preferenza_classifica']);
           const rankingPreference: 'categoria' | 'qualifica' = (rawPref.toLowerCase().includes('qual') || rawPref.toLowerCase() === 'qualifica') ? 'qualifica' : 'categoria';
 
           const scores: number[] = [];
           for (let sIdx = 1; sIdx <= numSeries; sIdx++) {
-            const val = getVal([`s${sIdx}`]);
+            const val = getVal([
+              `s${sIdx}`,
+              `s.${sIdx}`,
+              `s_${sIdx}`,
+              `serie${sIdx}`,
+              `serie_${sIdx}`,
+              `serie ${sIdx}`,
+              `round${sIdx}`,
+              `round_${sIdx}`,
+              `round ${sIdx}`,
+              `manche${sIdx}`,
+              `batteria${sIdx}`
+            ]);
             const scoreNum = parseInt(val);
             scores.push(isNaN(scoreNum) ? 0 : scoreNum);
           }
@@ -605,7 +1063,13 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           } else {
             let extraIdx = numSeries + 1;
             while (true) {
-              const extraVal = getVal([`s${extraIdx}`]);
+              const extraVal = getVal([
+                `s${extraIdx}`,
+                `s.${extraIdx}`,
+                `serie${extraIdx}`,
+                `serie ${extraIdx}`,
+                `round${extraIdx}`
+              ]);
               if (extraVal !== '') {
                 const scoreNum = parseInt(extraVal);
                 scores.push(isNaN(scoreNum) ? 0 : scoreNum);
@@ -619,7 +1083,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           // Trim trailing zeros if the corresponding Excel column was empty
           while (scores.length > 1 && scores[scores.length - 1] === 0) {
             const sIdx = scores.length;
-            const val = getVal([`s${sIdx}`]);
+            const val = getVal([`s${sIdx}`, `serie${sIdx}`, `serie ${sIdx}`]);
             if (val === '') {
               scores.pop();
             } else {
@@ -627,7 +1091,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             }
           }
 
-          const shootOffVal = getVal(['shootoff', 'shoot-off', 'shoot_off', 'spareggio', 'barrage', 'so', 'shoff', 's-o']);
+          const shootOffVal = getVal(['shootoff', 'shoot-off', 'shoot_off', 'spareggio', 'barrage', 'so', 'shoff', 's-o', 'spar']);
           const shootOff = shootOffVal !== '' ? (parseInt(shootOffVal) || 0) : null;
 
           let userId: number | undefined;
@@ -635,7 +1099,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           let foundUser: any = null;
 
           if (shooterCode) {
-            foundUser = users.find(u => u.shooter_code?.toUpperCase().trim() === shooterCode.toUpperCase().trim());
+            const cleanCode = shooterCode.toUpperCase().replace(/\s+/g, '');
+            foundUser = users.find(u => (u.shooter_code || u.shooterCode || '').toUpperCase().replace(/\s+/g, '') === cleanCode);
             if (foundUser) {
               userId = foundUser.id;
               userFound = true;
@@ -643,9 +1108,11 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           }
 
           if (!userFound && rawSurname && rawName) {
+            const cleanSur = rawSurname.toLowerCase().trim();
+            const cleanNam = rawName.toLowerCase().trim();
             foundUser = users.find(u => 
-              u.surname?.toLowerCase().trim() === rawSurname.toLowerCase().trim() && 
-              u.name?.toLowerCase().trim() === rawName.toLowerCase().trim()
+              (u.surname || u.cognome || '').toLowerCase().trim() === cleanSur && 
+              (u.name || u.nome || '').toLowerCase().trim() === cleanNam
             );
             if (foundUser) {
               userId = foundUser.id;
@@ -654,30 +1121,30 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           }
 
           // Resolve values based on existing user or raw values from Excel
-          const finalShooterCode = shooterCode || (foundUser ? foundUser.shooter_code : '');
-          const surname = (rawSurname || (foundUser ? foundUser.surname : '')).toUpperCase().trim();
-          const name = (rawName || (foundUser ? foundUser.name : '')).toUpperCase().trim();
-          const email = rawEmail || (foundUser ? foundUser.email : '');
+          let finalShooterCode = shooterCode || (foundUser ? (foundUser.shooter_code || foundUser.shooterCode || '') : '');
+          const surname = (rawSurname || (foundUser ? (foundUser.surname || foundUser.cognome || '') : '')).toUpperCase().trim();
+          const name = (rawName || (foundUser ? (foundUser.name || foundUser.nome || '') : '')).toUpperCase().trim();
+          let email = rawEmail || (foundUser ? foundUser.email : '');
+          
+          if (!finalShooterCode && !userFound) {
+            const randSuffix = Math.round(100000 + Math.random() * 900000);
+            finalShooterCode = `CT-${randSuffix}`;
+          }
+
+          if (!email) {
+            const cleanForEmail = (finalShooterCode || `${surname}.${name}`).toLowerCase().replace(/[^a-z0-9]/g, '');
+            email = cleanForEmail ? `${cleanForEmail}@claytracker.local` : `tiratore_${index}@claytracker.local`;
+          }
+
           const society = (rawSociety || (foundUser ? foundUser.society : '') || event.location || '').toUpperCase().trim();
           const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
           const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
           const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
 
           const errors: string[] = [];
-          
-          if (!finalShooterCode && !userFound) {
-            errors.push("Codice Tiratore mancante");
-          } else if (finalShooterCode && finalShooterCode.length < 5) {
-            errors.push("Codice Tiratore troppo corto");
-          }
 
           if (!surname) errors.push("Cognome mancante");
           if (!name) errors.push("Nome mancante");
-          if (!email) {
-            errors.push("Email mancante");
-          } else if (!email.includes('@')) {
-            errors.push("Formato Email non valido");
-          }
 
           scores.forEach((s, sI) => {
             if (s < 0 || s > maxSeriesScore) {
@@ -686,27 +1153,45 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             }
           });
 
-          if (!userFound) {
-            errors.push("Tiratore non registrato a portale (ricerca fallita per Codice e per Nome + Cognome)");
+          let isIdentical = false;
+          let isModified = false;
+          let saveAction: 'skip' | 'update' | 'insert' | 'auto_register' = 'insert';
+
+          if (userFound && userId) {
+            const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
+            if (existingResult) {
+              const existingScores: number[] = Array.isArray(existingResult.scores) ? existingResult.scores.map(s => Number(s) || 0) : [];
+              const importedScores: number[] = scores.map(s => Number(s) || 0);
+              
+              const scoresMatch = existingScores.length === importedScores.length && 
+                existingScores.every((val, idx) => val === importedScores[idx]);
+              
+              const existingShootOff = (existingResult.shoot_off !== null && existingResult.shoot_off !== undefined) ? Number(existingResult.shoot_off) : 0;
+              const importedShootOff = (shootOff !== null && shootOff !== undefined) ? Number(shootOff) : 0;
+              const shootOffMatch = existingShootOff === importedShootOff;
+
+              if (scoresMatch && shootOffMatch) {
+                isIdentical = true;
+                saveAction = 'skip';
+              } else {
+                isModified = true;
+                saveAction = 'update';
+                const existingScoresString = existingScores.join('/');
+                const currentScoresString = importedScores.join('/');
+                errors.push(`Variazione: Punteggio esistente (${existingScoresString}) diverso da Excel (${currentScoresString}). Verrà aggiornato.`);
+              }
+            } else {
+              saveAction = 'insert';
+            }
+          } else {
+            saveAction = 'auto_register';
+            errors.push("INFO: Tiratore non ancora registrato a portale. Verrà creato automaticamente al salvataggio.");
           }
 
-          if (userFound) {
-            const hasExisting = results.some(r => r.user_id === userId && !r.is_registered_only);
-            if (hasExisting) {
-              const existingResult = results.find(r => r.user_id === userId && !r.is_registered_only);
-              if (existingResult) {
-                const existingScoresString = Array.isArray(existingResult.scores) ? existingResult.scores.join(',') : '';
-                const currentScoresString = scores.join(',');
-                if (existingScoresString !== currentScoresString) {
-                  errors.push(`Variazione: Punteggio esistente nel database è diverso (${existingScoresString.replace(/,/g, '/')}) rispetto all'importato (${currentScoresString.replace(/,/g, '/')}). Se salvato, aggiornerà il database.`);
-                } else {
-                  errors.push("ATTENZIONE: Risultato già registrato nel database per questo tiratore (verrà sovrascritto)");
-                }
-              }
-            }
-          }
+          const rowId = `row_${index}_${finalShooterCode || `${surname}_${name}`}`;
 
           return {
+            _rowId: rowId,
             index,
             shooterCode: finalShooterCode ? finalShooterCode.toUpperCase() : '',
             surname,
@@ -723,12 +1208,27 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             errors,
             userFound,
             userId,
-            isValid: errors.filter(e => !e.startsWith("ATTENZIONE:")).length === 0
+            isIdentical,
+            isModified,
+            saveAction,
+            _sheetSource: raw._sheetSource || '',
+            isValid: errors.filter(e => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:")).length === 0
           };
         });
 
         setParsedRows(parsed);
-        triggerToast(`File Excel analizzato: ${parsed.length} righe caricate. Controlla la tabella di convalida.`, "success");
+        const sheetMsg = sheetSummaries.length > 1 
+          ? ` (${sheetSummaries.length} fogli: ${sheetSummaries.map(s => `${s.name}: ${s.count}`).join(', ')})` 
+          : (sheetSummaries.length === 1 ? ` (foglio "${sheetSummaries[0].name}")` : '');
+        
+        const identicalCount = parsed.filter(p => p.isIdentical).length;
+        const unregisteredCount = parsed.filter(p => !p.userFound || p.saveAction === 'auto_register').length;
+        const toSaveCount = parsed.filter(p => !p.isIdentical).length;
+
+        triggerToast(
+          `Excel analizzato: ${parsed.length} tiratori rilevati${sheetMsg}. ${toSaveCount} da registrare/aggiornare (${unregisteredCount} nuovi da auto-creare), ${identicalCount} già identici (saltati per risparmiare traffico).`,
+          "success"
+        );
       } catch (err: any) {
         setImportErrorDetail(err.message || "Errore di analisi del file Excel.");
         triggerToast(`Errore durante l'analisi del file Excel: ${err.message}`, "error");
@@ -744,8 +1244,87 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     reader.readAsArrayBuffer(file);
   };
 
-  const handleCreateUserInline = (rowIndex: number) => {
-    const row = parsedRows[rowIndex];
+  const handleAutoRegisterUnregisteredShootters = async () => {
+    const unregistered = parsedRows.filter(r => !r.userId || r.saveAction === 'auto_register');
+    if (unregistered.length === 0) {
+      triggerToast("Nessun tiratore non registrato da creare.", "info");
+      return;
+    }
+
+    setAutoRegistering(true);
+    try {
+      const shootersToRegister = unregistered.map(r => ({
+        name: r.name,
+        surname: r.surname,
+        shooter_code: r.shooterCode,
+        society: r.society || event.location,
+        category: r.category || '2*',
+        qualification: r.qualification || '',
+        email: r.email,
+        discipline_categories: r.disciplineCategories || ''
+      }));
+
+      const res = await fetch('/api/admin/users/auto-register-shooters', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ shooters: shootersToRegister })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Errore durante la registrazione automatica.');
+      }
+
+      const data = await res.json();
+      if (data.registered && Array.isArray(data.registered)) {
+        const registeredMap = new Map<string, any>();
+        data.registered.forEach((u: any) => {
+          if (u.shooter_code) registeredMap.set(u.shooter_code.toUpperCase().trim(), u);
+          if (u.name && u.surname) registeredMap.set(`${u.name.toUpperCase().trim()}_${u.surname.toUpperCase().trim()}`, u);
+        });
+
+        const newUsers: any[] = [];
+        setParsedRows(prev => prev.map(r => {
+          if (!r.userId) {
+            const codeKey = (r.shooterCode || '').toUpperCase().trim();
+            const nameKey = `${(r.name || '').toUpperCase().trim()}_${(r.surname || '').toUpperCase().trim()}`;
+            const matched = registeredMap.get(codeKey) || registeredMap.get(nameKey);
+            if (matched && matched.id) {
+              newUsers.push(matched);
+              const cleanErrors = (r.errors || []).filter((e: string) => !e.startsWith("INFO:"));
+              return {
+                ...r,
+                userId: matched.id,
+                userFound: true,
+                saveAction: 'insert' as const,
+                errors: cleanErrors,
+                isValid: cleanErrors.filter((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).length === 0
+              };
+            }
+          }
+          return r;
+        }));
+
+        if (newUsers.length > 0) {
+          setUsers(prev => [...prev, ...newUsers]);
+        }
+
+        triggerToast(`${data.registered.length} nuovi tiratori registrati con successo a portale!`, "success");
+      }
+    } catch (err: any) {
+      triggerToast(`Errore: ${err.message}`, "error");
+    } finally {
+      setAutoRegistering(false);
+    }
+  };
+
+  const handleCreateUserInline = (target: string | number) => {
+    const row = typeof target === 'string'
+      ? parsedRows.find(r => r._rowId === target)
+      : parsedRows[target];
     if (!row) return;
 
     const initialDetails = {
@@ -764,22 +1343,105 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   };
 
   const handleSaveAllExcelResults = async () => {
-    const rowsWithCriticalErrors = parsedRows.filter(r => r.errors.some(e => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")));
+    // Check fatal errors (excluding informative badges)
+    const fatalErrors = parsedRows.filter(r => 
+      !r.isIdentical && 
+      r.errors && 
+      r.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:"))
+    );
     
-    if (rowsWithCriticalErrors.length > 0) {
-      triggerToast("Risolvi gli errori dei tiratori prima di procedere con il salvataggio dei risultati.", "error");
+    if (fatalErrors.length > 0) {
+      triggerToast("Risolvi gli errori bloccanti dei tiratori prima di procedere con il salvataggio dei risultati.", "error");
+      return;
+    }
+
+    // Identify rows that need saving (new results, modified scores, or unregistered shooters)
+    const rowsToSave = parsedRows.filter(r => 
+      !r.isIdentical && 
+      (!r.errors || !r.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:")))
+    );
+
+    const skippedIdenticalCount = parsedRows.filter(r => r.isIdentical).length;
+
+    if (rowsToSave.length === 0) {
+      triggerToast(`Tutti i ${parsedRows.length} tiratori sono già registrati con punteggio identico nel database. Nessun dato da inviare (traffico risparmiato).`, "info");
       return;
     }
 
     setSaving(true);
+
+    // STEP 1: Auto-register any shooters who don't have a userId yet
+    const unregisteredRows = rowsToSave.filter(r => !r.userId || r.saveAction === 'auto_register');
+    let autoRegisteredCount = 0;
+
+    if (unregisteredRows.length > 0) {
+      try {
+        const shootersToRegister = unregisteredRows.map(r => ({
+          name: r.name,
+          surname: r.surname,
+          shooter_code: r.shooterCode,
+          society: r.society || event.location,
+          category: r.category || '2*',
+          qualification: r.qualification || '',
+          email: r.email,
+          discipline_categories: r.disciplineCategories || ''
+        }));
+
+        const regRes = await fetch('/api/admin/users/auto-register-shooters', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ shooters: shootersToRegister })
+        });
+
+        if (regRes.ok) {
+          const regData = await regRes.json();
+          if (regData.registered && Array.isArray(regData.registered)) {
+            const registeredMap = new Map<string, any>();
+            regData.registered.forEach((u: any) => {
+              if (u.shooter_code) registeredMap.set(u.shooter_code.toUpperCase().trim(), u);
+              if (u.name && u.surname) registeredMap.set(`${u.name.toUpperCase().trim()}_${u.surname.toUpperCase().trim()}`, u);
+            });
+
+            // Update userIds directly in rowsToSave and notify state
+            const newlyCreatedUsers: any[] = [];
+            for (const r of rowsToSave) {
+              if (!r.userId) {
+                const codeKey = (r.shooterCode || '').toUpperCase().trim();
+                const nameKey = `${(r.name || '').toUpperCase().trim()}_${(r.surname || '').toUpperCase().trim()}`;
+                const matched = registeredMap.get(codeKey) || registeredMap.get(nameKey);
+                if (matched && matched.id) {
+                  r.userId = matched.id;
+                  r.userFound = true;
+                  r.saveAction = 'insert';
+                  autoRegisteredCount++;
+                  newlyCreatedUsers.push(matched);
+                }
+              }
+            }
+
+            if (newlyCreatedUsers.length > 0) {
+              setUsers(prev => [...prev, ...newlyCreatedUsers]);
+            }
+          }
+        }
+      } catch (regErr) {
+        console.error("Auto-registration error during save:", regErr);
+      }
+    }
+
+    // STEP 2: Save the competition results for all rowsToSave (only those with a valid userId)
     let successCount = 0;
     let failCount = 0;
 
-    for (const row of parsedRows) {
-      if (row.errors.some((e: string) => e.startsWith("ATTENZIONE:"))) {
+    for (const row of rowsToSave) {
+      if (!row.userId) {
+        failCount++;
         continue;
       }
-      
+
       const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
       const totalScore = row.scores.reduce((a: number, b: number) => a + b, 0);
       const isMB = isMakeABreak(event.discipline);
@@ -845,11 +1507,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
     setSaving(false);
     if (failCount === 0) {
-      triggerToast(`Importazione completata con successo! ${successCount} risultati salvati.`, "success");
+      triggerToast(
+        `Salvataggio completato con successo! ${successCount} risultati salvati/aggiornati${autoRegisteredCount > 0 ? ` (${autoRegisteredCount} nuovi tiratori registrati automaticamente)` : ''}. ${skippedIdenticalCount} risultati identici già presenti sono stati saltati per risparmiare traffico dati!`,
+        "success"
+      );
       setParsedRows([]);
       fetchData();
     } else {
-      triggerToast(`Importazione terminata con qualche errore. Salvati: ${successCount}. Falliti: ${failCount}`, "info");
+      triggerToast(
+        `Salvataggio parziale. Salvati: ${successCount}${autoRegisteredCount > 0 ? ` (${autoRegisteredCount} auto-creati)` : ''}. Falliti: ${failCount}. Saltati (identici): ${skippedIdenticalCount}.`,
+        "info"
+      );
       fetchData();
     }
   };
@@ -1864,6 +2532,51 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     }
   };
 
+  const handleDeleteAllResults = () => {
+    const count = results.filter(r => !r.is_registered_only).length;
+    if (count === 0) {
+      triggerToast("Nessun risultato registrato da eliminare in questa gara.", "info");
+      return;
+    }
+
+    const confirmDeleteAll = async () => {
+      setDeletingAllResults(true);
+      try {
+        const res = await fetch(`/api/events/${event.id}/results`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Errore durante l'eliminazione dei risultati.");
+        }
+
+        const data = await res.json();
+        triggerToast(`Tutti i ${data.deletedCount || count} risultati della gara sono stati eliminati. Ora puoi ricaricare l'Excel da zero.`, "success");
+        setParsedRows([]);
+        fetchData();
+        if (onEventUpdate) onEventUpdate();
+      } catch (err: any) {
+        triggerToast(`Errore: ${err.message}`, "error");
+      } finally {
+        setDeletingAllResults(false);
+      }
+    };
+
+    if (triggerConfirm) {
+      triggerConfirm(
+        'Elimina Tutti i Risultati',
+        `Sei sicuro di voler eliminare tutti i ${count} risultati individuali registrati per questa gara? Questa operazione permette di ricaricare l'Excel da una lavagna completamente pulita. Eventuali squadre caricate rimarranno intatte.`,
+        confirmDeleteAll,
+        'Elimina Tutto',
+        'danger'
+      );
+    } else {
+      confirmDeleteAll();
+    }
+  };
+
   const handleClose = () => {
     if (isDirty) {
       if (triggerConfirm) {
@@ -1980,6 +2693,17 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                           <i className="fas fa-download text-xs"></i>
                           <span>{t('download_template_excel')}</span>
                         </button>
+                        {results.some(r => !r.is_registered_only) && (
+                          <button
+                            type="button"
+                            onClick={handleExportCurrentResultsExcel}
+                            className="px-3 py-2 rounded-xl bg-slate-700/50 border border-slate-600 hover:border-sky-500/50 text-white hover:text-sky-300 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
+                            title="Scarica il file Excel con tutti i risultati e tiratori attualmente registrati per questa gara"
+                          >
+                            <i className="fas fa-file-export text-xs text-sky-400"></i>
+                            <span>Esporta Risultati Attuali (Excel)</span>
+                          </button>
+                        )}
                         <label className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-emerald-500/20 w-full">
                           <i className="fas fa-upload text-xs"></i>
                           <span>{t('upload_results_excel')}</span>
@@ -2000,6 +2724,31 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             className="hidden"
                           />
                         </label>
+                        {results.some(r => !r.is_registered_only) && (
+                          <div className="pt-2 mt-1 border-t border-emerald-500/20">
+                            <button
+                              type="button"
+                              disabled={deletingAllResults}
+                              onClick={handleDeleteAllResults}
+                              className="px-3 py-2.5 rounded-xl bg-red-950/50 border border-red-500/40 hover:bg-red-900/70 hover:border-red-500 text-red-300 hover:text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-lg shadow-red-950/40 w-full disabled:opacity-40 disabled:cursor-not-allowed group"
+                              title="Elimina tutti i risultati individuali per ricaricare l'Excel da zero (le squadre e le impostazioni rimarranno intatte)"
+                            >
+                              {deletingAllResults ? (
+                                <i className="fas fa-circle-notch fa-spin text-xs"></i>
+                              ) : (
+                                <i className="fas fa-trash-alt text-xs text-red-400 group-hover:scale-110 transition-transform"></i>
+                              )}
+                              <span>
+                                {deletingAllResults 
+                                  ? 'Eliminazione in corso...' 
+                                  : `Elimina Tutti i Risultati della Gara (${results.filter(r => !r.is_registered_only).length})`}
+                              </span>
+                            </button>
+                            <p className="text-[9px] text-slate-400 text-center mt-1">
+                              Permette di ricaricare l'Excel da zero. <span className="text-emerald-400 font-semibold">Le squadre caricate rimarranno intatte</span>.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2395,38 +3144,193 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
               <div className="space-y-4 bg-white p-6 sm:p-8 rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-xl transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
-                      {t('excel_import_preview_title')}
-                    </h3>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
+                        {t('excel_import_preview_title')}
+                      </h3>
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-black">
+                        {parsedRows.length} tiratori rilevati
+                      </span>
+                    </div>
                     <p className="text-xs text-slate-500 mt-2 font-medium">
-                      Rivedi i dati caricati dall'Excel. Correggi eventuali errori o registra i tiratori mancanti direttamente prima di salvare i risultati in database.
+                      Rivedi i dati caricati dall'Excel. I risultati identici già registrati vengono automaticamente rilevati e saltati per risparmiare traffico dati.
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <label className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-sm active:scale-95">
+                      <i className="fas fa-file-excel"></i>
+                      <span>Ricarica Excel</span>
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={handleUploadExcelResults}
+                        className="hidden"
+                      />
+                    </label>
                     <button
                       type="button"
                       onClick={() => setParsedRows([])}
-                      className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all"
+                      className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all active:scale-95"
                     >
                       {t('back_to_results')}
                     </button>
+                    {rowsUnregistered.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={autoRegistering}
+                        onClick={handleAutoRegisterUnregisteredShootters}
+                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2"
+                        title="Registra tutti i tiratori mancanti nel database con un solo clic"
+                      >
+                        {autoRegistering ? <i className="fas fa-circle-notch fa-spin text-xs"></i> : <i className="fas fa-user-plus text-xs"></i>}
+                        <span>{autoRegistering ? 'Registrazione...' : `Auto-registra ${rowsUnregistered.length} Tiratori`}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
-                      disabled={saving || parsedRows.some(r => r.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")))}
+                      disabled={saving || rowsToSave.length === 0 || rowsWithErrors.length > 0}
                       onClick={handleSaveAllExcelResults}
-                      className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2"
+                      className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 active:scale-95"
                     >
                       {saving && <i className="fas fa-circle-notch fa-spin"></i>}
-                      {saving ? 'Salvataggio...' : t('confirm_and_save_all')}
+                      {saving 
+                        ? 'Salvataggio...' 
+                        : rowsToSave.length === 0 
+                          ? 'Tutti già salvati (0 da inviare)' 
+                          : `Salva ${rowsToSave.length} ${rowsToSave.length === 1 ? 'Risultato' : 'Risultati'}${rowsUnregistered.length > 0 ? ` (inclusi ${rowsUnregistered.length} nuovi)` : ''} (${rowsIdentical.length} saltati)`
+                      }
                     </button>
                   </div>
                 </div>
 
+                {/* Auto-registration Banner for Unregistered Shooters */}
+                {rowsUnregistered.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <i className="fas fa-user-plus text-sm"></i>
+                      </div>
+                      <div className="text-xs">
+                        <div className="font-bold text-purple-900 flex items-center gap-2">
+                          <span>Nuovi Tiratori Rilevati ({rowsUnregistered.length})</span>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-200 text-purple-800 text-[10px] font-black uppercase">
+                            Auto-registrazione disponibile
+                          </span>
+                        </div>
+                        <p className="text-purple-700 mt-0.5 leading-relaxed">
+                          Nel file Excel sono presenti <strong>{rowsUnregistered.length}</strong> tiratori non ancora registrati a portale. Cliccando su <strong>"Salva Risultati"</strong> verranno creati automaticamente e associati ai relativi punteggi, oppure puoi cliccare su <strong>"Auto-registra {rowsUnregistered.length} Tiratori"</strong> per registrarli subito a database.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={autoRegistering}
+                      onClick={handleAutoRegisterUnregisteredShootters}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all shadow-sm"
+                    >
+                      {autoRegistering ? 'In corso...' : 'Registra ora'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Data Traffic Optimization Banner */}
+                {rowsIdentical.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <i className="fas fa-bolt text-sm"></i>
+                    </div>
+                    <div className="flex-1 text-xs">
+                      <div className="font-bold text-emerald-900 flex items-center gap-2">
+                        <span>Ottimizzazione traffico dati attiva</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800 text-[10px] font-black uppercase">
+                          {rowsIdentical.length} identici non verranno riscritti
+                        </span>
+                      </div>
+                      <p className="text-emerald-700 mt-0.5 leading-relaxed">
+                        I punteggi di <strong>{rowsIdentical.length}</strong> tiratori risultano già identici a quelli registrati nel database. Verranno esclusi dalla chiamata di rete per azzerare il consumo dati inutile. Verranno salvati o aggiornati soltanto i <strong>{rowsToSave.length}</strong> tiratori con nuovi risultati o variazioni.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Multi-sheet Tabs if multiple sheets found */}
+                {availableSheets.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 mr-1 shrink-0">Fogli:</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSheetFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${selectedSheetFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      Tutti i fogli ({parsedRows.length})
+                    </button>
+                    {availableSheets.map(s => (
+                      <button
+                        key={s.name}
+                        type="button"
+                        onClick={() => setSelectedSheetFilter(s.name)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${selectedSheetFilter === s.name ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      >
+                        {s.name} ({s.count})
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Status Filter Pills */}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 mr-1">Filtra:</span>
+                    <button
+                      type="button"
+                      onClick={() => setRowStatusFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${rowStatusFilter === 'all' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      Tutti ({parsedRows.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRowStatusFilter('to_save')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${rowStatusFilter === 'to_save' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'}`}
+                    >
+                      Da Salvare ({rowsToSave.length})
+                    </button>
+                    {rowsUnregistered.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setRowStatusFilter('unregistered')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${rowStatusFilter === 'unregistered' ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'}`}
+                      >
+                        Nuovi da Registrare ({rowsUnregistered.length})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setRowStatusFilter('identical')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${rowStatusFilter === 'identical' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'}`}
+                    >
+                      Identici / Saltati ({rowsIdentical.length})
+                    </button>
+                    {rowsWithErrors.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setRowStatusFilter('errors')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${rowStatusFilter === 'errors' ? 'bg-red-600 text-white shadow-sm' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}
+                      >
+                        Errori ({rowsWithErrors.length})
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500 font-medium">
+                    Visualizzati <strong>{displayedParsedRows.length}</strong> di {parsedRows.length}
+                  </div>
+                </div>
+
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50 custom-scrollbar">
-                  <table className="w-full text-left border-collapse min-w-[900px]">
+                  <table className="w-full text-left border-collapse min-w-[950px]">
                     <thead>
                       <tr className="border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-700 bg-slate-100">
-                        <th className="p-3 font-black text-center w-12 text-slate-500">Stato</th>
+                        <th className="p-3 font-black text-center w-28 text-slate-500">Stato Salvataggio</th>
                         <th className="p-3 font-black text-slate-500">Tiratore</th>
                         <th className="p-3 font-black text-center text-slate-500">Codice</th>
                         <th className="p-3 font-black text-center text-slate-500">Email</th>
@@ -2440,26 +3344,51 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                       </tr>
                     </thead>
                     <tbody>
-                      {parsedRows.map((row, idx) => {
-                        const hasErrors = row.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:"));
-                        const hasVariation = row.errors.some((e: string) => e.startsWith("Variazione:"));
-                        const hasWarnings = row.errors.some((e: string) => e.startsWith("ATTENZIONE:"));
+                      {displayedParsedRows.map((row) => {
+                        const hasErrors = row.errors.some((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:") && !e.startsWith("INFO:"));
+                        const hasVariation = row.isModified || row.errors.some((e: string) => e.startsWith("Variazione:"));
+                        const isIdentical = row.isIdentical;
+                        const isUnregistered = !row.userFound || row.saveAction === 'auto_register';
                         
                         return (
-                          <tr key={idx} className={`border-b border-slate-200 hover:bg-slate-100/50 transition-colors ${hasErrors ? 'bg-red-500/5' : hasVariation ? 'bg-amber-500/5 border-l-2 border-l-amber-500' : ''}`}>
+                          <tr key={row._rowId || row.index} className={`border-b border-slate-200 hover:bg-slate-100/50 transition-colors ${hasErrors ? 'bg-red-500/5' : hasVariation ? 'bg-amber-500/5 border-l-2 border-l-amber-500' : isIdentical ? 'bg-emerald-50/30' : isUnregistered ? 'bg-purple-50/30' : ''}`}>
                             <td className="p-3 text-center">
                               {hasErrors ? (
-                                <i className="fas fa-exclamation-circle text-red-600 text-base" title={row.errors.filter((e: string) => !e.startsWith("ATTENZIONE:") && !e.startsWith("Variazione:")).join('\n')}></i>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-black uppercase" title={row.errors.join('\n')}>
+                                  <i className="fas fa-exclamation-circle text-xs"></i>
+                                  <span>Errore</span>
+                                </span>
+                              ) : isIdentical ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase" title="Risultato identico al database. Verrà saltato per risparmiare traffico dati.">
+                                  <i className="fas fa-check-double text-xs text-emerald-600"></i>
+                                  <span>Saltato</span>
+                                </span>
+                              ) : isUnregistered ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-black uppercase" title="Tiratore non registrato: verrà creato automaticamente al salvataggio.">
+                                  <i className="fas fa-user-plus text-xs text-purple-600"></i>
+                                  <span>Da Creare</span>
+                                </span>
                               ) : hasVariation ? (
-                                <i className="fas fa-sync text-amber-600 text-base animate-pulse" title={row.errors.join('\n')}></i>
-                              ) : hasWarnings ? (
-                                <i className="fas fa-exclamation-triangle text-amber-600 text-base" title={row.errors.join('\n')}></i>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-black uppercase" title="Punteggio modificato. Verrà aggiornato nel database.">
+                                  <i className="fas fa-sync text-xs text-amber-600"></i>
+                                  <span>Aggiorna</span>
+                                </span>
                               ) : (
-                                <i className="fas fa-check-circle text-green-600 text-base"></i>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-black uppercase" title="Nuovo risultato. Verrà salvato nel database.">
+                                  <i className="fas fa-plus-circle text-xs text-blue-600"></i>
+                                  <span>Nuovo</span>
+                                </span>
                               )}
                             </td>
                             <td className="p-3">
-                              <div className={`font-black text-slate-900 text-xs ${hasVariation ? 'underline decoration-amber-500 decoration-2 underline-offset-4' : ''}`}>{row.surname} {row.name}</div>
+                              <div className={`font-black text-slate-900 text-xs ${hasVariation ? 'underline decoration-amber-500 decoration-2 underline-offset-4' : ''}`}>
+                                {row.surname} {row.name}
+                                {row._sheetSource && availableSheets.length > 1 && (
+                                  <span className="ml-2 px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 text-[9px] font-normal">
+                                    {row._sheetSource}
+                                  </span>
+                                )}
+                              </div>
                               {row.errors.length > 0 && (
                                 <div className="mt-1 space-y-0.5">
                                   {row.errors.map((err: string, eIdx: number) => (
@@ -2493,7 +3422,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 {!row.userFound && (
                                   <button
                                     type="button"
-                                    onClick={() => handleCreateUserInline(idx)}
+                                    onClick={() => handleCreateUserInline(row._rowId || row.index)}
                                     className="px-2.5 py-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-blue-200 transition-all flex items-center gap-1 shadow-sm"
                                     title="Registra Tiratore a database con questi dati Excel"
                                   >
@@ -2504,7 +3433,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setParsedRows(prev => prev.filter((_, i) => i !== idx));
+                                    setParsedRows(prev => prev.filter(r => (r._rowId || r.index) !== (row._rowId || row.index)));
                                     triggerToast("Riga rimossa dall'importazione.", "info");
                                   }}
                                   className="px-2.5 py-1.5 rounded bg-red-50 text-red-600 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase tracking-wider border border-red-200 transition-all flex items-center gap-1 shadow-sm"
