@@ -8127,9 +8127,50 @@ app.post('/api/competitions', authenticateToken, async (req: any, res) => {
 
       if (existingEvtComp.rows.length > 0) {
         finalId = existingEvtComp.rows[0].id;
-      } else if (!finalId) {
-        finalId = `evt_${c.eventId}_${targetUserId}`;
+      } else {
+        // Check if there is an existing competition with matching name/date (e.g., added manually or via team)
+        const existingUserComps = await pool.query(`
+          SELECT id, name, date, enddate, location, discipline, event_id 
+          FROM competitions 
+          WHERE user_id = $1 AND hidden_from_user = FALSE
+        `, [targetUserId]);
+
+        let matchedCompId: string | null = null;
+        const normName = (s: string) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        const inName = normName(c.name);
+        const inDate = c.date ? c.date.split('T')[0] : '';
+        const inEndDate = (c.endDate || c.enddate || c.date || '').split('T')[0];
+
+        for (const row of existingUserComps.rows) {
+          const rowName = normName(row.name);
+          const rowDate = row.date ? row.date.split('T')[0] : '';
+          const rowEndDate = (row.enddate || row.date || '').split('T')[0];
+
+          const isSameName = inName && rowName && (inName === rowName || inName.includes(rowName) || rowName.includes(inName));
+          if (!isSameName) continue;
+
+          const isExactStart = inDate && rowDate && inDate === rowDate;
+          const isExactEnd = inEndDate && rowEndDate && inEndDate === rowEndDate;
+          const isOverlap = inDate && rowDate && (inDate <= rowEndDate) && (inEndDate >= rowDate);
+
+          if (isExactStart || isExactEnd || isOverlap) {
+            matchedCompId = row.id;
+            break;
+          }
+        }
+
+        if (matchedCompId) {
+          finalId = matchedCompId;
+        } else if (!finalId) {
+          finalId = `evt_${c.eventId}_${targetUserId}`;
+        }
       }
+
+      // Cleanup any duplicate competition records for this user that might have been created for this event
+      await pool.query(`
+        DELETE FROM competitions 
+        WHERE user_id = $1 AND event_id = $2 AND id != $3
+      `, [targetUserId, c.eventId, finalId]);
     } else if (!finalId) {
       // Search existing non-hidden competitions for targetUserId to find matches and avoid duplicates
       const existingUserComps = await pool.query(`
