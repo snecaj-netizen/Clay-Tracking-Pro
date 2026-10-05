@@ -287,19 +287,31 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   }, [results]);
   const shouldShowInternational = event.type === 'Internazionale';
 
+  const normalizeQualificationName = (qual: string | null | undefined): string => {
+    if (!qual) return '';
+    const upper = String(qual).toUpperCase().trim();
+    if (['SENIOR', 'SEN', 'SNR', 'SE'].includes(upper)) return 'Senior';
+    if (['VETERANI', 'VET', 'VE', 'V'].includes(upper)) return 'Veterani';
+    if (['MASTER', 'MAS', 'MA', 'M'].includes(upper)) return 'Master';
+    if (['JUNIOR', 'JUN', 'JUM', 'JUW', 'JU'].includes(upper)) return 'Junior';
+    if (['LADY', 'LAD', 'LA', 'L'].includes(upper)) return 'Lady';
+    if (['CACCIATORE', 'CA', 'CAC'].includes(upper)) return 'Cacciatore';
+    return qual.trim();
+  };
+
   const getShooterQualification = (r: any) => {
     // Detect hunter: if categorized as Cacciatore or in Cacciatori society
     const isHunter = r?.category_at_time === 'Cacciatore' || 
                      r?.category === 'Cacciatore' ||
                      (r?.society_at_time || r?.society || '').toLowerCase() === 'cacciatori';
-    if (isHunter) return 'CA';
+    if (isHunter) return 'Cacciatore';
 
     const qual = r?.qualification_at_time || r?.qualification;
     if (!qual) return '';
     if (!shouldShowInternational && qual.toUpperCase() === 'MAN') {
       return '';
     }
-    return qual;
+    return normalizeQualificationName(qual);
   };
 
   const qualifications = useMemo(() => {
