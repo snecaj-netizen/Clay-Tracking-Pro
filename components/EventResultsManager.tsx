@@ -98,6 +98,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
   const [quickAddInitialDetails, setQuickAddInitialDetails] = useState<any>(null);
   const [autoRegistering, setAutoRegistering] = useState(false);
   const [deletingAllResults, setDeletingAllResults] = useState(false);
+  const [deletingAllTeams, setDeletingAllTeams] = useState(false);
+  const [parsedTeamGroups, setParsedTeamGroups] = useState<any[]>([]);
 
   const reEvaluateParsedRows = (updatedUsers: any[]) => {
     setParsedRows(prevRows => {
@@ -153,11 +155,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         }
 
         if (!email) {
-          const cleanForEmail = (finalShooterCode || `${surname}.${name}`).toLowerCase().replace(/[^a-z0-9]/g, '');
-          email = cleanForEmail ? `${cleanForEmail}@claytracker.local` : `tiratore_${row.index}@claytracker.local`;
+          const cleanName = (surname || 'tiratore').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanSurname = (name || 'auto').toLowerCase().replace(/[^a-z0-9]/g, '');
+          email = `${cleanName}.${cleanSurname}@gmail.com`;
         }
 
-        const society = row.society || (foundUser ? (foundUser.society || '') : '') || event.location || '';
+        const society = row.society || (foundUser ? (foundUser.society || '') : '') || '';
         const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
         const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(row.category || (foundUser ? foundUser.category : '2*'));
         const qualification = row.qualification || normalizeQualification(foundUser ? (foundUser.qualification || '') : '');
@@ -411,6 +414,110 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     triggerToast("Template scaricato con successo!", "success");
   };
 
+  const handleDownloadTeamExcelTemplate = () => {
+    const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+    const headers = [
+      'Squadra *',
+      'Tipo Squadra',
+      'Cognome *',
+      'Nome *',
+      'Codice Tiratore',
+      'Società Tiratore',
+      'Categoria',
+      'Qualifica',
+      'PETT'
+    ];
+    for (let i = 1; i <= numSeries; i++) {
+      headers.push(`S${i}`);
+    }
+    headers.push('S.Fin');
+    headers.push('Shoot-Off');
+
+    const exampleRows: any[] = [
+      {
+        'Squadra *': 'Toscana',
+        'Tipo Squadra': 'Regioni',
+        'Cognome *': 'Rossi',
+        'Nome *': 'Mario',
+        'Codice Tiratore': 'RSSMRA80A01H501Y',
+        'Società Tiratore': 'TAV Montecatini',
+        'Categoria': '1*',
+        'Qualifica': 'Senior',
+        'PETT': '101'
+      },
+      {
+        'Squadra *': 'Toscana',
+        'Tipo Squadra': 'Regioni',
+        'Cognome *': 'Bianchi',
+        'Nome *': 'Luigi',
+        'Codice Tiratore': 'BNCLGU75C12F205X',
+        'Società Tiratore': 'TAV Pisa',
+        'Categoria': '2*',
+        'Qualifica': '',
+        'PETT': '102'
+      },
+      {
+        'Squadra *': 'Toscana',
+        'Tipo Squadra': 'Regioni',
+        'Cognome *': 'Verdi',
+        'Nome *': 'Giuseppe',
+        'Codice Tiratore': 'VRDGPP82E15G713Z',
+        'Società Tiratore': 'TAV Firenze',
+        'Categoria': 'E',
+        'Qualifica': '',
+        'PETT': '103'
+      },
+      {
+        'Squadra *': 'Lombardia',
+        'Tipo Squadra': 'Regioni',
+        'Cognome *': 'Colombo',
+        'Nome *': 'Paolo',
+        'Codice Tiratore': 'CLMPLA78D20F205W',
+        'Società Tiratore': 'TAV Bergamo',
+        'Categoria': '1*',
+        'Qualifica': '',
+        'PETT': '201'
+      },
+      {
+        'Squadra *': 'Lombardia',
+        'Tipo Squadra': 'Regioni',
+        'Cognome *': 'Ferrari',
+        'Nome *': 'Andrea',
+        'Codice Tiratore': 'FRRNDR85M10L219Y',
+        'Società Tiratore': 'TAV Milano',
+        'Categoria': '2*',
+        'Qualifica': 'Veterani',
+        'PETT': '202'
+      },
+      {
+        'Squadra *': 'Lombardia',
+        'Tipo Squadra': 'Regioni',
+        'Cognome *': 'Brambilla',
+        'Nome *': 'Marco',
+        'Codice Tiratore': 'BRMMRC88A05F205K',
+        'Società Tiratore': 'TAV Brescia',
+        'Categoria': '2*',
+        'Qualifica': '',
+        'PETT': '203'
+      }
+    ];
+
+    for (const r of exampleRows) {
+      for (let i = 1; i <= numSeries; i++) {
+        r[`S${i}`] = '23';
+      }
+      r['S.Fin'] = '';
+      r['Shoot-Off'] = '';
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(exampleRows, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Classifica Squadre");
+
+    XLSX.writeFile(workbook, `Template_Squadre_${event.name.replace(/\s+/g, '_')}.xlsx`);
+    triggerToast("Modello Classifica Squadre scaricato con successo!", "success");
+  };
+
   const handleExportCurrentResultsExcel = () => {
     const validResults = results.filter(r => !r.is_registered_only);
     if (!validResults || validResults.length === 0) {
@@ -553,7 +660,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             const surname = rawSurname || (foundUser ? foundUser.surname : '');
             const name = rawName || (foundUser ? foundUser.name : '');
             const email = rawEmail || (foundUser ? foundUser.email : '');
-            const society = rawSociety || (foundUser ? foundUser.society : '') || event.location || '';
+            const society = rawSociety || (foundUser ? foundUser.society : '') || '';
             
             const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
             const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
@@ -1132,11 +1239,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           }
 
           if (!email) {
-            const cleanForEmail = (finalShooterCode || `${surname}.${name}`).toLowerCase().replace(/[^a-z0-9]/g, '');
-            email = cleanForEmail ? `${cleanForEmail}@claytracker.local` : `tiratore_${index}@claytracker.local`;
+            const cleanName = (surname || 'tiratore').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanSurname = (name || 'auto').toLowerCase().replace(/[^a-z0-9]/g, '');
+            email = `${cleanName}.${cleanSurname}@gmail.com`;
           }
 
-          const society = (rawSociety || (foundUser ? foundUser.society : '') || event.location || '').toUpperCase().trim();
+          const society = (rawSociety || (foundUser ? foundUser.society : '') || '').toUpperCase().trim();
           const catFromDiscipline = getCategoryForDiscipline(foundUser, event.discipline as Discipline);
           const category = catFromDiscipline ? normalizeCategory(catFromDiscipline) : normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
           const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
@@ -1244,6 +1352,572 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
     reader.readAsArrayBuffer(file);
   };
 
+  const handleUploadExcelTeamResults = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        let workbook: any = null;
+
+        if (data[0] === 0x50 && data[1] === 0x4B) {
+          try {
+            const cfb = XLSX.CFB.read(data, { type: 'buffer' });
+            let modified = false;
+            if (cfb && cfb.FileIndex) {
+              for (const f of cfb.FileIndex) {
+                if (f.name && f.name.includes("sheet") && f.name.endsWith(".xml") && f.content) {
+                  let xml = typeof f.content === 'string' ? f.content : new TextDecoder('utf-8').decode(f.content);
+                  if (/<(?:\w+:)?dimension/i.test(xml)) {
+                    xml = xml.replace(/<(?:\w+:)?dimension[^>]*\/>/gi, "");
+                    const enc = new TextEncoder().encode(xml);
+                    f.content = enc;
+                    f.size = enc.length;
+                    modified = true;
+                  }
+                }
+              }
+              if (modified) {
+                workbook = (XLSX as any).parse_zip(cfb, {});
+              }
+            }
+          } catch (cfbErr) {
+            console.warn("CFB dimension strip fallback:", cfbErr);
+          }
+        }
+
+        if (!workbook) {
+          workbook = XLSX.read(data, { type: 'array' });
+        }
+
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          triggerToast("Il file Excel non contiene fogli.", "error");
+          setLoading(false);
+          return;
+        }
+
+        const combinedRawRows: any[] = [];
+        const sheetSummaries: { name: string; count: number }[] = [];
+
+        for (const sName of workbook.SheetNames) {
+          const ws = workbook.Sheets[sName];
+          if (!ws) continue;
+          fixWorksheetRange(ws);
+
+          let maxRow = -1;
+          let maxCol = -1;
+          for (const key of Object.keys(ws)) {
+            if (key.startsWith('!')) continue;
+            try {
+              const cell = XLSX.utils.decode_cell(key);
+              if (cell.r > maxRow) maxRow = cell.r;
+              if (cell.c > maxCol) maxCol = cell.c;
+            } catch {}
+          }
+
+          if (maxRow >= 0 && maxCol >= 0) {
+            ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxRow, c: maxCol } });
+          }
+
+          const hIdx = detectHeaderRowIndex(ws);
+          let rows = XLSX.utils.sheet_to_json(ws, { 
+            range: hIdx, 
+            defval: '',
+            blankrows: false 
+          }) as any[];
+
+          let validRows = rows.filter(r => Object.values(r).some(val => val !== '' && val !== null && val !== undefined));
+
+          if (validRows.length > 0) {
+            sheetSummaries.push({ name: sName, count: validRows.length });
+            for (const vr of validRows) {
+              combinedRawRows.push({ ...(vr as any), _sheetSource: sName });
+            }
+          }
+        }
+
+        if (combinedRawRows.length === 0) {
+          triggerToast("Il file Excel non contiene righe valide per le squadre.", "error");
+          setLoading(false);
+          return;
+        }
+
+        const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+        const finalSeriesKeys = [
+          'sfin', 's.fin', 's.fin.', 's. fin', 's_fin', 's-fin', 
+          'finale', 'final', 'sf', 's. finale', 'seriefinale', 'serie finale',
+          `s${numSeries + 1}`, `serie${numSeries + 1}`
+        ];
+
+        let lastTeamName = '';
+        let lastTeamType = 'Regioni';
+        const teamGroupsMap = new Map<string, {
+          teamName: string;
+          teamType: string;
+          shooters: any[];
+        }>();
+
+        combinedRawRows.forEach((raw: any, index: number) => {
+          const getVal = (keys: string[]): string => {
+            for (const k of keys) {
+              const cleanK = k.toLowerCase().replace(/[\s*_.-]/g, '');
+              const matchedKey = Object.keys(raw).find(rk => 
+                rk.toLowerCase().replace(/[\s*_.-]/g, '') === cleanK
+              );
+              if (matchedKey && raw[matchedKey] !== undefined && raw[matchedKey] !== null) {
+                const str = String(raw[matchedKey]).trim();
+                if (str !== '') return str;
+              }
+            }
+            for (const k of keys) {
+              if (k.length <= 2) continue;
+              const cleanK = k.toLowerCase().replace(/[\s*_.-]/g, '');
+              const matchedKey = Object.keys(raw).find(rk => {
+                const cleanRK = rk.toLowerCase().replace(/[\s*_.-]/g, '');
+                return cleanRK.includes(cleanK) || cleanK.includes(cleanRK);
+              });
+              if (matchedKey && raw[matchedKey] !== undefined && raw[matchedKey] !== null) {
+                const str = String(raw[matchedKey]).trim();
+                if (str !== '') return str;
+              }
+            }
+            return '';
+          };
+
+          let rawTeamName = getVal(['squadra', 'team', 'nomessquadra', 'nomesquadra', 'teamname', 'regione', 'societa_squadra']);
+          let rawTeamType = getVal(['tiposquadra', 'tipo_squadra', 'categoria_squadra', 'settore', 'gruppo']);
+
+          if (rawTeamName) {
+            lastTeamName = rawTeamName;
+            if (rawTeamType) lastTeamType = rawTeamType;
+          } else if (lastTeamName) {
+            rawTeamName = lastTeamName;
+            rawTeamType = lastTeamType;
+          } else {
+            rawTeamName = 'Squadra Senza Nome';
+          }
+
+          const shooterCode = getVal([
+            'codicetiratore', 'codice', 'cf', 'fiscalcode', 'tessera', 'fitav', 'cod',
+            'codicefitav', 'tesserafitav', 'matricola', 'id', 'shootercode', 'shooter_code'
+          ]);
+
+          let rawSurname = getVal(['cognome', 'surname', 'lastname', 'cognomi']);
+          let rawName = getVal(['nome', 'name', 'firstname', 'nomi']);
+          const rawFullName = getVal([
+            'tiratore', 'tiratori', 'atleta', 'atleti', 'nominativo', 'nominativi',
+            'cognomenome', 'nomecognome', 'cognomeenome', 'nomeecognome',
+            'fullname', 'full_name'
+          ]);
+
+          if ((!rawSurname || !rawName) && rawFullName) {
+            const parts = rawFullName.trim().split(/\s+/);
+            if (parts.length >= 2) {
+              if (!rawSurname) rawSurname = parts[0];
+              if (!rawName) rawName = parts.slice(1).join(' ');
+            } else if (parts.length === 1) {
+              if (!rawSurname) rawSurname = parts[0];
+            }
+          }
+
+          if (!rawSurname && !rawName) {
+            for (const [colKey, colVal] of Object.entries(raw)) {
+              if (colKey.startsWith('_') || colKey.startsWith('!')) continue;
+              const strVal = String(colVal || '').trim();
+              if (!strVal || /^\d+$/.test(strVal)) continue;
+              if (/[a-zA-Z]{3,}/.test(strVal) && strVal.length > 2 && strVal.length < 60) {
+                const parts = strVal.split(/\s+/);
+                if (parts.length >= 2) {
+                  rawSurname = parts[0];
+                  rawName = parts.slice(1).join(' ');
+                  break;
+                } else if (parts.length === 1) {
+                  rawSurname = parts[0];
+                  rawName = 'Tiratore';
+                  break;
+                }
+              }
+            }
+          }
+
+          const rawEmail = getVal(['email', 'mail', 'indirizzoemail']);
+          const rawShooterSociety = getVal(['societatiratore', 'societa_tiratore', 'societa', 'club', 'tav', 'campo']);
+          const rawCategory = getVal(['categoria', 'category', 'class', 'cat', 'classe']);
+          const rawQualification = getVal(['qualifica', 'qualification', 'qual']);
+          const bibNumber = getVal(['pett', 'pettorale', 'bib', 'dorsale', 'numero', 'num', 'n']);
+
+          const scores: number[] = [];
+          for (let sIdx = 1; sIdx <= numSeries; sIdx++) {
+            const val = getVal([
+              `s${sIdx}`, `s.${sIdx}`, `s_${sIdx}`, `serie${sIdx}`, `serie_${sIdx}`, `serie ${sIdx}`
+            ]);
+            const scoreNum = parseInt(val);
+            scores.push(isNaN(scoreNum) ? 0 : scoreNum);
+          }
+
+          const finalVal = getVal(finalSeriesKeys);
+          if (finalVal !== '') {
+            const sFinNum = parseInt(finalVal);
+            scores.push(isNaN(sFinNum) ? 0 : sFinNum);
+          }
+
+          while (scores.length > 1 && scores[scores.length - 1] === 0) {
+            const sIdx = scores.length;
+            const val = getVal([`s${sIdx}`, `serie${sIdx}`, `serie ${sIdx}`]);
+            if (val === '') {
+              scores.pop();
+            } else {
+              break;
+            }
+          }
+
+          const shootOffVal = getVal(['shootoff', 'shoot-off', 'shoot_off', 'spareggio', 'barrage', 'so', 'shoff', 's-o', 'spar']);
+          const shootOff = shootOffVal !== '' ? (parseInt(shootOffVal) || 0) : null;
+
+          let userId: number | undefined;
+          let userFound = false;
+          let foundUser: any = null;
+
+          if (shooterCode) {
+            const cleanCode = shooterCode.toUpperCase().replace(/\s+/g, '');
+            foundUser = users.find(u => (u.shooter_code || u.shooterCode || '').toUpperCase().replace(/\s+/g, '') === cleanCode);
+            if (foundUser) {
+              userId = foundUser.id;
+              userFound = true;
+            }
+          }
+
+          if (!userFound && rawSurname && rawName) {
+            const cleanSur = rawSurname.toLowerCase().trim();
+            const cleanNam = rawName.toLowerCase().trim();
+            foundUser = users.find(u => 
+              (u.surname || u.cognome || '').toLowerCase().trim() === cleanSur && 
+              (u.name || u.nome || '').toLowerCase().trim() === cleanNam
+            );
+            if (foundUser) {
+              userId = foundUser.id;
+              userFound = true;
+            }
+          }
+
+          let finalShooterCode = shooterCode || (foundUser ? (foundUser.shooter_code || foundUser.shooterCode || '') : '');
+          const surname = (rawSurname || (foundUser ? (foundUser.surname || foundUser.cognome || '') : '')).toUpperCase().trim();
+          const name = (rawName || (foundUser ? (foundUser.name || foundUser.nome || '') : '')).toUpperCase().trim();
+          let email = rawEmail || (foundUser ? foundUser.email : '');
+
+          if (!finalShooterCode && !userFound) {
+            const randSuffix = Math.round(100000 + Math.random() * 900000);
+            finalShooterCode = `CT-${randSuffix}`;
+          }
+
+          if (!email) {
+            const cleanName = (surname || 'tiratore').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanSurname = (name || 'auto').toLowerCase().replace(/[^a-z0-9]/g, '');
+            email = `${cleanName}.${cleanSurname}@gmail.com`;
+          }
+
+          const shooterSociety = (rawShooterSociety || (foundUser ? foundUser.society : '') || '').toUpperCase().trim();
+          const category = normalizeCategory(rawCategory || (foundUser ? foundUser.category : '2*'));
+          const qualification = normalizeQualification(rawQualification || (foundUser ? foundUser.qualification : ''));
+
+          const shooterObj = {
+            index,
+            shooterCode: finalShooterCode,
+            surname,
+            name,
+            email,
+            society: shooterSociety,
+            category,
+            qualification,
+            bibNumber,
+            scores,
+            shootOff,
+            userFound,
+            userId,
+            teamName: rawTeamName,
+            teamType: rawTeamType || 'Regioni'
+          };
+
+          const groupKey = rawTeamName.toUpperCase().trim();
+          if (!teamGroupsMap.has(groupKey)) {
+            teamGroupsMap.set(groupKey, {
+              teamName: rawTeamName,
+              teamType: rawTeamType || 'Regioni',
+              shooters: []
+            });
+          }
+          teamGroupsMap.get(groupKey)!.shooters.push(shooterObj);
+        });
+
+        const groupsArray = Array.from(teamGroupsMap.values());
+        setParsedTeamGroups(groupsArray);
+
+        // Also prepare parsedRows for results preview
+        const flattenedRows: any[] = [];
+        groupsArray.forEach(grp => {
+          grp.shooters.forEach(s => {
+            const totalScore = s.scores.reduce((a: number, b: number) => a + b, 0);
+            flattenedRows.push({
+              ...s,
+              totalScore,
+              rankingPreference: 'categoria',
+              errors: [],
+              isIdentical: false,
+              isModified: false,
+              saveAction: s.userFound ? 'insert' : 'auto_register',
+              _rowId: `team_row_${s.index}_${s.shooterCode || s.surname}`,
+              isValid: true
+            });
+          });
+        });
+
+        setParsedRows(flattenedRows);
+        setAvailableSheets(sheetSummaries);
+        setSelectedSheetFilter('all');
+        setRowStatusFilter('all');
+
+        triggerToast(`Excel Squadre analizzato: ${groupsArray.length} squadre rilevate per un totale di ${flattenedRows.length} tiratori. Rivedi l'anteprima e clicca su "Salva Squadre e Risultati"!`, "success");
+      } catch (err: any) {
+        setImportErrorDetail(err.message || "Errore di analisi del file Excel Squadre.");
+        triggerToast(`Errore durante l'analisi del file Excel Squadre: ${err.message}`, "error");
+      } finally {
+        setLoading(false);
+        e.target.value = '';
+      }
+    };
+    reader.onerror = () => {
+      triggerToast("Errore di caricamento del file Excel.", "error");
+      setLoading(false);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleSaveAllExcelTeamResults = async () => {
+    if (parsedTeamGroups.length === 0 && parsedRows.length === 0) {
+      triggerToast("Nessun dato di squadra da salvare.", "info");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Step 1: Ensure team ranking is enabled on the event
+      if (!hasTeamRanking) {
+        setHasTeamRanking(true);
+        await fetch(`/api/events/${event.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ has_team_ranking: true })
+        });
+      }
+
+      // Step 2: Auto-register any shooters who don't have a userId yet
+      const unregisteredRows = parsedRows.filter(r => !r.userId || r.saveAction === 'auto_register');
+      if (unregisteredRows.length > 0) {
+        const shootersToRegister = unregisteredRows.map(r => ({
+          name: r.name,
+          surname: r.surname,
+          shooter_code: r.shooterCode,
+          society: r.society || '',
+          category: r.category || '2*',
+          qualification: r.qualification || '',
+          email: r.email,
+          discipline_categories: r.disciplineCategories || ''
+        }));
+
+        const regRes = await fetch('/api/admin/users/auto-register-shooters', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ shooters: shootersToRegister })
+        });
+
+        if (regRes.ok) {
+          const regData = await regRes.json();
+          if (regData.registered && Array.isArray(regData.registered)) {
+            const registeredMap = new Map<string, any>();
+            regData.registered.forEach((u: any) => {
+              if (u.shooter_code) registeredMap.set(u.shooter_code.toUpperCase().trim(), u);
+              if (u.name && u.surname) registeredMap.set(`${u.name.toUpperCase().trim()}_${u.surname.toUpperCase().trim()}`, u);
+            });
+
+            for (const r of parsedRows) {
+              if (!r.userId) {
+                const codeKey = (r.shooterCode || '').toUpperCase().trim();
+                const nameKey = `${(r.name || '').toUpperCase().trim()}_${(r.surname || '').toUpperCase().trim()}`;
+                const matched = registeredMap.get(codeKey) || registeredMap.get(nameKey);
+                if (matched && matched.id) {
+                  r.userId = matched.id;
+                  r.userFound = true;
+                }
+              }
+            }
+
+            for (const grp of parsedTeamGroups) {
+              for (const s of grp.shooters) {
+                if (!s.userId) {
+                  const codeKey = (s.shooterCode || '').toUpperCase().trim();
+                  const nameKey = `${(s.name || '').toUpperCase().trim()}_${(s.surname || '').toUpperCase().trim()}`;
+                  const matched = registeredMap.get(codeKey) || registeredMap.get(nameKey);
+                  if (matched && matched.id) {
+                    s.userId = matched.id;
+                    s.userFound = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Step 3: Save individual scores into competitions table
+      for (const row of parsedRows) {
+        if (!row.userId) continue;
+
+        const numSeries = Math.ceil((event.targets || 100) / targetsPerSeries);
+        const totalScore = (row.scores || []).reduce((a: number, b: number) => a + b, 0);
+        const isMB = isMakeABreak(event.discipline);
+        const totalTargetsVal = isMB ? row.scores.length * 60 : (row.scores.length > 0 ? row.scores.length * targetsPerSeries : (event.targets || 100));
+        const averagePerSeries = row.scores.length > 0 ? totalScore / row.scores.length : totalScore / numSeries;
+
+        const detailed: boolean[][] = (row.scores || []).map((score: number) => {
+          const numMisses = targetsPerSeries - score;
+          const arr = Array(targetsPerSeries).fill(true);
+          for (let m = 0; m < numMisses && m < targetsPerSeries; m++) {
+            arr[m] = false;
+          }
+          return arr;
+        });
+
+        const payload = {
+          id: `evt_${event.id}_${row.userId}`,
+          userId: row.userId,
+          eventId: event.id,
+          name: event.name,
+          date: event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
+          endDate: event.end_date ? event.end_date.split('T')[0] : (event.start_date ? event.start_date.split('T')[0] : new Date().toISOString().split('T')[0]),
+          location: event.location,
+          discipline: event.discipline,
+          level: event.type,
+          totalScore,
+          totalTargets: totalTargetsVal,
+          averagePerSeries,
+          category: row.category || '2*',
+          qualification: row.qualification || null,
+          ranking_preference: 'categoria',
+          ranking_preference_override: null,
+          scores: row.scores,
+          detailedScores: detailed,
+          shootOff: row.shootOff,
+          team_name: row.teamName
+        };
+
+        await fetch('/api/competitions?from_event_management=true', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      // Step 4: Create or update each team in the database
+      let createdTeamsCount = 0;
+      for (const grp of parsedTeamGroups) {
+        const memberIds = grp.shooters.map((s: any) => s.userId).filter(Boolean);
+        if (memberIds.length === 0) continue;
+
+        // Check if team with same name already exists in this event
+        const existingTeam = teams.find(t => t.name.toLowerCase().trim() === grp.teamName.toLowerCase().trim());
+        const teamUrl = existingTeam 
+          ? `/api/events/${event.id}/teams/${existingTeam.id}`
+          : `/api/events/${event.id}/teams`;
+        const teamMethod = existingTeam ? 'PUT' : 'POST';
+
+        const teamPayload = {
+          name: grp.teamName,
+          society: grp.teamName,
+          type: grp.teamType || 'Regioni',
+          team_type: grp.teamType || 'Regioni',
+          memberIds
+        };
+
+        const tRes = await fetch(teamUrl, {
+          method: teamMethod,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(teamPayload)
+        });
+
+        if (tRes.ok) createdTeamsCount++;
+      }
+
+      triggerToast(`Classifica Squadre salvata con successo! ${createdTeamsCount} squadre registrate e tutti i punteggi collegati.`, "success");
+      setParsedRows([]);
+      setParsedTeamGroups([]);
+      setViewMode('squadre');
+      fetchData();
+      if (onEventUpdate) onEventUpdate();
+    } catch (err: any) {
+      console.error("Error saving team results:", err);
+      triggerToast(`Errore durante il salvataggio delle squadre: ${err.message}`, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAllTeams = () => {
+    if (teams.length === 0) {
+      triggerToast("Nessuna squadra da eliminare per questa gara.", "info");
+      return;
+    }
+
+    const confirmDeleteTeams = async () => {
+      setDeletingAllTeams(true);
+      try {
+        const res = await fetch(`/api/events/${event.id}/teams/all`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Errore durante l'eliminazione delle squadre.");
+        }
+
+        triggerToast(`Tutte le ${teams.length} squadre della gara sono state eliminate.`, "success");
+        fetchData();
+        if (onEventUpdate) onEventUpdate();
+      } catch (err: any) {
+        triggerToast(`Errore: ${err.message}`, "error");
+      } finally {
+        setDeletingAllTeams(false);
+      }
+    };
+
+    if (triggerConfirm) {
+      triggerConfirm(
+        'Elimina Tutte le Squadre',
+        `Sei sicuro di voler eliminare tutte le ${teams.length} squadre registrate per questa gara? I risultati individuali dei tiratori rimarranno intatti, ma le formazioni di squadra verranno rimosse.`,
+        confirmDeleteTeams,
+        'Elimina Tutte',
+        'danger'
+      );
+    } else {
+      confirmDeleteTeams();
+    }
+  };
+
   const handleAutoRegisterUnregisteredShootters = async () => {
     const unregistered = parsedRows.filter(r => !r.userId || r.saveAction === 'auto_register');
     if (unregistered.length === 0) {
@@ -1257,7 +1931,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
         name: r.name,
         surname: r.surname,
         shooter_code: r.shooterCode,
-        society: r.society || event.location,
+        society: r.society || '',
         category: r.category || '2*',
         qualification: r.qualification || '',
         email: r.email,
@@ -1310,6 +1984,20 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
 
         if (newUsers.length > 0) {
           setUsers(prev => [...prev, ...newUsers]);
+          setParsedTeamGroups(prev => prev.map(grp => ({
+            ...grp,
+            shooters: grp.shooters.map((s: any) => {
+              if (!s.userId) {
+                const codeKey = (s.shooterCode || '').toUpperCase().trim();
+                const nameKey = `${(s.name || '').toUpperCase().trim()}_${(s.surname || '').toUpperCase().trim()}`;
+                const matched = registeredMap.get(codeKey) || registeredMap.get(nameKey);
+                if (matched && matched.id) {
+                  return { ...s, userId: matched.id, userFound: true };
+                }
+              }
+              return s;
+            })
+          })));
         }
 
         triggerToast(`${data.registered.length} nuovi tiratori registrati con successo a portale!`, "success");
@@ -1380,7 +2068,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           name: r.name,
           surname: r.surname,
           shooter_code: r.shooterCode,
-          society: r.society || event.location,
+          society: r.society || '',
           category: r.category || '2*',
           qualification: r.qualification || '',
           email: r.email,
@@ -2007,6 +2695,7 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
             user_id: id,
             user_name: result?.user_name || user?.name || t('unknown'),
             user_surname: result?.user_surname || user?.surname || '',
+            society: result?.society_at_time || result?.society || user?.society || '',
             totalscore: result?.totalscore || 0,
             qualification: getShooterQualification(result || { ...user }),
             shoot_off: isNaN(shootOffVal) ? 0 : shootOffVal
@@ -2051,7 +2740,8 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
           const membersToRender = title.includes('Cacciatori') ? team.members.filter(m => m.qualification === 'CA') : team.members;
           const shootersStr = membersToRender.map((s: any) => {
             const sShootOffStr = s.shoot_off ? ` (+${s.shoot_off} Sp.)` : '';
-            return `${s.user_surname} ${s.user_name} (${s.totalscore}${sShootOffStr})`;
+            const shooterSoc = s.society && s.society.toLowerCase().trim() !== (team.name || '').toLowerCase().trim() ? ` - ${s.society}` : '';
+            return `${s.user_surname} ${s.user_name}${shooterSoc} (${s.totalscore}${sShootOffStr})`;
           }).join('\n');
           
           const teamTotalStr = team.totalShootOff > 0 ? `${team.totalScore}\n(+${team.totalShootOff} Sp.)` : `${team.totalScore}`;
@@ -2087,7 +2777,18 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
       };
 
       if (fitavTeams.length > 0) {
-        drawRankTable(t('pdf_team_ranking') || 'Classifica Squadre FITAV', fitavTeams);
+        // Group by custom type or fitav
+        const customTypes = Array.from(new Set(fitavTeams.map(t => (t.type || t.team_type || '').trim()).filter(Boolean)));
+        if (customTypes.length > 1) {
+          customTypes.forEach(cType => {
+            const list = fitavTeams.filter(t => (t.type || t.team_type || '').trim() === cType);
+            if (list.length > 0) {
+              drawRankTable(`Classifica Squadre - ${cType}`, list);
+            }
+          });
+        } else {
+          drawRankTable(t('pdf_team_ranking') || 'Classifica Squadre', fitavTeams);
+        }
       }
       if (hunterTeams.length > 0) {
         drawRankTable('Classifica Squadre Cacciatori', hunterTeams);
@@ -2714,6 +3415,54 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             className="hidden"
                           />
                         </label>
+                        
+                        {/* Sezione Squadre */}
+                        <div className="pt-2 mt-1 border-t border-emerald-500/20 space-y-1.5">
+                          <div className="flex items-center justify-between text-blue-400 text-[9px] font-black uppercase tracking-widest">
+                            <span className="flex items-center gap-1.5">
+                              <i className="fas fa-users text-[10px]"></i>
+                              <span>Classifica a Squadre</span>
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleDownloadTeamExcelTemplate}
+                            className="px-3 py-2 rounded-xl bg-slate-800/80 border border-blue-500/30 hover:border-blue-500 text-blue-300 hover:text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full"
+                            title="Scarica il modello Excel preimpostato per la classifica a squadre (anche con tiratori di regioni o società diverse)"
+                          >
+                            <i className="fas fa-download text-xs text-blue-400"></i>
+                            <span>Scarica Modello Squadre (Excel)</span>
+                          </button>
+                          <label className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-blue-600/20 w-full">
+                            <i className="fas fa-file-excel text-xs"></i>
+                            <span>Carica Classifica Squadre (Excel)</span>
+                            <input
+                              type="file"
+                              accept=".xlsx, .xls"
+                              onChange={handleUploadExcelTeamResults}
+                              className="hidden"
+                            />
+                          </label>
+                          {teams.length > 0 && (
+                            <button
+                              type="button"
+                              disabled={deletingAllTeams}
+                              onClick={handleDeleteAllTeams}
+                              className="px-3 py-2 rounded-xl bg-slate-900 border border-amber-500/40 hover:bg-amber-950/40 hover:border-amber-500 text-amber-300 hover:text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md w-full disabled:opacity-40 disabled:cursor-not-allowed"
+                              title="Elimina tutte le squadre caricate per questa gara"
+                            >
+                              {deletingAllTeams ? (
+                                <i className="fas fa-circle-notch fa-spin text-xs"></i>
+                              ) : (
+                                <i className="fas fa-trash-alt text-xs text-amber-400"></i>
+                              )}
+                              <span>
+                                {deletingAllTeams ? 'Eliminazione...' : `Elimina Solo Squadre (${teams.length})`}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+
                         <label className="px-3 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-center shadow-lg shadow-orange-600/20 w-full">
                           <i className="fas fa-file-pdf text-xs"></i>
                           <span>Carica PDF Gestgare</span>
@@ -3146,30 +3895,35 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   <div>
                     <div className="flex items-center gap-3">
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
-                        {t('excel_import_preview_title')}
+                        {parsedTeamGroups.length > 0 ? 'Anteprima Classifica a Squadre (Excel)' : t('excel_import_preview_title')}
                       </h3>
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-black">
-                        {parsedRows.length} tiratori rilevati
+                        {parsedTeamGroups.length > 0 ? `${parsedTeamGroups.length} squadre (${parsedRows.length} tiratori)` : `${parsedRows.length} tiratori rilevati`}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-2 font-medium">
-                      Rivedi i dati caricati dall'Excel. I risultati identici già registrati vengono automaticamente rilevati e saltati per risparmiare traffico dati.
+                      {parsedTeamGroups.length > 0 
+                        ? 'Rivedi le formazioni di squadra e i punteggi dei componenti. Cliccando su "Salva Squadre e Risultati" le squadre verranno create e collegate automaticamente.' 
+                        : 'Rivedi i dati caricati dall\'Excel. I risultati identici già registrati vengono automaticamente rilevati e saltati per risparmiare traffico dati.'}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <label className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-sm active:scale-95">
                       <i className="fas fa-file-excel"></i>
-                      <span>Ricarica Excel</span>
+                      <span>{parsedTeamGroups.length > 0 ? 'Ricarica Excel Squadre' : 'Ricarica Excel'}</span>
                       <input
                         type="file"
                         accept=".xlsx, .xls"
-                        onChange={handleUploadExcelResults}
+                        onChange={parsedTeamGroups.length > 0 ? handleUploadExcelTeamResults : handleUploadExcelResults}
                         className="hidden"
                       />
                     </label>
                     <button
                       type="button"
-                      onClick={() => setParsedRows([])}
+                      onClick={() => {
+                        setParsedRows([]);
+                        setParsedTeamGroups([]);
+                      }}
                       className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all active:scale-95"
                     >
                       {t('back_to_results')}
@@ -3186,20 +3940,35 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                         <span>{autoRegistering ? 'Registrazione...' : `Auto-registra ${rowsUnregistered.length} Tiratori`}</span>
                       </button>
                     )}
-                    <button
-                      type="button"
-                      disabled={saving || rowsToSave.length === 0 || rowsWithErrors.length > 0}
-                      onClick={handleSaveAllExcelResults}
-                      className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 active:scale-95"
-                    >
-                      {saving && <i className="fas fa-circle-notch fa-spin"></i>}
-                      {saving 
-                        ? 'Salvataggio...' 
-                        : rowsToSave.length === 0 
-                          ? 'Tutti già salvati (0 da inviare)' 
-                          : `Salva ${rowsToSave.length} ${rowsToSave.length === 1 ? 'Risultato' : 'Risultati'}${rowsUnregistered.length > 0 ? ` (inclusi ${rowsUnregistered.length} nuovi)` : ''} (${rowsIdentical.length} saltati)`
-                      }
-                    </button>
+                    {parsedTeamGroups.length > 0 ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={handleSaveAllExcelTeamResults}
+                        className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2 active:scale-95"
+                      >
+                        {saving && <i className="fas fa-circle-notch fa-spin"></i>}
+                        {saving 
+                          ? 'Salvataggio...' 
+                          : `Salva ${parsedTeamGroups.length} Squadre e Risultati (${parsedRows.length} Tiratori)`
+                        }
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={saving || rowsToSave.length === 0 || rowsWithErrors.length > 0}
+                        onClick={handleSaveAllExcelResults}
+                        className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 active:scale-95"
+                      >
+                        {saving && <i className="fas fa-circle-notch fa-spin"></i>}
+                        {saving 
+                          ? 'Salvataggio...' 
+                          : rowsToSave.length === 0 
+                            ? 'Tutti già salvati (0 da inviare)' 
+                            : `Salva ${rowsToSave.length} ${rowsToSave.length === 1 ? 'Risultato' : 'Risultati'}${rowsUnregistered.length > 0 ? ` (inclusi ${rowsUnregistered.length} nuovi)` : ''} (${rowsIdentical.length} saltati)`
+                        }
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -3233,22 +4002,49 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                   </div>
                 )}
 
-                {/* Data Traffic Optimization Banner */}
-                {rowsIdentical.length > 0 && (
-                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                      <i className="fas fa-bolt text-sm"></i>
-                    </div>
-                    <div className="flex-1 text-xs">
-                      <div className="font-bold text-emerald-900 flex items-center gap-2">
-                        <span>Ottimizzazione traffico dati attiva</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800 text-[10px] font-black uppercase">
-                          {rowsIdentical.length} identici non verranno riscritti
+                {/* Team Formations Overview Banner */}
+                {parsedTeamGroups.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-200/60 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs shadow-sm">
+                          <i className="fas fa-users"></i>
+                        </div>
+                        <span className="font-black text-xs text-blue-950 uppercase tracking-wider">
+                          Squadre Rilevate nel File ({parsedTeamGroups.length})
                         </span>
                       </div>
-                      <p className="text-emerald-700 mt-0.5 leading-relaxed">
-                        I punteggi di <strong>{rowsIdentical.length}</strong> tiratori risultano già identici a quelli registrati nel database. Verranno esclusi dalla chiamata di rete per azzerare il consumo dati inutile. Verranno salvati o aggiornati soltanto i <strong>{rowsToSave.length}</strong> tiratori con nuovi risultati o variazioni.
-                      </p>
+                      <span className="text-[11px] text-blue-800 font-bold bg-blue-100/70 px-2.5 py-1 rounded-full w-fit">
+                        {parsedRows.length} tiratori assegnati alle rispettive squadre
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                      {parsedTeamGroups.map((grp: any, gIdx: number) => {
+                        const teamScore = grp.shooters.reduce((sum: number, s: any) => sum + (s.scores || []).reduce((a: number, b: number) => a + b, 0), 0);
+                        const unregisteredInTeam = grp.shooters.filter((s: any) => !s.userId).length;
+                        return (
+                          <div key={gIdx} className="p-3 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col justify-between hover:border-blue-300 transition-all">
+                            <div className="flex items-start justify-between gap-1.5">
+                              <span className="font-black text-xs text-slate-900 truncate" title={grp.teamName}>
+                                {grp.teamName}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[9px] font-black shrink-0">
+                                {grp.teamType || 'Regioni'}
+                              </span>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500 font-medium">{grp.shooters.length} tiratori</span>
+                              <span className="font-black text-slate-900">Tot: {teamScore}</span>
+                            </div>
+                            {unregisteredInTeam > 0 && (
+                              <div className="mt-1.5 text-[10px] text-purple-700 font-black flex items-center gap-1">
+                                <i className="fas fa-user-plus text-[9px]"></i>
+                                <span>{unregisteredInTeam} nuovo da auto-creare</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -3383,6 +4179,12 @@ const EventResultsManager: React.FC<EventResultsManagerProps> = ({ event, token,
                             <td className="p-3">
                               <div className={`font-black text-slate-900 text-xs ${hasVariation ? 'underline decoration-amber-500 decoration-2 underline-offset-4' : ''}`}>
                                 {row.surname} {row.name}
+                                {row.teamName && (
+                                  <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                    <i className="fas fa-users text-[8px]"></i>
+                                    {row.teamName}
+                                  </span>
+                                )}
                                 {row._sheetSource && availableSheets.length > 1 && (
                                   <span className="ml-2 px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 text-[9px] font-normal">
                                     {row._sheetSource}

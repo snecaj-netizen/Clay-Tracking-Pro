@@ -550,8 +550,63 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : undefined,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 15000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 });
+
+// Automatic retry wrapper for transient network / connection timeout blips
+const rawPoolQuery = pool.query.bind(pool);
+(pool as any).query = async function(...args: any[]) {
+  const maxRetries = 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await rawPoolQuery(...args);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const isTransient = 
+        msg.includes('connection timeout') ||
+        msg.includes('terminated unexpectedly') ||
+        msg.includes('Connection terminated') ||
+        msg.includes('timeout') ||
+        err?.code === 'ECONNRESET' ||
+        err?.code === '57P01' ||
+        err?.code === 'ETIMEDOUT';
+      if (isTransient && attempt < maxRetries) {
+        console.warn(`[DB Query Retry] Attempt ${attempt + 1}/${maxRetries} after transient connection issue: ${msg}`);
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+};
+
+const rawPoolConnect = pool.connect.bind(pool);
+(pool as any).connect = async function(...args: any[]) {
+  const maxRetries = 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await (rawPoolConnect as any)(...args);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const isTransient = 
+        msg.includes('connection timeout') ||
+        msg.includes('terminated unexpectedly') ||
+        msg.includes('Connection terminated') ||
+        msg.includes('timeout') ||
+        err?.code === 'ECONNRESET' ||
+        err?.code === '57P01' ||
+        err?.code === 'ETIMEDOUT';
+      if (isTransient && attempt < maxRetries) {
+        console.warn(`[DB Connect Retry] Attempt ${attempt + 1}/${maxRetries} after transient connection issue: ${msg}`);
+        await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+};
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
@@ -3598,9 +3653,6 @@ app.post('/api/admin/users/auto-register-shooters', authenticateToken, requireAd
         const found = societyMap.get(societyName.toLowerCase());
         if (found) societyName = found;
       }
-      if (req.user.role === 'society') {
-        societyName = req.user.society;
-      }
 
       // Check if user already exists by shooterCode
       let existingUser: any = null;
@@ -3655,15 +3707,15 @@ app.post('/api/admin/users/auto-register-shooters', authenticateToken, requireAd
       }
       shooterCode = codeAttempt;
 
-      // Auto-generate email if missing
+      // Auto-generate email: nome.cognome@gmail.com
       let email = (s.email || '').toLowerCase().trim();
+      const cleanName = (upperName || 'tiratore').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanSurname = (upperSurname || 'auto').toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!email || !email.includes('@')) {
-        const cleanName = (upperName || 'tiratore').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanSurname = (upperSurname || 'auto').toLowerCase().replace(/[^a-z0-9]/g, '');
-        email = `${cleanName}.${cleanSurname}.${shooterCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@claytracker.local`;
+        email = `${cleanName}.${cleanSurname}@gmail.com`;
       }
 
-      // Ensure email uniqueness
+      // Ensure email uniqueness (appending suffix before @gmail.com if needed)
       let emailAttempt = email;
       let emailSuffix = 1;
       while (true) {
@@ -3672,15 +3724,14 @@ app.post('/api/admin/users/auto-register-shooters', authenticateToken, requireAd
           [emailAttempt]
         );
         if (emailCheck.length === 0) break;
-        const [localPart, domainPart] = email.split('@');
-        emailAttempt = `${localPart}${emailSuffix++}@${domainPart || 'claytracker.local'}`;
+        emailAttempt = `${cleanName}.${cleanSurname}${emailSuffix++}@gmail.com`;
       }
       email = emailAttempt;
 
       const finalCategory = s.category || '2*';
       const finalQualification = s.qualification || getAutoQualification(s.birth_date, null, upperName);
       const salt = bcrypt.genSaltSync(10);
-      const hash = bcrypt.hashSync(shooterCode || 'ClayTracker123!', salt);
+      const hash = bcrypt.hashSync(shooterCode, salt);
 
       const { rows: inserted } = await client.query(
         "INSERT INTO users (name, surname, email, password, role, category, qualification, society, shooter_code, status, discipline_categories) VALUES ($1, $2, $3, $4, 'user', $5, $6, $7, $8, 'active', $9) RETURNING id, name, surname, shooter_code, society, category, qualification, email",
@@ -6122,6 +6173,50 @@ app.delete('/api/events/:id/results', authenticateToken, async (req: any, res) =
     res.status(500).json({ error: err.message });
   }
 });
+
+// Delete all teams for an event
+app.delete('/api/events/:id/teams/all', authenticateToken, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    const eventId = req.params.id;
+    const eventRes = await client.query('SELECT name, location, created_by, status FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Evento non trovato' });
+    }
+    const ev = eventRes.rows[0];
+    if (ev.status === 'validated' && req.user.role !== 'admin') {
+      client.release();
+      return res.status(403).json({ error: 'Questa gara è convalidata e le squadre non possono essere modificate.' });
+    }
+    if (req.user.role !== 'admin' && ev.location !== req.user.society && ev.created_by !== req.user.id) {
+      client.release();
+      return res.status(403).json({ error: 'Non autorizzato a eliminare le squadre di questa gara.' });
+    }
+
+    await client.query('BEGIN');
+    // Clear team references in competitions
+    await client.query(`
+      UPDATE competitions SET team_id = NULL, team_name = NULL 
+      WHERE event_id = $1
+    `, [eventId]);
+
+    // Delete teams (CASCADE deletes team_members)
+    const delTeams = await client.query(`
+      DELETE FROM teams WHERE event_id = $1 OR competition_name = $2
+    `, [eventId, ev.name]);
+
+    await client.query('COMMIT');
+    res.json({ success: true, deletedCount: delTeams.rowCount });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting event teams:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 
 // Register for an event
 app.post('/api/events/:id/register', authenticateToken, async (req: any, res) => {

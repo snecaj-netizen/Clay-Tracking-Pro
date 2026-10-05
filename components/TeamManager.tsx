@@ -174,8 +174,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
       );
     }
     list.push(
+      { id: 'Regioni', name: 'Rappresentativa Regionale', size: 99 },
       { id: 'CACCIATORI', name: 'Squadre Cacciatori', size: 99 },
-      { id: 'SQUADRA_TIRATORI', name: 'Squadra Tiratori', size: 99 } // No limit, using 99 as a placeholder for "no limit"
+      { id: 'SQUADRA_TIRATORI', name: 'Squadra Tiratori (Mista/Libera)', size: 99 } // No limit, using 99 as a placeholder for "no limit"
     );
 
     // Also include any custom types already used in existing teams
@@ -195,16 +196,17 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
   }, [event.discipline, t, teams]);
 
   const availableShooters = useMemo(() => {
-    // If it's a SQUADRA_LIBERA, we don't strictly filter by society based on formData.society
-    const isLibera = formData.type === 'SQUADRA_TIRATORI';
+    // If it's a SQUADRA_LIBERA or Regioni (or custom without strict society), don't filter strictly by society
+    const typeUpper = (formData.type || '').toUpperCase();
+    const isCrossSociety = typeUpper === 'SQUADRA_TIRATORI' || typeUpper === 'REGIONI' || typeUpper.includes('REGION') || !formData.society;
     
     const registeredUserIds = new Set(results.map(r => String(r.user_id)));
     
-    // Get all users belonging to the selected society (if not Libera)
+    // Get all users belonging to the selected society (if not CrossSociety)
     return users.filter(u => {
       if (!registeredUserIds.has(String(u.id))) return false;
       
-      if (!isLibera) {
+      if (!isCrossSociety && formData.society) {
         const s = (u.society || '').toLowerCase().trim();
         const formSoc = (formData.society || '').toLowerCase().trim();
         if (s !== formSoc) return false;
@@ -604,6 +606,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                       user_id: id,
                       user_name: result?.user_name || user?.name || teamMember?.first_name || 'Sconosciuto',
                       user_surname: result?.user_surname || user?.surname || teamMember?.last_name || '',
+                      society: result?.society_at_time || result?.society || user?.society || '',
                       category: result?.category_at_time || user?.category || teamMember?.category || '',
                       qualification: result?.qualification_at_time || user?.qualification || teamMember?.qualification || '',
                       shooter_code: result?.shooter_code || user?.shooter_code || '',
@@ -648,7 +651,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({ event, results, users, teams,
                             )}
                           </td>
                           <td className="py-2 px-3 font-bold text-slate-200 uppercase text-[11px]">
-                            {m.user_surname} {m.user_name}
+                            <div>
+                              <span>{m.user_surname} {m.user_name}</span>
+                              {m.society && m.society.toLowerCase().trim() !== (team.name || '').toLowerCase().trim() && (
+                                <div className="text-[9px] font-normal text-slate-400 capitalize tracking-normal">
+                                  {m.society}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-[9px] font-mono text-slate-500 uppercase">
                             {m.shooter_code}
