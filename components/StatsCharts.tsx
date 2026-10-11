@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { Competition } from '../types';
+import { Competition, normalizeDiscipline, getDisciplineAcronym } from '../types';
 
 interface StatsChartsProps {
   competitions: Competition[];
@@ -16,20 +16,24 @@ const StatsCharts: React.FC<StatsChartsProps> = ({ competitions }) => {
   // Ordinamento cronologico dei dati per il grafico (dal più vecchio al più recente)
   const chartData = [...completedCompetitions]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map(c => ({
-      date: new Date(c.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }),
-      score: c.totalScore,
-      average: parseFloat(c.averagePerSeries.toFixed(1)),
-      discipline: c.discipline.split(' ')[0]
-    }));
+    .map(c => {
+      const disc = normalizeDiscipline(c.discipline);
+      return {
+        date: new Date(c.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }),
+        score: c.totalScore,
+        average: parseFloat(c.averagePerSeries.toFixed(1)),
+        discipline: getDisciplineAcronym(disc)
+      };
+    });
 
   // Aggregazione per disciplina basata solo su gare concluse
   const disciplineData = Object.values(
     completedCompetitions.reduce((acc, c) => {
-      const disc = c.discipline.split(' ')[0];
-      if (!acc[disc]) acc[disc] = { name: disc, total: 0, count: 0 };
-      acc[disc].total += c.averagePerSeries;
-      acc[disc].count += 1;
+      const disc = normalizeDiscipline(c.discipline);
+      const name = getDisciplineAcronym(disc);
+      if (!acc[name]) acc[name] = { name, total: 0, count: 0 };
+      acc[name].total += c.averagePerSeries;
+      acc[name].count += 1;
       return acc;
     }, {} as Record<string, { name: string; total: number; count: number }>)
   ).map((d: { name: string; total: number; count: number }) => ({

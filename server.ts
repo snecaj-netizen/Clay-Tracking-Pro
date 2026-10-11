@@ -8834,10 +8834,14 @@ app.get('/api/regional-championships/:id/ranking', authenticateToken, async (req
     `);
 
     const cleanDisc = (str: string) => {
-      return (str || '')
+      const s = (str || '')
         .toLowerCase()
-        .replace(/\s*\(.*?\)\s*/g, '') // Rimuove sigle tra parentesi tipo (CK) o (FO)
+        .replace(/\s*\(.*?\)\s*/g, '')
         .trim();
+      if (s === 'ck' || s.includes('compak') || s === 'compak sporting') {
+        return 'compak sporting';
+      }
+      return s;
     };
 
     const targetDisciplineClean = cleanDisc(rc.discipline);

@@ -1,4 +1,4 @@
-import { Competition, Discipline, User, DISCIPLINE_TO_ACRONYM } from './types';
+import { Competition, Discipline, User, DISCIPLINE_TO_ACRONYM, normalizeDiscipline } from './types';
 import { isMakeABreak } from './lib/makeABreak';
 
 export const getCategoryForDiscipline = (user: User | undefined | null, discipline: Discipline): string | undefined => {
@@ -58,10 +58,11 @@ export const calculateRTE = (competitions: Competition[], excludeMakeABreak: boo
   // Group by discipline
   const byDiscipline: Record<string, Competition[]> = {};
   recentComps.forEach(c => {
-    if (!byDiscipline[c.discipline]) {
-      byDiscipline[c.discipline] = [];
+    const disc = normalizeDiscipline(c.discipline);
+    if (!byDiscipline[disc]) {
+      byDiscipline[disc] = [];
     }
-    byDiscipline[c.discipline].push(c);
+    byDiscipline[disc].push(c);
   });
 
   const ratings: RTERating[] = [];
@@ -70,7 +71,7 @@ export const calculateRTE = (competitions: Competition[], excludeMakeABreak: boo
     // Sort by average per series descending
     const sortedScores = comps
       .map(c => {
-        const isDoppietto = c.discipline === Discipline.DCK || String(c.discipline).toUpperCase().includes('DOPPIETTO') || String(c.discipline).toUpperCase().includes('DCK');
+        const isDoppietto = normalizeDiscipline(c.discipline) === Discipline.DCK || String(c.discipline).toUpperCase().includes('DOPPIETTO') || String(c.discipline).toUpperCase().includes('DCK');
         return isDoppietto ? c.averagePerSeries / 2.0 : c.averagePerSeries;
       })
       .sort((a, b) => b - a);

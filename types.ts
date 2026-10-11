@@ -26,10 +26,48 @@ export const DISCIPLINE_TO_ACRONYM: Partial<Record<Discipline, string>> = {
   [Discipline.SK]: 'SK',
   [Discipline.SP]: 'SP',
   [Discipline.TC]: 'TC',
-  [Discipline.CK]: 'PC',
+  [Discipline.CK]: 'CK',
   [Discipline.TR1]: 'TA',
   [Discipline.MB]: 'MB',
 };
+
+export function normalizeDiscipline(disc: string | Discipline | undefined | null): string {
+  if (!disc) return '';
+  const s = String(disc).trim();
+  const upper = s.toUpperCase();
+  const clean = upper.replace(/\s*\(.*?\)\s*/g, '').trim();
+
+  if (
+    upper === 'CK' ||
+    clean === 'CK' ||
+    clean.includes('COMPAK') ||
+    clean === 'COMPAK SPORTING'
+  ) {
+    return Discipline.CK; // 'Compak Sporting (CK)'
+  }
+
+  return s;
+}
+
+export function getDisciplineAcronym(disc: string | Discipline | undefined | null): string {
+  const norm = normalizeDiscipline(disc);
+  if (norm === Discipline.CK) return 'CK';
+  if (norm === Discipline.DCK) return 'DCK';
+  if (norm === Discipline.SP) return 'SP';
+  if (norm === Discipline.ES) return 'ES';
+  if (norm === Discipline.PC) return 'PC';
+  if (norm === Discipline.SK) return 'SK';
+  if (norm === Discipline.FO) return 'FO';
+  if (norm === Discipline.FU) return 'FU';
+  if (norm === Discipline.TC) return 'TC';
+  if (norm === Discipline.EL) return 'EL';
+  if (norm === Discipline.SK_ISSF) return 'SK ISSF';
+  if (norm === Discipline.TR1) return 'TR1';
+  if (norm === Discipline.DT) return 'DT';
+  if (norm === Discipline.MB) return 'MB';
+  if (norm === Discipline.TRAINING) return 'Allenamento';
+  return String(disc || '').split(' ')[0];
+}
 
 export enum TargetCount {
   T50 = 50,

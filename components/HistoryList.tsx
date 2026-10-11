@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Competition, CompetitionLevel, Discipline, getSeriesLayout } from '../types';
+import { Competition, CompetitionLevel, Discipline, getSeriesLayout, normalizeDiscipline, getDisciplineAcronym } from '../types';
 import { isMakeABreak, getMakeABreakTargetInfo } from '../lib/makeABreak';
 import SeriesPopup from './SeriesPopup';
 import ShareCard from './ShareCard';
@@ -105,7 +105,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     today.setHours(0, 0, 0, 0);
 
     return competitions.filter(c => {
-      const matchDisc = filterDiscipline === 'ALL' || c.discipline === filterDiscipline;
+      const matchDisc = filterDiscipline === 'ALL' || normalizeDiscipline(c.discipline) === normalizeDiscipline(filterDiscipline);
       const matchLoc = filterLocation === 'ALL' || c.location === filterLocation;
       
       const compDate = new Date(c.date);
@@ -724,7 +724,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                                 </span>
                               )}
                               <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${c.discipline === Discipline.TRAINING ? 'bg-blue-900/30 text-blue-400 border border-blue-900/50' : 'bg-orange-900/30 text-orange-500 border border-orange-900/50'}`}>
-                                {c.discipline === Discipline.TRAINING ? t('practice') : c.discipline.split(' ')[0]}
+                                {c.discipline === Discipline.TRAINING ? t('practice') : getDisciplineAcronym(c.discipline)}
                               </span>
                             </div>
                             <h3 className="text-sm font-black text-white truncate group-hover:text-orange-400 transition-colors uppercase italic tracking-tight">{c.name}</h3>
